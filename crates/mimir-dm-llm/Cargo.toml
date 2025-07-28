@@ -1,8 +1,8 @@
 [package]
-name = "mimir-dm-ai"
+name = "mimir-dm-llm"
 version = "0.0.0"
 edition = "2021"
-description = "AI integration with Ollama for Mimir"
+description = "LLM provider abstraction layer for Mimir"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/yourusername/mimir"
@@ -18,3 +18,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 reqwest = { workspace = true }
 futures = { workspace = true }
+async-trait = { workspace = true }
+serde_yaml = "0.9"
+url = "2.5"
+
+[dev-dependencies]
+tempfile = "3.0"

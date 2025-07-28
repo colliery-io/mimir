@@ -23,7 +23,7 @@ path = "src/main.rs"
 [dependencies]
 mimir-dm-core = { version = "0.0.0", path = "crates/mimir-dm-core" }
 mimir-dm-db = { version = "0.0.0", path = "crates/mimir-dm-db" }
-mimir-dm-ai = { version = "0.0.0", path = "crates/mimir-dm-ai" }
+mimir-dm-llm = { version = "0.0.0", path = "crates/mimir-dm-llm" }
 mimir-dm-agents = { version = "0.0.0", path = "crates/mimir-dm-agents" }
 mimir-dm-tui = { version = "0.0.0", path = "crates/mimir-dm-tui" }
 
@@ -38,7 +38,7 @@ directories = { workspace = true }
 members = [
     "crates/mimir-dm-core",
     "crates/mimir-dm-db", 
-    "crates/mimir-dm-ai",
+    "crates/mimir-dm-llm",
     "crates/mimir-dm-agents",
     "crates/mimir-dm-tui"
 ]
@@ -53,16 +53,21 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Database dependencies
-rusqlite = { version = "0.30", features = ["bundled", "functions"] }
+rusqlite = { version = "0.31.0", features = ["bundled"] }
 diesel = { version = "2.1", features = ["sqlite", "chrono", "uuid"] }
 diesel_migrations = "2.1"
+sqlite-vec = { version = "0.1.6" }
+zerocopy = "0.7.33"
 
 # HTTP client for Ollama
 reqwest = { version = "0.11", features = ["json", "stream"] }
 futures = "0.3"
+async-trait = "0.1"
+serde_yaml = "0.9"
+url = "2.5"
 
 # TUI dependencies  
 ratatui = "0.24"
@@ -74,6 +79,7 @@ chrono = { version = "0.4", features = ["serde"] }
 # Configuration
 config = "0.14"
 directories = "5.0"
+dirs = "5.0"
 
 [profile.dev]
 opt-level = 0

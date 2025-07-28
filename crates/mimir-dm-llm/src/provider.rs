@@ -1,0 +1,350 @@
+//! # LLM Provider Interface
+//!
+//! This module defines the core interface for LLM providers, including rate limiting,
+//! endpoint support, and response types.
+//!
+//! ## Key Components
+//!
+//! - `LlmProvider`: The base trait that all providers must implement
+//! - `ModelConfig`: Configuration for a specific model, including rate limits
+//! - `RateLimitState`: Internal state for tracking rate limiting
+//! - Response types: `ChatResponse`, `CompletionResponse`, `EmbeddingResponse`
+//!
+//! ## Rate Limiting
+//!
+//! The rate limiting implementation:
+//! 1. Tracks the last call time and call count
+//! 2. Resets the counter when the period expires
+//! 3. When the limit is hit, sleeps for the remaining time in the period
+//! 4. Never returns an error, just delays the call
+
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
+use async_trait::async_trait;
+
+use crate::config::{EndpointType, ModelConfig, RateLimit, RenewalPeriod};
+
+/// Timing information for LLM responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Timing {
+    /// Total duration of the request in milliseconds
+    pub total_duration_ms: u64,
+    /// Time spent loading the model in milliseconds
+    pub load_duration_ms: u64,
+    /// Time spent evaluating the prompt in milliseconds
+    pub prompt_eval_duration_ms: u64,
+    /// Time spent generating the completion in milliseconds
+    pub completion_duration_ms: u64,
+}
+
+/// Response from chat endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatResponse {
+    /// The generated message content
+    pub content: String,
+    /// Token usage information
+    pub usage: Option<Usage>,
+    /// Timing information for the request
+    pub timing: Option<Timing>,
+    /// The model that generated the response
+    pub model: String,
+}
+
+/// Response from completion endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompletionResponse {
+    /// The generated text
+    pub text: String,
+    /// Token usage information
+    pub usage: Option<Usage>,
+    /// Timing information for the request
+    pub timing: Option<Timing>,
+    /// The model that generated the response
+    pub model: String,
+}
+
+/// Response from embedding endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingResponse {
+    /// The generated embedding vector
+    pub embedding: Vec<f32>,
+    /// Token usage information
+    pub usage: Option<Usage>,
+    /// Timing information for the request
+    pub timing: Option<Timing>,
+    /// The model that generated the response
+    pub model: String,
+}
+
+/// Token usage information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Usage {
+    /// Number of tokens in the prompt
+    pub prompt_tokens: u32,
+    /// Number of tokens in the completion
+    pub completion_tokens: u32,
+    /// Total number of tokens
+    pub total_tokens: u32,
+}
+
+/// Message structure for chat requests
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Message {
+    /// Message role (system, user, assistant)
+    pub role: String,
+    /// Message content
+    pub content: String,
+}
+
+/// Error type for LLM operations
+#[derive(Debug, thiserror::Error)]
+pub enum LlmError {
+    #[error("Unsupported endpoint: {0}")]
+    UnsupportedEndpoint(String),
+    #[error("Rate limit exceeded")]
+    RateLimitExceeded,
+    #[error("Provider error: {0}")]
+    ProviderError(String),
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+}
+
+/// State for rate limiting
+#[derive(Debug)]
+pub struct RateLimitState {
+    tokens: AtomicU32,
+    max_tokens: u32,
+    refill_rate: Duration,
+    last_refill: Mutex<Instant>,
+}
+
+impl Default for RateLimitState {
+    fn default() -> Self {
+        Self {
+            tokens: AtomicU32::new(0),
+            max_tokens: 0,
+            refill_rate: Duration::from_secs(1),
+            last_refill: Mutex::new(Instant::now()),
+        }
+    }
+}
+
+impl RateLimitState {
+    pub fn new(limit: &RateLimit) -> Self {
+        let max_tokens = limit.calls;
+        let refill_rate = match limit.renewal_period {
+            RenewalPeriod::Seconds => Duration::from_secs(1),
+            RenewalPeriod::Minutes => Duration::from_secs(60),
+            RenewalPeriod::Hours => Duration::from_secs(3600),
+        };
+        
+        Self {
+            tokens: AtomicU32::new(max_tokens),
+            max_tokens,
+            refill_rate,
+            last_refill: Mutex::new(Instant::now()),
+        }
+    }
+    
+    fn refill(&self) {
+        let now = Instant::now();
+        let mut last_refill = self.last_refill.lock().unwrap();
+        let elapsed = now.duration_since(*last_refill);
+        
+        if elapsed >= self.refill_rate {
+            // Reset tokens to max and update last_refill time
+            self.tokens.store(self.max_tokens, Ordering::SeqCst);
+            *last_refill = now;
+        }
+    }
+    
+    fn acquire(&self) -> bool {
+        self.refill();
+        
+        // Try to acquire a token
+        let mut current = self.tokens.load(Ordering::SeqCst);
+        loop {
+            if current == 0 {
+                return false;
+            }
+            
+            match self.tokens.compare_exchange_weak(
+                current,
+                current - 1,
+                Ordering::SeqCst,
+                Ordering::SeqCst
+            ) {
+                Ok(_) => return true,
+                Err(new_current) => current = new_current,
+            }
+        }
+    }
+}
+
+/// Base trait for all LLM providers
+#[async_trait]
+pub trait LlmProvider: Send + Sync {
+    /// Get a reference to the provider's config
+    fn config(&self) -> &ModelConfig;
+    
+    /// Get a reference to the rate limit state
+    fn rate_limit_state(&self) -> &RateLimitState;
+    
+    /// Check if an endpoint is supported
+    fn supports_endpoint(&self, endpoint: EndpointType) -> bool {
+        self.config().supported_endpoints.contains(&endpoint)
+    }
+    
+    /// Default rate limiting implementation
+    async fn check_rate_limit(&self) -> Result<(), LlmError> {
+        // Get rate limit config
+        let limit = match &self.config().limit {
+            Some(limit) => limit,
+            None => return Ok(()), // No rate limiting configured
+        };
+
+        // Get or initialize rate limit state
+        let state = self.rate_limit_state();
+        
+        // Try to acquire a token
+        if !state.acquire() {
+            return Err(LlmError::RateLimitExceeded);
+        }
+        
+        Ok(())
+    }
+    
+    /// Chat endpoint with default "not supported" implementation
+    async fn chat(
+        &self, 
+        messages: Vec<Message>,
+        n: Option<u32>,
+        temperature: Option<f32>,
+        max_tokens: Option<u32>,
+        stop: Option<Vec<String>>,
+        extra_config: Option<HashMap<String, String>>
+    ) -> Result<ChatResponse, LlmError> {
+        if !self.supports_endpoint(EndpointType::Chat) {
+            return Err(LlmError::UnsupportedEndpoint("chat".to_string()));
+        }
+        self.check_rate_limit().await?;
+        Err(LlmError::NotImplemented("chat".to_string()))
+    }
+    
+    /// Completion endpoint with default "not supported" implementation
+    async fn complete(
+        &self, 
+        prompt: String,
+        n: Option<u32>,
+        temperature: Option<f32>,
+        max_tokens: Option<u32>,
+        stop: Option<Vec<String>>,
+        extra_config: Option<HashMap<String, String>>
+    ) -> Result<CompletionResponse, LlmError> {
+        if !self.supports_endpoint(EndpointType::Completion) {
+            return Err(LlmError::UnsupportedEndpoint("completion".to_string()));
+        }
+        self.check_rate_limit().await?;
+        Err(LlmError::NotImplemented("completion".to_string()))
+    }
+    
+    /// Embedding endpoint with default "not supported" implementation
+    async fn embed(
+        &self, 
+        input: Vec<String>,
+        extra_config: Option<HashMap<String, String>>
+    ) -> Result<EmbeddingResponse, LlmError> {
+        if !self.supports_endpoint(EndpointType::Embedding) {
+            return Err(LlmError::UnsupportedEndpoint("embedding".to_string()));
+        }
+        self.check_rate_limit().await?;
+        Err(LlmError::NotImplemented("embedding".to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{ModelConfig, EndpointType};
+    use std::time::Duration;
+
+    // Mock provider for testing
+    struct MockProvider {
+        config: ModelConfig,
+        rate_limit_state: RateLimitState,
+    }
+
+    impl MockProvider {
+        fn new(config: ModelConfig) -> Self {
+            let rate_limit_state = if let Some(limit) = &config.limit {
+                RateLimitState::new(limit)
+            } else {
+                RateLimitState::default()
+            };
+
+            Self {
+                config,
+                rate_limit_state,
+            }
+        }
+    }
+
+    #[async_trait]
+    impl LlmProvider for MockProvider {
+        fn config(&self) -> &ModelConfig {
+            &self.config
+        }
+
+        fn rate_limit_state(&self) -> &RateLimitState {
+            &self.rate_limit_state
+        }
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_without_config() {
+        let config = ModelConfig {
+            name: "test".to_string(),
+            supported_endpoints: vec![],
+            provider: "test".to_string(),
+            model: "test".to_string(),
+            config: None,
+            limit: None,
+        };
+
+        let provider = MockProvider::new(config);
+        
+        // Should not block or error without rate limit config
+        for _ in 0..10 {
+            assert!(provider.check_rate_limit().await.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_unsupported_endpoint() {
+        let config = ModelConfig {
+            name: "test".to_string(),
+            supported_endpoints: vec![EndpointType::Chat],
+            provider: "test".to_string(),
+            model: "test".to_string(),
+            config: None,
+            limit: None,
+        };
+
+        let provider = MockProvider::new(config);
+        
+        // Chat should be supported
+        assert!(provider.supports_endpoint(EndpointType::Chat));
+        
+        // Completion should not be supported
+        assert!(!provider.supports_endpoint(EndpointType::Completion));
+        
+        // Trying to use unsupported endpoint should return error
+        let result = provider.complete("test".to_string(), None, None, None, None, None).await;
+        assert!(matches!(result, Err(LlmError::UnsupportedEndpoint(_))));
+    }
+}
