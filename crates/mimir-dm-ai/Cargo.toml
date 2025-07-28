@@ -1,0 +1,20 @@
+[package]
+name = "mimir-dm-ai"
+version = "0.0.0"
+edition = "2021"
+description = "AI integration with Ollama for Mimir"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/mimir"
+readme = "README.md"
+
+[dependencies]
+mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
+
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+futures = { workspace = true }

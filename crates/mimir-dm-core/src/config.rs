@@ -1,0 +1,1 @@
+// Configuration management for Mimir D&D Campaign Assistant

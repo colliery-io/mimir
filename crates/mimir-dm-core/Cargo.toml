@@ -1,0 +1,17 @@
+[package]
+name = "mimir-dm-core"
+version = "0.0.0"
+edition = "2021"
+description = "Core types and traits for Mimir D&D Campaign Assistant"
+readme = "README.md"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/mimir"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }

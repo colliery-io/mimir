@@ -1,0 +1,23 @@
+[package]
+name = "mimir-dm-db"
+version = "0.0.0"
+edition = "2021"
+description = "Database layer with SQLite and vector search for Mimir"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/mimir"
+readme = "README.md"
+
+[dependencies]
+mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
+
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+rusqlite = { workspace = true }
+diesel = { workspace = true }
+diesel_migrations = { workspace = true }

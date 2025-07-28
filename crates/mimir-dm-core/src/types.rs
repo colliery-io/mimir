@@ -1,0 +1,1 @@
+// Core types for Mimir D&D Campaign Assistant

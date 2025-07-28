@@ -1,0 +1,1 @@
+// NPC Manager agent implementation

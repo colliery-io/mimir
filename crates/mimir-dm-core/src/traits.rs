@@ -1,0 +1,1 @@
+// Core traits for Mimir D&D Campaign Assistant
