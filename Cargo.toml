@@ -9,6 +9,12 @@ repository = "https://github.com/yourusername/mimir"
 keywords = ["dnd", "rpg", "campaign", "dungeon-master", "tui"]
 categories = ["games", "command-line-utilities"]
 readme = "README.md"
+exclude = [
+    "target/",
+    ".metis/",
+    "GETTING_STARTED.md",
+    "*.log"
+]
 
 [[bin]]
 name = "mimir-dm"
