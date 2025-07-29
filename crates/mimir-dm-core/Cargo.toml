@@ -9,13 +9,3 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/yourusername/mimir"
 
 [dependencies]
-tokio = { workspace = true }
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-serde = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
-async-trait = { workspace = true }
-futures = { workspace = true }
-dirs = { workspace = true }
-serde_json = { workspace = true }

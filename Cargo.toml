@@ -33,6 +33,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 config = { workspace = true }
 directories = { workspace = true }
+clap = { workspace = true }
 
 [workspace]
 members = [
@@ -57,7 +58,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Database dependencies
 rusqlite = { version = "0.31.0", features = ["bundled"] }
-diesel = { version = "2.1", features = ["sqlite", "chrono", "uuid"] }
+diesel = { version = "2.1", features = ["sqlite", "chrono", "uuid", "64-column-tables"] }
 diesel_migrations = "2.1"
 sqlite-vec = { version = "0.1.6" }
 zerocopy = "0.7.33"
@@ -80,6 +81,9 @@ chrono = { version = "0.4", features = ["serde"] }
 config = "0.14"
 directories = "5.0"
 dirs = "5.0"
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
 
 [profile.dev]
 opt-level = 0
