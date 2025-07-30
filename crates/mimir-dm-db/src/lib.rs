@@ -20,6 +20,7 @@ pub use models::rule_systems::RuleSystem;
 pub use models::sources::Source;
 pub use models::races::Race;
 pub use models::classes::Class;
+pub use models::items::Item;
 
 // Re-export DAL traits
 pub use dal::traits::{Repository, AsyncRepository};

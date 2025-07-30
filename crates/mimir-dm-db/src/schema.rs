@@ -76,15 +76,45 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    items (id) {
+        id -> Text,
+        name -> Text,
+        rule_system_id -> Text,
+        source_id -> Text,
+        page -> Nullable<Integer>,
+        base_item_id -> Nullable<Text>,
+        #[sql_name = "type"]
+        item_type -> Nullable<Text>,
+        weight_lb -> Nullable<Float>,
+        value_cp -> Nullable<Integer>,
+        armor_class -> Nullable<Integer>,
+        damage -> Nullable<Text>,
+        properties -> Nullable<Text>,
+        rarity -> Nullable<Text>,
+        requires_attunement -> Bool,
+        attunement_prereq -> Nullable<Text>,
+        magic_bonus -> Nullable<Integer>,
+        additional_properties -> Nullable<Text>,
+        entries -> Text,
+        is_magic -> Bool,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
 diesel::joinable!(sources -> rule_systems (rule_system_id));
 diesel::joinable!(races -> rule_systems (rule_system_id));
 diesel::joinable!(races -> sources (source_id));
 diesel::joinable!(classes -> rule_systems (rule_system_id));
 diesel::joinable!(classes -> sources (source_id));
+diesel::joinable!(items -> rule_systems (rule_system_id));
+diesel::joinable!(items -> sources (source_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     rule_systems,
     sources,
     races,
     classes,
+    items,
 );
