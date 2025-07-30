@@ -26,6 +26,7 @@ mimir-dm-db = { version = "0.0.0", path = "crates/mimir-dm-db" }
 mimir-dm-llm = { version = "0.0.0", path = "crates/mimir-dm-llm" }
 mimir-dm-agents = { version = "0.0.0", path = "crates/mimir-dm-agents" }
 mimir-dm-tui = { version = "0.0.0", path = "crates/mimir-dm-tui" }
+mimir-dm-import = { version = "0.0.0", path = "crates/mimir-dm-import" }
 
 tokio = { workspace = true }
 anyhow = { workspace = true }
@@ -41,7 +42,8 @@ members = [
     "crates/mimir-dm-db", 
     "crates/mimir-dm-llm",
     "crates/mimir-dm-agents",
-    "crates/mimir-dm-tui"
+    "crates/mimir-dm-tui",
+    "crates/mimir-dm-import"
 ]
 resolver = "2"
 

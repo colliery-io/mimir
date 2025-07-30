@@ -24,8 +24,7 @@ mod fixtures {
             "Player's Handbook".to_string(),
         )
         .with_abbreviation("PHB".to_string())
-        .with_publisher("Wizards of the Coast".to_string())
-        .with_publish_date("2014-08-19".to_string())
+        .with_version("5th Edition".to_string())
         .with_official(true)
         .with_srd(false)
     }
@@ -37,8 +36,7 @@ mod fixtures {
             "Dungeon Master's Guide".to_string(),
         )
         .with_abbreviation("DMG".to_string())
-        .with_publisher("Wizards of the Coast".to_string())
-        .with_publish_date("2014-12-09".to_string())
+        .with_version("5th Edition".to_string())
         .with_official(true)
         .with_srd(false)
     }
@@ -50,8 +48,7 @@ mod fixtures {
             "Monster Manual".to_string(),
         )
         .with_abbreviation("MM".to_string())
-        .with_publisher("Wizards of the Coast".to_string())
-        .with_publish_date("2014-09-30".to_string())
+        .with_version("5th Edition".to_string())
         .with_official(true)
         .with_srd(false)
     }
@@ -63,8 +60,7 @@ mod fixtures {
             "System Reference Document 5.1".to_string(),
         )
         .with_abbreviation("SRD".to_string())
-        .with_publisher("Wizards of the Coast".to_string())
-        .with_publish_date("2016-01-12".to_string())
+        .with_version("5.1".to_string())
         .with_official(true)
         .with_srd(true)
     }
@@ -76,8 +72,7 @@ mod fixtures {
             "Adventures in the Forgotten Kingdom".to_string(),
         )
         .with_abbreviation("AFK".to_string())
-        .with_publisher("Third Party Games".to_string())
-        .with_publish_date("2023-06-15".to_string())
+        .with_version("1.0".to_string())
         .with_official(false)
         .with_srd(false)
     }
@@ -104,10 +99,9 @@ mod crud_operations {
             let created = conn.create(source)?;
             
             assert_eq!(created.id, "dnd5e-2014-phb");
-            assert_eq!(created.name, "Player's Handbook");
+            assert_eq!(created.full_name, "Player's Handbook");
             assert_eq!(created.abbreviation, Some("PHB".to_string()));
-            assert_eq!(created.publisher, Some("Wizards of the Coast".to_string()));
-            assert_eq!(created.publish_date, Some("2014-08-19".to_string()));
+            assert_eq!(created.version, Some("5th Edition".to_string()));
             assert!(created.is_official);
             assert!(!created.is_srd);
             
@@ -125,7 +119,7 @@ mod crud_operations {
             
             let found: Option<Source> = conn.find_by_id("dnd5e-2014-dmg")?;
             assert!(found.is_some());
-            assert_eq!(found.unwrap().name, "Dungeon Master's Guide");
+            assert_eq!(found.unwrap().full_name, "Dungeon Master's Guide");
             
             let not_found: Option<Source> = conn.find_by_id("nonexistent")?;
             assert!(not_found.is_none());
@@ -150,7 +144,7 @@ mod crud_operations {
             updated.is_official = false;
             
             let result = conn.update("dnd5e-2014-mm", updated)?;
-            assert_eq!(result.name, "Monster Manual (Revised)");
+            assert_eq!(result.full_name, "Monster Manual (Revised)");
             assert!(!result.is_official);
             
             Ok(())
@@ -225,9 +219,9 @@ mod async_operations {
         
         // Update
         let mut updated = found.unwrap();
-        updated.name = "Player's Handbook (Updated)".to_string();
+        updated.full_name = "Player's Handbook (Updated)".to_string();
         let result = repo.update("dnd5e-2014-phb", updated).await?;
-        assert_eq!(result.name, "Player's Handbook (Updated)");
+        assert_eq!(result.full_name, "Player's Handbook (Updated)");
         
         // List
         let list = repo.list().await?;
@@ -353,16 +347,14 @@ mod special_features {
             
             let source = Source::new("test".to_string(), "dnd5e-2014".to_string(), "Test Source".to_string())
                 .with_abbreviation("TST".to_string())
-                .with_publisher("Test Publisher".to_string())
-                .with_publish_date("2024-01-01".to_string())
+                .with_published_date(chrono::NaiveDate::from_ymd_opt(2024, 1, 1).unwrap())
                 .with_official(false)
                 .with_srd(true);
             
             let created = conn.create(source)?;
             
             assert_eq!(created.abbreviation, Some("TST".to_string()));
-            assert_eq!(created.publisher, Some("Test Publisher".to_string()));
-            assert_eq!(created.publish_date, Some("2024-01-01".to_string()));
+            assert_eq!(created.published_date, Some(chrono::NaiveDate::from_ymd_opt(2024, 1, 1).unwrap()));
             assert!(!created.is_official);
             assert!(created.is_srd);
             

@@ -118,7 +118,7 @@ Key design documents to follow:
 ## Dependencies
 
 - Depends on: design-standard-import-bundle-format
-- Blocks: implement-base-dataprocessor-trait (Rust importer)
+- Blocks: implement-unified-bundle-import (Rust importer)
 
 ## Completion Summary
 

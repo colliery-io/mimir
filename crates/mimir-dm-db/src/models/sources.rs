@@ -12,10 +12,10 @@ use serde_json::Value;
 pub struct Source {
     pub id: String,
     pub rule_system_id: String,
-    pub name: String,
+    pub full_name: String,
     pub abbreviation: Option<String>,
-    pub publisher: Option<String>,
-    pub publish_date: Option<String>,
+    pub published_date: Option<chrono::NaiveDate>,
+    pub version: Option<String>,
     pub is_official: bool,
     pub is_srd: bool,
     pub metadata: Option<String>,
@@ -23,14 +23,14 @@ pub struct Source {
 
 impl Source {
     /// Create a new Source with required fields
-    pub fn new(id: String, rule_system_id: String, name: String) -> Self {
+    pub fn new(id: String, rule_system_id: String, full_name: String) -> Self {
         Self {
             id,
             rule_system_id,
-            name,
+            full_name,
             abbreviation: None,
-            publisher: None,
-            publish_date: None,
+            published_date: None,
+            version: None,
             is_official: true,
             is_srd: false,
             metadata: None,
@@ -43,15 +43,15 @@ impl Source {
         self
     }
 
-    /// Set the publisher
-    pub fn with_publisher(mut self, publisher: String) -> Self {
-        self.publisher = Some(publisher);
+    /// Set the published date
+    pub fn with_published_date(mut self, published_date: chrono::NaiveDate) -> Self {
+        self.published_date = Some(published_date);
         self
     }
 
-    /// Set the publish date (ISO format)
-    pub fn with_publish_date(mut self, publish_date: String) -> Self {
-        self.publish_date = Some(publish_date);
+    /// Set the version
+    pub fn with_version(mut self, version: String) -> Self {
+        self.version = Some(version);
         self
     }
 

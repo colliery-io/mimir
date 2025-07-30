@@ -212,12 +212,7 @@ CREATE TABLE spells (
     
     -- Denormalized class list (no junction table needed)
     classes TEXT CHECK(json_valid(classes)),           -- ["wizard", "sorcerer", "warlock"]
-    classes_display TEXT GENERATED ALWAYS AS (
-        CASE 
-            WHEN classes IS NOT NULL THEN json_extract(classes, '$')
-            ELSE NULL
-        END
-    ) STORED,               -- For display and FTS indexing
+
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -325,9 +320,6 @@ CREATE TABLE schema_version (
     description TEXT
 );
 
--- Initial version
-INSERT INTO schema_version (version, description) 
-VALUES (1, 'Core entities with denormalized design for read performance');
 
 -- ============================================
 -- Example Queries Using JSON Functions

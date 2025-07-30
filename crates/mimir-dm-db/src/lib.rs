@@ -21,6 +21,7 @@ pub use models::sources::Source;
 pub use models::races::Race;
 pub use models::classes::Class;
 pub use models::items::Item;
+pub use models::creatures::Creature;
 
 // Re-export DAL traits
 pub use dal::traits::{Repository, AsyncRepository};

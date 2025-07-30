@@ -16,10 +16,10 @@ diesel::table! {
     sources (id) {
         id -> Text,
         rule_system_id -> Text,
-        name -> Text,
+        full_name -> Text,
         abbreviation -> Nullable<Text>,
-        publisher -> Nullable<Text>,
-        publish_date -> Nullable<Text>,
+        published_date -> Nullable<Date>,
+        version -> Nullable<Text>,
         is_official -> Bool,
         is_srd -> Bool,
         metadata -> Nullable<Text>,
@@ -163,6 +163,45 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    creatures (id) {
+        id -> Text,
+        name -> Text,
+        rule_system_id -> Text,
+        source_id -> Text,
+        page -> Nullable<Integer>,
+        size -> Nullable<Text>,
+        #[sql_name = "type"]
+        creature_type -> Nullable<Text>,
+        type_tags -> Nullable<Text>,
+        alignment -> Nullable<Text>,
+        armor_class -> Nullable<Text>,
+        hit_points -> Nullable<Text>,
+        speed -> Nullable<Text>,
+        ability_scores -> Nullable<Text>,
+        saving_throws -> Nullable<Text>,
+        skills -> Nullable<Text>,
+        damage_resistances -> Nullable<Text>,
+        damage_immunities -> Nullable<Text>,
+        condition_immunities -> Nullable<Text>,
+        senses -> Nullable<Text>,
+        languages -> Nullable<Text>,
+        challenge_rating -> Nullable<Text>,
+        proficiency_bonus -> Nullable<Integer>,
+        traits -> Nullable<Text>,
+        actions -> Nullable<Text>,
+        reactions -> Nullable<Text>,
+        legendary_actions -> Nullable<Text>,
+        lair_actions -> Nullable<Text>,
+        regional_effects -> Nullable<Text>,
+        entries -> Text,
+        environment -> Nullable<Text>,
+        is_npc -> Bool,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
 diesel::joinable!(sources -> rule_systems (rule_system_id));
 diesel::joinable!(races -> rule_systems (rule_system_id));
 diesel::joinable!(races -> sources (source_id));
@@ -176,6 +215,8 @@ diesel::joinable!(feats -> rule_systems (rule_system_id));
 diesel::joinable!(feats -> sources (source_id));
 diesel::joinable!(spells -> rule_systems (rule_system_id));
 diesel::joinable!(spells -> sources (source_id));
+diesel::joinable!(creatures -> rule_systems (rule_system_id));
+diesel::joinable!(creatures -> sources (source_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     rule_systems,
@@ -186,4 +227,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     backgrounds,
     feats,
     spells,
+    creatures,
 );

@@ -122,17 +122,20 @@ creatures (
 > We will have a pipeline per "rule set", we're starting with 2014, but will have 2024 as well - potentially other systems entirely later. But all will have the same "target" schema for obvious reasons. 
 
 ```rust
-// Modular processor for each file type
-trait DataProcessor {
-    fn process_file(&self, path: &Path) -> Result<Vec<Entity>>;
-    fn transform(&self, raw: Value) -> Result<Entity>;
-    fn validate(&self, entity: &Entity) -> Result<()>;
+// Unified bundle import approach
+struct BundleImporter {
+    db: SqliteConnection,
+    validator: BundleValidator,
 }
 
-// Main import orchestrator
-struct ImportPipeline {
-    processors: HashMap<FileType, Box<dyn DataProcessor>>,
-    db: SqliteConnection,
+impl BundleImporter {
+    fn import_bundle(&self, bundle_path: &Path) -> Result<()> {
+        // 1. Validate bundle structure and manifest
+        // 2. Extract and parse all entity files
+        // 3. Transform to database format
+        // 4. Atomic database import
+        // 5. Verify and log import
+    }
 }
 ```
 
@@ -185,18 +188,19 @@ struct ImportPipeline {
 - Create database migration framework
 - Build prototype with 2-3 file types
 
-### Week 3-4: Core Import Pipeline
-- Implement base `DataProcessor` trait
-- Create processors for primary types (spells, items, creatures)
-- Build error handling and retry logic
-- Add progress reporting
-- Implement transaction management
+### Week 3-4: Unified Import Pipeline
+- Implement unified BundleImporter struct
+- Create bundle validation and extraction logic
+- Build atomic transaction management
+- Add progress reporting with user feedback
+- Implement error handling and rollback
 
-### Week 5-6: Complete Data Types
-- Add remaining processors (races, classes, etc.)
-- Handle edge cases and malformed data
-- Implement source attribution tracking
-- Build validation suite
+### Week 5-6: CLI Integration & Polish
+- Integrate with main mimir CLI as import subcommand
+- Add import logging and history tracking
+- Handle edge cases in bundle processing
+- Build comprehensive validation suite
+- Performance optimization and testing
 - Performance optimization pass
 
 ### Week 7: Testing & Documentation
@@ -216,10 +220,11 @@ struct ImportPipeline {
 ## Testing Strategy
 
 ### Unit Tests
-- Test each `DataProcessor` implementation
+- Test unified bundle import workflow
+- Validate bundle structure and manifest parsing
+- Ensure atomic transaction behavior
+- Test error handling and rollback scenarios
 - Validate ID generation consistency
-- Ensure proper text cleaning
-- Test JSON structure handling
 - Verify error cases handled gracefully
 
 ### Integration Tests

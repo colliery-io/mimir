@@ -63,7 +63,7 @@ dnd5e-2014/
 ## Dependencies
 
 - Depends on: design-sqlite-database-schema
-- Blocks: implement-base-dataprocessor-trait
+- Blocks: implement-unified-bundle-import
 
 ## Completion Summary
 

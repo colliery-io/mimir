@@ -5,7 +5,7 @@ title: "Build Import Pipeline Orchestrator"
 created_at: 2025-07-30T02:42:00+00:00
 updated_at: 2025-07-30T02:42:00+00:00
 parent: phase-0-data-ingestion-and-storage
-blocked_by: ["implement-spell-processor", "implement-creature-processor", "implement-item-processor", "implement-remaining-processors"]
+blocked_by: []
 archived: false
 
 tags:
@@ -19,29 +19,30 @@ exit_criteria_met: false
 
 ## Description
 
-Create the main import pipeline that orchestrates all processors, manages transactions, and provides progress reporting.
+Create the main import pipeline that imports standardized bundle archives, manages transactions, and provides progress reporting. This has been simplified to a single unified import process rather than multiple processors.
 
 ## Acceptance Criteria
 
-- [ ] Create ImportPipeline struct
-- [ ] Implement processor registration
-- [ ] Add transaction management
-- [ ] Build progress reporting
-- [ ] Implement parallel processing
-- [ ] Add error recovery
-- [ ] Create CLI interface
-- [ ] Add configuration support
+- [ ] Create unified BundleImporter struct
+- [ ] Implement bundle validation and extraction
+- [ ] Add atomic transaction management
+- [ ] Build progress reporting with user feedback
+- [ ] Add error recovery and rollback
+- [ ] Integrate with main mimir CLI as import subcommand
+- [ ] Add import logging and history
 
 ## Technical Notes
 
 Key features:
-- Parallel JSON parsing where possible
+- Single bundle → database import workflow
+- Bundle validation (manifest, structure, integrity)
 - Atomic transactions (all or nothing)
-- Progress bars with ETA
-- Detailed error reporting
-- Resume capability on failure
-- Performance metrics
+- Progress bars with clear feedback
+- Detailed error reporting with context
+- Clean rollback on any failure
+- Import performance tracking
 
 ## Dependencies
 
-- Depends on: all processor implementations
+- Depends on: completed SQLite schema and bundle format specification
+- Replaces: multiple processor architecture with unified approach

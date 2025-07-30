@@ -9,3 +9,4 @@ pub mod items;
 pub mod backgrounds;
 pub mod feats;
 pub mod spells;
+pub mod creatures;
