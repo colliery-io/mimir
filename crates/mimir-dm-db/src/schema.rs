@@ -138,6 +138,31 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    spells (id) {
+        id -> Text,
+        name -> Text,
+        rule_system_id -> Text,
+        source_id -> Text,
+        page -> Nullable<Integer>,
+        level -> Nullable<Integer>,
+        school -> Nullable<Text>,
+        casting_time -> Nullable<Text>,
+        range -> Nullable<Text>,
+        components -> Nullable<Text>,
+        duration -> Nullable<Text>,
+        is_ritual -> Bool,
+        is_concentration -> Bool,
+        saving_throw -> Nullable<Text>,
+        damage_type -> Nullable<Text>,
+        entries -> Text,
+        upcast_info -> Nullable<Text>,
+        classes -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
 diesel::joinable!(sources -> rule_systems (rule_system_id));
 diesel::joinable!(races -> rule_systems (rule_system_id));
 diesel::joinable!(races -> sources (source_id));
@@ -149,6 +174,8 @@ diesel::joinable!(backgrounds -> rule_systems (rule_system_id));
 diesel::joinable!(backgrounds -> sources (source_id));
 diesel::joinable!(feats -> rule_systems (rule_system_id));
 diesel::joinable!(feats -> sources (source_id));
+diesel::joinable!(spells -> rule_systems (rule_system_id));
+diesel::joinable!(spells -> sources (source_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     rule_systems,
@@ -158,4 +185,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     items,
     backgrounds,
     feats,
+    spells,
 );
