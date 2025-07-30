@@ -7,3 +7,4 @@ pub mod races;
 pub mod classes;
 pub mod items;
 pub mod backgrounds;
+pub mod feats;

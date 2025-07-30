@@ -6,3 +6,4 @@ mod races;
 mod classes;
 mod items;
 mod backgrounds;
+mod feats;

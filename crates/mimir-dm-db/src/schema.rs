@@ -122,6 +122,22 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    feats (id) {
+        id -> Text,
+        name -> Text,
+        rule_system_id -> Text,
+        source_id -> Text,
+        page -> Nullable<Integer>,
+        prerequisites -> Nullable<Text>,
+        ability_increases -> Nullable<Text>,
+        feat_type -> Nullable<Text>,
+        entries -> Text,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
 diesel::joinable!(sources -> rule_systems (rule_system_id));
 diesel::joinable!(races -> rule_systems (rule_system_id));
 diesel::joinable!(races -> sources (source_id));
@@ -131,6 +147,8 @@ diesel::joinable!(items -> rule_systems (rule_system_id));
 diesel::joinable!(items -> sources (source_id));
 diesel::joinable!(backgrounds -> rule_systems (rule_system_id));
 diesel::joinable!(backgrounds -> sources (source_id));
+diesel::joinable!(feats -> rule_systems (rule_system_id));
+diesel::joinable!(feats -> sources (source_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     rule_systems,
@@ -139,4 +157,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     classes,
     items,
     backgrounds,
+    feats,
 );
