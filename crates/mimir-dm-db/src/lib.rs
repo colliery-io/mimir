@@ -18,6 +18,8 @@ pub use error::{DbError, Result};
 // Re-export models (only what's implemented)
 pub use models::rule_systems::RuleSystem;
 pub use models::sources::Source;
+pub use models::races::Race;
+pub use models::classes::Class;
 
 // Re-export DAL traits
 pub use dal::traits::{Repository, AsyncRepository};
