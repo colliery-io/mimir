@@ -5,3 +5,4 @@ pub mod sources;
 pub mod races;
 pub mod classes;
 pub mod items;
+pub mod backgrounds;

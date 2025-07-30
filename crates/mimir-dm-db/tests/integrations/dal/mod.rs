@@ -5,3 +5,4 @@ mod sources;
 mod races;
 mod classes;
 mod items;
+mod backgrounds;

@@ -103,6 +103,25 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    backgrounds (id) {
+        id -> Text,
+        name -> Text,
+        rule_system_id -> Text,
+        source_id -> Text,
+        page -> Nullable<Integer>,
+        skill_proficiencies -> Nullable<Text>,
+        language_proficiencies -> Nullable<Text>,
+        tool_proficiencies -> Nullable<Text>,
+        starting_equipment -> Nullable<Text>,
+        feature_name -> Nullable<Text>,
+        feature_text -> Nullable<Text>,
+        entries -> Text,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
 diesel::joinable!(sources -> rule_systems (rule_system_id));
 diesel::joinable!(races -> rule_systems (rule_system_id));
 diesel::joinable!(races -> sources (source_id));
@@ -110,6 +129,8 @@ diesel::joinable!(classes -> rule_systems (rule_system_id));
 diesel::joinable!(classes -> sources (source_id));
 diesel::joinable!(items -> rule_systems (rule_system_id));
 diesel::joinable!(items -> sources (source_id));
+diesel::joinable!(backgrounds -> rule_systems (rule_system_id));
+diesel::joinable!(backgrounds -> sources (source_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     rule_systems,
@@ -117,4 +138,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     races,
     classes,
     items,
+    backgrounds,
 );
