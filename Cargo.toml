@@ -1,43 +1,6 @@
-[package]
-name = "mimir-dm"
-version = "0.0.0"
-edition = "2021"
-description = "A local-first D&D campaign assistant for Dungeon Masters"
-authors = ["Your Name <your.email@example.com>"]
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/yourusername/mimir"
-keywords = ["dnd", "rpg", "campaign", "dungeon-master", "tui"]
-categories = ["games", "command-line-utilities"]
-readme = "README.md"
-exclude = [
-    "target/",
-    ".metis/",
-    "GETTING_STARTED.md",
-    "*.log"
-]
-
-[[bin]]
-name = "mimir-dm"
-path = "src/main.rs"
-
-[dependencies]
-mimir-dm-core = { version = "0.0.0", path = "crates/mimir-dm-core" }
-mimir-dm-db = { version = "0.0.0", path = "crates/mimir-dm-db" }
-mimir-dm-llm = { version = "0.0.0", path = "crates/mimir-dm-llm" }
-mimir-dm-agents = { version = "0.0.0", path = "crates/mimir-dm-agents" }
-mimir-dm-tui = { version = "0.0.0", path = "crates/mimir-dm-tui" }
-mimir-dm-import = { version = "0.0.0", path = "crates/mimir-dm-import" }
-
-tokio = { workspace = true }
-anyhow = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-config = { workspace = true }
-directories = { workspace = true }
-clap = { workspace = true }
-
 [workspace]
 members = [
+    "crates/mimir-dm",
     "crates/mimir-dm-core",
     "crates/mimir-dm-db", 
     "crates/mimir-dm-llm",
