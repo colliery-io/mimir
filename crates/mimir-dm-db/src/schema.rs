@@ -283,6 +283,24 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    template_documents (document_id, version_number) {
+        document_id -> Text,
+        version_number -> Integer,
+        document_content -> Text,
+        content_hash -> Text,
+        document_type -> Nullable<Text>,
+        document_level -> Nullable<Text>,
+        purpose -> Nullable<Text>,
+        variables_schema -> Nullable<Text>,
+        default_values -> Nullable<Text>,
+        created_at -> Text,
+        updated_at -> Text,
+        is_active -> Bool,
+        metadata -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -306,4 +324,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     sessions,
     workflow_cards,
     workflow_card_tags,
+    template_documents,
 );

@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Default theme variables */
+:root {
+  /* Primary colors */
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+
+  /* Neutral colors */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* Semantic colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Surface colors */
+  --color-background: #ffffff;
+  --color-surface: #f9fafb;
+  --color-surface-variant: #f3f4f6;
+  
+  /* Text colors */
+  --color-text: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-disabled: #9ca3af;
+  
+  /* Border colors */
+  --color-border: #e5e7eb;
+  --color-border-hover: #d1d5db;
+  
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+}
+
+/* Dark theme */
+.theme-dark {
+  /* Surface colors */
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-variant: #334155;
+  
+  /* Text colors */
+  --color-text: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-disabled: #64748b;
+  
+  /* Border colors */
+  --color-border: #334155;
+  --color-border-hover: #475569;
+  
+  /* Primary colors (adjusted for dark theme) */
+  --color-primary-50: #0c4a6e;
+  --color-primary-100: #075985;
+  --color-primary-200: #0369a1;
+  --color-primary-300: #0284c7;
+  --color-primary-400: #0ea5e9;
+  --color-primary-500: #38bdf8;
+  --color-primary-600: #7dd3fc;
+  --color-primary-700: #bae6fd;
+  --color-primary-800: #e0f2fe;
+  --color-primary-900: #f0f9ff;
+}
+
+/* High contrast theme */
+.theme-high-contrast {
+  /* Surface colors */
+  --color-background: #000000;
+  --color-surface: #1a1a1a;
+  --color-surface-variant: #2a2a2a;
+  
+  /* Text colors */
+  --color-text: #ffffff;
+  --color-text-secondary: #e0e0e0;
+  --color-text-disabled: #808080;
+  
+  /* Border colors */
+  --color-border: #ffffff;
+  --color-border-hover: #e0e0e0;
+  
+  /* Primary colors */
+  --color-primary-500: #00d4ff;
+  --color-primary-600: #00a8cc;
+  --color-primary-700: #0086a8;
+}
+
+/* Forest theme */
+.theme-forest {
+  /* Primary colors (green-based) */
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+  
+  /* Surface colors */
+  --color-background: #fefef9;
+  --color-surface: #f5f5dc;
+  --color-surface-variant: #ebe8d0;
+  
+  /* Text colors */
+  --color-text: #1a2e05;
+  --color-text-secondary: #4a5f2a;
+  --color-text-disabled: #7a8f5a;
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility classes using CSS variables */
+@layer utilities {
+  .text-primary { color: var(--color-primary-500); }
+  .bg-primary { background-color: var(--color-primary-500); }
+  .border-primary { border-color: var(--color-primary-500); }
+  
+  .text-surface { color: var(--color-text); }
+  .bg-surface { background-color: var(--color-surface); }
+  .bg-surface-variant { background-color: var(--color-surface-variant); }
+  
+  .border-default { border-color: var(--color-border); }
+  .border-hover { border-color: var(--color-border-hover); }
+  
+  .shadow-default { box-shadow: var(--shadow); }
+  .shadow-md-default { box-shadow: var(--shadow-md); }
+  .shadow-lg-default { box-shadow: var(--shadow-lg); }
+}

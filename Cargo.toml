@@ -47,8 +47,18 @@ config = "0.14"
 directories = "5.0"
 dirs = "5.0"
 
+# Template engine
+tera = "1.19"
+
+# Cryptography
+sha2 = "0.10"
+
 # CLI
 clap = { version = "4.0", features = ["derive"] }
+
+# Tauri
+tauri = { version = "2" }
+tauri-build = { version = "2" }
 
 [profile.dev]
 opt-level = 0

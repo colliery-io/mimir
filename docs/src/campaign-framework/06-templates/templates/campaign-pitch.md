@@ -1,17 +1,77 @@
-# Campaign Pitch: [Campaign Name]
+---
+id: campaign-pitch
+title: Campaign Pitch Template
+type: campaign_pitch
+level: campaign
+purpose: Create a one-page pitch to excite players about your campaign concept
+author: Mimir Team
+variables:
+  - name: campaign_name
+    type: string
+    description: The name of your campaign
+    default: "[Campaign Name]"
+    required: true
+  - name: genre
+    type: string
+    description: Primary genre and tone (e.g., Dark Fantasy, Pulp Adventure)
+    default: "Fantasy Adventure"
+    required: true
+  - name: hook
+    type: string
+    description: One exciting sentence that captures the essence
+    default: "[One exciting sentence that captures the essence of your campaign - make them lean forward]"
+    required: true
+  - name: big_bad
+    type: string
+    description: Who or what threatens the world
+    default: "[Who or what threatens the world - one compelling sentence]"
+    required: true
+  - name: stakes
+    type: string
+    description: What happens if the heroes fail
+    default: "[What happens if the heroes fail - make it personal AND epic]"
+    required: true
+  - name: connection
+    type: string
+    description: Why the PCs specifically must act
+    default: "[Why the PCs specifically are the ones who must act]"
+    required: true
+  - name: starting_location
+    type: string
+    description: Where the campaign begins
+    default: "[Location and circumstances]"
+    required: true
+  - name: initial_goal
+    type: string
+    description: What brings the party together
+    default: "[What brings the party together]"
+    required: true
+  - name: session_length
+    type: string
+    description: How long are your sessions
+    default: "[X hours]"
+    required: true
+  - name: schedule
+    type: string
+    description: How often you play
+    default: "[Frequency and day]"
+    required: true
+---
+
+# Campaign Pitch: {{ campaign_name }}
 
 *One page to excite your players*
 
 ---
 
 ## The Hook
-[One exciting sentence that captures the essence of your campaign - make them lean forward]
+{{ hook }}
 
 ---
 
 ## Core Concept
 
-**Genre & Tone:** [e.g., Dark Fantasy, Pulp Adventure, Gothic Mystery, Epic High Fantasy]  
+**Genre & Tone:** {{ genre }}  
 **Inspiration:** ["Like X meets Y" - use familiar media]  
 **What Makes This Special:** [What sets your campaign apart in 2-3 bullets]
 
@@ -20,13 +80,13 @@
 ## The Big Three
 
 ### 1. The Big Bad
-[Who or what threatens the world - one compelling sentence]
+{{ big_bad }}
 
 ### 2. The Stakes  
-[What happens if the heroes fail - make it personal AND epic]
+{{ stakes }}
 
 ### 3. Your Connection
-[Why the PCs specifically are the ones who must act]
+{{ connection }}
 
 ---
 
@@ -43,8 +103,8 @@
 
 ## Starting Situation
 
-**Where You Begin:** [Location and circumstances]  
-**Your Initial Goal:** [What brings the party together]  
+**Where You Begin:** {{ starting_location }}  
+**Your Initial Goal:** {{ initial_goal }}  
 **The Opening Scene:** [A glimpse of session 1 to build anticipation]
 
 ---
@@ -62,8 +122,8 @@
 ## Campaign Logistics
 
 **Estimated Length:** □ Short (5-10) □ Medium (10-25) □ Long (25-50) □ Epic (50+ sessions)  
-**Session Length:** [X hours] with [break structure]  
-**Schedule:** [Frequency and day]  
+**Session Length:** {{ session_length }} with [break structure]  
+**Schedule:** {{ schedule }}  
 **Style:** □ Railroad □ Guided □ Sandbox □ Player-Driven  
 **Lethality:** □ Heroic □ Dangerous □ Deadly □ Meat Grinder
 

@@ -2,26 +2,31 @@
 name = "mimir-dm"
 version = "0.0.0"
 edition = "2021"
-description = "Command-line interface and TUI for Mimir D&D campaign assistant"
-authors = ["Your Name <your.email@example.com>"]
+description = "Mimir D&D Campaign Assistant - Desktop Application"
+authors = ["Mimir Team"]
 license = "MIT OR Apache-2.0"
 
 [[bin]]
 name = "mimir"
 path = "src/main.rs"
 
-[dependencies]
-mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
-mimir-dm-db = { version = "0.0.0", path = "../mimir-dm-db" }
-mimir-dm-llm = { version = "0.0.0", path = "../mimir-dm-llm" }
-mimir-dm-agents = { version = "0.0.0", path = "../mimir-dm-agents" }
-mimir-dm-tui = { version = "0.0.0", path = "../mimir-dm-tui" }
-mimir-dm-import = { version = "0.0.0", path = "../mimir-dm-import" }
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
 
-tokio = { workspace = true }
-anyhow = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-config = { workspace = true }
-directories = { workspace = true }
-clap = { workspace = true }
+[dependencies]
+# Tauri
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+
+# Core dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Remove TUI dependencies since we're going GUI
+# config = { workspace = true }
+# directories = { workspace = true }
+# clap = { workspace = true }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

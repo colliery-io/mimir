@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Mimir",
+  "version": "0.1.0",
+  "identifier": "com.mimir.app",
+  "build": {
+    "frontendDist": "./frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Mimir - D&D Campaign Assistant",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1200,
+        "minHeight": 700,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}

@@ -10,6 +10,7 @@ pub mod error;
 pub mod json_types;
 pub mod models;
 pub mod schema;
+pub mod seed;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 

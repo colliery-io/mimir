@@ -1,52 +1,38 @@
-use anyhow::Result;
-use clap::{Parser, Subcommand};
-use tracing::info;
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-#[derive(Parser)]
-#[command(name = "mimir")]
-#[command(about = "A local-first D&D campaign assistant for Dungeon Masters")]
-#[command(version, author)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ApiResponse<T> {
+    success: bool,
+    data: Option<T>,
+    error: Option<String>,
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Import a D&D rule bundle into the database
-    Import {
-        /// Path to the bundle file (.tar.gz)
-        #[arg(value_name = "BUNDLE")]
-        bundle_path: String,
-        
-        /// Database URL (defaults to local SQLite database)
-        #[arg(short, long, default_value = "sqlite://mimir.db")]
-        database: String,
-    },
-    
-    /// Start the terminal user interface
-    Tui,
-}
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Initialize tracing
-    tracing_subscriber::fmt::init();
-    
-    let cli = Cli::parse();
-    
-    match cli.command {
-        Commands::Import { bundle_path, database: _ } => {
-            info!("Importing bundle from: {}", bundle_path);
-            // TODO: Call mimir_dm_import::import_bundle when ready
-            println!("Import functionality not yet implemented");
-        }
-        Commands::Tui => {
-            info!("Starting TUI");
-            // TODO: Call mimir_dm_tui when ready
-            println!("TUI not yet implemented");
+impl<T> ApiResponse<T> {
+    fn success(data: T) -> Self {
+        Self {
+            success: true,
+            data: Some(data),
+            error: None,
         }
     }
-    
-    Ok(())
+}
+
+#[tauri::command]
+async fn greet(name: String) -> String {
+    format!("Hello, {}! Welcome to Mimir.", name)
+}
+
+#[tauri::command]
+async fn get_message() -> ApiResponse<String> {
+    ApiResponse::success("Hello from Tauri!".to_string())
+}
+
+fn main() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![greet, get_message])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
