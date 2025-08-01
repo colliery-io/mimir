@@ -4,59 +4,41 @@
 
 ---
 
-# Tutorials
-*Learning-oriented documentation to get you started*
+# Campaign Generation Framework
+*Systematic approach to creating and managing D&D campaigns*
 
-- [Getting Started](./tutorials/getting-started.md)
-- [Your First Campaign](./tutorials/first-campaign.md)
-- [Setting Up Ollama](./tutorials/setting-up-ollama.md)
+- [Introduction](./campaign-framework/README.md)
 
----
+## Foundations
 
-# How-To Guides
-*Goal-oriented guides for specific tasks*
+- [Framework Philosophy](./campaign-framework/01-foundations/README.md)
+- [The Three-Board System](./campaign-framework/01-foundations/three-board-system.md)
 
-- [Campaign Management](./how-to/campaign-management.md)
-- [NPC Creation & Management](./how-to/npc-creation.md)
-- [Plot Tracking](./how-to/plot-tracking.md)
-- [Database Operations](./how-to/database-operations.md)
-- [Troubleshooting](./how-to/troubleshooting.md)
+## Campaign Genesis
 
----
+- [Campaign Genesis Process](./campaign-framework/02-campaign-genesis/README.md)
+  - [Phase 1: The Spark](./campaign-framework/02-campaign-genesis/phase-1-spark.md)
+  - [Phase 2: Session Zero Prep](./campaign-framework/02-campaign-genesis/phase-2-session-zero-prep.md)
+  - [Phase 3: Session Zero](./campaign-framework/02-campaign-genesis/phase-3-session-zero.md)
+  - [Phase 4: Integration & Launch](./campaign-framework/02-campaign-genesis/phase-4-integration.md)
 
-# Reference
-*Information-oriented documentation*
+## Module Creation
 
-- [CLI Commands](./reference/cli-commands.md)
-- [Configuration](./reference/configuration.md)
-- [Database Schema](./reference/database-schema.md)
-- [Data Models](./reference/data-models.md)
-- [API Documentation](./reference/api/README.md)
-  - [Core Types](./reference/api/core.md)
-  - [Database Layer](./reference/api/database.md)
-  - [AI Integration](./reference/api/ai.md)
-  - [Agent Framework](./reference/api/agents.md)
-  - [TUI Components](./reference/api/tui.md)
+- [Module Creation](./campaign-framework/03-module-creation/README.md)
+  - [Creation Process](./campaign-framework/03-module-creation/module-creation-process.md)
+  - [Module Types & Templates](./campaign-framework/03-module-creation/module-types-templates.md)
+  - [Running Your Module](./campaign-framework/03-module-creation/module-running.md)
+  - [Your First Module](./campaign-framework/03-module-creation/module-first.md)
 
----
+## Session Management
 
-# Explanation
-*Understanding-oriented documentation*
+- [Session Management](./campaign-framework/04-session-management/README.md)
+  - [Interlude: Session 1 Play-Through](./campaign-framework/04-session-management/session-interlude.md)
+  - [Pre-Session Preparation](./campaign-framework/04-session-management/session-before.md)
+  - [Running the Session](./campaign-framework/04-session-management/session-during.md)
+  - [Post-Session & Continuity](./campaign-framework/04-session-management/session-after.md)
 
-- [Architecture Overview](./explanation/architecture.md)
-- [Search Strategy](./explanation/search-strategy.md)
-- [Agent Framework](./explanation/agent-framework.md)
-- [Performance Considerations](./explanation/performance.md)
+## Advanced Topics
 
-## Architecture Decision Records
-
-- [ADR-001: SQLite with Vector Extensions](./explanation/adr/001-sqlite-vec.md)
-- [ADR-002: Agent Communication Patterns](./explanation/adr/002-agent-pattern.md)
-- [ADR-003: TUI Framework Selection](./explanation/adr/003-tui-framework.md)
-
----
-
-# Development
-
-- [Contributing](./CONTRIBUTING.md)
-- [Development Setup](./DEVELOPMENT.md)
+- [Scaling the System](./campaign-framework/05-scaling/README.md)
+- [Artifact Templates](./campaign-framework/06-templates/README.md)
