@@ -11,6 +11,8 @@ pub mod json_types;
 pub mod models;
 pub mod schema;
 
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
 // Re-export commonly used types
 pub use connection::{establish_connection, DbConnection};
 pub use error::{DbError, Result};
@@ -25,3 +27,13 @@ pub use models::creatures::Creature;
 
 // Re-export DAL traits
 pub use dal::traits::{Repository, AsyncRepository};
+
+// Embed migrations
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+
+/// Run all pending migrations on the database
+pub fn run_migrations(conn: &mut DbConnection) -> Result<()> {
+    conn.run_pending_migrations(MIGRATIONS)
+        .map_err(|e| DbError::Migration(format!("Failed to run migrations: {}", e)))?;
+    Ok(())
+}
