@@ -73,7 +73,7 @@ Lisa (Cleric):
 
 ## Creating Your First Module
 
-With your character understanding complete, you're ready to create your first module. The [Module Creation chapter](./module-creation.md) provides the complete workflow for building playable adventures.
+With your character understanding complete, you're ready to create your first module. The [Module Creation chapter](../03-module-creation/README.md) provides the complete workflow for building playable adventures.
 
 ### Phase 4 Deliverables
 

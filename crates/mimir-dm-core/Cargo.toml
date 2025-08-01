@@ -9,3 +9,11 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/yourusername/mimir"
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+uuid = { version = "1.0", features = ["serde", "v4"] }
+async-trait = "0.1"
+futures = "0.3"

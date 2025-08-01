@@ -321,4 +321,4 @@ You know Session Zero succeeded when:
 
 ## Next Step
 
-With characters created and party dynamics established, move to [Phase 4: Integration and Launch](./genesis-phase-4-integration.md) to transform player input into your first adventure.
+With characters created and party dynamics established, move to [Phase 4: Integration and Launch](./phase-4-integration.md) to transform player input into your first adventure.

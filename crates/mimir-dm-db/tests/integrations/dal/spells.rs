@@ -5,7 +5,7 @@ use mimir_dm_db::*;
 use mimir_dm_db::dal::spells::SpellRepository;
 use mimir_dm_db::dal::traits::{AsyncRepository, Repository};
 use mimir_dm_db::models::spells::{
-    Spell, CastingTime, Range, Distance, Components, Duration, TimeDuration,
+    Spell, CastingTime, Range, Distance, Components, Duration,
     UpcastInfo, SpellSchool
 };
 use serde_json::json;

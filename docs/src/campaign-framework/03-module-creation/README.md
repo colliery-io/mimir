@@ -136,4 +136,4 @@ Each hour of prep typically yields 2-3 hours of gameplay, improving with experie
 
 ## Next Steps
 
-With modules as your campaign's building blocks, the next chapter covers [Session Management](./session-management.md)—the week-to-week process of bringing your modules to life at the table.
+With modules as your campaign's building blocks, the next chapter covers [Session Management](../04-session-management/README.md)—the week-to-week process of bringing your modules to life at the table.

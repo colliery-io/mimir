@@ -81,7 +81,8 @@ pub struct TimeDuration {
     #[serde(rename = "type")]
     pub time_type: String, // "turn", "round", "minute", "hour", "day"
     pub amount: u32,
-    pub upTo: Option<bool>, // "up to X minutes"
+    #[serde(rename = "upTo")]
+    pub up_to: Option<bool>, // "up to X minutes"
 }
 
 /// Upcast information

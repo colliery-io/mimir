@@ -203,7 +203,7 @@ pub trait LlmProvider: Send + Sync {
     /// Default rate limiting implementation
     async fn check_rate_limit(&self) -> Result<(), LlmError> {
         // Get rate limit config
-        let limit = match &self.config().limit {
+        let _limit = match &self.config().limit {
             Some(limit) => limit,
             None => return Ok(()), // No rate limiting configured
         };
@@ -222,12 +222,12 @@ pub trait LlmProvider: Send + Sync {
     /// Chat endpoint with default "not supported" implementation
     async fn chat(
         &self, 
-        messages: Vec<Message>,
-        n: Option<u32>,
-        temperature: Option<f32>,
-        max_tokens: Option<u32>,
-        stop: Option<Vec<String>>,
-        extra_config: Option<HashMap<String, String>>
+        _messages: Vec<Message>,
+        _n: Option<u32>,
+        _temperature: Option<f32>,
+        _max_tokens: Option<u32>,
+        _stop: Option<Vec<String>>,
+        _extra_config: Option<HashMap<String, String>>
     ) -> Result<ChatResponse, LlmError> {
         if !self.supports_endpoint(EndpointType::Chat) {
             return Err(LlmError::UnsupportedEndpoint("chat".to_string()));
@@ -239,12 +239,12 @@ pub trait LlmProvider: Send + Sync {
     /// Completion endpoint with default "not supported" implementation
     async fn complete(
         &self, 
-        prompt: String,
-        n: Option<u32>,
-        temperature: Option<f32>,
-        max_tokens: Option<u32>,
-        stop: Option<Vec<String>>,
-        extra_config: Option<HashMap<String, String>>
+        _prompt: String,
+        _n: Option<u32>,
+        _temperature: Option<f32>,
+        _max_tokens: Option<u32>,
+        _stop: Option<Vec<String>>,
+        _extra_config: Option<HashMap<String, String>>
     ) -> Result<CompletionResponse, LlmError> {
         if !self.supports_endpoint(EndpointType::Completion) {
             return Err(LlmError::UnsupportedEndpoint("completion".to_string()));
@@ -256,8 +256,8 @@ pub trait LlmProvider: Send + Sync {
     /// Embedding endpoint with default "not supported" implementation
     async fn embed(
         &self, 
-        input: Vec<String>,
-        extra_config: Option<HashMap<String, String>>
+        _input: Vec<String>,
+        _extra_config: Option<HashMap<String, String>>
     ) -> Result<EmbeddingResponse, LlmError> {
         if !self.supports_endpoint(EndpointType::Embedding) {
             return Err(LlmError::UnsupportedEndpoint("embedding".to_string()));
@@ -271,7 +271,6 @@ pub trait LlmProvider: Send + Sync {
 mod tests {
     use super::*;
     use crate::config::{ModelConfig, EndpointType};
-    use std::time::Duration;
 
     // Mock provider for testing
     struct MockProvider {

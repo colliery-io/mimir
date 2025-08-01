@@ -1,6 +1,6 @@
 //! Integration tests for rule_systems DAL
 
-use crate::common::{with_test_db, TestDatabase};
+use crate::common::with_test_db;
 use mimir_dm_db::*;
 use mimir_dm_db::dal::rule_systems::RuleSystemRepository;
 use mimir_dm_db::dal::traits::{AsyncRepository, Repository};

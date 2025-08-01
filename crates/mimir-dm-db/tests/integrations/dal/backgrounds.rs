@@ -5,7 +5,7 @@ use mimir_dm_db::*;
 use mimir_dm_db::dal::backgrounds::BackgroundRepository;
 use mimir_dm_db::dal::traits::{AsyncRepository, Repository};
 use mimir_dm_db::models::backgrounds::{
-    Background, SkillProficiency, SkillChoice, LanguageProficiency, 
+    Background, SkillProficiency, LanguageProficiency, 
     ToolProficiency, StartingEquipment, EquipmentItem, CurrencyAmount
 };
 use serde_json::json;

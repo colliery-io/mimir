@@ -4,7 +4,7 @@ use crate::common::{with_test_db, TestDatabase};
 use mimir_dm_db::*;
 use mimir_dm_db::dal::classes::ClassRepository;
 use mimir_dm_db::dal::traits::{AsyncRepository, Repository};
-use mimir_dm_db::models::classes::{ClassFeature, StartingEquipment, StartingProficiencies, SkillChoice};
+use mimir_dm_db::models::classes::{ClassFeature, StartingProficiencies, SkillChoice};
 use serde_json::json;
 
 // Test fixtures

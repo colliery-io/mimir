@@ -173,4 +173,4 @@ Before moving to Session Zero preparation:
 
 ## Next Step
 
-With your spark refined into a clear vision, you're ready for [Phase 2: Session Zero Preparation](./genesis-phase-2-session-zero-prep.md), where we'll create everything needed to bring players into your world.
+With your spark refined into a clear vision, you're ready for [Phase 2: Session Zero Preparation](./phase-2-session-zero-prep.md), where we'll create everything needed to bring players into your world.

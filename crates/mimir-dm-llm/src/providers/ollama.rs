@@ -79,6 +79,7 @@ struct OllamaOptions {
 #[derive(Debug, Deserialize)]
 struct OllamaChatResponse {
     message: OllamaChatMessage,
+    #[allow(dead_code)]
     done: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     total_duration: Option<u64>,
@@ -98,6 +99,7 @@ struct OllamaChatResponse {
 #[derive(Debug, Deserialize)]
 struct OllamaCompletionResponse {
     response: String,
+    #[allow(dead_code)]
     done: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     total_duration: Option<u64>,

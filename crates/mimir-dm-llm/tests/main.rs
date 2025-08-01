@@ -1,7 +1,6 @@
 // Integration tests for the mimir-dm-llm crate
 // These tests require a running Ollama instance on localhost:11434
 
-#[cfg(test)]
 mod ollama;
 
 // Test utilities and setup

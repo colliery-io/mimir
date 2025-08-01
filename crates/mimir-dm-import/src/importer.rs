@@ -12,7 +12,7 @@ use mimir_dm_db::{
              items::{Item, NewItem}, races::Race, rule_systems::RuleSystem, sources::Source, spells::Spell},
 };
 use std::path::Path;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Main bundle importer
 pub struct BundleImporter {

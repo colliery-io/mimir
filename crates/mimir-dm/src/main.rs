@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     
     match cli.command {
-        Commands::Import { bundle_path, database } => {
+        Commands::Import { bundle_path, database: _ } => {
             info!("Importing bundle from: {}", bundle_path);
             // TODO: Call mimir_dm_import::import_bundle when ready
             println!("Import functionality not yet implemented");

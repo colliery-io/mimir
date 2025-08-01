@@ -4,7 +4,7 @@ use crate::common::{with_test_db, TestDatabase};
 use mimir_dm_db::*;
 use mimir_dm_db::dal::races::RaceRepository;
 use mimir_dm_db::dal::traits::{AsyncRepository, Repository};
-use mimir_dm_db::models::races::{AbilityScores, Age, Speed};
+use mimir_dm_db::models::races::{AbilityScores, Speed};
 use serde_json::json;
 
 // Test fixtures

@@ -218,6 +218,79 @@ diesel::joinable!(spells -> sources (source_id));
 diesel::joinable!(creatures -> rule_systems (rule_system_id));
 diesel::joinable!(creatures -> sources (source_id));
 
+diesel::table! {
+    campaigns (id) {
+        id -> Integer,
+        name -> Text,
+        status -> Text,
+        created_at -> Text,
+        session_zero_date -> Nullable<Text>,
+        first_session_date -> Nullable<Text>,
+        last_activity_at -> Text,
+    }
+}
+
+diesel::table! {
+    modules (id) {
+        id -> Integer,
+        campaign_id -> Integer,
+        name -> Text,
+        module_number -> Integer,
+        status -> Text,
+        expected_sessions -> Integer,
+        actual_sessions -> Integer,
+        created_at -> Text,
+        started_at -> Nullable<Text>,
+        completed_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    sessions (id) {
+        id -> Integer,
+        campaign_id -> Integer,
+        module_id -> Nullable<Integer>,
+        session_number -> Integer,
+        status -> Text,
+        scheduled_date -> Nullable<Text>,
+        prep_started_at -> Nullable<Text>,
+        prep_completed_at -> Nullable<Text>,
+        completed_at -> Nullable<Text>,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
+    workflow_cards (id) {
+        id -> Text,
+        board_type -> Text,
+        title -> Text,
+        description -> Nullable<Text>,
+        created_at -> Text,
+        last_moved_at -> Text,
+        workflow_state -> Text,
+        campaign_id -> Nullable<Integer>,
+        module_id -> Nullable<Integer>,
+        session_id -> Nullable<Integer>,
+        priority -> Integer,
+    }
+}
+
+diesel::table! {
+    workflow_card_tags (card_id, tag) {
+        card_id -> Text,
+        tag -> Text,
+    }
+}
+
+diesel::joinable!(modules -> campaigns (campaign_id));
+diesel::joinable!(sessions -> campaigns (campaign_id));
+diesel::joinable!(sessions -> modules (module_id));
+diesel::joinable!(workflow_cards -> campaigns (campaign_id));
+diesel::joinable!(workflow_cards -> modules (module_id));
+diesel::joinable!(workflow_cards -> sessions (session_id));
+diesel::joinable!(workflow_card_tags -> workflow_cards (card_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     rule_systems,
     sources,
@@ -228,4 +301,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     feats,
     spells,
     creatures,
+    campaigns,
+    modules,
+    sessions,
+    workflow_cards,
+    workflow_card_tags,
 );

@@ -2,7 +2,7 @@
 
 use crate::common::{with_test_db, TestDatabase};
 use mimir_dm_db::*;
-use mimir_dm_db::dal::feats::{FeatRepository, FeatStatistics};
+use mimir_dm_db::dal::feats::FeatRepository;
 use mimir_dm_db::dal::traits::{AsyncRepository, Repository};
 use mimir_dm_db::models::feats::{
     Feat, Prerequisites, AbilityPrereq, AbilityIncreases, AbilityIncrease, 

@@ -4,7 +4,7 @@ use crate::common::{with_test_db, TestDatabase};
 use mimir_dm_db::*;
 use mimir_dm_db::dal::items::ItemRepository;
 use mimir_dm_db::dal::traits::{AsyncRepository, Repository};
-use mimir_dm_db::models::items::{AdditionalProperties, AttunementPrereq, Damage, NewItem};
+use mimir_dm_db::models::items::{AttunementPrereq, Damage, NewItem};
 use serde_json::json;
 
 // Test fixtures

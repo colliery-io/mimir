@@ -5,7 +5,7 @@ use crate::manifest::BundleManifest;
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tar::Archive;
 use tracing::{debug, info};
 

@@ -435,4 +435,4 @@ Boom. Now you have ninjas, they're rare and exotic, and the player just gave you
 
 ## Next Step
 
-With your packet prepared, you're ready for [Phase 3: Session Zero Execution](./genesis-phase-3-session-zero.md), where collaborative magic happens.
+With your packet prepared, you're ready for [Phase 3: Session Zero Execution](./phase-3-session-zero.md), where collaborative magic happens.

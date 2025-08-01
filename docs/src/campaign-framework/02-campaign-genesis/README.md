@@ -16,7 +16,7 @@ Throughout these chapters, we'll build a complete campaign from scratch. You'll 
 
 The Campaign Genesis Process breaks down into four manageable phases:
 
-### [Phase 1: The Spark](./genesis-phase-1-spark.md) (Week 1)
+### [Phase 1: The Spark](./phase-1-spark.md) (Week 1)
 Transform your initial idea into a clear campaign concept:
 - Finding and refining your spark
 - Defining the Big Three
@@ -24,7 +24,7 @@ Transform your initial idea into a clear campaign concept:
 - **Time**: 5-8 hours across a week
 - **Output**: Campaign pitch and starting scenario
 
-### [Phase 2: Session Zero Preparation](./genesis-phase-2-session-zero-prep.md) (Week 2)
+### [Phase 2: Session Zero Preparation](./phase-2-session-zero-prep.md) (Week 2)
 Prepare everything needed for a successful Session Zero:
 - Creating the Session Zero packet
 - Designing character integration systems
@@ -32,7 +32,7 @@ Prepare everything needed for a successful Session Zero:
 - **Time**: 6-9 hours across a week
 - **Output**: Complete Session Zero materials
 
-### [Phase 3: Session Zero Execution](./genesis-phase-3-session-zero.md) (Week 3, Day 1)
+### [Phase 3: Session Zero Execution](./phase-3-session-zero.md) (Week 3, Day 1)
 Run an effective Session Zero that aligns everyone:
 - Setting tone and expectations
 - Collaborative character creation
@@ -40,7 +40,7 @@ Run an effective Session Zero that aligns everyone:
 - **Time**: 3-4 hour session
 - **Output**: Completed characters and group dynamics
 
-### [Phase 4: Integration and Launch](./genesis-phase-4-integration.md) (Week 3)
+### [Phase 4: Integration and Launch](./phase-4-integration.md) (Week 3)
 Transform Session Zero results into your first adventure:
 - Character integration process
 - First session preparation
@@ -83,4 +83,4 @@ Each phase includes:
 
 Work through each phase in order, but feel free to adapt the process to your needs. The examples show one way to do things—not the only way.
 
-Ready to transform your campaign idea into reality? Let's begin with [Phase 1: The Spark](./genesis-phase-1-spark.md).
+Ready to transform your campaign idea into reality? Let's begin with [Phase 1: The Spark](./phase-1-spark.md).

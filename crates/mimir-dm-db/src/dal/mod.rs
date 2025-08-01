@@ -10,3 +10,7 @@ pub mod backgrounds;
 pub mod feats;
 pub mod spells;
 pub mod creatures;
+pub mod campaigns;
+pub mod modules;
+pub mod sessions;
+pub mod workflow_cards;

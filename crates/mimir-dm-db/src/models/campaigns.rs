@@ -1,0 +1,51 @@
+//! Campaign database models and operations
+
+use crate::schema::campaigns;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
+
+/// Database model for campaigns
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = campaigns)]
+pub struct Campaign {
+    pub id: i32,
+    pub name: String,
+    pub status: String,
+    pub created_at: String,
+    pub session_zero_date: Option<String>,
+    pub first_session_date: Option<String>,
+    pub last_activity_at: String,
+}
+
+/// New campaign for insertion
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = campaigns)]
+pub struct NewCampaign {
+    pub name: String,
+    pub status: String,
+}
+
+/// Campaign update structure
+#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = campaigns)]
+pub struct UpdateCampaign {
+    pub name: Option<String>,
+    pub status: Option<String>,
+    pub session_zero_date: Option<Option<String>>,
+    pub first_session_date: Option<Option<String>>,
+    pub last_activity_at: Option<String>,
+}
+
+impl Campaign {
+    /// Check if campaign is in a valid state to transition to the given status
+    pub fn can_transition_to(&self, new_status: &str) -> bool {
+        match (self.status.as_str(), new_status) {
+            ("planning", "active") => true,
+            ("planning", "archived") => true,
+            ("active", "completed") => true,
+            ("active", "archived") => true,
+            ("completed", "archived") => true,
+            _ => false,
+        }
+    }
+}

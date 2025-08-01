@@ -176,41 +176,42 @@
 <blockquote>
 <p><em>“Remember, I know everything that can be known in the multiverse.”</em> - Mimir, Planescape</p>
 </blockquote>
-<p>Welcome to Mimir, a local-first D&amp;D campaign assistant designed to help Dungeon Masters manage the cognitive complexity of running campaigns. Named after the wise floating skull of Planescape lore, Mimir focuses on narrative consistency, NPC management, plot tracking, and session preparation.</p>
-<h2 id="what-is-mimir"><a class="header" href="#what-is-mimir">What is Mimir?</a></h2>
-<p>Mimir is a <strong>terminal-based application</strong> built in Rust that serves as your intelligent campaign companion. Unlike online tools that require internet connectivity, Mimir runs entirely on your local machine, keeping your campaign data private and always accessible.</p>
-<h3 id="key-features"><a class="header" href="#key-features">Key Features</a></h3>
+<p>Welcome to Mimir, a project to build a local-first D&amp;D campaign assistant. Named after the wise floating skull of Planescape lore, Mimir will help Dungeon Masters manage the cognitive complexity of running campaigns.</p>
+<h2 id="current-status"><a class="header" href="#current-status">Current Status</a></h2>
+<p>🚧 <strong>Documentation Phase</strong> - We’re currently documenting the campaign management framework that will guide Mimir’s development.</p>
+<h3 id="whats-available-now"><a class="header" href="#whats-available-now">What’s Available Now</a></h3>
 <ul>
-<li>🧠 <strong>Local AI Integration</strong> - Uses Ollama for privacy-focused AI assistance</li>
-<li>👥 <strong>Intelligent NPC Management</strong> - Track personalities, relationships, and consistency</li>
-<li>🕸️ <strong>Plot Thread Visualization</strong> - Connect story elements and detect narrative patterns</li>
-<li>📝 <strong>Session Preparation Tools</strong> - Streamlined prep and execution support</li>
-<li>🔍 <strong>Hybrid Search</strong> - Combines exact keyword matching with semantic understanding</li>
-<li>💻 <strong>Beautiful Terminal UI</strong> - Clean, responsive interface built with Ratatui</li>
-<li>🔒 <strong>Privacy-First</strong> - Your campaign data never leaves your machine</li>
+<li><strong><a href="./campaign-framework/README.html">Campaign Generation Framework</a></strong> - A complete system for creating and managing D&amp;D campaigns
+<ul>
+<li>The Three-Board System for organization</li>
+<li>Campaign genesis process</li>
+<li>Module creation workflow</li>
+<li>Session management techniques</li>
+<li>Ready-to-use templates</li>
 </ul>
-<h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
-<p>If you’re new to Mimir, start with our <strong><a href="./tutorials/getting-started.html">Getting Started Tutorial</a></strong> to install and configure the application.</p>
-<p>For your first campaign, follow the <strong><a href="./tutorials/first-campaign.html">Your First Campaign</a></strong> guide.</p>
+</li>
+</ul>
+<p>This framework represents the methodology that Mimir will eventually automate and enhance.</p>
+<h2 id="vision"><a class="header" href="#vision">Vision</a></h2>
+<p>Mimir will be a <strong>terminal-based application</strong> built in Rust that serves as your intelligent campaign companion. The goal is to implement the Campaign Generation Framework as software, adding:</p>
+<ul>
+<li>Local AI integration for creative assistance</li>
+<li>Intelligent NPC and plot tracking</li>
+<li>Automated session preparation</li>
+<li>Privacy-first design with all data stored locally</li>
+</ul>
 <h2 id="documentation-structure"><a class="header" href="#documentation-structure">Documentation Structure</a></h2>
-<p>This documentation follows the <a href="https://diataxis.fr/">Diátaxis</a> framework:</p>
+<p>This documentation follows the <a href="https://diataxis.fr/">Diátaxis</a> framework. Currently available:</p>
 <ul>
-<li><strong><a href="./tutorials/getting-started.html">Tutorials</a></strong> - Learning-oriented guides to get you started</li>
-<li><strong><a href="./how-to/campaign-management.html">How-To Guides</a></strong> - Goal-oriented solutions for specific tasks</li>
-<li><strong><a href="./reference/cli-commands.html">Reference</a></strong> - Information-oriented technical details</li>
-<li><strong><a href="./explanation/architecture.html">Explanation</a></strong> - Understanding-oriented background and context</li>
+<li><strong><a href="./campaign-framework/README.html">Campaign Framework</a></strong> - The complete campaign management system</li>
 </ul>
-<h2 id="technology-stack"><a class="header" href="#technology-stack">Technology Stack</a></h2>
+<p>Coming soon:</p>
 <ul>
-<li><strong>Language</strong>: Rust 🦀</li>
-<li><strong>Database</strong>: SQLite with <a href="https://github.com/asg017/sqlite-vec">sqlite-vec</a> for vector search</li>
-<li><strong>AI</strong>: <a href="https://ollama.ai/">Ollama</a> with llama3/mistral models</li>
-<li><strong>UI</strong>: <a href="https://ratatui.rs/">Ratatui</a> terminal user interface</li>
-<li><strong>Search</strong>: Hybrid FTS5 + vector similarity search</li>
+<li>Tutorials - Getting started with the software</li>
+<li>How-To Guides - Specific task solutions</li>
+<li>Reference - Technical details</li>
+<li>Explanation - Architecture and design decisions</li>
 </ul>
-<h2 id="project-status"><a class="header" href="#project-status">Project Status</a></h2>
-<p>🚧 <strong>Under Active Development</strong> - Mimir is currently in early development (v0.0.0).</p>
-<p>See our <a href="./explanation/architecture.html#development-roadmap">project roadmap</a> for current progress and upcoming features.</p>
 <h2 id="getting-help"><a class="header" href="#getting-help">Getting Help</a></h2>
 <ul>
 <li><strong>Issues</strong>: Report bugs or request features on <a href="https://github.com/yourusername/mimir/issues">GitHub Issues</a></li>
@@ -225,7 +226,7 @@
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
 
-                            <a rel="next prefetch" href="tutorials/getting-started.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="campaign-framework/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -236,7 +237,7 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
 
-                    <a rel="next prefetch" href="tutorials/getting-started.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="campaign-framework/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
