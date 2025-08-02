@@ -110,6 +110,7 @@ impl Default for UpdateCampaign {
         Self {
             name: None,
             status: None,
+            directory_path: None,
             session_zero_date: None,
             first_session_date: None,
             last_activity_at: None,

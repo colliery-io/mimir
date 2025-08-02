@@ -17,10 +17,22 @@ tauri-build = { version = "2", features = [] }
 # Tauri
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+
+# Our crates
+mimir-dm-db = { version = "0.0.0", path = "../mimir-dm-db" }
 
 # Core dependencies
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+directories = { workspace = true }
+diesel = { workspace = true, features = ["r2d2"] }
+r2d2 = "0.8"
+chrono = { workspace = true }
+tera = "1.19"
 
 # Remove TUI dependencies since we're going GUI
 # config = { workspace = true }

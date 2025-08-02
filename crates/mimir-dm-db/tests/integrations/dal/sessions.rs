@@ -6,6 +6,7 @@ use mimir_dm_db::dal::sessions::SessionRepository;
 use mimir_dm_db::models::campaigns::NewCampaign;
 use mimir_dm_db::models::sessions::NewSession;
 use chrono::{Utc, Duration};
+use tempfile::TempDir;
 
 #[test]
 fn test_session_lifecycle() {
@@ -13,10 +14,12 @@ fn test_session_lifecycle() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign first
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut session_repo = SessionRepository::new(&mut conn);
@@ -58,10 +61,12 @@ fn test_invalid_session_transitions() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut session_repo = SessionRepository::new(&mut conn);
@@ -90,10 +95,12 @@ fn test_find_sessions_needing_prep() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut session_repo = SessionRepository::new(&mut conn);
@@ -148,10 +155,12 @@ fn test_session_numbering() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut session_repo = SessionRepository::new(&mut conn);

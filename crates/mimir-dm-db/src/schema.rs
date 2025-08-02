@@ -223,6 +223,7 @@ diesel::table! {
         id -> Integer,
         name -> Text,
         status -> Text,
+        directory_path -> Text,
         created_at -> Text,
         session_zero_date -> Nullable<Text>,
         first_session_date -> Nullable<Text>,

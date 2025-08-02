@@ -1,4 +1,19 @@
-# Dungeon Crawl Module Template
+---
+id: module-dungeon
+title: Dungeon Module
+type: module_dungeon
+level: module
+purpose: Template for dungeon crawl modules
+author: Mimir Team
+variables:
+  - name: dungeon_name
+    type: string
+    description: Name of the dungeon
+    default: "[Dungeon Name]"
+    required: true
+---
+
+# {{dungeon_name}} Dungeon Module
 
 *For exploration and combat-focused adventures*
 

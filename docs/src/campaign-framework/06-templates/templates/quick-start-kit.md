@@ -1,4 +1,19 @@
-# Campaign Quick Start Kit
+---
+id: quick-start-kit
+title: Quick Start Kit
+type: quick_start_kit
+level: campaign
+purpose: Everything needed to start playing immediately
+author: Mimir Team
+variables:
+  - name: campaign_name
+    type: string
+    description: The name of your campaign
+    default: "[Campaign Name]"
+    required: true
+---
+
+# {{campaign_name}} Quick Start Kit
 
 *Essential templates only - get playing in 8 weeks*
 
@@ -19,7 +34,7 @@
 
 ## Quick Template 1: Campaign Pitch (Week -8)
 
-### [Campaign Name]
+### {{campaign_name}}
 
 **The Hook:** [One exciting sentence that sells your campaign]
 

@@ -1,4 +1,24 @@
-# Session [Number] Prep
+---
+id: session-outline
+title: Session Outline
+type: session_outline
+level: session
+purpose: Plan and track individual game sessions
+author: Mimir Team
+variables:
+  - name: session_number
+    type: number
+    description: Session number
+    default: 1
+    required: true
+  - name: session_title
+    type: string
+    description: Session title
+    default: "[Session Title]"
+    required: true
+---
+
+# Session {{session_number}}: {{session_title}}
 **Date:** [Date]  
 **Module:** [Current Module]  
 **Expected Duration:** [X hours]

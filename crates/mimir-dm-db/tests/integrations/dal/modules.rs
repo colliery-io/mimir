@@ -5,6 +5,7 @@ use mimir_dm_db::dal::campaigns::CampaignRepository;
 use mimir_dm_db::dal::modules::ModuleRepository;
 use mimir_dm_db::models::campaigns::NewCampaign;
 use mimir_dm_db::models::modules::NewModule;
+use tempfile::TempDir;
 
 #[test]
 fn test_module_lifecycle() {
@@ -12,10 +13,12 @@ fn test_module_lifecycle() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign first
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "planning".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut module_repo = ModuleRepository::new(&mut conn);
@@ -60,10 +63,12 @@ fn test_module_session_tracking() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut module_repo = ModuleRepository::new(&mut conn);
@@ -98,10 +103,12 @@ fn test_module_numbering() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut module_repo = ModuleRepository::new(&mut conn);

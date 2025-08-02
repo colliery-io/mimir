@@ -1,9 +1,44 @@
-# [Campaign Name] Bible
+---
+id: campaign-bible
+title: Campaign Bible Template
+type: campaign_bible
+level: campaign
+purpose: Complete reference document for your campaign world and story
+author: Mimir Team
+variables:
+  - name: campaign_name
+    type: string
+    description: The name of your campaign
+    default: "[Campaign Name]"
+    required: true
+  - name: world_name
+    type: string
+    description: The name of your world
+    default: "[World Name]"
+    required: true
+  - name: spark
+    type: string
+    description: Original inspiration for the campaign
+    default: "[Original inspiration]"
+    required: true
+  - name: elevator_pitch
+    type: string
+    description: 1-2 sentence summary of the campaign
+    default: "[1-2 sentence summary]"
+    required: true
+  - name: genre_tone
+    type: string
+    description: Genre and tone description
+    default: "High Fantasy Adventure"
+    required: true
+---
+
+# {{ campaign_name }} Bible
 
 ## Core Concept
-**The Spark**: [Original inspiration]
-**Elevator Pitch**: [1-2 sentence summary]
-**Genre/Tone**: [e.g., High Fantasy, Political Intrigue, Heroic Adventure]
+**The Spark**: {{ spark }}
+**Elevator Pitch**: {{ elevator_pitch }}
+**Genre/Tone**: {{ genre_tone }}
 
 ## The Big Three
 1. **Core Conflict**: [What drives the campaign]

@@ -1,4 +1,19 @@
-# Mystery Module Template
+---
+id: module-mystery
+title: Mystery Module
+type: module_mystery
+level: module
+purpose: Template for investigation and mystery modules
+author: Mimir Team
+variables:
+  - name: mystery_name
+    type: string
+    description: Name of the mystery
+    default: "[Mystery Name]"
+    required: true
+---
+
+# {{mystery_name}} Mystery Module
 
 *For investigation-focused adventures*
 

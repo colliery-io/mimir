@@ -1,3 +1,13 @@
+---
+id: clue-tracker
+title: Clue Tracker
+type: clue_tracker
+level: session
+purpose: Track clues and information flow in mystery scenarios
+author: Mimir Team
+variables: []
+---
+
 # Clue Tracker
 
 *Managing information flow through your module*

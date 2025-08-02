@@ -1,4 +1,19 @@
-# World Overview
+---
+id: world-overview
+title: World Overview
+type: world_overview
+level: campaign
+purpose: High-level overview of your campaign world
+author: Mimir Team
+variables:
+  - name: world_name
+    type: string
+    description: Name of your world
+    default: "[World Name]"
+    required: true
+---
+
+# {{world_name}} Overview
 
 *The foundation of your campaign setting*
 

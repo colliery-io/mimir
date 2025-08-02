@@ -1,4 +1,19 @@
-# Horror Module Template
+---
+id: module-horror
+title: Horror Module
+type: module_horror
+level: module
+purpose: Template for horror and suspense modules
+author: Mimir Team
+variables:
+  - name: horror_name
+    type: string
+    description: Name of the horror scenario
+    default: "[Horror Name]"
+    required: true
+---
+
+# {{horror_name}} Horror Module
 
 *For suspense and fear-based adventures*
 

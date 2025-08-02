@@ -1,3 +1,18 @@
+---
+id: major-npc-tracker
+title: Major NPC Tracker
+type: major_npc_tracker
+level: handout
+purpose: Track important NPCs and their relationships
+author: Mimir Team
+variables:
+  - name: npc_name
+    type: string
+    description: NPC name
+    default: "[NPC Name]"
+    required: true
+---
+
 # Major NPC Tracker
 
 *Detailed profiles for campaign-critical NPCs*

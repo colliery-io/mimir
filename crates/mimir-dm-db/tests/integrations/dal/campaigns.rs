@@ -3,6 +3,7 @@
 use crate::common::TestDatabase;
 use mimir_dm_db::dal::campaigns::CampaignRepository;
 use mimir_dm_db::models::campaigns::NewCampaign;
+use tempfile::TempDir;
 
 #[test]
 fn test_campaign_lifecycle() {
@@ -11,10 +12,14 @@ fn test_campaign_lifecycle() {
     
     let mut repo = CampaignRepository::new(&mut conn);
     
+    // Create a temporary directory for the campaign
+    let temp_dir = TempDir::new().unwrap();
+    
     // Create a new campaign
     let new_campaign = NewCampaign {
         name: "The Imprisoned Corruption".to_string(),
         status: "planning".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     };
     
     let campaign = repo.create(new_campaign).unwrap();
@@ -39,10 +44,14 @@ fn test_invalid_campaign_transitions() {
     
     let mut repo = CampaignRepository::new(&mut conn);
     
+    // Create a temporary directory for the campaign
+    let temp_dir = TempDir::new().unwrap();
+    
     // Create a new campaign
     let new_campaign = NewCampaign {
         name: "Test Campaign".to_string(),
         status: "planning".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     };
     
     let campaign = repo.create(new_campaign).unwrap();
@@ -66,20 +75,28 @@ fn test_list_active_campaigns() {
     
     let mut repo = CampaignRepository::new(&mut conn);
     
+    // Create temporary directories for campaigns
+    let temp_dir1 = TempDir::new().unwrap();
+    let temp_dir2 = TempDir::new().unwrap();
+    let temp_dir3 = TempDir::new().unwrap();
+    
     // Create multiple campaigns
     repo.create(NewCampaign {
         name: "Campaign 1".to_string(),
         status: "planning".to_string(),
+        directory_path: temp_dir1.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let campaign2 = repo.create(NewCampaign {
         name: "Campaign 2".to_string(),
         status: "planning".to_string(),
+        directory_path: temp_dir2.path().to_string_lossy().to_string(),
     }).unwrap();
     
     repo.create(NewCampaign {
         name: "Campaign 3".to_string(),
         status: "archived".to_string(),
+        directory_path: temp_dir3.path().to_string_lossy().to_string(),
     }).unwrap();
     
     // Make campaign 2 active

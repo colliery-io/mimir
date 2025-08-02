@@ -1,4 +1,24 @@
-# Module: [Title]
+---
+id: module-overview
+title: Module Overview
+type: module_overview
+level: module
+purpose: High-level planning document for a campaign module
+author: Mimir Team
+variables:
+  - name: module_name
+    type: string
+    description: Name of the module
+    default: "[Module Name]"
+    required: true
+  - name: module_number
+    type: number
+    description: Module number in campaign sequence
+    default: 1
+    required: true
+---
+
+# Module {{module_number}}: {{module_name}}
 
 ## Core Concept
 **Elevator Pitch**: [One sentence]

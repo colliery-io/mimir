@@ -5,7 +5,7 @@ import type { Theme } from '../types/api'
 
 export const useThemeStore = defineStore('theme', () => {
   const themes = ref<Theme[]>([])
-  const currentTheme = ref<string>('default')
+  const currentTheme = ref<string>('light')
   
   // Load available themes from backend
   const loadThemes = async () => {
@@ -21,7 +21,7 @@ export const useThemeStore = defineStore('theme', () => {
   
   // Get saved theme preference from localStorage
   const getSavedTheme = (): string => {
-    return localStorage.getItem('theme') || 'default'
+    return localStorage.getItem('theme') || 'light'
   }
   
   // Save theme preference to localStorage

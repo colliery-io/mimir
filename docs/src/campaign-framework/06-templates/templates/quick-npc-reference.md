@@ -1,3 +1,13 @@
+---
+id: quick-npc-reference
+title: Quick NPC Reference
+type: quick_npc_reference
+level: session
+purpose: Quick reference sheet for NPCs during play
+author: Mimir Team
+variables: []
+---
+
 # Quick NPC Reference
 
 *For use during play - keep visible at all times*

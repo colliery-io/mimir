@@ -1,3 +1,13 @@
+---
+id: document-tracker
+title: Document Tracker
+type: document_tracker
+level: campaign
+purpose: Track in-game documents, letters, and handouts
+author: Mimir Team
+variables: []
+---
+
 # Campaign Document Tracker
 
 *Master tracking system for all campaign documentation*

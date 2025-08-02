@@ -1,11 +1,9 @@
 //! Template seeder for initial campaign templates
 
 use crate::dal::template_documents::TemplateRepository;
-use crate::models::template_documents::{DocumentLevel, NewTemplateDocument, TemplateType};
+use crate::models::template_documents::{NewTemplateDocument, TemplateType};
 use crate::models::template_frontmatter::{TemplateFrontmatter, TemplateVariable};
 use diesel::prelude::*;
-use std::fs;
-use std::path::Path;
 
 /// Template metadata for seeding
 struct TemplateMetadata {
@@ -365,41 +363,86 @@ impl TemplateMetadata {
 
 /// Seed the database with initial templates
 pub fn seed_templates(conn: &mut SqliteConnection) -> Result<usize, diesel::result::Error> {
-    let template_dir = Path::new("/Users/dstorey/Desktop/colliery/mimir/docs/src/campaign-framework/06-templates/templates");
+    // Include all template files at compile time
+    const CAMPAIGN_BIBLE: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/campaign-bible.md");
+    const CAMPAIGN_PITCH: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/campaign-pitch.md");
+    const STARTING_SCENARIO: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/starting-scenario.md");
+    const QUICK_START_KIT: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/quick-start-kit.md");
+    const MODULE_OVERVIEW: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/module-overview.md");
+    const MODULE_DUNGEON: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/module-dungeon.md");
+    const MODULE_HEIST: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/module-heist.md");
+    const MODULE_HORROR: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/module-horror.md");
+    const MODULE_MYSTERY: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/module-mystery.md");
+    const MODULE_POLITICAL: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/module-political.md");
+    const CHARACTER_INTEGRATION: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/character-integration.md");
+    const MAJOR_NPC_TRACKER: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/major-npc-tracker.md");
+    const QUICK_NPC_REFERENCE: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/quick-npc-reference.md");
+    const PC_ARC_TRACKER: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/pc-arc-tracker.md");
+    const WORLD_OVERVIEW: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/world-overview.md");
+    const REGION_OVERVIEW: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/region-overview.md");
+    const FACTION_TEMPLATE: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/faction-template.md");
+    const SESSION_OUTLINE: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/session-outline.md");
+    const CLUE_TRACKER: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/clue-tracker.md");
+    const DOCUMENT_TRACKER: &str = include_str!("../../../../docs/src/campaign-framework/06-templates/templates/document-tracker.md");
+    
     let mut count = 0;
     
     for metadata in TemplateMetadata::all() {
-        let file_path = template_dir.join(metadata.file_name);
+        // Get the template content based on file name
+        let raw_content = match metadata.file_name {
+            "campaign-bible.md" => CAMPAIGN_BIBLE,
+            "campaign-pitch.md" => CAMPAIGN_PITCH,
+            "starting-scenario.md" => STARTING_SCENARIO,
+            "quick-start-kit.md" => QUICK_START_KIT,
+            "module-overview.md" => MODULE_OVERVIEW,
+            "module-dungeon.md" => MODULE_DUNGEON,
+            "module-heist.md" => MODULE_HEIST,
+            "module-horror.md" => MODULE_HORROR,
+            "module-mystery.md" => MODULE_MYSTERY,
+            "module-political.md" => MODULE_POLITICAL,
+            "character-integration.md" => CHARACTER_INTEGRATION,
+            "major-npc-tracker.md" => MAJOR_NPC_TRACKER,
+            "quick-npc-reference.md" => QUICK_NPC_REFERENCE,
+            "pc-arc-tracker.md" => PC_ARC_TRACKER,
+            "world-overview.md" => WORLD_OVERVIEW,
+            "region-overview.md" => REGION_OVERVIEW,
+            "faction-template.md" => FACTION_TEMPLATE,
+            "session-outline.md" => SESSION_OUTLINE,
+            "clue-tracker.md" => CLUE_TRACKER,
+            "document-tracker.md" => DOCUMENT_TRACKER,
+            _ => return Err(diesel::result::Error::QueryBuilderError(
+                format!("Unknown template file: {}", metadata.file_name).into()
+            )),
+        };
         
-        // Read the template content
-        let content = fs::read_to_string(&file_path)
-            .map_err(|e| diesel::result::Error::QueryBuilderError(
-                format!("Failed to read template file {}: {}", metadata.file_name, e).into()
+        // Parse frontmatter from the file - required
+        let frontmatter = TemplateFrontmatter::parse_from_markdown(&raw_content)
+            .ok_or_else(|| diesel::result::Error::QueryBuilderError(
+                format!("Template file {} is missing required frontmatter", metadata.file_name).into()
             ))?;
         
-        // Create frontmatter
-        let frontmatter = TemplateFrontmatter {
-            id: metadata.template_type.as_str().replace('_', "-"),
-            title: metadata.title.to_string(),
-            template_type: metadata.template_type.as_str().to_string(),
-            level: metadata.template_type.document_level().as_str().to_string(),
-            purpose: metadata.purpose.to_string(),
-            variables: metadata.variables,
-            author: "Mimir Team".to_string(),
-        };
+        // Extract content without frontmatter
+        let content = TemplateFrontmatter::extract_content(&raw_content);
         
         // Create the template document
         let new_template = NewTemplateDocument {
             document_id: frontmatter.id.clone(),
-            version_number: Some(1),
+            version_number: None, // Will auto-increment
             document_content: content,
+            content_hash: None, // Will be computed by repository
             document_type: Some(frontmatter.template_type.clone()),
             document_level: Some(frontmatter.level.clone()),
             purpose: Some(frontmatter.purpose.clone()),
-            variables_schema: Some(frontmatter.variables_schema()?),
-            default_values: Some(serde_json::to_string(&frontmatter.defaults_map())?),
+            variables_schema: Some(frontmatter.variables_schema().map_err(|e| 
+                diesel::result::Error::QueryBuilderError(format!("Failed to serialize variables schema: {}", e).into())
+            )?),
+            default_values: Some(serde_json::to_string(&frontmatter.defaults_map()).map_err(|e| 
+                diesel::result::Error::QueryBuilderError(format!("Failed to serialize default values: {}", e).into())
+            )?),
             is_active: Some(true),
-            metadata: Some(frontmatter.to_json()?),
+            metadata: Some(frontmatter.to_json().map_err(|e| 
+                diesel::result::Error::QueryBuilderError(format!("Failed to serialize metadata: {}", e).into())
+            )?),
         };
         
         // Check if template already exists

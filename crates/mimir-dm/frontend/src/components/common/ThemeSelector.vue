@@ -34,10 +34,9 @@ const selectedTheme = computed({
 const availableThemes = computed(() => {
   // Default themes available without backend
   const defaultThemes = [
-    { id: 'default', name: 'Light', description: 'Clean light theme' },
-    { id: 'dark', name: 'Dark', description: 'Easy on the eyes dark theme' },
-    { id: 'high-contrast', name: 'High Contrast', description: 'Maximum readability' },
-    { id: 'forest', name: 'Forest', description: 'Nature-inspired green theme' }
+    { id: 'light', name: 'Light', description: 'Clean light theme with soft purples' },
+    { id: 'dark', name: 'Dark', description: 'Deep blues and navy tones' },
+    { id: 'hyper', name: 'Hyper', description: 'Vaporwave neon aesthetic' }
   ]
   
   // Merge with backend themes if available

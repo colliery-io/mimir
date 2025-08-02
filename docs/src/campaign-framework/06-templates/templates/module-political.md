@@ -1,4 +1,19 @@
-# Political Intrigue Module Template
+---
+id: module-political
+title: Political Module
+type: module_political
+level: module
+purpose: Template for political intrigue modules
+author: Mimir Team
+variables:
+  - name: conflict_name
+    type: string
+    description: Name of the political conflict
+    default: "[Conflict Name]"
+    required: true
+---
+
+# {{conflict_name}} Political Module
 
 *For social maneuvering and faction-based adventures*
 

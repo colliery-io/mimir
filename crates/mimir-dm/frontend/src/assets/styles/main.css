@@ -1,8 +1,14 @@
+/* Import theme files first */
+@import './themes/light.css';
+@import './themes/dark.css';
+@import './themes/hyper.css';
+
+/* Tailwind directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Default theme variables */
+/* Base variables - shared across all themes */
 :root {
   /* Primary colors */
   --color-primary-50: #f0f9ff;
@@ -73,81 +79,11 @@
   --transition-slow: 300ms ease;
 }
 
-/* Dark theme */
-.theme-dark {
-  /* Surface colors */
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
-  --color-surface-variant: #334155;
-  
-  /* Text colors */
-  --color-text: #f1f5f9;
-  --color-text-secondary: #cbd5e1;
-  --color-text-disabled: #64748b;
-  
-  /* Border colors */
-  --color-border: #334155;
-  --color-border-hover: #475569;
-  
-  /* Primary colors (adjusted for dark theme) */
-  --color-primary-50: #0c4a6e;
-  --color-primary-100: #075985;
-  --color-primary-200: #0369a1;
-  --color-primary-300: #0284c7;
-  --color-primary-400: #0ea5e9;
-  --color-primary-500: #38bdf8;
-  --color-primary-600: #7dd3fc;
-  --color-primary-700: #bae6fd;
-  --color-primary-800: #e0f2fe;
-  --color-primary-900: #f0f9ff;
-}
-
-/* High contrast theme */
-.theme-high-contrast {
-  /* Surface colors */
-  --color-background: #000000;
-  --color-surface: #1a1a1a;
-  --color-surface-variant: #2a2a2a;
-  
-  /* Text colors */
-  --color-text: #ffffff;
-  --color-text-secondary: #e0e0e0;
-  --color-text-disabled: #808080;
-  
-  /* Border colors */
-  --color-border: #ffffff;
-  --color-border-hover: #e0e0e0;
-  
-  /* Primary colors */
-  --color-primary-500: #00d4ff;
-  --color-primary-600: #00a8cc;
-  --color-primary-700: #0086a8;
-}
-
-/* Forest theme */
-.theme-forest {
-  /* Primary colors (green-based) */
-  --color-primary-50: #f0fdf4;
-  --color-primary-100: #dcfce7;
-  --color-primary-200: #bbf7d0;
-  --color-primary-300: #86efac;
-  --color-primary-400: #4ade80;
-  --color-primary-500: #22c55e;
-  --color-primary-600: #16a34a;
-  --color-primary-700: #15803d;
-  --color-primary-800: #166534;
-  --color-primary-900: #14532d;
-  
-  /* Surface colors */
-  --color-background: #fefef9;
-  --color-surface: #f5f5dc;
-  --color-surface-variant: #ebe8d0;
-  
-  /* Text colors */
-  --color-text: #1a2e05;
-  --color-text-secondary: #4a5f2a;
-  --color-text-disabled: #7a8f5a;
-}
+/* Theme classes are now in separate files:
+   - themes/light.css
+   - themes/dark.css
+   - themes/hyper.css
+*/
 
 /* Base styles */
 * {

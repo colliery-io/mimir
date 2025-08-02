@@ -9,6 +9,7 @@ use mimir_dm_db::models::campaigns::NewCampaign;
 use mimir_dm_db::models::modules::NewModule;
 use mimir_dm_db::models::sessions::NewSession;
 use mimir_dm_db::models::workflow_cards::NewWorkflowCard;
+use tempfile::TempDir;
 
 #[test]
 fn test_campaign_card_workflow() {
@@ -16,10 +17,12 @@ fn test_campaign_card_workflow() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "planning".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut card_repo = WorkflowCardRepository::new(&mut conn);
@@ -66,10 +69,12 @@ fn test_module_card_workflow() {
     let mut conn = test_db.connection().unwrap();
     
     // Create campaign and module
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut module_repo = ModuleRepository::new(&mut conn);
@@ -112,10 +117,12 @@ fn test_session_card_workflow() {
     let mut conn = test_db.connection().unwrap();
     
     // Create campaign and session
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut session_repo = SessionRepository::new(&mut conn);
@@ -157,10 +164,12 @@ fn test_card_tags() {
     let mut conn = test_db.connection().unwrap();
     
     // Create a campaign first
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "planning".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut card_repo = WorkflowCardRepository::new(&mut conn);
@@ -208,10 +217,12 @@ fn test_list_cards_by_board() {
     let mut conn = test_db.connection().unwrap();
     
     // Create campaign and module first
+    let temp_dir = TempDir::new().unwrap();
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
         status: "active".to_string(),
+        directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
     let mut module_repo = ModuleRepository::new(&mut conn);

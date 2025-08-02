@@ -1,4 +1,19 @@
-# Player Character Arc Tracker
+---
+id: pc-arc-tracker
+title: PC Arc Tracker
+type: pc_arc_tracker
+level: handout
+purpose: Track character arcs and personal storylines
+author: Mimir Team
+variables:
+  - name: character_name
+    type: string
+    description: Character name
+    default: "[Character Name]"
+    required: true
+---
+
+# {{character_name}} Arc Tracker
 
 *Monitor and develop individual character stories*
 

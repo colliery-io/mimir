@@ -15,7 +15,7 @@ export const useCampaignStore = defineStore('campaigns', () => {
     error.value = null
     
     try {
-      const response = await invoke<ApiResponse<Campaign[]>>('get_campaigns')
+      const response = await invoke<ApiResponse<Campaign[]>>('list_campaigns')
       if (response.success && response.data) {
         campaigns.value = response.data
       } else {
@@ -56,7 +56,7 @@ export const useCampaignStore = defineStore('campaigns', () => {
     error.value = null
     
     try {
-      const response = await invoke<ApiResponse<Campaign>>('create_campaign', data)
+      const response = await invoke<ApiResponse<Campaign>>('create_campaign', { request: data })
       if (response.success && response.data) {
         campaigns.value.push(response.data)
         return response.data

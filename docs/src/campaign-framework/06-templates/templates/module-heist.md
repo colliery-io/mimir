@@ -1,4 +1,19 @@
-# Heist Module Template
+---
+id: module-heist
+title: Heist Module
+type: module_heist
+level: module
+purpose: Template for heist and infiltration modules
+author: Mimir Team
+variables:
+  - name: target_name
+    type: string
+    description: Name of the heist target
+    default: "[Target Name]"
+    required: true
+---
+
+# {{target_name}} Heist Module
 
 *For planning and execution adventures*
 

@@ -11,6 +11,7 @@ pub struct Campaign {
     pub id: i32,
     pub name: String,
     pub status: String,
+    pub directory_path: String,
     pub created_at: String,
     pub session_zero_date: Option<String>,
     pub first_session_date: Option<String>,
@@ -23,6 +24,7 @@ pub struct Campaign {
 pub struct NewCampaign {
     pub name: String,
     pub status: String,
+    pub directory_path: String,
 }
 
 /// Campaign update structure
@@ -31,6 +33,7 @@ pub struct NewCampaign {
 pub struct UpdateCampaign {
     pub name: Option<String>,
     pub status: Option<String>,
+    pub directory_path: Option<String>,
     pub session_zero_date: Option<Option<String>>,
     pub first_session_date: Option<Option<String>>,
     pub last_activity_at: Option<String>,

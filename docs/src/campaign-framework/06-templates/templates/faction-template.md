@@ -1,4 +1,19 @@
-# Faction: [Faction Name]
+---
+id: faction-template
+title: Faction Template
+type: faction_template
+level: campaign
+purpose: Define factions and their goals, resources, and relationships
+author: Mimir Team
+variables:
+  - name: faction_name
+    type: string
+    description: Name of the faction
+    default: "[Faction Name]"
+    required: true
+---
+
+# Faction: {{faction_name}}
 
 *A power group in your world*
 

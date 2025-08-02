@@ -3,6 +3,7 @@ CREATE TABLE campaigns (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     status TEXT NOT NULL CHECK(status IN ('planning', 'active', 'completed', 'archived')),
+    directory_path TEXT NOT NULL, -- Filesystem path to campaign directory
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     session_zero_date TEXT,  -- ISO date format YYYY-MM-DD
     first_session_date TEXT, -- ISO date format YYYY-MM-DD

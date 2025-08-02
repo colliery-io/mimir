@@ -1,4 +1,19 @@
-# Region: [Region Name]
+---
+id: region-overview
+title: Region Overview
+type: region_overview
+level: campaign
+purpose: Detailed overview of a specific region
+author: Mimir Team
+variables:
+  - name: region_name
+    type: string
+    description: Name of the region
+    default: "[Region Name]"
+    required: true
+---
+
+# Region: {{region_name}}
 
 *A distinct area of your world*
 
