@@ -1,6 +1,16 @@
 <template>
   <MainLayout>
-    <div class="campaign-board">
+    <div class="campaign-board-container">
+      <!-- Document Sidebar -->
+      <DocumentSidebar 
+        v-if="campaign"
+        :campaign-id="campaign.id" 
+        @select-document="handleSelectDocument"
+        @create-document="handleCreateDocument"
+      />
+      
+      <!-- Main Board Content -->
+      <div class="campaign-board">
       <!-- Kanban Stage Progress -->
       <div class="stage-progress">
         <div 
@@ -24,6 +34,7 @@
         <p>Stage: {{ campaign?.status || '...' }}</p>
       </div>
     </div>
+    </div>
   </MainLayout>
 </template>
 
@@ -31,6 +42,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../../components/layout/MainLayout.vue'
+import DocumentSidebar from '../../components/campaigns/DocumentSidebar.vue'
 import type { Campaign } from '../../types/campaign'
 
 const props = defineProps<{
@@ -90,14 +102,34 @@ const loadCampaign = async () => {
   }
 }
 
+// Handle document selection
+const handleSelectDocument = (document: any) => {
+  console.log('Selected document:', document)
+  // TODO: Open document editor
+}
+
+// Handle create document
+const handleCreateDocument = () => {
+  console.log('Create new document')
+  // TODO: Open document creation dialog
+}
+
 onMounted(() => {
   loadCampaign()
 })
 </script>
 
 <style scoped>
+.campaign-board-container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
 .campaign-board {
+  flex: 1;
   padding: var(--spacing-lg);
+  overflow-y: auto;
 }
 
 /* Stage Progress */

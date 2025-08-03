@@ -152,7 +152,7 @@ pub async fn create_campaign(request: CreateCampaignRequest) -> ApiResponse<Camp
             let mut repo = CampaignRepository::new(&mut *conn);
             let new_campaign = NewCampaign {
                 name: request.name.clone(),
-                status: "planning".to_string(),
+                status: "concept".to_string(),
                 directory_path: campaign_path.to_string_lossy().to_string(),
             };
             
