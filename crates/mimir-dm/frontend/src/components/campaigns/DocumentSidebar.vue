@@ -34,7 +34,14 @@
               }"
               @click="handleDocumentClick(doc)"
             >
-              <span class="document-icon">{{ getDocumentIcon(doc) }}</span>
+              <img 
+                v-if="getDocumentIcon(doc)" 
+                :src="getDocumentIcon(doc)" 
+                :alt="doc.instance ? 'Edit' : 'Locked'"
+                class="document-icon"
+              />
+              <span v-else-if="doc.instance?.completed_at" class="document-icon-text">✓</span>
+              <span v-else class="document-icon-placeholder"></span>
               <span class="document-title">{{ doc.title }}</span>
             </div>
           </div>
@@ -63,7 +70,14 @@
               }"
               @click="handleDocumentClick(doc)"
             >
-              <span class="document-icon">{{ getDocumentIcon(doc) }}</span>
+              <img 
+                v-if="getDocumentIcon(doc)" 
+                :src="getDocumentIcon(doc)" 
+                :alt="doc.instance ? 'Edit' : 'Locked'"
+                class="document-icon"
+              />
+              <span v-else-if="doc.instance?.completed_at" class="document-icon-text">✓</span>
+              <span v-else class="document-icon-placeholder"></span>
               <span class="document-title">{{ doc.title }}</span>
             </div>
           </div>
@@ -92,7 +106,14 @@
               }"
               @click="handleDocumentClick(doc)"
             >
-              <span class="document-icon">{{ getDocumentIcon(doc) }}</span>
+              <img 
+                v-if="getDocumentIcon(doc)" 
+                :src="getDocumentIcon(doc)" 
+                :alt="doc.instance ? 'Edit' : 'Locked'"
+                class="document-icon"
+              />
+              <span v-else-if="doc.instance?.completed_at" class="document-icon-text">✓</span>
+              <span v-else class="document-icon-placeholder"></span>
               <span class="document-title">{{ doc.title }}</span>
             </div>
           </div>
@@ -105,6 +126,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useThemeStore } from '../../stores/theme'
+
+// Import icon images
+import lightEditIcon from '../../assets/images/light-edit.png'
+import lightLockedIcon from '../../assets/images/light-locked.png'
+import darkEditIcon from '../../assets/images/dark-edit.png'
+import darkLockedIcon from '../../assets/images/dark-locked.png'
+import hyperEditIcon from '../../assets/images/hyper-edit.png'
+import hyperLockedIcon from '../../assets/images/hyper-locked.png'
 
 interface Document {
   id: number
@@ -160,6 +190,25 @@ const selectedDocument = ref<Document | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+// Theme store for icon selection
+const themeStore = useThemeStore()
+
+// Icon mapping
+const iconMap = {
+  light: {
+    edit: lightEditIcon,
+    locked: lightLockedIcon
+  },
+  dark: {
+    edit: darkEditIcon,
+    locked: darkLockedIcon
+  },
+  hyper: {
+    edit: hyperEditIcon,
+    locked: hyperLockedIcon
+  }
+}
+
 // Computed properties for stage document groups
 const conceptDocs = computed(() => getStageDocuments('concept'))
 const sessionZeroDocs = computed(() => getStageDocuments('session_zero'))
@@ -197,17 +246,20 @@ const isStageAccessible = (stage: string) => {
 }
 
 // Get document icon based on state
-const getDocumentIcon = (doc: any) => {
+const getDocumentIcon = (doc: any): string | undefined => {
+  const theme = themeStore.currentTheme as 'light' | 'dark' | 'hyper'
+  
   if (!isStageAccessible(getDocumentStage(doc.templateId))) {
-    return '🔒'
+    return iconMap[theme]?.locked
   }
   if (doc.instance?.completed_at) {
-    return '✅'
+    // For completed, we'll use a check mark or just hide the icon
+    return undefined
   }
   if (doc.instance) {
-    return '✏️'
+    return iconMap[theme]?.edit
   }
-  return '⬜'
+  return undefined // No icon for not started
 }
 
 // Get which stage a template belongs to
@@ -439,7 +491,27 @@ onMounted(() => {
 }
 
 .document-icon {
-  font-size: 1rem;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.document-icon-text {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-success);
+  font-weight: bold;
+  font-size: 1.125rem;
+}
+
+.document-icon-placeholder {
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
