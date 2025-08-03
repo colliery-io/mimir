@@ -74,6 +74,22 @@ impl TemplateDocument {
         self.metadata.as_ref()
             .and_then(|s| serde_json::from_str(s).ok())
     }
+    
+    /// Create a Tera context from default values
+    pub fn create_context(&self) -> tera::Context {
+        let mut context = tera::Context::new();
+        
+        // Add default values if available
+        if let Some(defaults) = self.parse_default_values() {
+            if let Some(obj) = defaults.as_object() {
+                for (key, value) in obj {
+                    context.insert(key, value);
+                }
+            }
+        }
+        
+        context
+    }
 }
 
 /// Document level for categorizing templates

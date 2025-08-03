@@ -4,13 +4,21 @@ use mimir_dm_db::{
     models::{
         documents::{NewDocument},
         campaigns::Campaign,
+        template_documents::TemplateDocument,
     },
     dal::{
         documents::DocumentRepository,
         campaigns::CampaignRepository,
+        template_documents::TemplateRepository,
     },
     DbConnection,
 };
+use std::path::PathBuf;
+use std::fs;
+use std::collections::HashMap;
+use anyhow::Result;
+use tera::{Context, Tera};
+use serde_json::Value as JsonValue;
 use crate::DatabaseService;
 use crate::types::ApiResponse;
 
@@ -18,10 +26,9 @@ use crate::types::ApiResponse;
 fn get_stage_documents(stage: &str) -> Vec<(&'static str, &'static str)> {
     match stage {
         "concept" => vec![
-            ("campaign-sparks", "Campaign Sparks"),
-            ("campaign-pitch", "Campaign Pitch"), 
-            ("big-three", "Big Three"),
-            ("first-adventure", "First Adventure Outline"),
+            ("campaign-pitch", "Campaign Pitch"),
+            // The other concept documents (sparks, big three, first adventure) 
+            // are part of the creative process but not formal templates
         ],
         "session_zero" => vec![
             ("starting-scenario", "Starting Scenario"),
@@ -56,6 +63,35 @@ fn create_stage_documents(
         let exists = existing.iter().any(|d| d.template_id == template_id);
         
         if !exists {
+            // Get the template content
+            let template = match TemplateRepository::get_latest(conn, template_id) {
+                Ok(t) => t,
+                Err(_) => {
+                    eprintln!("Warning: Template '{}' not found, skipping document creation", template_id);
+                    continue;
+                }
+            };
+            
+            // Create the document file
+            let file_name = format!("{}.md", template_id);
+            let file_path = PathBuf::from(&campaign.directory_path).join(&file_name);
+            
+            // Process template with default values only (no overrides for now)
+            let content = match process_template_content(&template, None) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("Failed to render template {}: {}", template_id, e);
+                    continue;
+                }
+            };
+            
+            // Write file to disk
+            if let Err(e) = fs::write(&file_path, content) {
+                eprintln!("Failed to write document file {}: {}", file_path.display(), e);
+                continue;
+            }
+            
+            // Create database record
             let new_doc = NewDocument {
                 campaign_id: campaign.id,
                 module_id: None,
@@ -63,7 +99,7 @@ fn create_stage_documents(
                 template_id: template_id.to_string(),
                 document_type: template_id.replace('-', "_"),
                 title: title.to_string(),
-                file_path: format!("{}/{}.md", campaign.directory_path, template_id),
+                file_path: file_path.to_string_lossy().to_string(),
             };
             
             DocumentRepository::create(conn, new_doc)?;
@@ -72,6 +108,37 @@ fn create_stage_documents(
     }
     
     Ok(created)
+}
+
+/// Process template content using Tera with default values and optional overrides
+fn process_template_content(
+    template: &TemplateDocument, 
+    provided_values: Option<&HashMap<String, JsonValue>>
+) -> Result<String> {
+    // Step 1: Create context from template defaults
+    let mut context = template.create_context();
+    
+    // Step 2: Override defaults with any provided values
+    if let Some(values) = provided_values {
+        for (key, value) in values {
+            context.insert(key, value);
+        }
+    }
+    
+    // Step 3: Render using Tera
+    let mut tera = Tera::default();
+    tera.add_raw_template(&template.document_id, &template.document_content)?;
+    
+    let rendered = tera.render(&template.document_id, &context)?;
+    Ok(rendered)
+}
+
+/// Create initial documents for a new campaign
+pub fn create_initial_documents(
+    conn: &mut DbConnection,
+    campaign: &Campaign,
+) -> Result<Vec<String>, anyhow::Error> {
+    create_stage_documents(conn, campaign, "concept")
 }
 
 /// Transition campaign to a new stage

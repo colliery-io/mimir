@@ -159,6 +159,13 @@ pub async fn create_campaign(request: CreateCampaignRequest) -> ApiResponse<Camp
             match repo.create(new_campaign) {
                 Ok(campaign) => {
                     info!("Created campaign: {} with directory: {}", campaign.name, campaign.directory_path);
+                    
+                    // Initialize concept stage documents
+                    if let Err(e) = crate::commands::stage_transitions::create_initial_documents(&mut *conn, &campaign) {
+                        warn!("Failed to create initial documents: {}", e);
+                        // Continue anyway - campaign is created, documents can be created later
+                    }
+                    
                     ApiResponse::success(Campaign::from(campaign))
                 }
                 Err(e) => {

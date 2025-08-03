@@ -163,10 +163,7 @@ const emit = defineEmits<{
 // Define document templates for each stage
 const stageDocuments = {
   concept: [
-    { templateId: 'campaign-sparks', title: 'Campaign Sparks' },
-    { templateId: 'campaign-pitch', title: 'Campaign Pitch' },
-    { templateId: 'big-three', title: 'Big Three' },
-    { templateId: 'first-adventure', title: 'First Adventure' }
+    { templateId: 'campaign-pitch', title: 'Campaign Pitch' }
   ],
   session_zero: [
     { templateId: 'starting-scenario', title: 'Starting Scenario' },
