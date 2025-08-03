@@ -61,8 +61,11 @@ fn main() {
             update_document,
             complete_document,
             delete_document,
+            get_campaign_documents,
             get_incomplete_documents,
-            get_completed_documents
+            get_completed_documents,
+            transition_campaign_stage,
+            initialize_stage_documents
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

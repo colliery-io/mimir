@@ -4,7 +4,8 @@
       <!-- Document Sidebar -->
       <DocumentSidebar 
         v-if="campaign"
-        :campaign-id="campaign.id" 
+        :campaign-id="campaign.id"
+        :campaign-stage="campaign.status" 
         @select-document="handleSelectDocument"
         @create-document="handleCreateDocument"
       />
@@ -94,11 +95,29 @@ const loadCampaign = async () => {
     })
     campaign.value = response.data
     console.log('Loaded campaign:', campaign.value)
+    
+    // Initialize stage documents if this is the first time
+    await initializeStageDocuments()
   } catch (e) {
     console.error('Failed to load campaign:', e)
     error.value = 'Failed to load campaign'
   } finally {
     loading.value = false
+  }
+}
+
+// Initialize documents for the current stage
+const initializeStageDocuments = async () => {
+  try {
+    const response = await invoke<{ data: string[] }>('initialize_stage_documents', {
+      campaignId: parseInt(props.id)
+    })
+    
+    if (response.data && response.data.length > 0) {
+      console.log('Initialized documents:', response.data)
+    }
+  } catch (e) {
+    console.error('Failed to initialize stage documents:', e)
   }
 }
 

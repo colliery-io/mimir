@@ -1,100 +1,103 @@
 <template>
   <div class="document-sidebar">
     <div class="sidebar-header">
-      <h3>Campaign Documents</h3>
+      <h3>📋 Documents</h3>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="tab-navigation">
-      <button 
-        class="tab-button" 
-        :class="{ active: activeTab === 'active' }"
-        @click="activeTab = 'active'"
-      >
-        <span class="tab-icon">📄</span>
-        Active Documents
-        <span class="tab-count" v-if="incompleteDocuments.length">{{ incompleteDocuments.length }}</span>
-      </button>
-      <button 
-        class="tab-button" 
-        :class="{ active: activeTab === 'completed' }"
-        @click="activeTab = 'completed'"
-      >
-        <span class="tab-icon">✓</span>
-        Completed
-        <span class="tab-count" v-if="completedDocuments.length">{{ completedDocuments.length }}</span>
-      </button>
-    </div>
-
-    <!-- Document Lists -->
+    <!-- Document List Grouped by Stage -->
     <div class="document-content">
-      <!-- Active Documents -->
-      <div v-if="activeTab === 'active'" class="document-list">
-        <div v-if="loading" class="loading-state">
-          Loading documents...
-        </div>
-        <div v-else-if="incompleteDocuments.length === 0" class="empty-state">
-          <p>No active documents</p>
-          <button class="btn-small btn-primary" @click="createNewDocument">
-            Create Document
-          </button>
-        </div>
-        <div v-else class="document-items">
-          <div 
-            v-for="doc in incompleteDocuments" 
-            :key="doc.id"
-            class="document-item"
-            :class="{ selected: selectedDocument?.id === doc.id }"
-            @click="selectDocument(doc)"
-          >
-            <div class="document-info">
-              <h4>{{ doc.title }}</h4>
-              <p class="document-type">{{ formatDocumentType(doc.document_type) }}</p>
-              <p class="document-level">{{ getDocumentLevel(doc) }}</p>
+      <div v-if="loading" class="loading-state">
+        Loading documents...
+      </div>
+      
+      <div v-else class="stage-groups">
+        <!-- Concept Stage Documents -->
+        <div class="stage-group">
+          <div class="stage-header">
+            <h4>Concept Stage ({{ conceptDocs.completed }}/{{ conceptDocs.total }})</h4>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill" 
+                :style="{ width: conceptDocs.percentage + '%' }"
+              ></div>
             </div>
-            <div class="document-actions">
-              <button 
-                class="btn-icon" 
-                @click.stop="markAsComplete(doc)"
-                title="Mark as complete"
-              >
-                ✓
-              </button>
+          </div>
+          <div class="document-items">
+            <div 
+              v-for="doc in conceptDocs.documents" 
+              :key="doc.templateId"
+              class="document-item"
+              :class="{ 
+                selected: selectedDocument?.template_id === doc.templateId,
+                completed: doc.instance?.completed_at,
+                locked: !isStageAccessible('concept')
+              }"
+              @click="handleDocumentClick(doc)"
+            >
+              <span class="document-icon">{{ getDocumentIcon(doc) }}</span>
+              <span class="document-title">{{ doc.title }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session Zero Stage Documents -->
+        <div class="stage-group">
+          <div class="stage-header">
+            <h4>Session Zero ({{ sessionZeroDocs.completed }}/{{ sessionZeroDocs.total }})</h4>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill" 
+                :style="{ width: sessionZeroDocs.percentage + '%' }"
+              ></div>
+            </div>
+          </div>
+          <div class="document-items">
+            <div 
+              v-for="doc in sessionZeroDocs.documents" 
+              :key="doc.templateId"
+              class="document-item"
+              :class="{ 
+                selected: selectedDocument?.template_id === doc.templateId,
+                completed: doc.instance?.completed_at,
+                locked: !isStageAccessible('session_zero')
+              }"
+              @click="handleDocumentClick(doc)"
+            >
+              <span class="document-icon">{{ getDocumentIcon(doc) }}</span>
+              <span class="document-title">{{ doc.title }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Integration Stage Documents -->
+        <div class="stage-group">
+          <div class="stage-header">
+            <h4>Integration ({{ integrationDocs.completed }}/{{ integrationDocs.total }})</h4>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill" 
+                :style="{ width: integrationDocs.percentage + '%' }"
+              ></div>
+            </div>
+          </div>
+          <div class="document-items">
+            <div 
+              v-for="doc in integrationDocs.documents" 
+              :key="doc.templateId"
+              class="document-item"
+              :class="{ 
+                selected: selectedDocument?.template_id === doc.templateId,
+                completed: doc.instance?.completed_at,
+                locked: !isStageAccessible('integration')
+              }"
+              @click="handleDocumentClick(doc)"
+            >
+              <span class="document-icon">{{ getDocumentIcon(doc) }}</span>
+              <span class="document-title">{{ doc.title }}</span>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Completed Documents -->
-      <div v-if="activeTab === 'completed'" class="document-list">
-        <div v-if="loading" class="loading-state">
-          Loading documents...
-        </div>
-        <div v-else-if="completedDocuments.length === 0" class="empty-state">
-          <p>No completed documents</p>
-        </div>
-        <div v-else class="document-items">
-          <div 
-            v-for="doc in completedDocuments" 
-            :key="doc.id"
-            class="document-item completed"
-            @click="selectDocument(doc)"
-          >
-            <div class="document-info">
-              <h4>{{ doc.title }}</h4>
-              <p class="document-type">{{ formatDocumentType(doc.document_type) }}</p>
-              <p class="document-date">Completed: {{ formatDate(doc.completed_at) }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="sidebar-footer">
-      <button class="btn-block btn-secondary" @click="createNewDocument">
-        + New Document
-      </button>
     </div>
   </div>
 </template>
@@ -119,6 +122,7 @@ interface Document {
 
 const props = defineProps<{
   campaignId: number
+  campaignStage: string
 }>()
 
 const emit = defineEmits<{
@@ -126,31 +130,106 @@ const emit = defineEmits<{
   createDocument: []
 }>()
 
+// Define document templates for each stage
+const stageDocuments = {
+  concept: [
+    { templateId: 'campaign-sparks', title: 'Campaign Sparks' },
+    { templateId: 'campaign-pitch', title: 'Campaign Pitch' },
+    { templateId: 'big-three', title: 'Big Three' },
+    { templateId: 'first-adventure', title: 'First Adventure' }
+  ],
+  session_zero: [
+    { templateId: 'starting-scenario', title: 'Starting Scenario' },
+    { templateId: 'world-primer', title: 'World Primer' },
+    { templateId: 'character-guidelines', title: 'Character Guidelines' },
+    { templateId: 'table-expectations', title: 'Table Expectations' },
+    { templateId: 'character-integration', title: 'Character Integration Forms' },
+    { templateId: 'session-zero-packet', title: 'Session Zero Packet' }
+  ],
+  integration: [
+    { templateId: 'campaign-bible', title: 'Campaign Bible' },
+    { templateId: 'character-integration-notes', title: 'Character Integration Notes' },
+    { templateId: 'major-npcs', title: 'Major NPCs' },
+    { templateId: 'world-timeline', title: 'World Events Timeline' }
+  ]
+}
+
 // State
-const activeTab = ref<'active' | 'completed'>('active')
-const incompleteDocuments = ref<Document[]>([])
-const completedDocuments = ref<Document[]>([])
+const documents = ref<Document[]>([])
 const selectedDocument = ref<Document | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// Load documents
+// Computed properties for stage document groups
+const conceptDocs = computed(() => getStageDocuments('concept'))
+const sessionZeroDocs = computed(() => getStageDocuments('session_zero'))
+const integrationDocs = computed(() => getStageDocuments('integration'))
+
+// Get documents for a specific stage
+const getStageDocuments = (stage: string) => {
+  const templates = stageDocuments[stage as keyof typeof stageDocuments] || []
+  const stageDocumentList = templates.map(template => {
+    const instance = documents.value.find(doc => doc.template_id === template.templateId)
+    return {
+      ...template,
+      instance
+    }
+  })
+  
+  const completed = stageDocumentList.filter(doc => doc.instance?.completed_at).length
+  const total = stageDocumentList.length
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+  
+  return {
+    documents: stageDocumentList,
+    completed,
+    total,
+    percentage
+  }
+}
+
+// Check if a stage is accessible based on campaign progress
+const isStageAccessible = (stage: string) => {
+  const stageOrder = ['concept', 'session_zero', 'integration', 'active']
+  const currentIndex = stageOrder.indexOf(props.campaignStage)
+  const checkIndex = stageOrder.indexOf(stage)
+  return checkIndex <= currentIndex
+}
+
+// Get document icon based on state
+const getDocumentIcon = (doc: any) => {
+  if (!isStageAccessible(getDocumentStage(doc.templateId))) {
+    return '🔒'
+  }
+  if (doc.instance?.completed_at) {
+    return '✅'
+  }
+  if (doc.instance) {
+    return '✏️'
+  }
+  return '⬜'
+}
+
+// Get which stage a template belongs to
+const getDocumentStage = (templateId: string): string => {
+  for (const [stage, docs] of Object.entries(stageDocuments)) {
+    if (docs.some(d => d.templateId === templateId)) {
+      return stage
+    }
+  }
+  return 'concept'
+}
+
+// Load all documents for the campaign
 const loadDocuments = async () => {
   loading.value = true
   error.value = null
 
   try {
-    // Load incomplete documents
-    const incompleteResponse = await invoke<{ data: Document[] }>('get_incomplete_documents', {
+    const response = await invoke<{ data: Document[] }>('get_campaign_documents', {
       campaignId: props.campaignId
     })
-    incompleteDocuments.value = incompleteResponse.data || []
-
-    // Load completed documents
-    const completedResponse = await invoke<{ data: Document[] }>('get_completed_documents', {
-      campaignId: props.campaignId
-    })
-    completedDocuments.value = completedResponse.data || []
+    documents.value = response.data || []
   } catch (e) {
     console.error('Failed to load documents:', e)
     error.value = 'Failed to load documents'
@@ -159,25 +238,45 @@ const loadDocuments = async () => {
   }
 }
 
-// Mark document as complete
-const markAsComplete = async (doc: Document) => {
+// Handle document click
+const handleDocumentClick = async (doc: any) => {
+  const stage = getDocumentStage(doc.templateId)
+  
+  // Check if stage is accessible
+  if (!isStageAccessible(stage)) {
+    console.log('Stage is locked:', stage)
+    return
+  }
+  
+  // If document doesn't exist, create it
+  if (!doc.instance) {
+    await createDocument(doc.templateId, doc.title)
+  } else {
+    selectDocument(doc.instance)
+  }
+}
+
+// Create a new document from template
+const createDocument = async (templateId: string, title: string) => {
   try {
-    const response = await invoke<{ data: Document }>('complete_document', {
-      documentId: doc.id
+    const response = await invoke<{ data: Document }>('create_document', {
+      newDocument: {
+        campaign_id: props.campaignId,
+        module_id: null,
+        session_id: null,
+        template_id: templateId,
+        document_type: templateId.replace('-', '_'),
+        title: title,
+        file_path: `${props.campaignId}/${templateId}.md`
+      }
     })
     
     if (response.data) {
-      // Move from incomplete to completed
-      incompleteDocuments.value = incompleteDocuments.value.filter(d => d.id !== doc.id)
-      completedDocuments.value.unshift(response.data)
-      
-      // Clear selection if this was selected
-      if (selectedDocument.value?.id === doc.id) {
-        selectedDocument.value = null
-      }
+      documents.value.push(response.data)
+      selectDocument(response.data)
     }
   } catch (e) {
-    console.error('Failed to complete document:', e)
+    console.error('Failed to create document:', e)
   }
 }
 
@@ -187,35 +286,8 @@ const selectDocument = (doc: Document) => {
   emit('selectDocument', doc)
 }
 
-// Create new document
-const createNewDocument = () => {
-  emit('createDocument')
-}
-
-// Get document level display
-const getDocumentLevel = (doc: Document): string => {
-  if (doc.session_id) return 'Session'
-  if (doc.module_id) return 'Module'
-  if (doc.document_type === 'handout') return 'Handout'
-  return 'Campaign'
-}
-
-// Format document type for display
-const formatDocumentType = (type: string): string => {
-  return type.split('_').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ')
-}
-
-// Format date
-const formatDate = (dateStr: string | null): string => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString()
-}
-
-// Watch for campaign changes
-watch(() => props.campaignId, () => {
+// Watch for campaign or stage changes
+watch([() => props.campaignId, () => props.campaignStage], () => {
   loadDocuments()
 })
 
@@ -241,57 +313,68 @@ onMounted(() => {
 
 .sidebar-header h3 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--color-text);
 }
 
-/* Tab Navigation */
-.tab-navigation {
+/* Stage Groups */
+.stage-groups {
   display: flex;
+  flex-direction: column;
+}
+
+.stage-group {
+  padding: var(--spacing-sm) 0;
   border-bottom: 1px solid var(--color-border);
 }
 
-.tab-button {
-  flex: 1;
-  padding: var(--spacing-md);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  transition: all var(--transition-base);
+.stage-group:last-child {
+  border-bottom: none;
 }
 
-.tab-button:hover {
-  background-color: var(--color-surface-variant);
+.stage-header {
+  padding: 0 var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
 }
 
-.tab-button.active {
-  color: var(--color-primary-500);
-  border-bottom-color: var(--color-primary-500);
-}
-
-.tab-icon {
-  font-size: 1rem;
-}
-
-.tab-count {
-  background-color: var(--color-surface-variant);
-  color: var(--color-text-secondary);
-  padding: 2px 8px;
-  border-radius: 12px;
+.stage-header h4 {
+  margin: 0 0 var(--spacing-xs) 0;
   font-size: 0.75rem;
   font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
 }
 
-.tab-button.active .tab-count {
-  background-color: var(--color-primary-100);
-  color: var(--color-primary-600);
+/* Progress Bar */
+.progress-bar {
+  height: 16px;
+  background-color: var(--color-surface-variant);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--color-primary-400);
+  border-radius: 8px;
+  transition: width var(--transition-base);
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(0, 0, 0, 0.05) 10px,
+    rgba(0, 0, 0, 0.05) 20px
+  );
+  border-radius: 8px;
 }
 
 /* Document Content */
@@ -328,119 +411,41 @@ onMounted(() => {
 }
 
 .document-item {
-  background-color: var(--color-surface-variant);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
   transition: all var(--transition-base);
   display: flex;
-  justify-content: space-between;
-  align-items: start;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-sm);
 }
 
-.document-item:hover {
-  border-color: var(--color-primary-300);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.document-item:hover:not(.locked) {
+  background-color: var(--color-surface-variant);
 }
 
 .document-item.selected {
-  border-color: var(--color-primary-500);
-  background-color: var(--color-primary-50);
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-700);
 }
 
 .document-item.completed {
   opacity: 0.8;
 }
 
-.document-info h4 {
-  margin: 0 0 var(--spacing-xs) 0;
+.document-item.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.document-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.document-title {
   font-size: 0.875rem;
   color: var(--color-text);
 }
 
-.document-type,
-.document-level,
-.document-date {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-}
-
-.document-level {
-  color: var(--color-primary-600);
-  font-weight: 500;
-}
-
-.document-actions {
-  display: flex;
-  gap: var(--spacing-xs);
-}
-
-/* Buttons */
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-base);
-  color: var(--color-text-secondary);
-}
-
-.btn-icon:hover {
-  background-color: var(--color-success-100);
-  border-color: var(--color-success);
-  color: var(--color-success);
-}
-
-.btn-small {
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: 0.875rem;
-  border-radius: var(--radius-sm);
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-base);
-}
-
-.btn-primary {
-  background-color: var(--color-primary-500);
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: var(--color-primary-600);
-}
-
-.btn-block {
-  width: 100%;
-  padding: var(--spacing-md);
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-weight: 500;
-  transition: all var(--transition-base);
-}
-
-.btn-secondary {
-  background-color: var(--color-surface-variant);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-}
-
-.btn-secondary:hover {
-  background-color: var(--color-surface);
-  border-color: var(--color-primary-300);
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-  padding: var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-}
 </style>
