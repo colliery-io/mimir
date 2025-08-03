@@ -4,11 +4,14 @@ mod app_init;
 mod commands;
 mod db_connection;
 mod seed_templates;
+mod services;
 mod types;
 
 use app_init::{initialize_app, AppPaths};
 use commands::*;
-use std::sync::OnceLock;
+use services::database::DatabaseService;
+use std::sync::{Arc, OnceLock};
+use tauri::Manager;
 use tracing::{error, info};
 
 // Global application state
@@ -37,6 +40,12 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            // Initialize database service
+            let db_service = Arc::new(DatabaseService);
+            app.manage(db_service);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             get_app_info,
@@ -45,7 +54,15 @@ fn main() {
             create_campaign,
             get_campaign,
             generate_campaign_document,
-            list_templates
+            list_templates,
+            get_campaign_documents,
+            get_documents_by_level,
+            create_document,
+            update_document,
+            complete_document,
+            delete_document,
+            get_incomplete_documents,
+            get_completed_documents
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -471,7 +471,7 @@ mod tests {
         
         // Seed templates
         let count = seed_templates(&mut conn).unwrap();
-        assert_eq!(count, 21); // We have 21 templates
+        assert_eq!(count, 20); // We have 20 templates (excluding README.md)
         
         // Verify a few templates exist
         let campaign_pitch = TemplateRepository::get_latest(&mut conn, "campaign-pitch").unwrap();

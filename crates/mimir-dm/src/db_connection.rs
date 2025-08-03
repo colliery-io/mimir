@@ -50,3 +50,9 @@ pub fn get_connection() -> Result<r2d2::PooledConnection<ConnectionManager<Sqlit
         .get()
         .context("Failed to get connection from pool")
 }
+
+pub fn get_db_pool() -> Result<&'static DbPool> {
+    DB_POOL
+        .get()
+        .context("Database pool not initialized")
+}

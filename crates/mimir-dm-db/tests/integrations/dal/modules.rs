@@ -17,7 +17,7 @@ fn test_module_lifecycle() {
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
-        status: "planning".to_string(),
+        status: "active".to_string(),
         directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     

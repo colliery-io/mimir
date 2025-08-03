@@ -35,6 +35,8 @@ Ready-to-use artifacts that make the system practical.
 
 New to the framework? Begin with [Framework Philosophy](./01-foundations/README.md) to understand the core principles, then explore [The Three-Board System](./01-foundations/three-board-system.md) to see how it all fits together.
 
+Need a quick reference? Check out the [Campaign Framework Cheat Sheet](./cheat-sheet.md) for an algorithmic breakdown of when to create documents and advance through stages.
+
 ## Design Principles
 
 - **Sustainable**: Work you do once serves you many times

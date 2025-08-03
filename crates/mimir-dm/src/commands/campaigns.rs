@@ -5,7 +5,6 @@ use mimir_dm_db::{
     dal::campaigns::CampaignRepository,
     dal::template_documents::TemplateRepository,
     models::campaigns::{Campaign as DbCampaign, NewCampaign},
-    models::template_documents::TemplateDocument,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -101,7 +100,7 @@ fn create_campaign_directory_structure(base_path: &Path, campaign_name: &str) ->
 pub async fn list_campaigns() -> ApiResponse<Vec<Campaign>> {
     info!("Listing campaigns");
     
-    let Some(paths) = APP_PATHS.get() else {
+    let Some(_paths) = APP_PATHS.get() else {
         error!("Application not initialized");
         return ApiResponse::error("Application not initialized".to_string());
     };
@@ -132,7 +131,7 @@ pub async fn list_campaigns() -> ApiResponse<Vec<Campaign>> {
 pub async fn create_campaign(request: CreateCampaignRequest) -> ApiResponse<Campaign> {
     info!("Creating new campaign: {} at location: {}", request.name, request.directory_location);
     
-    let Some(paths) = APP_PATHS.get() else {
+    let Some(_paths) = APP_PATHS.get() else {
         error!("Application not initialized");
         return ApiResponse::error("Application not initialized".to_string());
     };
@@ -426,7 +425,7 @@ fn determine_template_file_path(campaign_dir: &str, template_id: &str) -> String
 pub async fn get_campaign(id: i32) -> ApiResponse<Campaign> {
     info!("Getting campaign with id: {}", id);
     
-    let Some(paths) = APP_PATHS.get() else {
+    let Some(_paths) = APP_PATHS.get() else {
         error!("Application not initialized");
         return ApiResponse::error("Application not initialized".to_string());
     };

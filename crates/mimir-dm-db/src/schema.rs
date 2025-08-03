@@ -302,6 +302,22 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    documents (id) {
+        id -> Integer,
+        campaign_id -> Integer,
+        module_id -> Nullable<Integer>,
+        session_id -> Nullable<Integer>,
+        template_id -> Text,
+        document_type -> Text,
+        title -> Text,
+        file_path -> Text,
+        created_at -> Text,
+        updated_at -> Text,
+        completed_at -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -309,6 +325,9 @@ diesel::joinable!(workflow_cards -> campaigns (campaign_id));
 diesel::joinable!(workflow_cards -> modules (module_id));
 diesel::joinable!(workflow_cards -> sessions (session_id));
 diesel::joinable!(workflow_card_tags -> workflow_cards (card_id));
+diesel::joinable!(documents -> campaigns (campaign_id));
+diesel::joinable!(documents -> modules (module_id));
+diesel::joinable!(documents -> sessions (session_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     rule_systems,
@@ -326,4 +345,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     workflow_cards,
     workflow_card_tags,
     template_documents,
+    documents,
 );

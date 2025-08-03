@@ -94,10 +94,10 @@ impl<'a> CampaignRepository<'a> {
             .map_err(Into::into)
     }
     
-    /// List active campaigns (planning or active status)
+    /// List active campaigns (not in concluding status)
     pub fn list_active(&mut self) -> Result<Vec<Campaign>> {
         campaigns::table
-            .filter(campaigns::status.eq("planning").or(campaigns::status.eq("active")))
+            .filter(campaigns::status.ne("concluding"))
             .order_by(campaigns::last_activity_at.desc())
             .load(self.conn)
             .map_err(Into::into)

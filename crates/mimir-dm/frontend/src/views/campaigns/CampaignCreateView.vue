@@ -141,8 +141,8 @@ const handleSubmit = async () => {
     })
 
     if (response.success && response.data) {
-      // Navigate to the new campaign
-      router.push(`/campaigns/${response.data.id}`)
+      // Navigate to the new campaign board
+      router.push(`/campaigns/${response.data.id}/board`)
     } else {
       error.value = response.error || 'Failed to create campaign'
     }

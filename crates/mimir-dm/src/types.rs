@@ -1,6 +1,7 @@
 //! Shared type definitions
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
@@ -23,6 +24,38 @@ impl<T> ApiResponse<T> {
             success: false,
             data: None,
             error: Some(message),
+        }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum ApiError {
+    #[error("Database error: {0}")]
+    Database(String),
+    
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+    
+    #[error("Not found: {0}")]
+    NotFound(String),
+    
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+    
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
+}
+
+impl From<mimir_dm_db::error::DbError> for ApiError {
+    fn from(err: mimir_dm_db::error::DbError) -> Self {
+        match err {
+            mimir_dm_db::error::DbError::NotFound { entity_type, id } => {
+                ApiError::NotFound(format!("{} with id '{}' not found", entity_type, id))
+            }
+            _ => ApiError::Database(err.to_string()),
         }
     }
 }

@@ -24,6 +24,12 @@ const routes: RouteRecordRaw[] = [
     props: true
   },
   {
+    path: '/campaigns/:id/board',
+    name: 'campaign-board',
+    component: () => import('../views/campaigns/CampaignBoardView.vue'),
+    props: true
+  },
+  {
     path: '/campaigns/:id/modules',
     name: 'campaign-modules',
     component: () => import('../views/modules/ModuleListView.vue'),

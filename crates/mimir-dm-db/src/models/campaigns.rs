@@ -43,11 +43,12 @@ impl Campaign {
     /// Check if campaign is in a valid state to transition to the given status
     pub fn can_transition_to(&self, new_status: &str) -> bool {
         match (self.status.as_str(), new_status) {
-            ("planning", "active") => true,
-            ("planning", "archived") => true,
-            ("active", "completed") => true,
-            ("active", "archived") => true,
-            ("completed", "archived") => true,
+            // Normal progression through workflow stages
+            ("concept", "session_zero") => true,
+            ("session_zero", "integration") => true,
+            ("integration", "active") => true,
+            ("active", "concluding") => true,
+            
             _ => false,
         }
     }

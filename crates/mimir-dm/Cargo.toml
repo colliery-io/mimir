@@ -33,6 +33,7 @@ diesel = { workspace = true, features = ["r2d2"] }
 r2d2 = "0.8"
 chrono = { workspace = true }
 tera = "1.19"
+thiserror = { workspace = true }
 
 # Remove TUI dependencies since we're going GUI
 # config = { workspace = true }

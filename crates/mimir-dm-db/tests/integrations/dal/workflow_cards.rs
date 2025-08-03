@@ -21,7 +21,7 @@ fn test_campaign_card_workflow() {
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
-        status: "planning".to_string(),
+        status: "concept".to_string(),
         directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
@@ -82,7 +82,7 @@ fn test_module_card_workflow() {
         campaign_id: campaign.id,
         name: "Test Module".to_string(),
         module_number: 1,
-        status: "planning".to_string(),
+        status: "backlog".to_string(),
         expected_sessions: 4,
     }).unwrap();
     
@@ -168,7 +168,7 @@ fn test_card_tags() {
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo.create(NewCampaign {
         name: "Test Campaign".to_string(),
-        status: "planning".to_string(),
+        status: "concept".to_string(),
         directory_path: temp_dir.path().to_string_lossy().to_string(),
     }).unwrap();
     
@@ -230,7 +230,7 @@ fn test_list_cards_by_board() {
         campaign_id: campaign.id,
         name: "Test Module".to_string(),
         module_number: 1,
-        status: "planning".to_string(),
+        status: "backlog".to_string(),
         expected_sessions: 4,
     }).unwrap();
     

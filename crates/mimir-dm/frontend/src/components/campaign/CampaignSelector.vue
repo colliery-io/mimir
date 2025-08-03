@@ -106,6 +106,9 @@ function selectCampaign(campaignId: number) {
   
   // Persist selection to localStorage
   localStorage.setItem('selectedCampaignId', campaignId.toString())
+  
+  // Navigate to the campaign board
+  router.push(`/campaigns/${campaignId}/board`)
 }
 
 // Close dropdown when clicking outside

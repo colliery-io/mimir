@@ -15,3 +15,4 @@ pub mod sessions;
 pub mod workflow_cards;
 pub mod template_documents;
 pub mod template_frontmatter;
+pub mod documents;
