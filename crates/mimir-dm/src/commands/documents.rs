@@ -7,17 +7,18 @@ use mimir_dm_db::{
         template_documents::TemplateRepository,
     },
     models::documents::{Document, NewDocument, UpdateDocument},
+    models::campaigns::Campaign,
 };
 use std::sync::Arc;
 use std::path::PathBuf;
 use std::fs;
 use tauri::State;
-use std::io::Read;
 
 use crate::{
     services::database::DatabaseService,
     types::ApiResponse,
 };
+use serde::Serialize;
 
 /// Get all documents for a campaign
 #[tauri::command]
@@ -317,4 +318,114 @@ pub async fn save_document_file(
         Err(e) => Ok(ApiResponse::error(format!("Failed to save document: {}", e))),
     }
 }
+
+#[derive(Serialize, Debug)]
+pub struct StageCompletionStatus {
+    pub current_stage: String,
+    pub total_documents: usize,
+    pub completed_documents: usize,
+    pub is_complete: bool,
+    pub can_progress: bool,
+    pub next_stage: Option<String>,
+    pub missing_documents: Vec<String>,
+}
+
+/// Stage document requirements configuration
+fn get_stage_required_documents(stage: &str) -> Vec<&'static str> {
+    match stage {
+        "concept" => vec!["campaign_pitch"],
+        "session_zero" => vec![
+            "starting_scenario",
+            "world_primer", 
+            "character_guidelines",
+            "table_expectations",
+            "character_integration_forms",
+            "session_zero_packet"
+        ],
+        "integration" => vec![
+            "campaign_bible",
+            "character_integration_notes",
+            "major_npcs",
+            "world_events_timeline"
+        ],
+        "active" => vec![], // No required documents for active stage
+        _ => vec![],
+    }
+}
+
+/// Check if a stage is complete and ready for progression
+#[tauri::command]
+pub async fn check_stage_completion(
+    campaign_id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<StageCompletionStatus>, String> {
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
+    
+    // Get the campaign to check current status
+    let mut campaign_repo = CampaignRepository::new(conn);
+    let campaign = match campaign_repo.find_by_id(campaign_id) {
+        Ok(Some(c)) => c,
+        Ok(None) => return Ok(ApiResponse::error("Campaign not found".to_string())),
+        Err(e) => return Ok(ApiResponse::error(format!("Database error: {}", e))),
+    };
+    
+    let current_stage = &campaign.status;
+    let required_doc_types = get_stage_required_documents(current_stage);
+    
+    // Get all documents for this campaign
+    let all_documents = DocumentRepository::find_by_campaign(conn, campaign_id)
+        .map_err(|e| e.to_string())?;
+    
+    // Filter documents by current stage requirements
+    let stage_documents: Vec<_> = all_documents.into_iter()
+        .filter(|doc| required_doc_types.contains(&doc.document_type.as_str()))
+        .collect();
+    
+    // Find missing document types
+    let existing_types: Vec<&str> = stage_documents.iter()
+        .map(|d| d.document_type.as_str())
+        .collect();
+    
+    let missing_documents: Vec<String> = required_doc_types.iter()
+        .filter(|&&doc_type| !existing_types.contains(&doc_type))
+        .map(|&s| s.to_string())
+        .collect();
+    
+    let total_documents = required_doc_types.len();
+    let completed_documents = stage_documents
+        .iter()
+        .filter(|doc| doc.completed_at.is_some())
+        .count();
+    
+    let is_complete = total_documents > 0 && 
+                     total_documents == stage_documents.len() && 
+                     total_documents == completed_documents;
+    
+    // Determine next stage using the campaign's can_transition_to method
+    let next_stage = match current_stage.as_str() {
+        "concept" => Some("session_zero".to_string()),
+        "session_zero" => Some("integration".to_string()),
+        "integration" => Some("active".to_string()),
+        "active" => Some("concluding".to_string()),
+        _ => None,
+    };
+    
+    let can_progress = if let Some(ref next) = next_stage {
+        is_complete && campaign.can_transition_to(next)
+    } else {
+        false
+    };
+    
+    Ok(ApiResponse::success(StageCompletionStatus {
+        current_stage: current_stage.clone(),
+        total_documents,
+        completed_documents,
+        is_complete,
+        can_progress,
+        next_stage,
+        missing_documents,
+    }))
+}
+
 

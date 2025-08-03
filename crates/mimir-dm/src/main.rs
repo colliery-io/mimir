@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_init;
+mod boards;
 mod commands;
 mod db_connection;
 mod seed_templates;
@@ -66,6 +67,7 @@ fn main() {
             create_document_from_template,
             read_document_file,
             save_document_file,
+            check_campaign_stage_completion,
             transition_campaign_stage,
             initialize_stage_documents
         ])

@@ -49,6 +49,7 @@
             :campaign-id="parseInt(id)"
             @close="selectedDocument = null"
             @updated="handleDocumentUpdated"
+            @stage-transitioned="handleStageTransitioned"
           />
         </div>
       </div>
@@ -217,6 +218,20 @@ const handleDocumentUpdated = (updatedDocument: any) => {
   if (index !== -1) {
     documents.value[index] = updatedDocument
   }
+}
+
+// Handle stage transition
+const handleStageTransitioned = (updatedCampaign: any) => {
+  // Update the campaign status
+  if (campaign.value) {
+    campaign.value.status = updatedCampaign.status
+  }
+  
+  // Reload documents for the new stage
+  loadDocuments()
+  
+  // Clear document selection to show landing page
+  selectedDocument.value = null
 }
 
 onMounted(() => {

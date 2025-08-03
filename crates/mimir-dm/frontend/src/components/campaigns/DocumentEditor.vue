@@ -145,6 +145,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   updated: [document: any]
+  'stage-transitioned': [campaign: any]
 }>()
 
 // State
@@ -278,15 +279,58 @@ const togglePreview = () => {
 // Mark document as complete
 const markComplete = async () => {
   try {
+    // Save any pending changes first
+    await saveDocument()
+    
     const response = await invoke<{ data: any }>('complete_document', {
       documentId: props.document.id
     })
     
     if (response.data) {
       emit('updated', response.data)
+      
+      // Check if stage is complete after marking this document
+      const stageStatus = await invoke<{ success: boolean; data: any }>('check_campaign_stage_completion', {
+        campaignId: props.campaignId
+      })
+      
+      if (stageStatus.success && stageStatus.data.can_progress) {
+        // Show transition prompt
+        showTransitionPrompt(stageStatus.data)
+      }
     }
   } catch (e) {
     console.error('Failed to mark document complete:', e)
+  }
+}
+
+// Show stage transition prompt
+const showTransitionPrompt = (status: any) => {
+  const metadata = status.stage_metadata
+  
+  // For now, just show an alert. In a real app, you'd use a modal
+  const message = metadata.transition_prompt || 
+    `You can always edit this document later, but make sure your party has a chance to look at this and provide feedback before progressing.`
+  
+  if (confirm(message + '\n\nWould you like to progress to the next stage?')) {
+    transitionToNextStage(status.next_stage)
+  }
+}
+
+// Transition to next stage
+const transitionToNextStage = async (nextStage: string) => {
+  try {
+    const response = await invoke<{ success: boolean; data: any }>('transition_campaign_stage', {
+      campaignId: props.campaignId,
+      newStage: nextStage
+    })
+    
+    if (response.success) {
+      // Emit event to refresh the campaign view
+      emit('stage-transitioned', response.data)
+    }
+  } catch (e) {
+    console.error('Failed to transition stage:', e)
   }
 }
 

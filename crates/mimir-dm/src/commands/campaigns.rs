@@ -1,8 +1,14 @@
 //! Campaign management commands
 
-use crate::{db_connection::get_connection, types::ApiResponse, APP_PATHS};
+use crate::{
+    boards::{BoardCompletionStatus, BoardRegistry},
+    db_connection::get_connection,
+    types::ApiResponse,
+    APP_PATHS,
+};
 use mimir_dm_db::{
     dal::campaigns::CampaignRepository,
+    dal::documents::DocumentRepository,
     dal::template_documents::TemplateRepository,
     models::campaigns::{Campaign as DbCampaign, NewCampaign},
 };
@@ -458,6 +464,173 @@ pub async fn get_campaign(id: i32) -> ApiResponse<Campaign> {
         Err(e) => {
             error!("Failed to connect to database: {}", e);
             ApiResponse::error(format!("Database connection failed: {}", e))
+        }
+    }
+}
+
+/// Check campaign stage completion status
+#[tauri::command]
+pub async fn check_campaign_stage_completion(campaign_id: i32) -> ApiResponse<BoardCompletionStatus> {
+    info!("Checking stage completion for campaign {}", campaign_id);
+    
+    let mut conn = match get_connection() {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Failed to connect to database: {}", e);
+            return ApiResponse::error(format!("Database connection failed: {}", e));
+        }
+    };
+    
+    // Get the campaign
+    let mut campaign_repo = CampaignRepository::new(&mut *conn);
+    let campaign = match campaign_repo.find_by_id(campaign_id) {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            error!("Campaign {} not found", campaign_id);
+            return ApiResponse::error(format!("Campaign {} not found", campaign_id));
+        }
+        Err(e) => {
+            error!("Failed to find campaign: {}", e);
+            return ApiResponse::error(format!("Database error: {}", e));
+        }
+    };
+    
+    // Get the board definition
+    let board_registry = BoardRegistry::new();
+    let board = match board_registry.get("campaign") {
+        Some(b) => b,
+        None => {
+            error!("Campaign board definition not found");
+            return ApiResponse::error("Campaign board definition not found".to_string());
+        }
+    };
+    
+    let current_stage = &campaign.status;
+    
+    // Get required and optional documents for current stage
+    let required_docs = board.required_documents(current_stage);
+    let optional_docs = board.optional_documents(current_stage);
+    
+    // Get all documents for this campaign
+    let all_documents = match DocumentRepository::find_by_campaign(&mut *conn, campaign_id) {
+        Ok(docs) => docs,
+        Err(e) => {
+            error!("Failed to find documents: {}", e);
+            return ApiResponse::error(format!("Failed to find documents: {}", e));
+        }
+    };
+    
+    // Count completed required documents
+    let mut completed_required = 0;
+    let mut missing_required = Vec::new();
+    
+    for doc_type in &required_docs {
+        if let Some(doc) = all_documents.iter().find(|d| d.document_type == *doc_type) {
+            if doc.completed_at.is_some() {
+                completed_required += 1;
+            }
+        } else {
+            missing_required.push(doc_type.to_string());
+        }
+    }
+    
+    // Count completed optional documents
+    let mut completed_optional = 0;
+    for doc_type in &optional_docs {
+        if let Some(doc) = all_documents.iter().find(|d| d.document_type == *doc_type) {
+            if doc.completed_at.is_some() {
+                completed_optional += 1;
+            }
+        }
+    }
+    
+    let is_stage_complete = required_docs.len() == completed_required && missing_required.is_empty();
+    let next_stage = board.next_stage(current_stage).map(|s| s.to_string());
+    let can_progress = is_stage_complete && next_stage.is_some();
+    
+    let status = BoardCompletionStatus {
+        board_type: board.board_type().to_string(),
+        current_stage: current_stage.clone(),
+        total_required_documents: required_docs.len(),
+        completed_required_documents: completed_required,
+        total_optional_documents: optional_docs.len(),
+        completed_optional_documents: completed_optional,
+        missing_required_documents: missing_required,
+        is_stage_complete,
+        can_progress,
+        next_stage,
+        stage_metadata: board.stage_metadata(current_stage),
+    };
+    
+    info!("Stage completion status: {:?}", status);
+    ApiResponse::success(status)
+}
+
+/// Transition campaign to the next stage
+#[tauri::command]
+pub async fn transition_campaign_stage(
+    campaign_id: i32,
+    new_stage: String,
+) -> ApiResponse<Campaign> {
+    info!("Transitioning campaign {} to stage {}", campaign_id, new_stage);
+    
+    let mut conn = match get_connection() {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Failed to connect to database: {}", e);
+            return ApiResponse::error(format!("Database connection failed: {}", e));
+        }
+    };
+    
+    let mut campaign_repo = CampaignRepository::new(&mut *conn);
+    
+    // Verify the transition is valid using board definition
+    let campaign = match campaign_repo.find_by_id(campaign_id) {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            error!("Campaign {} not found", campaign_id);
+            return ApiResponse::error(format!("Campaign {} not found", campaign_id));
+        }
+        Err(e) => {
+            error!("Failed to find campaign: {}", e);
+            return ApiResponse::error(format!("Database error: {}", e));
+        }
+    };
+    
+    let board_registry = BoardRegistry::new();
+    let board = match board_registry.get("campaign") {
+        Some(b) => b,
+        None => {
+            error!("Campaign board definition not found");
+            return ApiResponse::error("Campaign board definition not found".to_string());
+        }
+    };
+    
+    // Check if transition is allowed
+    if !board.can_transition(&campaign.status, &new_stage) {
+        error!("Cannot transition from {} to {}", campaign.status, new_stage);
+        return ApiResponse::error(format!(
+            "Cannot transition from {} to {}",
+            campaign.status, new_stage
+        ));
+    }
+    
+    // Perform the transition
+    match campaign_repo.transition_status(campaign_id, &new_stage) {
+        Ok(updated_campaign) => {
+            info!("Successfully transitioned campaign to {}", new_stage);
+            
+            // Create initial documents for the new stage if needed
+            if let Err(e) = crate::commands::stage_transitions::create_stage_documents(&mut *conn, &updated_campaign) {
+                warn!("Failed to create stage documents: {}", e);
+                // Continue anyway - transition succeeded
+            }
+            
+            ApiResponse::success(Campaign::from(updated_campaign))
+        }
+        Err(e) => {
+            error!("Failed to transition campaign: {}", e);
+            ApiResponse::error(format!("Failed to transition campaign: {}", e))
         }
     }
 }
