@@ -1,10 +1,16 @@
 //! Document management commands
 
 use mimir_dm_db::{
-    dal::documents::DocumentRepository,
+    dal::{
+        documents::DocumentRepository,
+        campaigns::CampaignRepository,
+        template_documents::TemplateRepository,
+    },
     models::documents::{Document, NewDocument, UpdateDocument},
 };
 use std::sync::Arc;
+use std::path::PathBuf;
+use std::fs;
 use tauri::State;
 
 use crate::{
@@ -185,5 +191,83 @@ pub async fn get_completed_documents(
             "Failed to load completed documents: {}",
             e
         ))),
+    }
+}
+
+/// Create a document from a template
+#[tauri::command]
+pub async fn create_document_from_template(
+    campaign_id: i32,
+    template_id: String,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Document>, String> {
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
+    
+    // Get the campaign
+    let mut campaign_repo = CampaignRepository::new(conn);
+    let campaign = match campaign_repo.find_by_id(campaign_id) {
+        Ok(Some(c)) => c,
+        Ok(None) => return Ok(ApiResponse::error("Campaign not found".to_string())),
+        Err(e) => return Ok(ApiResponse::error(format!("Database error: {}", e))),
+    };
+    
+    // Check if document already exists
+    let existing = DocumentRepository::find_by_campaign(conn, campaign_id)
+        .map_err(|e| e.to_string())?;
+    if existing.iter().any(|d| d.template_id == template_id) {
+        return Ok(ApiResponse::error("Document already exists".to_string()));
+    }
+    
+    // Get the template
+    let template = match TemplateRepository::get_latest(conn, &template_id) {
+        Ok(t) => t,
+        Err(_) => return Ok(ApiResponse::error(format!("Template '{}' not found", template_id))),
+    };
+    
+    // Create the document file
+    let file_name = format!("{}.md", template_id);
+    let file_path = PathBuf::from(&campaign.directory_path).join(&file_name);
+    
+    // Process template using the create_context method
+    let mut context = template.create_context();
+    let mut tera = tera::Tera::default();
+    tera.add_raw_template(&template.document_id, &template.document_content)
+        .map_err(|e| format!("Failed to add template: {}", e))?;
+    
+    let content = tera.render(&template.document_id, &context)
+        .map_err(|e| format!("Failed to render template: {}", e))?;
+    
+    // Write file to disk
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Failed to write document file: {}", e))?;
+    
+    // Create database record
+    // Generate title from template_id
+    let title = template_id
+        .split('-')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    
+    let new_doc = NewDocument {
+        campaign_id: campaign.id,
+        module_id: None,
+        session_id: None,
+        template_id: template_id.clone(),
+        document_type: template_id.replace('-', "_"),
+        title,
+        file_path: file_path.to_string_lossy().to_string(),
+    };
+    
+    match DocumentRepository::create(conn, new_doc) {
+        Ok(document) => Ok(ApiResponse::success(document)),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to create document: {}", e))),
     }
 }

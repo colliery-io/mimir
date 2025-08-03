@@ -12,29 +12,45 @@
       
       <!-- Main Board Content -->
       <div class="campaign-board">
-      <!-- Kanban Stage Progress -->
-      <div class="stage-progress">
-        <div 
-          v-for="(stage, index) in stages" 
-          :key="stage.key"
-          class="stage-indicator"
-          :class="{ 
-            active: currentStage === stage.key,
-            completed: isStageCompleted(stage.key)
-          }"
-        >
-          <div class="stage-name">{{ stage.name }}</div>
-          <div class="stage-marker" v-if="currentStage === stage.key">●</div>
-          <div class="stage-arrow-point"></div>
+        <!-- Kanban Stage Progress -->
+        <div class="stage-progress">
+          <div 
+            v-for="(stage, index) in stages" 
+            :key="stage.key"
+            class="stage-indicator"
+            :class="{ 
+              active: currentStage === stage.key,
+              completed: isStageCompleted(stage.key)
+            }"
+          >
+            <div class="stage-name">{{ stage.name }}</div>
+            <div class="stage-marker" v-if="currentStage === stage.key">●</div>
+            <div class="stage-arrow-point"></div>
+          </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+          <!-- Stage Landing View (default) -->
+          <StageLandingView 
+            v-if="!selectedDocument && campaign"
+            :stage="currentStage"
+            :documents="documents"
+            :campaign="campaign"
+            @create-document="handleCreateDocumentFromTemplate"
+            @edit-document="handleEditDocument" 
+            @transition-stage="handleTransitionStage"
+          />
+          
+          <!-- Document Editor (when document selected) -->
+          <div v-else-if="selectedDocument" class="document-editor">
+            <h2>Document Editor</h2>
+            <p>Editing: {{ selectedDocument.title }}</p>
+            <button @click="selectedDocument = null">Back to Overview</button>
+            <!-- TODO: Implement Tiptap editor here -->
+          </div>
         </div>
       </div>
-
-      <!-- Campaign Info -->
-      <div class="campaign-info">
-        <h1>Campaign: {{ campaign?.name || 'Loading...' }}</h1>
-        <p>Stage: {{ campaign?.status || '...' }}</p>
-      </div>
-    </div>
     </div>
   </MainLayout>
 </template>
@@ -44,6 +60,7 @@ import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../../components/layout/MainLayout.vue'
 import DocumentSidebar from '../../components/campaigns/DocumentSidebar.vue'
+import StageLandingView from '../../components/campaigns/StageLandingView.vue'
 import type { Campaign } from '../../types/campaign'
 
 const props = defineProps<{
@@ -54,6 +71,8 @@ const props = defineProps<{
 const campaign = ref<Campaign | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const selectedDocument = ref<any>(null)
+const documents = ref<any[]>([])
 
 // Stage definitions
 const stages = [
@@ -98,6 +117,9 @@ const loadCampaign = async () => {
     
     // Initialize stage documents if this is the first time
     await initializeStageDocuments()
+    
+    // Load existing documents
+    await loadDocuments()
   } catch (e) {
     console.error('Failed to load campaign:', e)
     error.value = 'Failed to load campaign'
@@ -115,22 +137,76 @@ const initializeStageDocuments = async () => {
     
     if (response.data && response.data.length > 0) {
       console.log('Initialized documents:', response.data)
+      // Reload documents after initialization
+      await loadDocuments()
     }
   } catch (e) {
     console.error('Failed to initialize stage documents:', e)
   }
 }
 
-// Handle document selection
-const handleSelectDocument = (document: any) => {
-  console.log('Selected document:', document)
-  // TODO: Open document editor
+// Load all documents for the campaign
+const loadDocuments = async () => {
+  try {
+    const response = await invoke<{ data: any[] }>('get_campaign_documents', {
+      campaignId: parseInt(props.id)
+    })
+    documents.value = response.data || []
+  } catch (e) {
+    console.error('Failed to load documents:', e)
+  }
 }
 
-// Handle create document
+// Handle document selection from sidebar
+const handleSelectDocument = (document: any) => {
+  console.log('Selected document:', document)
+  selectedDocument.value = document
+}
+
+// Handle create document from sidebar
 const handleCreateDocument = () => {
   console.log('Create new document')
   // TODO: Open document creation dialog
+}
+
+// Handle create document from template (from StageLandingView)
+const handleCreateDocumentFromTemplate = async (templateId: string) => {
+  try {
+    const response = await invoke<{ data: any }>('create_document_from_template', {
+      campaignId: parseInt(props.id),
+      templateId: templateId
+    })
+    
+    if (response.data) {
+      documents.value.push(response.data)
+      selectedDocument.value = response.data
+    }
+  } catch (e) {
+    console.error('Failed to create document:', e)
+  }
+}
+
+// Handle edit document (from StageLandingView)
+const handleEditDocument = (document: any) => {
+  selectedDocument.value = document
+}
+
+// Handle stage transition
+const handleTransitionStage = async (newStage: string) => {
+  try {
+    const response = await invoke<{ data: Campaign }>('transition_campaign_stage', {
+      campaignId: parseInt(props.id),
+      newStage: newStage
+    })
+    
+    if (response.data) {
+      campaign.value = response.data
+      // Reload documents for new stage
+      await loadDocuments()
+    }
+  } catch (e) {
+    console.error('Failed to transition stage:', e)
+  }
 }
 
 onMounted(() => {
@@ -252,19 +328,41 @@ onMounted(() => {
   z-index: 2;
 }
 
-.campaign-info {
+/* Main Content Area */
+.main-content {
   background-color: var(--color-surface);
-  padding: var(--spacing-lg);
   border-radius: var(--radius-lg);
+  min-height: calc(100vh - 300px);
+  overflow-y: auto;
 }
 
-.campaign-info h1 {
-  margin: 0 0 var(--spacing-sm) 0;
+/* Document Editor */
+.document-editor {
+  padding: var(--spacing-xl);
+}
+
+.document-editor h2 {
+  margin: 0 0 var(--spacing-md) 0;
   color: var(--color-text);
 }
 
-.campaign-info p {
-  margin: 0;
+.document-editor p {
+  margin: 0 0 var(--spacing-lg) 0;
   color: var(--color-text-secondary);
+}
+
+.document-editor button {
+  background-color: var(--color-primary-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color var(--transition-base);
+}
+
+.document-editor button:hover {
+  background-color: var(--color-primary-600);
 }
 </style>
