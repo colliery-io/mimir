@@ -64,6 +64,8 @@ fn main() {
             get_incomplete_documents,
             get_completed_documents,
             create_document_from_template,
+            read_document_file,
+            save_document_file,
             transition_campaign_stage,
             initialize_stage_documents
         ])

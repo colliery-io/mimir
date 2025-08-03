@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use std::fs;
 use tauri::State;
+use std::io::Read;
 
 use crate::{
     services::database::DatabaseService,
@@ -271,3 +272,49 @@ pub async fn create_document_from_template(
         Err(e) => Ok(ApiResponse::error(format!("Failed to create document: {}", e))),
     }
 }
+
+/// Read a document file from disk
+#[tauri::command]
+pub async fn read_document_file(
+    file_path: String,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<String>, String> {
+    let path = PathBuf::from(&file_path);
+    
+    // Check if file exists
+    if !path.exists() {
+        return Ok(ApiResponse::error("Document file not found".to_string()));
+    }
+    
+    // Read the markdown file directly
+    match fs::read_to_string(&path) {
+        Ok(content) => Ok(ApiResponse::success(content)),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to read document: {}", e))),
+    }
+}
+
+/// Save a document file to disk
+#[tauri::command]
+pub async fn save_document_file(
+    file_path: String,
+    content: String,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<()>, String> {
+    let path = PathBuf::from(&file_path);
+    
+    // Ensure parent directory exists
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            if let Err(e) = fs::create_dir_all(parent) {
+                return Ok(ApiResponse::error(format!("Failed to create directory: {}", e)));
+            }
+        }
+    }
+    
+    // Write the file
+    match fs::write(&path, content) {
+        Ok(_) => Ok(ApiResponse::success(())),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to save document: {}", e))),
+    }
+}
+

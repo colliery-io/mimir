@@ -43,12 +43,13 @@
           />
           
           <!-- Document Editor (when document selected) -->
-          <div v-else-if="selectedDocument" class="document-editor">
-            <h2>Document Editor</h2>
-            <p>Editing: {{ selectedDocument.title }}</p>
-            <button @click="selectedDocument = null">Back to Overview</button>
-            <!-- TODO: Implement Tiptap editor here -->
-          </div>
+          <DocumentEditor 
+            v-else-if="selectedDocument"
+            :document="selectedDocument"
+            :campaign-id="parseInt(id)"
+            @close="selectedDocument = null"
+            @updated="handleDocumentUpdated"
+          />
         </div>
       </div>
     </div>
@@ -61,6 +62,7 @@ import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../../components/layout/MainLayout.vue'
 import DocumentSidebar from '../../components/campaigns/DocumentSidebar.vue'
 import StageLandingView from '../../components/campaigns/StageLandingView.vue'
+import DocumentEditor from '../../components/campaigns/DocumentEditor.vue'
 import type { Campaign } from '../../types/campaign'
 
 const props = defineProps<{
@@ -159,8 +161,9 @@ const loadDocuments = async () => {
 
 // Handle document selection from sidebar
 const handleSelectDocument = (document: any) => {
-  console.log('Selected document:', document)
+  console.log('CampaignBoardView - Selected document:', document)
   selectedDocument.value = document
+  console.log('CampaignBoardView - selectedDocument.value:', selectedDocument.value)
 }
 
 // Handle create document from sidebar
@@ -206,6 +209,15 @@ const handleTransitionStage = async (newStage: string) => {
     }
   } catch (e) {
     console.error('Failed to transition stage:', e)
+  }
+}
+
+// Handle document updated (e.g., marked as complete)
+const handleDocumentUpdated = (updatedDocument: any) => {
+  // Update the document in our local list
+  const index = documents.value.findIndex(d => d.id === updatedDocument.id)
+  if (index !== -1) {
+    documents.value[index] = updatedDocument
   }
 }
 
@@ -334,35 +346,5 @@ onMounted(() => {
   border-radius: var(--radius-lg);
   min-height: calc(100vh - 300px);
   overflow-y: auto;
-}
-
-/* Document Editor */
-.document-editor {
-  padding: var(--spacing-xl);
-}
-
-.document-editor h2 {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-text);
-}
-
-.document-editor p {
-  margin: 0 0 var(--spacing-lg) 0;
-  color: var(--color-text-secondary);
-}
-
-.document-editor button {
-  background-color: var(--color-primary-500);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color var(--transition-base);
-}
-
-.document-editor button:hover {
-  background-color: var(--color-primary-600);
 }
 </style>
