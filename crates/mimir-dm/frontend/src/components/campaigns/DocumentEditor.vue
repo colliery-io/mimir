@@ -32,8 +32,9 @@
     <!-- Editor Content -->
     <div class="editor-content">
       <!-- Editor -->
-      <div v-show="!showPreview" class="editor-wrapper">
-        <div v-if="editor" class="editor-toolbar">
+      <div class="editor-wrapper">
+        <!-- Only show toolbar when not in preview mode -->
+        <div v-if="editor && !showPreview" class="editor-toolbar">
           <button
             @click="editor?.chain().focus().toggleHeading({ level: 1 }).run()"
             :class="{ 'is-active': editor?.isActive('heading', { level: 1 }) }"
@@ -121,12 +122,7 @@
             ↷ Redo
           </button>
         </div>
-        <EditorContent :editor="editor" class="editor-area" />
-      </div>
-
-      <!-- Preview -->
-      <div v-show="showPreview" class="preview-wrapper">
-        <div class="markdown-preview" v-html="previewHtml"></div>
+        <EditorContent :editor="editor" class="editor-area" :class="{ 'preview-mode': showPreview }" />
       </div>
     </div>
   </div>
@@ -154,11 +150,9 @@ const emit = defineEmits<{
 // State
 const showPreview = ref(false)
 const saveStatus = ref<'saving' | 'saved' | 'error' | null>(null)
-const previewHtml = ref('')
 const pendingContent = ref<string | null>(null)
 
 // Initialize Tiptap editor with markdown support
-console.log('Initializing editor...')
 const editor = useEditor({
   content: '',
   extensions: [
@@ -180,7 +174,6 @@ const editor = useEditor({
     })
   ],
   onCreate: ({ editor: e }) => {
-    console.log('Editor onCreate callback - editor:', e)
     // Load document when editor is ready
     if (props.document && pendingContent.value === null) {
       // Use a small delay to ensure editor is fully ready
@@ -191,8 +184,6 @@ const editor = useEditor({
     debouncedSave()
   }
 })
-
-console.log('Editor after useEditor:', editor)
 
 // Computed
 const saveStatusText = computed(() => {
@@ -206,28 +197,18 @@ const saveStatusText = computed(() => {
 
 // Load document content
 const loadDocument = async () => {
-  console.log('Loading document:', props.document)
-  if (!props.document?.file_path) {
-    console.log('No file path for document')
-    return
-  }
+  if (!props.document?.file_path) return
   
   try {
-    console.log('Invoking read_document_file with:', props.document.file_path)
     const response = await invoke<{ data: string }>('read_document_file', {
       filePath: props.document.file_path
     })
     
-    console.log('Document response:', response)
     if (response.data) {
       // Set markdown content - Tiptap will parse it
-      console.log('Setting editor content:', response.data)
-      console.log('Current editor value:', editor.value)
-      
       if (editor.value) {
         editor.value.commands.setContent(response.data)
       } else {
-        console.error('Editor is not initialized yet!')
         // Store content to set later
         pendingContent.value = response.data
       }
@@ -288,9 +269,9 @@ const debouncedSave = debounce(saveDocument, 1000)
 // Toggle preview mode
 const togglePreview = () => {
   showPreview.value = !showPreview.value
-  if (showPreview.value) {
-    // Get the current HTML from editor
-    previewHtml.value = editor.value?.getHTML() || ''
+  if (editor.value) {
+    // Toggle editor's editable state
+    editor.value.setEditable(!showPreview.value)
   }
 }
 
@@ -311,7 +292,6 @@ const markComplete = async () => {
 
 // Watch for document changes (skip initial load since onMounted handles it)
 watch(() => props.document, () => {
-  console.log('Document prop changed:', props.document)
   if (editor.value) {
     loadDocument()
   }
@@ -319,10 +299,6 @@ watch(() => props.document, () => {
 
 // Load content when component mounts
 onMounted(() => {
-  console.log('DocumentEditor mounted')
-  console.log('Props:', props)
-  console.log('Editor:', editor.value)
-  
   // Load document content if available
   if (props.document) {
     loadDocument()
@@ -331,7 +307,6 @@ onMounted(() => {
 
 // Cleanup
 onBeforeUnmount(() => {
-  console.log('DocumentEditor unmounting')
   editor.value?.destroy()
 })
 </script>
@@ -525,67 +500,21 @@ onBeforeUnmount(() => {
   margin: 2rem 0;
 }
 
-/* Preview */
-.preview-wrapper {
-  padding: var(--spacing-xl);
-  background-color: var(--color-surface);
-  overflow-y: auto;
+/* Preview mode styling */
+.editor-area.preview-mode {
+  background-color: var(--color-background);
+  cursor: default;
 }
 
-.markdown-preview {
+.editor-area.preview-mode :deep(.ProseMirror) {
+  padding: var(--spacing-2xl);
   max-width: 800px;
   margin: 0 auto;
 }
 
-.markdown-preview h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 1.5rem 0 1rem;
-  color: var(--color-text);
-}
-
-.markdown-preview h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 1.25rem 0 0.75rem;
-  color: var(--color-text);
-}
-
-.markdown-preview h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 1rem 0 0.5rem;
-  color: var(--color-text);
-}
-
-.markdown-preview p {
-  margin: 0.75rem 0;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.markdown-preview ul,
-.markdown-preview ol {
-  padding-left: 1.5rem;
-  margin: 0.75rem 0;
-}
-
-.markdown-preview li {
-  margin: 0.25rem 0;
-  color: var(--color-text);
-}
-
-.markdown-preview blockquote {
-  border-left: 3px solid var(--color-primary-300);
-  padding-left: 1rem;
-  margin: 1rem 0;
-  color: var(--color-text-secondary);
-}
-
-.markdown-preview hr {
-  border: none;
-  border-top: 2px solid var(--color-border);
-  margin: 2rem 0;
+/* Make sure content is not selectable in preview mode */
+.editor-area.preview-mode :deep(.ProseMirror) {
+  user-select: text;
 }
 
 /* Buttons */

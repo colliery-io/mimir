@@ -161,9 +161,7 @@ const loadDocuments = async () => {
 
 // Handle document selection from sidebar
 const handleSelectDocument = (document: any) => {
-  console.log('CampaignBoardView - Selected document:', document)
   selectedDocument.value = document
-  console.log('CampaignBoardView - selectedDocument.value:', selectedDocument.value)
 }
 
 // Handle create document from sidebar
