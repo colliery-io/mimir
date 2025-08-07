@@ -128,6 +128,7 @@ pub fn create_test_bundle() -> NamedTempFile {
 }
 
 /// Create an invalid test bundle (missing manifest)
+#[allow(dead_code)]  // Used by bundle_tests.rs
 pub fn create_invalid_bundle() -> NamedTempFile {
     let mut temp_file = NamedTempFile::new().unwrap();
     let buffer = Vec::new();
@@ -162,9 +163,11 @@ fn add_file_to_tar<W: Write>(tar: &mut Builder<W>, path: &str, data: &[u8]) {
 
 use std::sync::atomic::{AtomicU32, Ordering};
 
+#[allow(dead_code)]  // Used by import_tests.rs
 static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 /// Create a test database URL for isolated testing
+#[allow(dead_code)]  // Used by import_tests.rs
 pub fn test_db_url() -> String {
     // Create a unique database file for each test
     let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -178,6 +181,7 @@ pub fn test_db_url() -> String {
 }
 
 /// Initialize a test database with schema
+#[allow(dead_code)]  // Used by import_tests.rs
 pub async fn init_test_db(db_url: &str) {
     use mimir_dm_db::{establish_connection, run_migrations};
     

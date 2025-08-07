@@ -45,15 +45,6 @@ mod fixtures {
         .with_publisher("Paizo".to_string())
         .with_version("2.0".to_string())
     }
-
-    pub fn inactive_system() -> RuleSystem {
-        let mut system = RuleSystem::new(
-            "dnd4e".to_string(),
-            "D&D 4th Edition".to_string(),
-        );
-        system.is_active = false;
-        system
-    }
 }
 
 // CRUD operation tests

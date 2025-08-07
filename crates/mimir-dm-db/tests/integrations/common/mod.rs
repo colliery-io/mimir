@@ -15,19 +15,6 @@ pub struct TestDatabase {
 }
 
 impl TestDatabase {
-    /// Create an in-memory test database
-    /// Note: For in-memory databases, each connection gets a new database.
-    /// Use file_based() if you need persistent connections.
-    pub fn in_memory() -> Result<Self> {
-        // For in-memory databases, we can't pre-setup because each connection
-        // gets a new database. The setup happens in with_test_db.
-        Ok(Self {
-            _temp_dir: None,
-            _temp_file: None,
-            url: ":memory:".to_string(),
-        })
-    }
-    
     /// Create a file-based test database (for async tests or when persistence is needed)
     pub fn file_based() -> Result<Self> {
         let temp_file = NamedTempFile::new()?;
@@ -41,24 +28,6 @@ impl TestDatabase {
         Ok(Self {
             _temp_dir: None,
             _temp_file: Some(temp_file),
-            url,
-        })
-    }
-    
-    /// Create a test database in a temporary directory (for tests that need multiple files)
-    pub fn in_temp_dir(name: &str) -> Result<Self> {
-        let temp_dir = TempDir::new()?;
-        let db_path = temp_dir.path().join(format!("{}.db", name));
-        let url = db_path.to_string_lossy().to_string();
-        
-        // Set up the database
-        let mut conn = DbConnection::establish(&url)?;
-        Self::setup_database(&mut conn)?;
-        drop(conn); // Close connection
-        
-        Ok(Self {
-            _temp_dir: Some(temp_dir),
-            _temp_file: None,
             url,
         })
     }
@@ -88,11 +57,6 @@ impl TestDatabase {
         
         Ok(())
     }
-}
-
-/// Set up a test database with migrations (legacy function for compatibility)
-pub fn setup_test_db() -> Result<DbConnection> {
-    TestDatabase::in_memory()?.connection()
 }
 
 /// Run a test with a fresh database (legacy function for compatibility)
