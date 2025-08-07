@@ -35,7 +35,7 @@ pub struct TransitionRule {
 
 /// Get the configuration for a specific board type
 #[tauri::command]
-pub async fn get_board_configuration(board_type: String) -> ApiResponse<BoardConfiguration> {
+pub async fn get_board_configuration(board_type: String) -> Result<ApiResponse<BoardConfiguration>, String> {
     info!("Getting configuration for board type: {}", board_type);
     
     let board_registry = BoardRegistry::new();
@@ -43,7 +43,7 @@ pub async fn get_board_configuration(board_type: String) -> ApiResponse<BoardCon
         Some(b) => b,
         None => {
             error!("Board type '{}' not found", board_type);
-            return ApiResponse::error(format!("Board type '{}' not found", board_type));
+            return Ok(ApiResponse::error(format!("Board type '{}' not found", board_type)));
         }
     };
     
@@ -92,12 +92,12 @@ pub async fn get_board_configuration(board_type: String) -> ApiResponse<BoardCon
     };
     
     info!("Returning configuration with {} stages", configuration.stages.len());
-    ApiResponse::success(configuration)
+    Ok(ApiResponse::success(configuration))
 }
 
 /// Get the next valid stage for a given board and current stage
 #[tauri::command]
-pub async fn get_next_stage(board_type: String, current_stage: String) -> ApiResponse<Option<String>> {
+pub async fn get_next_stage(board_type: String, current_stage: String) -> Result<ApiResponse<Option<String>>, String> {
     info!("Getting next stage for board '{}' from stage '{}'", board_type, current_stage);
     
     let board_registry = BoardRegistry::new();
@@ -105,12 +105,12 @@ pub async fn get_next_stage(board_type: String, current_stage: String) -> ApiRes
         Some(b) => b,
         None => {
             error!("Board type '{}' not found", board_type);
-            return ApiResponse::error(format!("Board type '{}' not found", board_type));
+            return Ok(ApiResponse::error(format!("Board type '{}' not found", board_type)));
         }
     };
     
     let next_stage = board.next_stage(&current_stage).map(|s| s.to_string());
     
     info!("Next stage: {:?}", next_stage);
-    ApiResponse::success(next_stage)
+    Ok(ApiResponse::success(next_stage))
 }

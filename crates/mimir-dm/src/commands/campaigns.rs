@@ -2,7 +2,7 @@
 
 use crate::{
     boards::{BoardCompletionStatus, BoardRegistry},
-    db_connection::get_connection,
+    services::database::DatabaseService,
     types::ApiResponse,
     APP_PATHS,
 };
@@ -17,6 +17,8 @@ use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use tauri::State;
 use tera::{Context, Tera};
 use tracing::{error, info, warn};
 
@@ -103,43 +105,43 @@ fn create_campaign_directory_structure(base_path: &Path, campaign_name: &str) ->
 }
 
 #[tauri::command]
-pub async fn list_campaigns() -> ApiResponse<Vec<Campaign>> {
+pub async fn list_campaigns(
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Vec<Campaign>>, String> {
     info!("Listing campaigns");
     
     let Some(_paths) = APP_PATHS.get() else {
         error!("Application not initialized");
-        return ApiResponse::error("Application not initialized".to_string());
+        return Ok(ApiResponse::error("Application not initialized".to_string()));
     };
 
-    match get_connection() {
-        Ok(mut conn) => {
-            let mut repo = CampaignRepository::new(&mut *conn);
-            match repo.list() {
-                Ok(campaigns) => {
-                    let campaigns: Vec<Campaign> = campaigns.into_iter().map(Campaign::from).collect();
-                    info!("Found {} campaigns", campaigns.len());
-                    ApiResponse::success(campaigns)
-                }
-                Err(e) => {
-                    error!("Failed to list campaigns: {}", e);
-                    ApiResponse::error(format!("Failed to list campaigns: {}", e))
-                }
-            }
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
+    
+    let mut repo = CampaignRepository::new(conn);
+    match repo.list() {
+        Ok(campaigns) => {
+            let campaigns: Vec<Campaign> = campaigns.into_iter().map(Campaign::from).collect();
+            info!("Found {} campaigns", campaigns.len());
+            Ok(ApiResponse::success(campaigns))
         }
         Err(e) => {
-            error!("Failed to connect to database: {}", e);
-            ApiResponse::error(format!("Database connection failed: {}", e))
+            error!("Failed to list campaigns: {}", e);
+            Ok(ApiResponse::error(format!("Failed to list campaigns: {}", e)))
         }
     }
 }
 
 #[tauri::command]
-pub async fn create_campaign(request: CreateCampaignRequest) -> ApiResponse<Campaign> {
+pub async fn create_campaign(
+    request: CreateCampaignRequest,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Campaign>, String> {
     info!("Creating new campaign: {} at location: {}", request.name, request.directory_location);
     
     let Some(_paths) = APP_PATHS.get() else {
         error!("Application not initialized");
-        return ApiResponse::error("Application not initialized".to_string());
+        return Ok(ApiResponse::error("Application not initialized".to_string()));
     };
 
     // First, try to create the campaign directory structure
@@ -148,53 +150,48 @@ pub async fn create_campaign(request: CreateCampaignRequest) -> ApiResponse<Camp
         Ok(path) => path,
         Err(e) => {
             error!("Failed to create campaign directory: {}", e);
-            return ApiResponse::error(format!("Failed to create campaign directory: {}", e));
+            return Ok(ApiResponse::error(format!("Failed to create campaign directory: {}", e)));
         }
     };
 
     // If directory creation succeeded, create the database record
-    match get_connection() {
-        Ok(mut conn) => {
-            let mut repo = CampaignRepository::new(&mut *conn);
-            let new_campaign = NewCampaign {
-                name: request.name.clone(),
-                status: "concept".to_string(),
-                directory_path: campaign_path.to_string_lossy().to_string(),
-            };
+    let mut pooled_conn = db_service.get_connection().map_err(|e| {
+        // Rollback: try to remove the created directory
+        if let Err(remove_err) = fs::remove_dir_all(&campaign_path) {
+            warn!("Failed to cleanup campaign directory after database connection error: {}", remove_err);
+        }
+        e.to_string()
+    })?;
+    let conn = &mut *pooled_conn;
+    
+    let mut repo = CampaignRepository::new(conn);
+    let new_campaign = NewCampaign {
+        name: request.name.clone(),
+        status: "concept".to_string(),
+        directory_path: campaign_path.to_string_lossy().to_string(),
+    };
+    
+    match repo.create(new_campaign) {
+        Ok(campaign) => {
+            info!("Created campaign: {} with directory: {}", campaign.name, campaign.directory_path);
             
-            match repo.create(new_campaign) {
-                Ok(campaign) => {
-                    info!("Created campaign: {} with directory: {}", campaign.name, campaign.directory_path);
-                    
-                    // Initialize concept stage documents
-                    if let Err(e) = crate::commands::stage_transitions::create_initial_documents(&mut *conn, &campaign) {
-                        warn!("Failed to create initial documents: {}", e);
-                        // Continue anyway - campaign is created, documents can be created later
-                    }
-                    
-                    ApiResponse::success(Campaign::from(campaign))
-                }
-                Err(e) => {
-                    error!("Failed to create campaign '{}': {}", request.name, e);
-                    
-                    // Rollback: try to remove the created directory
-                    if let Err(remove_err) = fs::remove_dir_all(&campaign_path) {
-                        warn!("Failed to cleanup campaign directory after database error: {}", remove_err);
-                    }
-                    
-                    ApiResponse::error(format!("Failed to create campaign: {}", e))
-                }
+            // Initialize concept stage documents
+            if let Err(e) = crate::commands::stage_transitions::create_initial_documents(conn, &campaign) {
+                warn!("Failed to create initial documents: {}", e);
+                // Continue anyway - campaign is created, documents can be created later
             }
+            
+            Ok(ApiResponse::success(Campaign::from(campaign)))
         }
         Err(e) => {
-            error!("Failed to connect to database: {}", e);
+            error!("Failed to create campaign '{}': {}", request.name, e);
             
             // Rollback: try to remove the created directory
             if let Err(remove_err) = fs::remove_dir_all(&campaign_path) {
-                warn!("Failed to cleanup campaign directory after database connection error: {}", remove_err);
+                warn!("Failed to cleanup campaign directory after database error: {}", remove_err);
             }
             
-            ApiResponse::error(format!("Database connection failed: {}", e))
+            Ok(ApiResponse::error(format!("Failed to create campaign: {}", e)))
         }
     }
 }
@@ -216,37 +213,35 @@ pub struct GeneratedDocument {
 
 /// Generate a campaign document from a template
 #[tauri::command]
-pub async fn generate_campaign_document(request: GenerateDocumentRequest) -> ApiResponse<GeneratedDocument> {
+pub async fn generate_campaign_document(
+    request: GenerateDocumentRequest,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<GeneratedDocument>, String> {
     info!("Generating document from template '{}' for campaign {}", request.template_id, request.campaign_id);
     
-    let mut conn = match get_connection() {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!("Failed to connect to database: {}", e);
-            return ApiResponse::error(format!("Database connection failed: {}", e));
-        }
-    };
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
     
     // Get the campaign to find its directory
-    let mut campaign_repo = CampaignRepository::new(&mut *conn);
+    let mut campaign_repo = CampaignRepository::new(conn);
     let campaign = match campaign_repo.find_by_id(request.campaign_id) {
         Ok(Some(campaign)) => campaign,
         Ok(None) => {
             error!("Campaign {} not found", request.campaign_id);
-            return ApiResponse::error(format!("Campaign {} not found", request.campaign_id));
+            return Ok(ApiResponse::error(format!("Campaign {} not found", request.campaign_id)));
         }
         Err(e) => {
             error!("Failed to find campaign: {}", e);
-            return ApiResponse::error(format!("Failed to find campaign: {}", e));
+            return Ok(ApiResponse::error(format!("Failed to find campaign: {}", e)));
         }
     };
     
     // Get the template
-    let template = match TemplateRepository::get_latest(&mut *conn, &request.template_id) {
+    let template = match TemplateRepository::get_latest(conn, &request.template_id) {
         Ok(template) => template,
         Err(e) => {
             error!("Failed to get template '{}': {}", request.template_id, e);
-            return ApiResponse::error(format!("Failed to get template: {}", e));
+            return Ok(ApiResponse::error(format!("Failed to get template: {}", e)));
         }
     };
     
@@ -268,7 +263,7 @@ pub async fn generate_campaign_document(request: GenerateDocumentRequest) -> Api
         Ok(_) => {},
         Err(e) => {
             error!("Failed to parse template: {}", e);
-            return ApiResponse::error(format!("Failed to parse template: {}", e));
+            return Ok(ApiResponse::error(format!("Failed to parse template: {}", e)));
         }
     }
     
@@ -276,7 +271,7 @@ pub async fn generate_campaign_document(request: GenerateDocumentRequest) -> Api
         Ok(content) => content,
         Err(e) => {
             error!("Failed to render template: {}", e);
-            return ApiResponse::error(format!("Failed to render template: {}", e));
+            return Ok(ApiResponse::error(format!("Failed to render template: {}", e)));
         }
     };
     
@@ -288,7 +283,7 @@ pub async fn generate_campaign_document(request: GenerateDocumentRequest) -> Api
     if let Some(parent) = full_path.parent() {
         if let Err(e) = fs::create_dir_all(parent) {
             error!("Failed to create directory: {}", e);
-            return ApiResponse::error(format!("Failed to create directory: {}", e));
+            return Ok(ApiResponse::error(format!("Failed to create directory: {}", e)));
         }
     }
     
@@ -296,16 +291,16 @@ pub async fn generate_campaign_document(request: GenerateDocumentRequest) -> Api
     match fs::write(&full_path, rendered_content) {
         Ok(_) => {
             info!("Generated document at: {}", full_path.display());
-            ApiResponse::success(GeneratedDocument {
+            Ok(ApiResponse::success(GeneratedDocument {
                 file_path: file_path.clone(),
                 template_id: request.template_id,
                 success: true,
                 error_message: None,
-            })
+            }))
         }
         Err(e) => {
             error!("Failed to write file: {}", e);
-            ApiResponse::error(format!("Failed to write file: {}", e))
+            Ok(ApiResponse::error(format!("Failed to write file: {}", e)))
         }
     }
 }
@@ -331,18 +326,15 @@ pub struct TemplateVariable {
 
 /// List all available templates
 #[tauri::command]
-pub async fn list_templates() -> ApiResponse<Vec<TemplateInfo>> {
+pub async fn list_templates(
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Vec<TemplateInfo>>, String> {
     info!("Listing available templates");
     
-    let mut conn = match get_connection() {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!("Failed to connect to database: {}", e);
-            return ApiResponse::error(format!("Database connection failed: {}", e));
-        }
-    };
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
     
-    match TemplateRepository::get_all_active(&mut *conn) {
+    match TemplateRepository::get_all_active(conn) {
         Ok(templates) => {
             let template_infos: Vec<TemplateInfo> = templates.into_iter()
                 .filter_map(|template| {
@@ -385,11 +377,11 @@ pub async fn list_templates() -> ApiResponse<Vec<TemplateInfo>> {
                 .collect();
             
             info!("Found {} templates", template_infos.len());
-            ApiResponse::success(template_infos)
+            Ok(ApiResponse::success(template_infos))
         }
         Err(e) => {
             error!("Failed to list templates: {}", e);
-            ApiResponse::error(format!("Failed to list templates: {}", e))
+            Ok(ApiResponse::error(format!("Failed to list templates: {}", e)))
         }
     }
 }
@@ -435,63 +427,59 @@ fn determine_template_file_path(campaign_dir: &str, template_id: &str) -> String
 }
 
 #[tauri::command]
-pub async fn get_campaign(id: i32) -> ApiResponse<Campaign> {
+pub async fn get_campaign(
+    id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Campaign>, String> {
     info!("Getting campaign with id: {}", id);
     
     let Some(_paths) = APP_PATHS.get() else {
         error!("Application not initialized");
-        return ApiResponse::error("Application not initialized".to_string());
+        return Ok(ApiResponse::error("Application not initialized".to_string()));
     };
 
-    match get_connection() {
-        Ok(mut conn) => {
-            let mut repo = CampaignRepository::new(&mut *conn);
-            match repo.find_by_id(id) {
-                Ok(Some(campaign)) => {
-                    info!("Found campaign: {}", campaign.name);
-                    ApiResponse::success(Campaign::from(campaign))
-                }
-                Ok(None) => {
-                    error!("Campaign {} not found", id);
-                    ApiResponse::error(format!("Campaign with id {} not found", id))
-                }
-                Err(e) => {
-                    error!("Failed to find campaign {}: {}", id, e);
-                    ApiResponse::error(format!("Database error: {}", e))
-                }
-            }
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
+    
+    let mut repo = CampaignRepository::new(conn);
+    match repo.find_by_id(id) {
+        Ok(Some(campaign)) => {
+            info!("Found campaign: {}", campaign.name);
+            Ok(ApiResponse::success(Campaign::from(campaign)))
+        }
+        Ok(None) => {
+            error!("Campaign {} not found", id);
+            Ok(ApiResponse::error(format!("Campaign with id {} not found", id)))
         }
         Err(e) => {
-            error!("Failed to connect to database: {}", e);
-            ApiResponse::error(format!("Database connection failed: {}", e))
+            error!("Failed to find campaign {}: {}", id, e);
+            Ok(ApiResponse::error(format!("Database error: {}", e)))
         }
     }
 }
 
 /// Check campaign stage completion status
 #[tauri::command]
-pub async fn check_campaign_stage_completion(campaign_id: i32) -> ApiResponse<BoardCompletionStatus> {
+pub async fn check_campaign_stage_completion(
+    campaign_id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<BoardCompletionStatus>, String> {
     info!("Checking stage completion for campaign {}", campaign_id);
     
-    let mut conn = match get_connection() {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!("Failed to connect to database: {}", e);
-            return ApiResponse::error(format!("Database connection failed: {}", e));
-        }
-    };
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
     
     // Get the campaign
-    let mut campaign_repo = CampaignRepository::new(&mut *conn);
+    let mut campaign_repo = CampaignRepository::new(conn);
     let campaign = match campaign_repo.find_by_id(campaign_id) {
         Ok(Some(c)) => c,
         Ok(None) => {
             error!("Campaign {} not found", campaign_id);
-            return ApiResponse::error(format!("Campaign {} not found", campaign_id));
+            return Ok(ApiResponse::error(format!("Campaign {} not found", campaign_id)));
         }
         Err(e) => {
             error!("Failed to find campaign: {}", e);
-            return ApiResponse::error(format!("Database error: {}", e));
+            return Ok(ApiResponse::error(format!("Database error: {}", e)));
         }
     };
     
@@ -501,7 +489,7 @@ pub async fn check_campaign_stage_completion(campaign_id: i32) -> ApiResponse<Bo
         Some(b) => b,
         None => {
             error!("Campaign board definition not found");
-            return ApiResponse::error("Campaign board definition not found".to_string());
+            return Ok(ApiResponse::error("Campaign board definition not found".to_string()));
         }
     };
     
@@ -512,11 +500,11 @@ pub async fn check_campaign_stage_completion(campaign_id: i32) -> ApiResponse<Bo
     let optional_docs = board.optional_documents(current_stage);
     
     // Get all documents for this campaign
-    let all_documents = match DocumentRepository::find_by_campaign(&mut *conn, campaign_id) {
+    let all_documents = match DocumentRepository::find_by_campaign(conn, campaign_id) {
         Ok(docs) => docs,
         Err(e) => {
             error!("Failed to find documents: {}", e);
-            return ApiResponse::error(format!("Failed to find documents: {}", e));
+            return Ok(ApiResponse::error(format!("Failed to find documents: {}", e)));
         }
     };
     
@@ -563,7 +551,7 @@ pub async fn check_campaign_stage_completion(campaign_id: i32) -> ApiResponse<Bo
     };
     
     info!("Stage completion status: {:?}", status);
-    ApiResponse::success(status)
+    Ok(ApiResponse::success(status))
 }
 
 /// Transition campaign to the next stage
@@ -571,29 +559,25 @@ pub async fn check_campaign_stage_completion(campaign_id: i32) -> ApiResponse<Bo
 pub async fn transition_campaign_stage(
     campaign_id: i32,
     new_stage: String,
-) -> ApiResponse<Campaign> {
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Campaign>, String> {
     info!("Transitioning campaign {} to stage {}", campaign_id, new_stage);
     
-    let mut conn = match get_connection() {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!("Failed to connect to database: {}", e);
-            return ApiResponse::error(format!("Database connection failed: {}", e));
-        }
-    };
+    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let conn = &mut *pooled_conn;
     
-    let mut campaign_repo = CampaignRepository::new(&mut *conn);
+    let mut campaign_repo = CampaignRepository::new(conn);
     
     // Verify the transition is valid using board definition
     let campaign = match campaign_repo.find_by_id(campaign_id) {
         Ok(Some(c)) => c,
         Ok(None) => {
             error!("Campaign {} not found", campaign_id);
-            return ApiResponse::error(format!("Campaign {} not found", campaign_id));
+            return Ok(ApiResponse::error(format!("Campaign {} not found", campaign_id)));
         }
         Err(e) => {
             error!("Failed to find campaign: {}", e);
-            return ApiResponse::error(format!("Database error: {}", e));
+            return Ok(ApiResponse::error(format!("Database error: {}", e)));
         }
     };
     
@@ -602,17 +586,17 @@ pub async fn transition_campaign_stage(
         Some(b) => b,
         None => {
             error!("Campaign board definition not found");
-            return ApiResponse::error("Campaign board definition not found".to_string());
+            return Ok(ApiResponse::error("Campaign board definition not found".to_string()));
         }
     };
     
     // Check if transition is allowed
     if !board.can_transition(&campaign.status, &new_stage) {
         error!("Cannot transition from {} to {}", campaign.status, new_stage);
-        return ApiResponse::error(format!(
+        return Ok(ApiResponse::error(format!(
             "Cannot transition from {} to {}",
             campaign.status, new_stage
-        ));
+        )));
     }
     
     // Perform the transition
@@ -621,16 +605,16 @@ pub async fn transition_campaign_stage(
             info!("Successfully transitioned campaign to {}", new_stage);
             
             // Create initial documents for the new stage if needed
-            if let Err(e) = crate::commands::stage_transitions::create_stage_documents(&mut *conn, &updated_campaign, &new_stage) {
+            if let Err(e) = crate::commands::stage_transitions::create_stage_documents(conn, &updated_campaign, &new_stage) {
                 warn!("Failed to create stage documents: {}", e);
                 // Continue anyway - transition succeeded
             }
             
-            ApiResponse::success(Campaign::from(updated_campaign))
+            Ok(ApiResponse::success(Campaign::from(updated_campaign)))
         }
         Err(e) => {
             error!("Failed to transition campaign: {}", e);
-            ApiResponse::error(format!("Failed to transition campaign: {}", e))
+            Ok(ApiResponse::error(format!("Failed to transition campaign: {}", e)))
         }
     }
 }

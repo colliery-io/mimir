@@ -12,7 +12,7 @@ pub struct AppInfo {
 }
 
 #[tauri::command]
-pub async fn get_app_info() -> ApiResponse<AppInfo> {
+pub async fn get_app_info() -> Result<ApiResponse<AppInfo>, String> {
     match APP_PATHS.get() {
         Some(paths) => {
             let app_info = AppInfo {
@@ -21,9 +21,9 @@ pub async fn get_app_info() -> ApiResponse<AppInfo> {
                 config_dir: paths.config_dir.to_string_lossy().to_string(),
                 data_dir: paths.data_dir.to_string_lossy().to_string(),
             };
-            ApiResponse::success(app_info)
+            Ok(ApiResponse::success(app_info))
         }
-        None => ApiResponse::error("Application not initialized".to_string())
+        None => Ok(ApiResponse::error("Application not initialized".to_string()))
     }
 }
 
@@ -33,7 +33,7 @@ pub async fn greet(name: String) -> String {
 }
 
 #[tauri::command]
-pub async fn get_default_campaigns_directory() -> ApiResponse<String> {
+pub async fn get_default_campaigns_directory() -> Result<ApiResponse<String>, String> {
     use directories::UserDirs;
     
     match UserDirs::new() {
@@ -42,10 +42,10 @@ pub async fn get_default_campaigns_directory() -> ApiResponse<String> {
                 .unwrap_or_else(|| user_dirs.home_dir())
                 .join("Mimir Campaigns");
             
-            ApiResponse::success(documents_dir.to_string_lossy().to_string())
+            Ok(ApiResponse::success(documents_dir.to_string_lossy().to_string()))
         }
         None => {
-            ApiResponse::error("Could not determine user directories".to_string())
+            Ok(ApiResponse::error("Could not determine user directories".to_string()))
         }
     }
 }
