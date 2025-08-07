@@ -282,12 +282,202 @@ mod tests {
         let mut service = CampaignService::new(&mut conn);
         
         let result = service.create_campaign(
-            "".to_string(),
+            "",
             None,
-            "/tmp".to_string()
+            "/tmp"
         );
         
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), DbError::InvalidData(_)));
+    }
+    
+    #[test]
+    fn test_create_campaign_with_whitespace_name() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        let result = service.create_campaign(
+            "   ",
+            None,
+            "/tmp"
+        );
+        
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), DbError::InvalidData(_)));
+    }
+    
+    #[test]
+    fn test_create_campaign_success() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        let campaign = service.create_campaign(
+            "My Test Campaign",
+            Some("A test campaign description".to_string()),
+            temp_dir.path().to_str().unwrap()
+        ).unwrap();
+        
+        assert_eq!(campaign.name, "My Test Campaign");
+        assert_eq!(campaign.status, "concept");
+        assert!(campaign.directory_path.contains("My Test Campaign"));
+        
+        // Verify directory was created
+        let campaign_dir = Path::new(&campaign.directory_path);
+        assert!(campaign_dir.exists());
+        assert!(campaign_dir.join("session_zero").exists());
+    }
+    
+    #[test]
+    fn test_create_duplicate_campaign_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        // Create first campaign
+        let campaign1 = service.create_campaign(
+            "Duplicate Test",
+            None,
+            temp_dir.path().to_str().unwrap()
+        ).unwrap();
+        
+        assert_eq!(campaign1.name, "Duplicate Test");
+        
+        // Try to create second campaign with same name in same location
+        let result = service.create_campaign(
+            "Duplicate Test",
+            None,
+            temp_dir.path().to_str().unwrap()
+        );
+        
+        assert!(result.is_err());
+        // Should fail because directory already exists
+    }
+    
+    #[test]
+    fn test_list_campaigns_empty() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        let campaigns = service.list_campaigns().unwrap();
+        assert_eq!(campaigns.len(), 0);
+    }
+    
+    #[test]
+    fn test_list_campaigns_multiple() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        // Create multiple campaigns
+        service.create_campaign(
+            "Campaign 1",
+            None,
+            temp_dir.path().to_str().unwrap()
+        ).unwrap();
+        
+        // Create subdirectory for second campaign
+        let subdir = temp_dir.path().join("other");
+        fs::create_dir_all(&subdir).unwrap();
+        
+        service.create_campaign(
+            "Campaign 2",
+            None,
+            subdir.to_str().unwrap()
+        ).unwrap();
+        
+        let campaigns = service.list_campaigns().unwrap();
+        assert_eq!(campaigns.len(), 2);
+        
+        let names: Vec<String> = campaigns.iter().map(|c| c.name.clone()).collect();
+        assert!(names.contains(&"Campaign 1".to_string()));
+        assert!(names.contains(&"Campaign 2".to_string()));
+    }
+    
+    #[test]
+    fn test_get_campaign() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        let created = service.create_campaign(
+            "Get Test Campaign",
+            Some("Description".to_string()),
+            temp_dir.path().to_str().unwrap()
+        ).unwrap();
+        
+        // Get existing campaign
+        let found = service.get_campaign(created.id).unwrap();
+        assert!(found.is_some());
+        
+        let campaign = found.unwrap();
+        assert_eq!(campaign.id, created.id);
+        assert_eq!(campaign.name, "Get Test Campaign");
+        
+        // Get non-existent campaign
+        let not_found = service.get_campaign(99999).unwrap();
+        assert!(not_found.is_none());
+    }
+    
+    #[test]
+    fn test_transition_campaign_stage() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        let campaign = service.create_campaign(
+            "Transition Test",
+            None,
+            temp_dir.path().to_str().unwrap()
+        ).unwrap();
+        
+        assert_eq!(campaign.status, "concept");
+        
+        // Transition to session_zero
+        let updated = service.transition_campaign_stage(
+            campaign.id,
+            "session_zero"
+        ).unwrap();
+        
+        assert_eq!(updated.status, "session_zero");
+        
+        // Verify we can't transition to invalid stage
+        let invalid_result = service.transition_campaign_stage(
+            campaign.id,
+            "completed"  // Can't jump from session_zero to completed
+        );
+        
+        assert!(invalid_result.is_err());
+        assert!(matches!(invalid_result.unwrap_err(), DbError::InvalidData(_)));
+    }
+    
+    #[test]
+    fn test_transition_nonexistent_campaign() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = CampaignService::new(&mut conn);
+        
+        let result = service.transition_campaign_stage(
+            99999,
+            "session_zero"
+        );
+        
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), DbError::NotFound { .. }));
     }
 }

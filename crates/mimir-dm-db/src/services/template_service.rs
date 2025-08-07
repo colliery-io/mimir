@@ -198,7 +198,14 @@ impl<'a> TemplateService<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::connection::establish_connection;
+    use crate::{
+        connection::establish_connection,
+        dal::campaigns::CampaignRepository,
+        models::campaigns::NewCampaign,
+        models::template_documents::{NewTemplateDocument},
+        dal::template_documents::TemplateRepository,
+    };
+    use tempfile::TempDir;
     
     #[test]
     fn test_determine_template_file_path() {
@@ -222,5 +229,244 @@ mod tests {
             "module-custom"
         );
         assert_eq!(path, "/home/user/campaigns/test/modules/module-custom.md");
+        
+        let path = service.determine_template_file_path(
+            "/home/user/campaigns/test",
+            "faction-template"
+        );
+        assert_eq!(path, "/home/user/campaigns/test/world/factions/faction.md");
+        
+        // Test default fallback
+        let path = service.determine_template_file_path(
+            "/home/user/campaigns/test",
+            "unknown-template"
+        );
+        assert_eq!(path, "/home/user/campaigns/test/unknown-template.md");
+    }
+    
+    #[test]
+    fn test_render_template() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        // Create a test campaign
+        let mut campaign_repo = CampaignRepository::new(&mut conn);
+        let campaign = campaign_repo.create(NewCampaign {
+            name: "Test Campaign".to_string(),
+            status: "concept".to_string(),
+            directory_path: "/test/path".to_string(),
+        }).unwrap();
+        
+        // Create a test template
+        let template = NewTemplateDocument {
+            document_id: "test-template".to_string(),
+            version_number: None,
+            document_content: "# {{ campaign_name }}\n\nPlayer: {{ player_name }}\nLevel: {{ level }}".to_string(),
+            content_hash: None,
+            document_type: Some("test".to_string()),
+            document_level: Some("campaign".to_string()),
+            purpose: Some("Test template".to_string()),
+            variables_schema: Some(r#"[
+                {"name": "player_name", "type": "string", "default": "Unknown"},
+                {"name": "level", "type": "number", "default": 1}
+            ]"#.to_string()),
+            default_values: None,
+            is_active: Some(true),
+            metadata: None,
+        };
+        TemplateRepository::create(&mut conn, template).unwrap();
+        
+        // Test rendering
+        let mut service = TemplateService::new(&mut conn);
+        let mut variables = HashMap::new();
+        variables.insert("player_name".to_string(), serde_json::json!("Alice"));
+        variables.insert("level".to_string(), serde_json::json!(5));
+        
+        let rendered = service.render_template(
+            campaign.id,
+            "test-template",
+            variables
+        ).unwrap();
+        
+        assert!(rendered.contains("# Test Campaign"));
+        assert!(rendered.contains("Player: Alice"));
+        assert!(rendered.contains("Level: 5"));
+    }
+    
+    #[test]
+    fn test_render_template_with_missing_variables() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        // Create a test campaign
+        let mut campaign_repo = CampaignRepository::new(&mut conn);
+        let campaign = campaign_repo.create(NewCampaign {
+            name: "Test Campaign".to_string(),
+            status: "concept".to_string(),
+            directory_path: "/test/path".to_string(),
+        }).unwrap();
+        
+        // Create a template with variables
+        let template = NewTemplateDocument {
+            document_id: "test-template-2".to_string(),
+            version_number: None,
+            document_content: "Campaign: {{ campaign_name }}, Status: {{ campaign_status }}, Custom: {{ custom_var | default(value=\"N/A\") }}".to_string(),
+            content_hash: None,
+            document_type: Some("test".to_string()),
+            document_level: Some("campaign".to_string()),
+            purpose: Some("Test template".to_string()),
+            variables_schema: None,
+            default_values: None,
+            is_active: Some(true),
+            metadata: None,
+        };
+        TemplateRepository::create(&mut conn, template).unwrap();
+        
+        // Test rendering without providing custom_var
+        let mut service = TemplateService::new(&mut conn);
+        let variables = HashMap::new(); // Empty variables
+        
+        let rendered = service.render_template(
+            campaign.id,
+            "test-template-2",
+            variables
+        ).unwrap();
+        
+        assert!(rendered.contains("Campaign: Test Campaign"));
+        assert!(rendered.contains("Status: concept"));
+        assert!(rendered.contains("Custom: N/A"));
+    }
+    
+    #[test]
+    fn test_render_nonexistent_template() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        // Create a test campaign
+        let mut campaign_repo = CampaignRepository::new(&mut conn);
+        let campaign = campaign_repo.create(NewCampaign {
+            name: "Test Campaign".to_string(),
+            status: "concept".to_string(),
+            directory_path: "/test/path".to_string(),
+        }).unwrap();
+        
+        let mut service = TemplateService::new(&mut conn);
+        let result = service.render_template(
+            campaign.id,
+            "nonexistent-template",
+            HashMap::new()
+        );
+        
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    fn test_render_template_nonexistent_campaign() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = TemplateService::new(&mut conn);
+        let result = service.render_template(
+            99999,
+            "some-template",
+            HashMap::new()
+        );
+        
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), DbError::NotFound { .. }));
+    }
+    
+    #[test]
+    fn test_generate_document() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        // Create a test campaign with temp directory
+        let mut campaign_repo = CampaignRepository::new(&mut conn);
+        let campaign = campaign_repo.create(NewCampaign {
+            name: "Test Campaign".to_string(),
+            status: "concept".to_string(),
+            directory_path: temp_dir.path().to_str().unwrap().to_string(),
+        }).unwrap();
+        
+        // Create a test template
+        let template = NewTemplateDocument {
+            document_id: "test-doc".to_string(),
+            version_number: None,
+            document_content: "# Test Document\n\nCampaign: {{ campaign_name }}".to_string(),
+            content_hash: None,
+            document_type: Some("test".to_string()),
+            document_level: Some("campaign".to_string()),
+            purpose: Some("Test document".to_string()),
+            variables_schema: None,
+            default_values: None,
+            is_active: Some(true),
+            metadata: None,
+        };
+        TemplateRepository::create(&mut conn, template).unwrap();
+        
+        // Generate the document
+        let mut service = TemplateService::new(&mut conn);
+        let file_path = service.generate_document(
+            campaign.id,
+            "test-doc",
+            HashMap::new()
+        ).unwrap();
+        
+        // Verify file was created
+        let full_path = PathBuf::from(&file_path);
+        assert!(full_path.exists());
+        
+        // Verify content
+        let content = fs::read_to_string(&full_path).unwrap();
+        assert!(content.contains("# Test Document"));
+        assert!(content.contains("Campaign: Test Campaign"));
+    }
+    
+    #[test]
+    fn test_get_template_file_path() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        // Create a test campaign
+        let mut campaign_repo = CampaignRepository::new(&mut conn);
+        let campaign = campaign_repo.create(NewCampaign {
+            name: "Path Test Campaign".to_string(),
+            status: "concept".to_string(),
+            directory_path: "/campaigns/my-campaign".to_string(),
+        }).unwrap();
+        
+        let mut service = TemplateService::new(&mut conn);
+        
+        let path = service.get_template_file_path(
+            campaign.id,
+            "campaign-bible"
+        ).unwrap();
+        
+        assert_eq!(path, "/campaigns/my-campaign/campaign_bible.md");
+        
+        let path = service.get_template_file_path(
+            campaign.id,
+            "session-outline"
+        ).unwrap();
+        
+        assert_eq!(path, "/campaigns/my-campaign/sessions/session_outline.md");
+    }
+    
+    #[test]
+    fn test_get_template_file_path_nonexistent_campaign() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        
+        let mut service = TemplateService::new(&mut conn);
+        
+        let result = service.get_template_file_path(
+            99999,
+            "some-template"
+        );
+        
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), DbError::NotFound { .. }));
     }
 }
