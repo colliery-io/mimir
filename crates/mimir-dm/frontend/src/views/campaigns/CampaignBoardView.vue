@@ -3,9 +3,10 @@
     <div class="campaign-board-container">
       <!-- Document Sidebar -->
       <DocumentSidebar 
-        v-if="campaign"
+        v-if="campaign && boardConfig"
         :campaign-id="campaign.id"
-        :campaign-stage="campaign.status" 
+        :campaign-stage="campaign.status"
+        :board-config="boardConfig"
         @select-document="handleSelectDocument"
         @create-document="handleCreateDocument"
       />
@@ -33,10 +34,11 @@
         <div class="main-content">
           <!-- Stage Landing View (default) -->
           <StageLandingView 
-            v-if="!selectedDocument && campaign"
+            v-if="!selectedDocument && campaign && boardConfig"
             :stage="currentStage"
             :documents="documents"
             :campaign="campaign"
+            :boardConfig="boardConfig"
             @create-document="handleCreateDocumentFromTemplate"
             @edit-document="handleEditDocument" 
             @transition-stage="handleTransitionStage"
@@ -76,14 +78,16 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const selectedDocument = ref<any>(null)
 const documents = ref<any[]>([])
+const boardConfig = ref<any>(null)
 
-// Stage definitions
-const stages = [
-  { key: 'concept', name: 'CONCEPT' },
-  { key: 'session_zero', name: 'SESSION ZERO' },
-  { key: 'integration', name: 'INTEGRATION' },
-  { key: 'active', name: 'ACTIVE' }
-]
+// Dynamic stages from board configuration
+const stages = computed(() => {
+  if (!boardConfig.value) return []
+  return boardConfig.value.stages.map((stage: any) => ({
+    key: stage.key,
+    name: stage.display_name.toUpperCase()
+  }))
+})
 
 // Map status to stage for display
 const currentStage = computed(() => {
@@ -100,10 +104,24 @@ const currentStage = computed(() => {
 
 // Check if a stage is completed (before the current stage)
 const isStageCompleted = (stageKey: string): boolean => {
-  const stageOrder = ['concept', 'session_zero', 'integration', 'active']
+  if (!boardConfig.value) return false
+  const stageOrder = boardConfig.value.stages.map((s: any) => s.key)
   const currentIndex = stageOrder.indexOf(currentStage.value)
   const checkIndex = stageOrder.indexOf(stageKey)
   return checkIndex < currentIndex
+}
+
+// Load board configuration
+const loadBoardConfiguration = async () => {
+  try {
+    const response = await invoke<{ data: any }>('get_board_configuration', {
+      boardType: 'campaign'
+    })
+    boardConfig.value = response.data
+    console.log('Loaded board configuration:', boardConfig.value)
+  } catch (e) {
+    console.error('Failed to load board configuration:', e)
+  }
 }
 
 // Load campaign data
@@ -112,6 +130,9 @@ const loadCampaign = async () => {
   error.value = null
   
   try {
+    // Load board configuration first
+    await loadBoardConfiguration()
+    
     const response = await invoke<{ data: Campaign }>('get_campaign', { 
       id: parseInt(props.id) 
     })

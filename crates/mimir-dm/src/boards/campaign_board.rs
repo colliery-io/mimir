@@ -27,15 +27,7 @@ impl BoardDefinition for CampaignBoard {
             ("integration", "active") => true,
             ("active", "concluding") => true,
             ("concluding", "completed") => true,
-            
-            // Allow moving back for revision
-            ("session_zero", "concept") => true,
-            ("integration", "session_zero") => true,
-            
-            // Allow archiving at early stages
-            ("concept", "archived") => true,
-            ("session_zero", "archived") => true,
-            
+                        
             _ => false,
         }
     }
@@ -49,7 +41,6 @@ impl BoardDefinition for CampaignBoard {
                 "character_guidelines",
                 "table_expectations",
                 "character_integration_forms",
-                "session_zero_packet",
             ],
             "integration" => vec![
                 "campaign_bible",

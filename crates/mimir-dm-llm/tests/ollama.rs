@@ -7,8 +7,6 @@ use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_ollama_completion() {
-    crate::test_utils::setup();
-    
     println!("Starting completion test");
     let config = ModelConfig {
         name: "llama3.1".to_string(),
@@ -39,7 +37,6 @@ async fn test_ollama_completion() {
 
 #[tokio::test]
 async fn test_ollama_chat() {
-    crate::test_utils::setup();
     
     println!("Starting chat test");
     let config = ModelConfig {
@@ -82,7 +79,6 @@ async fn test_ollama_chat() {
 
 #[tokio::test]
 async fn test_ollama_embeddings() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "nomic-embed-text".to_string(),
@@ -111,7 +107,6 @@ async fn test_ollama_embeddings() {
 
 #[tokio::test]
 async fn test_ollama_unsupported_embeddings() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "phi".to_string(),
@@ -135,7 +130,6 @@ async fn test_ollama_unsupported_embeddings() {
 
 #[tokio::test]
 async fn test_ollama_unsupported_endpoint() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "llama3.1-local".to_string(),
@@ -164,7 +158,6 @@ async fn test_ollama_unsupported_endpoint() {
 
 #[tokio::test]
 async fn test_ollama_invalid_endpoint() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "llama3.1-local".to_string(),
@@ -199,7 +192,6 @@ async fn test_ollama_invalid_endpoint() {
 
 #[tokio::test]
 async fn test_ollama_missing_model() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "non-existent-model".to_string(),
@@ -236,7 +228,6 @@ async fn test_ollama_missing_model() {
 
 #[tokio::test]
 async fn test_ollama_rate_limiting() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "llama3.1-local".to_string(),
@@ -294,7 +285,6 @@ async fn test_ollama_rate_limiting() {
 
 #[tokio::test] 
 async fn test_ollama_embedding_dimensions() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "nomic-embed-text".to_string(),
@@ -336,7 +326,6 @@ async fn test_ollama_embedding_dimensions() {
 
 #[tokio::test]
 async fn test_ollama_multiple_messages_chat() {
-    crate::test_utils::setup();
     
     let config = ModelConfig {
         name: "llama3.1".to_string(),

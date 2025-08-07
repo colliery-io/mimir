@@ -28,6 +28,7 @@ impl<T> ApiResponse<T> {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum ApiError {
     #[error("Database error: {0}")]

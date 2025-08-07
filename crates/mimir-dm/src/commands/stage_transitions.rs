@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::fs;
 use std::collections::HashMap;
 use anyhow::Result;
-use tera::{Context, Tera};
+use tera::Tera;
 use serde_json::Value as JsonValue;
 use crate::DatabaseService;
 use crate::types::ApiResponse;
@@ -49,7 +49,7 @@ fn get_stage_documents(stage: &str) -> Vec<(&'static str, &'static str)> {
 }
 
 /// Create documents for a campaign stage
-fn create_stage_documents(
+pub fn create_stage_documents(
     conn: &mut DbConnection,
     campaign: &Campaign,
     stage: &str,
@@ -139,47 +139,6 @@ pub fn create_initial_documents(
     campaign: &Campaign,
 ) -> Result<Vec<String>, anyhow::Error> {
     create_stage_documents(conn, campaign, "concept")
-}
-
-/// Transition campaign to a new stage
-#[tauri::command]
-pub async fn transition_campaign_stage(
-    campaign_id: i32,
-    new_stage: String,
-    db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Campaign>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    // Get the campaign
-    let mut campaign_repo = CampaignRepository::new(conn);
-    let campaign = match campaign_repo.find_by_id(campaign_id) {
-        Ok(Some(c)) => c,
-        Ok(None) => return Ok(ApiResponse::error("Campaign not found".to_string())),
-        Err(e) => return Ok(ApiResponse::error(format!("Database error: {}", e)))
-    };
-    
-    // Validate transition
-    if !campaign.can_transition_to(&new_stage) {
-        return Ok(ApiResponse::error(format!(
-            "Cannot transition from {} to {}",
-            campaign.status, new_stage
-        )));
-    }
-    
-    // Transition the campaign
-    let updated_campaign = campaign_repo.transition_status(campaign_id, &new_stage)
-        .map_err(|e| format!("Failed to transition campaign: {}", e))?;
-    
-    // Create documents for the new stage
-    let created_docs = create_stage_documents(conn, &updated_campaign, &new_stage)
-        .map_err(|e| format!("Failed to create stage documents: {}", e))?;
-    
-    if !created_docs.is_empty() {
-        println!("Created {} documents for {} stage", created_docs.len(), new_stage);
-    }
-    
-    Ok(ApiResponse::success(updated_campaign))
 }
 
 /// Initialize documents for current campaign stage

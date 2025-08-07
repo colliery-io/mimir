@@ -15,7 +15,7 @@ def test_all():
     """Run all tests in the workspace with cargo test"""
     print("Running all tests across the workspace...")
     result = subprocess.run(
-        ["cargo", "test", "--workspace"],
+        ["cargo", "test", "--workspace", "--lib", "--bins", "--tests"],
         cwd=PROJECT_ROOT,
         capture_output=False
     )

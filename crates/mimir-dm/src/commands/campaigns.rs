@@ -621,7 +621,7 @@ pub async fn transition_campaign_stage(
             info!("Successfully transitioned campaign to {}", new_stage);
             
             // Create initial documents for the new stage if needed
-            if let Err(e) = crate::commands::stage_transitions::create_stage_documents(&mut *conn, &updated_campaign) {
+            if let Err(e) = crate::commands::stage_transitions::create_stage_documents(&mut *conn, &updated_campaign, &new_stage) {
                 warn!("Failed to create stage documents: {}", e);
                 // Continue anyway - transition succeeded
             }
@@ -634,3 +634,4 @@ pub async fn transition_campaign_stage(
         }
     }
 }
+

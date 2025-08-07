@@ -3,8 +3,8 @@
 mod common;
 
 use mimir_dm_import::{BundleImporter, import_bundle};
+use std::io::Write;
 use mimir_dm_db::{
-    establish_connection,
     dal::{
         rule_systems::RuleSystemRepository,
         sources::SourceRepository,
@@ -28,34 +28,34 @@ async fn test_full_import_pipeline() {
     
     // Verify rule system was imported
     let rule_system_repo = RuleSystemRepository::new(db_url.clone());
-    let rule_systems = rule_system_repo.list(None, None).await.unwrap();
+    let rule_systems = rule_system_repo.list().await.unwrap();
     assert_eq!(rule_systems.len(), 1);
     assert_eq!(rule_systems[0].id, "test-system");
     assert_eq!(rule_systems[0].name, "Test Bundle");
     
     // Verify source was imported
     let source_repo = SourceRepository::new(db_url.clone());
-    let sources = source_repo.list(None, None).await.unwrap();
+    let sources = source_repo.list().await.unwrap();
     assert_eq!(sources.len(), 1);
     assert_eq!(sources[0].id, "TST");
     assert_eq!(sources[0].full_name, "Test Source Book");
     
     // Verify races were imported
     let race_repo = RaceRepository::new(db_url.clone());
-    let races = race_repo.list(None, None).await.unwrap();
+    let races = race_repo.list().await.unwrap();
     assert_eq!(races.len(), 2);
     
     let human = races.iter().find(|r| r.id == "test-human").unwrap();
     assert_eq!(human.name, "Test Human");
-    assert_eq!(human.source, "TST");
+    assert_eq!(human.source_id, "TST");
     
     let elf = races.iter().find(|r| r.id == "test-elf").unwrap();
     assert_eq!(elf.name, "Test Elf");
-    assert_eq!(elf.darkvision, Some(60));
+    // Note: darkvision is stored in entries or traits, not as a separate field
     
     // Verify items were imported
     let item_repo = ItemRepository::new(db_url.clone());
-    let items = item_repo.list(None, None).await.unwrap();
+    let items = item_repo.list().await.unwrap();
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].id, "test-sword");
     assert_eq!(items[0].name, "Test Sword");
@@ -74,7 +74,7 @@ async fn test_import_bundle_function() {
     
     // Verify data was imported
     let rule_system_repo = RuleSystemRepository::new(db_url.clone());
-    let rule_systems = rule_system_repo.list(None, None).await.unwrap();
+    let rule_systems = rule_system_repo.list().await.unwrap();
     assert_eq!(rule_systems.len(), 1);
 }
 
@@ -107,8 +107,9 @@ async fn test_duplicate_import_fails() {
 #[tokio::test]
 async fn test_partial_bundle_import() {
     // Create a test bundle with only some entity types
-    let temp_file = tempfile::NamedTempFile::new().unwrap();
-    let gz = flate2::write::GzEncoder::new(&temp_file, flate2::Compression::default());
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+    let buffer = Vec::new();
+    let gz = flate2::write::GzEncoder::new(buffer, flate2::Compression::default());
     let mut tar = tar::Builder::new(gz);
     
     // Add minimal files
@@ -120,7 +121,7 @@ async fn test_partial_bundle_import() {
         "rule_system": "partial-system",
         "description": "A partial bundle",
         "entity_counts": {
-            "sources": 0,
+            "sources": 1,
             "races": 1,
             "classes": 0,
             "items": 0,
@@ -134,7 +135,22 @@ async fn test_partial_bundle_import() {
     add_file(&mut tar, "partial-bundle/manifest.json", manifest.as_bytes());
     add_file(&mut tar, "partial-bundle/version.json", r#"{"bundle_version": "1.0.0"}"#.as_bytes());
     
-    // Only add races.json
+    // Add sources.json since race references it
+    let sources = r#"{
+        "sources": [{
+            "id": "PRT",
+            "full_name": "Partial Test",
+            "abbreviation": "PRT",
+            "authors": ["Test"],
+            "published_date": "2024-01-01",
+            "version": "1.0",
+            "is_official": false,
+            "book_type": "core"
+        }]
+    }"#;
+    add_file(&mut tar, "partial-bundle/sources.json", sources.as_bytes());
+    
+    // Add races.json
     let races = r#"{
         "races": [{
             "id": "partial-race",
@@ -147,8 +163,11 @@ async fn test_partial_bundle_import() {
     }"#;
     add_file(&mut tar, "partial-bundle/races.json", races.as_bytes());
     
-    tar.finish().unwrap();
-    drop(tar);
+    // Finish the tar and write to file
+    let gz = tar.into_inner().unwrap();
+    let compressed_data = gz.finish().unwrap();
+    temp_file.write_all(&compressed_data).unwrap();
+    temp_file.flush().unwrap();
     
     // Import the partial bundle
     let db_url = common::test_db_url();
@@ -160,7 +179,7 @@ async fn test_partial_bundle_import() {
     
     // Verify only races were imported
     let race_repo = RaceRepository::new(db_url.clone());
-    let races = race_repo.list(None, None).await.unwrap();
+    let races = race_repo.list().await.unwrap();
     assert_eq!(races.len(), 1);
     assert_eq!(races[0].id, "partial-race");
 }

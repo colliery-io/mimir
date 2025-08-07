@@ -69,7 +69,9 @@ fn main() {
             save_document_file,
             check_campaign_stage_completion,
             transition_campaign_stage,
-            initialize_stage_documents
+            initialize_stage_documents,
+            get_board_configuration,
+            get_next_stage
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

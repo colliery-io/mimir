@@ -174,6 +174,7 @@ const props = defineProps<{
   stage: string
   documents: any[]
   campaign: any
+  boardConfig: any
 }>()
 
 const emit = defineEmits<{
@@ -182,29 +183,20 @@ const emit = defineEmits<{
   transitionStage: [newStage: string]
 }>()
 
-// Stage information mapping
-const stageInfoMap: Record<string, { title: string; subtitle: string }> = {
-  concept: {
-    title: 'Campaign Concept',
-    subtitle: 'Transform your spark into a compelling campaign pitch'
-  },
-  session_zero: {
-    title: 'Session Zero Preparation',
-    subtitle: 'Create materials to bring players into your world'
-  },
-  integration: {
-    title: 'Integration Phase',
-    subtitle: 'Connect characters to your world and prepare for play'
-  },
-  active: {
-    title: 'Campaign Active',
-    subtitle: 'Your adventure is underway!'
-  },
-  concluding: {
-    title: 'Campaign Conclusion',
-    subtitle: 'Wrapping up your epic tale'
+// Get stage info from board configuration
+const stageInfo = computed(() => {
+  if (!props.boardConfig) {
+    return { title: '', subtitle: '' }
   }
-}
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  if (!currentStageInfo) {
+    return { title: '', subtitle: '' }
+  }
+  return {
+    title: currentStageInfo.display_name,
+    subtitle: currentStageInfo.description
+  }
+})
 
 // Session Zero document info
 const sessionZeroDocuments = [
@@ -230,8 +222,7 @@ const sessionZeroDocuments = [
   }
 ]
 
-// Computed properties
-const stageInfo = computed(() => stageInfoMap[props.stage] || { title: '', subtitle: '' })
+// Document progress is computed from actual documents
 
 const documentProgress = computed(() => {
   const stageDocuments = props.documents.filter(doc => {
@@ -247,27 +238,40 @@ const documentProgress = computed(() => {
 })
 
 const nextStageAvailable = computed(() => {
-  // Logic to determine if ready for next stage
-  if (props.stage === 'concept' && documentProgress.value.completed > 0) return true
-  if (props.stage === 'session_zero' && documentProgress.value.percentage >= 80) return true
-  if (props.stage === 'integration') return true
-  return false
+  // Check if all required documents are complete
+  if (!props.boardConfig) return false
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  if (!currentStageInfo) return false
+  
+  // Check if there's a next stage
+  const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
+  const currentIndex = stageOrder.indexOf(props.stage)
+  if (currentIndex >= stageOrder.length - 1) return false
+  
+  // Check if required documents are complete
+  const requiredDocs = currentStageInfo.required_documents
+  const completedDocs = props.documents.filter(doc => 
+    requiredDocs.includes(doc.template_id) && doc.completed_at
+  )
+  
+  return completedDocs.length === requiredDocs.length && requiredDocs.length > 0
 })
 
 const nextStageName = computed(() => {
-  const stageOrder = ['concept', 'session_zero', 'integration', 'active', 'concluding']
+  if (!props.boardConfig) return ''
+  const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
   const currentIndex = stageOrder.indexOf(props.stage)
-  return currentIndex < stageOrder.length - 1 ? stageOrder[currentIndex + 1].replace('_', ' ') : ''
+  if (currentIndex < stageOrder.length - 1) {
+    const nextStage = props.boardConfig.stages[currentIndex + 1]
+    return nextStage.display_name
+  }
+  return ''
 })
 
 const nextStagePrompt = computed(() => {
-  const prompts: Record<string, string> = {
-    concept: 'Your campaign pitch is ready. Time to prepare for Session Zero!',
-    session_zero: 'Session Zero materials are prepared. Ready to integrate characters!',
-    integration: 'Everything is connected. Launch your campaign!',
-    active: 'Your campaign has reached its natural conclusion.'
-  }
-  return prompts[props.stage] || ''
+  if (!props.boardConfig) return ''
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  return currentStageInfo?.transition_prompt || ''
 })
 
 // Placeholder data (would come from props/store in real app)
@@ -292,7 +296,8 @@ const startDocument = (templateId: string) => {
 }
 
 const transitionToNextStage = () => {
-  const stageOrder = ['concept', 'session_zero', 'integration', 'active', 'concluding']
+  if (!props.boardConfig) return
+  const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
   const currentIndex = stageOrder.indexOf(props.stage)
   if (currentIndex < stageOrder.length - 1) {
     emit('transitionStage', stageOrder[currentIndex + 1])

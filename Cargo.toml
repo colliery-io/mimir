@@ -5,7 +5,6 @@ members = [
     "crates/mimir-dm-db", 
     "crates/mimir-dm-llm",
     "crates/mimir-dm-agents",
-    "crates/mimir-dm-tui",
     "crates/mimir-dm-import"
 ]
 resolver = "2"

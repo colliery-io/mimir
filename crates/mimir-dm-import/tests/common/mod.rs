@@ -1,7 +1,6 @@
 //! Common test utilities
 
 use std::io::Write;
-use std::path::Path;
 use tar::Builder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -9,8 +8,9 @@ use tempfile::NamedTempFile;
 
 /// Create a minimal test bundle with basic structure
 pub fn create_test_bundle() -> NamedTempFile {
-    let temp_file = NamedTempFile::new().unwrap();
-    let gz = GzEncoder::new(&temp_file, Compression::default());
+    let mut temp_file = NamedTempFile::new().unwrap();
+    let buffer = Vec::new();
+    let gz = GzEncoder::new(buffer, Compression::default());
     let mut tar = Builder::new(gz);
 
     // Add manifest.json
@@ -116,21 +116,36 @@ pub fn create_test_bundle() -> NamedTempFile {
     
     add_file_to_tar(&mut tar, "test-bundle/items.json", items.as_bytes());
 
-    tar.finish().unwrap();
+    // Finish the tar and get the compressed data
+    let gz = tar.into_inner().unwrap();
+    let compressed_data = gz.finish().unwrap();
+    
+    // Write to temp file
+    temp_file.write_all(&compressed_data).unwrap();
+    temp_file.flush().unwrap();
+    
     temp_file
 }
 
 /// Create an invalid test bundle (missing manifest)
 pub fn create_invalid_bundle() -> NamedTempFile {
-    let temp_file = NamedTempFile::new().unwrap();
-    let gz = GzEncoder::new(&temp_file, Compression::default());
+    let mut temp_file = NamedTempFile::new().unwrap();
+    let buffer = Vec::new();
+    let gz = GzEncoder::new(buffer, Compression::default());
     let mut tar = Builder::new(gz);
 
     // Only add version.json, missing manifest.json
     let version = r#"{"bundle_version": "1.0.0"}"#;
     add_file_to_tar(&mut tar, "test-bundle/version.json", version.as_bytes());
 
-    tar.finish().unwrap();
+    // Finish the tar and get the compressed data
+    let gz = tar.into_inner().unwrap();
+    let compressed_data = gz.finish().unwrap();
+    
+    // Write to temp file
+    temp_file.write_all(&compressed_data).unwrap();
+    temp_file.flush().unwrap();
+    
     temp_file
 }
 
@@ -145,20 +160,27 @@ fn add_file_to_tar<W: Write>(tar: &mut Builder<W>, path: &str, data: &[u8]) {
     tar.append(&header, data).unwrap();
 }
 
+use std::sync::atomic::{AtomicU32, Ordering};
+
+static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
+
 /// Create a test database URL for isolated testing
 pub fn test_db_url() -> String {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    format!("{}", db_path.display())
+    // Create a unique database file for each test
+    let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let temp_dir = std::env::temp_dir();
+    let db_path = temp_dir.join(format!("mimir_test_{}.db", test_id));
+    
+    // Clean up any existing file
+    let _ = std::fs::remove_file(&db_path);
+    
+    db_path.to_string_lossy().to_string()
 }
 
 /// Initialize a test database with schema
 pub async fn init_test_db(db_url: &str) {
-    use mimir_dm_db::establish_connection;
-    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-    
-    const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../../migrations");
+    use mimir_dm_db::{establish_connection, run_migrations};
     
     let mut conn = establish_connection(db_url).unwrap();
-    conn.run_pending_migrations(MIGRATIONS).unwrap();
+    run_migrations(&mut conn).unwrap();
 }

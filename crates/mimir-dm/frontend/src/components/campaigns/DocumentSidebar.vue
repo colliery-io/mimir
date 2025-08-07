@@ -11,98 +11,31 @@
       </div>
       
       <div v-else class="stage-groups">
-        <!-- Concept Stage Documents -->
-        <div class="stage-group">
+        <!-- Dynamic Stage Documents from Board Configuration -->
+        <div 
+          v-for="stage in boardConfig?.stages || []" 
+          :key="stage.key"
+          v-show="isStageAccessible(stage.key) || stage.key === 'concept'"
+          class="stage-group"
+        >
           <div class="stage-header">
-            <h4>Concept Stage ({{ conceptDocs.completed }}/{{ conceptDocs.total }})</h4>
+            <h4>{{ stage.display_name }} ({{ getStageDocuments(stage.key).completed }}/{{ getStageDocuments(stage.key).total }})</h4>
             <div class="progress-bar">
               <div 
                 class="progress-fill" 
-                :style="{ width: conceptDocs.percentage + '%' }"
+                :style="{ width: getStageDocuments(stage.key).percentage + '%' }"
               ></div>
             </div>
           </div>
           <div class="document-items">
             <div 
-              v-for="doc in conceptDocs.documents" 
+              v-for="doc in getStageDocuments(stage.key).documents" 
               :key="doc.templateId"
               class="document-item"
               :class="{ 
                 selected: selectedDocument?.template_id === doc.templateId,
                 completed: doc.instance?.completed_at,
-                locked: !isStageAccessible('concept')
-              }"
-              @click="handleDocumentClick(doc)"
-            >
-              <img 
-                v-if="getDocumentIcon(doc)" 
-                :src="getDocumentIcon(doc)" 
-                :alt="doc.instance ? 'Edit' : 'Locked'"
-                class="document-icon"
-              />
-              <span v-else-if="doc.instance?.completed_at" class="document-icon-text">✓</span>
-              <span v-else class="document-icon-placeholder"></span>
-              <span class="document-title">{{ doc.title }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Session Zero Stage Documents -->
-        <div class="stage-group">
-          <div class="stage-header">
-            <h4>Session Zero ({{ sessionZeroDocs.completed }}/{{ sessionZeroDocs.total }})</h4>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill" 
-                :style="{ width: sessionZeroDocs.percentage + '%' }"
-              ></div>
-            </div>
-          </div>
-          <div class="document-items">
-            <div 
-              v-for="doc in sessionZeroDocs.documents" 
-              :key="doc.templateId"
-              class="document-item"
-              :class="{ 
-                selected: selectedDocument?.template_id === doc.templateId,
-                completed: doc.instance?.completed_at,
-                locked: !isStageAccessible('session_zero')
-              }"
-              @click="handleDocumentClick(doc)"
-            >
-              <img 
-                v-if="getDocumentIcon(doc)" 
-                :src="getDocumentIcon(doc)" 
-                :alt="doc.instance ? 'Edit' : 'Locked'"
-                class="document-icon"
-              />
-              <span v-else-if="doc.instance?.completed_at" class="document-icon-text">✓</span>
-              <span v-else class="document-icon-placeholder"></span>
-              <span class="document-title">{{ doc.title }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Integration Stage Documents -->
-        <div class="stage-group">
-          <div class="stage-header">
-            <h4>Integration ({{ integrationDocs.completed }}/{{ integrationDocs.total }})</h4>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill" 
-                :style="{ width: integrationDocs.percentage + '%' }"
-              ></div>
-            </div>
-          </div>
-          <div class="document-items">
-            <div 
-              v-for="doc in integrationDocs.documents" 
-              :key="doc.templateId"
-              class="document-item"
-              :class="{ 
-                selected: selectedDocument?.template_id === doc.templateId,
-                completed: doc.instance?.completed_at,
-                locked: !isStageAccessible('integration')
+                locked: !isStageAccessible(stage.key)
               }"
               @click="handleDocumentClick(doc)"
             >
@@ -153,6 +86,7 @@ interface Document {
 const props = defineProps<{
   campaignId: number
   campaignStage: string
+  boardConfig: any
 }>()
 
 const emit = defineEmits<{
@@ -160,26 +94,33 @@ const emit = defineEmits<{
   createDocument: []
 }>()
 
-// Define document templates for each stage
-const stageDocuments = {
-  concept: [
-    { templateId: 'campaign-pitch', title: 'Campaign Pitch' }
-  ],
-  session_zero: [
-    { templateId: 'starting-scenario', title: 'Starting Scenario' },
-    { templateId: 'world-primer', title: 'World Primer' },
-    { templateId: 'character-guidelines', title: 'Character Guidelines' },
-    { templateId: 'table-expectations', title: 'Table Expectations' },
-    { templateId: 'character-integration', title: 'Character Integration Forms' },
-    { templateId: 'session-zero-packet', title: 'Session Zero Packet' }
-  ],
-  integration: [
-    { templateId: 'campaign-bible', title: 'Campaign Bible' },
-    { templateId: 'character-integration-notes', title: 'Character Integration Notes' },
-    { templateId: 'major-npcs', title: 'Major NPCs' },
-    { templateId: 'world-timeline', title: 'World Events Timeline' }
-  ]
-}
+// Get document templates from board configuration
+const stageDocuments = computed(() => {
+  if (!props.boardConfig) return {}
+  
+  const documents: Record<string, any[]> = {}
+  
+  for (const stage of props.boardConfig.stages) {
+    documents[stage.key] = [
+      ...stage.required_documents.map((docId: string) => ({
+        templateId: docId,
+        title: docId.split('_').map((word: string) => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' '),
+        required: true
+      })),
+      ...stage.optional_documents.map((docId: string) => ({
+        templateId: docId,
+        title: docId.split('_').map((word: string) => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' '),
+        required: false
+      }))
+    ]
+  }
+  
+  return documents
+})
 
 // State
 const documents = ref<Document[]>([])
@@ -206,15 +147,12 @@ const iconMap = {
   }
 }
 
-// Computed properties for stage document groups
-const conceptDocs = computed(() => getStageDocuments('concept'))
-const sessionZeroDocs = computed(() => getStageDocuments('session_zero'))
-const integrationDocs = computed(() => getStageDocuments('integration'))
+// Stage documents are now computed dynamically from board configuration
 
 // Get documents for a specific stage
 const getStageDocuments = (stage: string) => {
-  const templates = stageDocuments[stage as keyof typeof stageDocuments] || []
-  const stageDocumentList = templates.map(template => {
+  const templates = stageDocuments.value[stage] || []
+  const stageDocumentList = templates.map((template: any) => {
     const instance = documents.value.find(doc => doc.template_id === template.templateId)
     return {
       ...template,
@@ -222,7 +160,7 @@ const getStageDocuments = (stage: string) => {
     }
   })
   
-  const completed = stageDocumentList.filter(doc => doc.instance?.completed_at).length
+  const completed = stageDocumentList.filter((doc: any) => doc.instance?.completed_at).length
   const total = stageDocumentList.length
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
   
@@ -236,7 +174,8 @@ const getStageDocuments = (stage: string) => {
 
 // Check if a stage is accessible based on campaign progress
 const isStageAccessible = (stage: string) => {
-  const stageOrder = ['concept', 'session_zero', 'integration', 'active']
+  if (!props.boardConfig) return false
+  const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
   const currentIndex = stageOrder.indexOf(props.campaignStage)
   const checkIndex = stageOrder.indexOf(stage)
   return checkIndex <= currentIndex
@@ -261,8 +200,8 @@ const getDocumentIcon = (doc: any): string | undefined => {
 
 // Get which stage a template belongs to
 const getDocumentStage = (templateId: string): string => {
-  for (const [stage, docs] of Object.entries(stageDocuments)) {
-    if (docs.some(d => d.templateId === templateId)) {
+  for (const [stage, docs] of Object.entries(stageDocuments.value)) {
+    if ((docs as any[]).some(d => d.templateId === templateId)) {
       return stage
     }
   }
