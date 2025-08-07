@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_init;
-mod boards;
 mod commands;
 mod db_connection;
 mod seed_templates;

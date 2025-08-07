@@ -45,7 +45,8 @@ def test_integration():
         print("Running LLM integration tests...")
         subprocess.run(["bash", str(llm_test_script)], cwd=llm_test_script.parent)
     
-    # Run other integration tests
+    # Run other integration tests (now fully isolated with in-memory databases)
+    print("Running integration tests...")
     result = subprocess.run(
         ["cargo", "test", "--workspace", "--", "--ignored"],
         cwd=PROJECT_ROOT,

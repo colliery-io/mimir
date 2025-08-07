@@ -1,9 +1,7 @@
 //! Board configuration commands
 
-use crate::{
-    boards::BoardRegistry,
-    types::ApiResponse,
-};
+use crate::types::ApiResponse;
+use mimir_dm_db::domain::{BoardRegistry, StageMetadata};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 

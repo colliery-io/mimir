@@ -1,7 +1,6 @@
 //! Campaign management commands
 
 use crate::{
-    boards::{BoardCompletionStatus, BoardRegistry},
     services::database::DatabaseService,
     types::ApiResponse,
     APP_PATHS,
@@ -10,6 +9,7 @@ use mimir_dm_db::{
     dal::campaigns::CampaignRepository,
     dal::documents::DocumentRepository,
     dal::template_documents::TemplateRepository,
+    domain::{BoardCompletionStatus, BoardRegistry},
     models::campaigns::{Campaign as DbCampaign, NewCampaign},
 };
 use serde::{Deserialize, Serialize};

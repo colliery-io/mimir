@@ -6,11 +6,13 @@
 
 pub mod connection;
 pub mod dal;
+pub mod domain;
 pub mod error;
 pub mod json_types;
 pub mod models;
 pub mod schema;
 pub mod seed;
+pub mod services;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
