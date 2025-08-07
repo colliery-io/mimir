@@ -20,25 +20,19 @@ pub struct TemplateService<'a> {
     conn: &'a mut DbConnection,
 }
 
-pub struct RenderedDocument {
-    pub file_path: String,
-    pub content: String,
-    pub template_id: String,
-}
-
 impl<'a> TemplateService<'a> {
     /// Create a new template service
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }
     
-    /// Render a template for a campaign
+    /// Render a template for a campaign and return the rendered content
     pub fn render_template(
         &mut self,
         campaign_id: i32,
-        template_id: String,
+        template_id: &str,
         variables: HashMap<String, JsonValue>,
-    ) -> Result<RenderedDocument> {
+    ) -> Result<String> {
         // Get the campaign
         let mut campaign_repo = CampaignRepository::new(self.conn);
         let campaign = campaign_repo.find_by_id(campaign_id)?
@@ -48,40 +42,43 @@ impl<'a> TemplateService<'a> {
             })?;
         
         // Get the template
-        let template = TemplateRepository::get_latest(self.conn, &template_id)?;
+        let template = TemplateRepository::get_latest(self.conn, template_id)?;
         
         // Render the template content
-        let rendered_content = self.render_template_content(
+        self.render_template_content(
             &template,
             &campaign,
             variables
-        )?;
-        
-        // Determine the file path
-        let file_path = self.determine_template_file_path(
-            &campaign.directory_path,
-            &template_id
-        );
-        
-        Ok(RenderedDocument {
-            file_path,
-            content: rendered_content,
-            template_id,
-        })
+        )
     }
     
     /// Generate and save a document from a template
+    /// Returns the file path where the document was saved
     pub fn generate_document(
         &mut self,
         campaign_id: i32,
-        template_id: String,
+        template_id: &str,
         variables: HashMap<String, JsonValue>,
     ) -> Result<String> {
+        // Get the campaign to find its directory
+        let mut campaign_repo = CampaignRepository::new(self.conn);
+        let campaign = campaign_repo.find_by_id(campaign_id)?
+            .ok_or_else(|| DbError::NotFound {
+                entity_type: "Campaign".to_string(),
+                id: campaign_id.to_string()
+            })?;
+        
         // Render the template
-        let rendered = self.render_template(campaign_id, template_id, variables)?;
+        let rendered_content = self.render_template(campaign_id, template_id, variables)?;
+        
+        // Determine where to save it
+        let file_path = self.determine_template_file_path(
+            &campaign.directory_path,
+            template_id
+        );
         
         // Save to file
-        let full_path = PathBuf::from(&rendered.file_path);
+        let full_path = PathBuf::from(&file_path);
         
         // Create parent directory if needed
         if let Some(parent) = full_path.parent() {
@@ -89,10 +86,29 @@ impl<'a> TemplateService<'a> {
         }
         
         // Write the file
-        fs::write(&full_path, &rendered.content)?;
+        fs::write(&full_path, rendered_content)?;
         
         println!("Generated document at: {}", full_path.display());
-        Ok(rendered.file_path)
+        Ok(file_path)
+    }
+    
+    /// Get the file path where a template would be saved for a campaign
+    pub fn get_template_file_path(
+        &mut self,
+        campaign_id: i32,
+        template_id: &str,
+    ) -> Result<String> {
+        let mut campaign_repo = CampaignRepository::new(self.conn);
+        let campaign = campaign_repo.find_by_id(campaign_id)?
+            .ok_or_else(|| DbError::NotFound {
+                entity_type: "Campaign".to_string(),
+                id: campaign_id.to_string()
+            })?;
+        
+        Ok(self.determine_template_file_path(
+            &campaign.directory_path,
+            template_id
+        ))
     }
     
     /// List all available templates

@@ -30,9 +30,9 @@ impl<'a> CampaignService<'a> {
     /// Create a new campaign with directory structure
     pub fn create_campaign(
         &mut self,
-        name: String,
+        name: &str,
         description: Option<String>,
-        directory_location: String,
+        directory_location: &str,
     ) -> Result<Campaign> {
         // Validate inputs
         if name.trim().is_empty() {
@@ -40,13 +40,13 @@ impl<'a> CampaignService<'a> {
         }
         
         // Create directory structure
-        let base_path = Path::new(&directory_location);
-        let campaign_path = self.create_campaign_directory_structure(base_path, &name)?;
+        let base_path = Path::new(directory_location);
+        let campaign_path = self.create_campaign_directory_structure(base_path, name)?;
         
         // Create database record
         let mut repo = CampaignRepository::new(self.conn);
         let new_campaign = NewCampaign {
-            name: name.clone(),
+            name: name.to_string(),
             status: "concept".to_string(),
             directory_path: campaign_path.to_string_lossy().to_string(),
         };
@@ -76,7 +76,7 @@ impl<'a> CampaignService<'a> {
     pub fn transition_campaign_stage(
         &mut self,
         campaign_id: i32,
-        new_stage: String,
+        new_stage: &str,
     ) -> Result<Campaign> {
         // Get the campaign
         let mut repo = CampaignRepository::new(self.conn);
@@ -92,7 +92,7 @@ impl<'a> CampaignService<'a> {
             .ok_or_else(|| DbError::InvalidData("Campaign board definition not found".to_string()))?;
         
         // Check if transition is allowed
-        if !board.can_transition(&campaign.status, &new_stage) {
+        if !board.can_transition(&campaign.status, new_stage) {
             return Err(DbError::InvalidData(format!(
                 "Cannot transition from {} to {}",
                 campaign.status, new_stage
@@ -100,10 +100,10 @@ impl<'a> CampaignService<'a> {
         }
         
         // Perform the transition
-        let updated_campaign = repo.transition_status(campaign_id, &new_stage)?;
+        let updated_campaign = repo.transition_status(campaign_id, new_stage)?;
         
         // Create stage-specific documents
-        if let Err(e) = self.create_stage_documents(&updated_campaign, &new_stage) {
+        if let Err(e) = self.create_stage_documents(&updated_campaign, new_stage) {
             eprintln!("Failed to create stage documents: {}", e);
             // Continue anyway - transition succeeded
         }
