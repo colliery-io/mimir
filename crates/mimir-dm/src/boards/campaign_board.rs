@@ -146,3 +146,256 @@ impl BoardDefinition for CampaignBoard {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_board_type() {
+        let board = CampaignBoard::new();
+        assert_eq!(board.board_type(), "campaign");
+    }
+
+    #[test]
+    fn test_stages_order() {
+        let board = CampaignBoard::new();
+        let stages = board.stages();
+        
+        assert_eq!(stages.len(), 6);
+        assert_eq!(stages[0], "concept");
+        assert_eq!(stages[1], "session_zero");
+        assert_eq!(stages[2], "integration");
+        assert_eq!(stages[3], "active");
+        assert_eq!(stages[4], "concluding");
+        assert_eq!(stages[5], "completed");
+    }
+
+    #[test]
+    fn test_valid_forward_transitions() {
+        let board = CampaignBoard::new();
+        
+        // Test all valid forward transitions
+        assert!(board.can_transition("concept", "session_zero"));
+        assert!(board.can_transition("session_zero", "integration"));
+        assert!(board.can_transition("integration", "active"));
+        assert!(board.can_transition("active", "concluding"));
+        assert!(board.can_transition("concluding", "completed"));
+    }
+
+    #[test]
+    fn test_invalid_transitions() {
+        let board = CampaignBoard::new();
+        
+        // Test backward transitions (not allowed)
+        assert!(!board.can_transition("session_zero", "concept"));
+        assert!(!board.can_transition("integration", "session_zero"));
+        assert!(!board.can_transition("active", "integration"));
+        
+        // Test skip transitions (not allowed)
+        assert!(!board.can_transition("concept", "integration"));
+        assert!(!board.can_transition("concept", "active"));
+        assert!(!board.can_transition("session_zero", "active"));
+        
+        // Test self-transitions (not allowed)
+        assert!(!board.can_transition("concept", "concept"));
+        assert!(!board.can_transition("active", "active"));
+        
+        // Test from completed (no transitions allowed)
+        assert!(!board.can_transition("completed", "concept"));
+        assert!(!board.can_transition("completed", "active"));
+        
+        // Test invalid stage names
+        assert!(!board.can_transition("invalid", "concept"));
+        assert!(!board.can_transition("concept", "invalid"));
+    }
+
+    #[test]
+    fn test_required_documents_per_stage() {
+        let board = CampaignBoard::new();
+        
+        // Concept stage
+        let concept_docs = board.required_documents("concept");
+        assert_eq!(concept_docs.len(), 1);
+        assert_eq!(concept_docs[0], "campaign_pitch");
+        
+        // Session Zero stage
+        let session_zero_docs = board.required_documents("session_zero");
+        assert_eq!(session_zero_docs.len(), 5);
+        assert!(session_zero_docs.contains(&"starting_scenario"));
+        assert!(session_zero_docs.contains(&"world_primer"));
+        assert!(session_zero_docs.contains(&"character_guidelines"));
+        assert!(session_zero_docs.contains(&"table_expectations"));
+        assert!(session_zero_docs.contains(&"character_integration_forms"));
+        
+        // Integration stage
+        let integration_docs = board.required_documents("integration");
+        assert_eq!(integration_docs.len(), 4);
+        assert!(integration_docs.contains(&"campaign_bible"));
+        assert!(integration_docs.contains(&"character_integration_notes"));
+        assert!(integration_docs.contains(&"major_npcs"));
+        assert!(integration_docs.contains(&"world_events_timeline"));
+        
+        // Active stage (no required documents)
+        assert_eq!(board.required_documents("active").len(), 0);
+        assert_eq!(board.required_documents("concluding").len(), 0);
+        assert_eq!(board.required_documents("completed").len(), 0);
+        
+        // Invalid stage
+        assert_eq!(board.required_documents("invalid").len(), 0);
+    }
+
+    #[test]
+    fn test_optional_documents_per_stage() {
+        let board = CampaignBoard::new();
+        
+        // Concept stage
+        let concept_optional = board.optional_documents("concept");
+        assert_eq!(concept_optional.len(), 2);
+        assert!(concept_optional.contains(&"campaign_notes"));
+        assert!(concept_optional.contains(&"inspiration_board"));
+        
+        // Session Zero stage
+        let session_zero_optional = board.optional_documents("session_zero");
+        assert_eq!(session_zero_optional.len(), 2);
+        assert!(session_zero_optional.contains(&"safety_tools"));
+        assert!(session_zero_optional.contains(&"house_rules"));
+        
+        // Integration stage
+        let integration_optional = board.optional_documents("integration");
+        assert_eq!(integration_optional.len(), 2);
+        assert!(integration_optional.contains(&"player_secrets"));
+        assert!(integration_optional.contains(&"faction_overview"));
+        
+        // Active stage
+        let active_optional = board.optional_documents("active");
+        assert_eq!(active_optional.len(), 2);
+        assert!(active_optional.contains(&"session_notes"));
+        assert!(active_optional.contains(&"player_handouts"));
+        
+        // Stages with no optional documents
+        assert_eq!(board.optional_documents("concluding").len(), 0);
+        assert_eq!(board.optional_documents("completed").len(), 0);
+        assert_eq!(board.optional_documents("invalid").len(), 0);
+    }
+
+    #[test]
+    fn test_next_stage_progression() {
+        let board = CampaignBoard::new();
+        
+        assert_eq!(board.next_stage("concept"), Some("session_zero"));
+        assert_eq!(board.next_stage("session_zero"), Some("integration"));
+        assert_eq!(board.next_stage("integration"), Some("active"));
+        assert_eq!(board.next_stage("active"), Some("concluding"));
+        assert_eq!(board.next_stage("concluding"), Some("completed"));
+        assert_eq!(board.next_stage("completed"), None);
+        assert_eq!(board.next_stage("invalid"), None);
+    }
+
+    #[test]
+    fn test_stage_metadata_completeness() {
+        let board = CampaignBoard::new();
+        
+        // Test that all stages have metadata
+        for stage in board.stages() {
+            let metadata = board.stage_metadata(stage);
+            assert!(!metadata.display_name.is_empty());
+            assert!(!metadata.description.is_empty());
+        }
+        
+        // Test specific metadata for concept stage
+        let concept_meta = board.stage_metadata("concept");
+        assert_eq!(concept_meta.display_name, "Concept");
+        assert!(concept_meta.description.contains("planning"));
+        assert!(concept_meta.completion_message.is_some());
+        assert!(concept_meta.transition_prompt.is_some());
+        assert!(concept_meta.help_text.is_some());
+        
+        // Test specific metadata for session_zero stage
+        let session_zero_meta = board.stage_metadata("session_zero");
+        assert_eq!(session_zero_meta.display_name, "Session Zero");
+        assert!(session_zero_meta.description.contains("collaborative"));
+        assert!(session_zero_meta.completion_message.is_some());
+        assert!(session_zero_meta.transition_prompt.is_some());
+        assert!(session_zero_meta.help_text.is_some());
+        
+        // Test specific metadata for integration stage
+        let integration_meta = board.stage_metadata("integration");
+        assert_eq!(integration_meta.display_name, "Integration");
+        assert!(integration_meta.description.contains("player feedback"));
+        assert!(integration_meta.completion_message.is_some());
+        assert!(integration_meta.transition_prompt.is_some());
+        assert!(integration_meta.help_text.is_some());
+        
+        // Test specific metadata for active stage
+        let active_meta = board.stage_metadata("active");
+        assert_eq!(active_meta.display_name, "Active");
+        assert!(active_meta.description.contains("actively being played"));
+        assert!(active_meta.completion_message.is_none());
+        assert!(active_meta.transition_prompt.is_none());
+        assert!(active_meta.help_text.is_some());
+        
+        // Test fallback metadata for unknown stage
+        let unknown_meta = board.stage_metadata("unknown");
+        assert_eq!(unknown_meta.display_name, "unknown");
+        assert_eq!(unknown_meta.description, "The unknown stage");
+        assert!(unknown_meta.completion_message.is_none());
+        assert!(unknown_meta.transition_prompt.is_none());
+        assert!(unknown_meta.help_text.is_none());
+    }
+
+    #[test]
+    fn test_stage_progression_completeness() {
+        let board = CampaignBoard::new();
+        let stages = board.stages();
+        
+        // Verify that each stage (except the last) has a next stage
+        for i in 0..stages.len() - 1 {
+            let current = stages[i];
+            let expected_next = stages[i + 1];
+            assert_eq!(board.next_stage(current), Some(expected_next));
+        }
+        
+        // Verify the last stage has no next stage
+        assert_eq!(board.next_stage(stages[stages.len() - 1]), None);
+    }
+
+    #[test]
+    fn test_transition_consistency_with_next_stage() {
+        let board = CampaignBoard::new();
+        
+        // For each stage that has a next stage, verify can_transition agrees
+        for stage in board.stages() {
+            if let Some(next) = board.next_stage(stage) {
+                assert!(
+                    board.can_transition(stage, next),
+                    "Stage {} should be able to transition to next stage {}",
+                    stage,
+                    next
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_no_orphaned_transitions() {
+        let board = CampaignBoard::new();
+        let valid_stages: Vec<&str> = board.stages();
+        
+        // Test that can_transition only returns true for valid stage pairs
+        for from in &valid_stages {
+            for to in &valid_stages {
+                if board.can_transition(from, to) {
+                    // If transition is allowed, verify it matches next_stage
+                    assert_eq!(
+                        board.next_stage(from),
+                        Some(*to),
+                        "Transition from {} to {} is allowed but doesn't match next_stage",
+                        from,
+                        to
+                    );
+                }
+            }
+        }
+    }
+}
