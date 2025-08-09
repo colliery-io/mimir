@@ -1,5 +1,5 @@
 ---
-id: campaign-pitch
+id: campaign_pitch
 title: Campaign Pitch Template
 type: campaign_pitch
 level: campaign

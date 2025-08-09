@@ -1,5 +1,5 @@
 ---
-id: module-dungeon
+id: module_dungeon
 title: Dungeon Module
 type: module_dungeon
 level: module

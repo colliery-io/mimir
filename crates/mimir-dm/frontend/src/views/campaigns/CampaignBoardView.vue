@@ -9,6 +9,7 @@
         :board-config="boardConfig"
         @select-document="handleSelectDocument"
         @create-document="handleCreateDocument"
+        @document-completion-changed="handleDocumentCompletionChanged"
       />
       
       <!-- Main Board Content -->
@@ -24,8 +25,10 @@
               completed: isStageCompleted(stage.key)
             }"
           >
-            <div class="stage-name">{{ stage.name }}</div>
-            <div class="stage-marker" v-if="currentStage === stage.key">●</div>
+            <div class="stage-content">
+              <div class="stage-name">{{ stage.name }}</div>
+              <div class="stage-marker" v-if="currentStage === stage.key">●</div>
+            </div>
             <div class="stage-arrow-point"></div>
           </div>
         </div>
@@ -224,6 +227,10 @@ const handleTransitionStage = async (newStage: string) => {
     
     if (response.data) {
       campaign.value = response.data
+      
+      // Initialize documents for the new stage
+      await initializeStageDocuments()
+      
       // Reload documents for new stage
       await loadDocuments()
     }
@@ -239,6 +246,24 @@ const handleDocumentUpdated = (updatedDocument: any) => {
   if (index !== -1) {
     documents.value[index] = updatedDocument
   }
+}
+
+// Handle document completion changed from sidebar
+const handleDocumentCompletionChanged = (updatedDocument: any) => {
+  // Update the document in our local list
+  const index = documents.value.findIndex(d => 
+    d.id === updatedDocument.id || 
+    (d.template_id === updatedDocument.template_id && d.campaign_id === updatedDocument.campaign_id)
+  )
+  if (index !== -1) {
+    documents.value[index] = updatedDocument
+  } else {
+    // If not found, add it (for temporary documents)
+    documents.value.push(updatedDocument)
+  }
+  
+  // Force reactivity update for the landing view
+  documents.value = [...documents.value]
 }
 
 // Handle stage transition
@@ -278,23 +303,28 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-xl) var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
   background-color: var(--color-surface);
   border-radius: var(--radius-lg);
   margin-bottom: var(--spacing-xl);
   gap: 0;
+  overflow: hidden;
 }
 
 .stage-indicator {
   background-color: var(--color-surface-variant);
   border: 2px solid var(--color-border);
-  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-sm) var(--spacing-lg);
+  padding: 0;
   position: relative;
   transition: all var(--transition-base);
   margin-right: -2px; /* Overlap borders */
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  justify-content: center;
+  height: 36px;
+  flex: 1;
+  max-width: 200px;
+  min-width: 120px;
 }
 
 /* First stage has rounded left corners */
@@ -305,6 +335,7 @@ onMounted(() => {
 /* Last stage has different styling */
 .stage-indicator:last-child {
   margin-right: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 .stage-indicator:last-child .stage-arrow-point {
@@ -314,14 +345,14 @@ onMounted(() => {
 /* Arrow point on the right */
 .stage-arrow-point {
   position: absolute;
-  right: -20px;
+  right: -18px;
   top: 50%;
   transform: translateY(-50%);
   width: 0;
   height: 0;
-  border-left: 20px solid var(--color-border);
-  border-top: 20px solid transparent;
-  border-bottom: 20px solid transparent;
+  border-left: 18px solid var(--color-border);
+  border-top: 18px solid transparent;
+  border-bottom: 18px solid transparent;
   z-index: 3;
 }
 
@@ -329,12 +360,12 @@ onMounted(() => {
   content: '';
   position: absolute;
   right: 2px;
-  top: -18px;
+  top: -16px;
   width: 0;
   height: 0;
-  border-left: 18px solid var(--color-surface-variant);
-  border-top: 18px solid transparent;
-  border-bottom: 18px solid transparent;
+  border-left: 16px solid var(--color-surface-variant);
+  border-top: 16px solid transparent;
+  border-bottom: 16px solid transparent;
 }
 
 /* Completed stages - only border changes */
@@ -355,11 +386,22 @@ onMounted(() => {
   border-left-color: var(--color-primary-500);
 }
 
+.stage-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-md);
+  z-index: 2;
+  position: relative;
+}
+
 .stage-name {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text-secondary);
-  z-index: 2;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .stage-indicator.active .stage-name,
@@ -368,10 +410,9 @@ onMounted(() => {
 }
 
 .stage-marker {
-  text-align: center;
   color: var(--color-primary-600);
-  font-size: 1.25rem;
-  z-index: 2;
+  font-size: 0.875rem;
+  line-height: 1;
 }
 
 /* Main Content Area */

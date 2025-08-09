@@ -1,5 +1,5 @@
 ---
-id: quick-start-kit
+id: quick_start_kit
 title: Quick Start Kit
 type: quick_start_kit
 level: campaign

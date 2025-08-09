@@ -1,5 +1,5 @@
 ---
-id: starting-scenario
+id: starting_scenario
 title: Starting Scenario Template
 type: starting_scenario
 level: campaign

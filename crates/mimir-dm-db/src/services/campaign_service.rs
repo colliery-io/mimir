@@ -9,7 +9,8 @@ use crate::{
     connection::DbConnection,
     dal::campaigns::CampaignRepository,
     dal::documents::DocumentRepository,
-    domain::{BoardRegistry, BoardDefinition},
+    dal::template_documents::TemplateRepository,
+    domain::{BoardRegistry},
     error::{DbError, Result},
     models::campaigns::{Campaign, NewCampaign},
     models::documents::{NewDocument},
@@ -31,7 +32,7 @@ impl<'a> CampaignService<'a> {
     pub fn create_campaign(
         &mut self,
         name: &str,
-        description: Option<String>,
+        _description: Option<String>,
         directory_location: &str,
     ) -> Result<Campaign> {
         // Validate inputs
@@ -190,14 +191,50 @@ impl<'a> CampaignService<'a> {
         let required_docs = board.required_documents(&campaign.status);
         
         for doc_type in required_docs {
-            let file_path = format!("{}/{}.md", campaign.directory_path, doc_type);
+            // Use doc_type directly as template_id (both use snake_case now)
+            let template_id = doc_type.to_string();
+            let file_path = format!("{}/{}.md", campaign.directory_path, template_id);
+            
+            // Create directory if needed
+            let full_path = std::path::Path::new(&file_path);
+            if let Some(parent) = full_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            
+            // Get the template from the database - this MUST exist
+            let template = TemplateRepository::get_latest(self.conn, &template_id)
+                .map_err(|e| DbError::InvalidData(
+                    format!("Required template '{}' not found in database: {}", template_id, e)
+                ))?;
+            
+            // Render the template with its default context
+            let context = template.create_context();
+            let mut tera = tera::Tera::default();
+            tera.add_raw_template(&template.document_id, &template.document_content)
+                .map_err(|e| DbError::InvalidData(format!("Failed to add template: {}", e)))?;
+            
+            let rendered_content = tera.render(&template.document_id, &context)
+                .map_err(|e| DbError::InvalidData(format!("Failed to render template: {}", e)))?;
+            
+            // Write the rendered template content to the file
+            fs::write(&full_path, rendered_content)?;
+            
             let new_doc = NewDocument {
                 campaign_id: campaign.id,
                 module_id: None,
                 session_id: None,
-                template_id: format!("default-{}", doc_type),
+                template_id,
                 document_type: doc_type.to_string(),
-                title: format!("{} - {}", campaign.name, doc_type),
+                title: doc_type.replace('_', " ").split_whitespace()
+                    .map(|w| {
+                        let mut chars = w.chars();
+                        match chars.next() {
+                            None => String::new(),
+                            Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" "),
                 file_path,
             };
             
@@ -220,27 +257,83 @@ impl<'a> CampaignService<'a> {
         
         // Check which documents already exist
         let existing_docs = DocumentRepository::find_by_campaign(self.conn, campaign.id)?;
-        let existing_types: Vec<String> = existing_docs.iter()
-            .map(|d| d.document_type.clone())
+        let existing_template_ids: Vec<String> = existing_docs.iter()
+            .map(|d| d.template_id.clone())
             .collect();
         
         // Create missing required documents
         for doc_type in required_docs {
-            if !existing_types.contains(&doc_type.to_string()) {
-                let file_path = format!("{}/{}.md", campaign.directory_path, doc_type);
-                let new_doc = NewDocument {
-                    campaign_id: campaign.id,
-                    module_id: None,
-                    session_id: None,
-                    template_id: format!("default-{}", doc_type),
-                    document_type: doc_type.to_string(),
-                    title: format!("{} - {}", campaign.name, doc_type),
-                    file_path,
-                };
-                
-                if let Err(e) = DocumentRepository::create(self.conn, new_doc) {
-                    eprintln!("Failed to create {} document: {}", doc_type, e);
+            // Use doc_type directly as template_id (both use snake_case now)
+            let template_id = doc_type.to_string();
+            
+            // Skip if document already exists
+            if existing_template_ids.contains(&template_id) {
+                continue;
+            }
+            
+            let file_path = format!("{}/{}.md", campaign.directory_path, template_id);
+            
+            // Create directory if needed
+            let full_path = std::path::Path::new(&file_path);
+            if let Some(parent) = full_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            
+            // Try to get the template from the database and render it
+            let content = match TemplateRepository::get_latest(self.conn, &template_id) {
+                Ok(template) => {
+                    // Render the template with its default context
+                    let context = template.create_context();
+                    let mut tera = tera::Tera::default();
+                    tera.add_raw_template(&template.document_id, &template.document_content)
+                        .map_err(|e| DbError::InvalidData(format!("Failed to add template: {}", e)))?;
+                    
+                    tera.render(&template.document_id, &context)
+                        .map_err(|e| DbError::InvalidData(format!("Failed to render template: {}", e)))?
+                },
+                Err(_) => {
+                    // If template doesn't exist, create a basic markdown file
+                    format!("# {}\n\n*This document will be created for the {} stage.*\n\n## Overview\n\n[Document content will be added here]\n", 
+                        doc_type.replace('_', " ").split_whitespace()
+                            .map(|w| {
+                                let mut chars = w.chars();
+                                match chars.next() {
+                                    None => String::new(),
+                                    Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join(" "),
+                        stage
+                    )
                 }
+            };
+            
+            // Write the content to the file
+            fs::write(&full_path, content)?;
+            
+            // Create database record
+            let new_doc = NewDocument {
+                campaign_id: campaign.id,
+                module_id: None,
+                session_id: None,
+                template_id: template_id.clone(),
+                document_type: doc_type.to_string(),
+                title: doc_type.replace('_', " ").split_whitespace()
+                    .map(|w| {
+                        let mut chars = w.chars();
+                        match chars.next() {
+                            None => String::new(),
+                            Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                file_path,
+            };
+            
+            if let Err(e) = DocumentRepository::create(self.conn, new_doc) {
+                eprintln!("Failed to create {} document: {}", doc_type, e);
             }
         }
         

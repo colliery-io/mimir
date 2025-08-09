@@ -1,5 +1,5 @@
 ---
-id: module-mystery
+id: module_mystery
 title: Mystery Module
 type: module_mystery
 level: module

@@ -1,5 +1,5 @@
 ---
-id: module-overview
+id: module_overview
 title: Module Overview
 type: module_overview
 level: module

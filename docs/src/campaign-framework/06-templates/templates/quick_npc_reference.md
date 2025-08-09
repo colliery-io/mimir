@@ -1,5 +1,5 @@
 ---
-id: quick-npc-reference
+id: quick_npc_reference
 title: Quick NPC Reference
 type: quick_npc_reference
 level: session

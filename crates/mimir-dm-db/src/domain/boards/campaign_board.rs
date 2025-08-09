@@ -40,13 +40,11 @@ impl BoardDefinition for CampaignBoard {
                 "world_primer",
                 "character_guidelines",
                 "table_expectations",
-                "character_integration_forms",
+                "character_integration",
             ],
             "integration" => vec![
                 "campaign_bible",
-                "character_integration_notes",
-                "major_npcs",
-                "world_events_timeline",
+                "major_npc_tracker",
             ],
             "active" => vec![], // No required documents
             "concluding" => vec![],
@@ -57,7 +55,7 @@ impl BoardDefinition for CampaignBoard {
     
     fn optional_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
-            "concept" => vec!["campaign_notes", "inspiration_board"],
+            "concept" => vec![],  // No optional documents - notes and inspiration are working tools, not artifacts
             "session_zero" => vec!["safety_tools", "house_rules"],
             "integration" => vec!["player_secrets", "faction_overview"],
             "active" => vec!["session_notes", "player_handouts"],
@@ -226,15 +224,13 @@ mod tests {
         assert!(session_zero_docs.contains(&"world_primer"));
         assert!(session_zero_docs.contains(&"character_guidelines"));
         assert!(session_zero_docs.contains(&"table_expectations"));
-        assert!(session_zero_docs.contains(&"character_integration_forms"));
+        assert!(session_zero_docs.contains(&"character_integration"));
         
         // Integration stage
         let integration_docs = board.required_documents("integration");
-        assert_eq!(integration_docs.len(), 4);
+        assert_eq!(integration_docs.len(), 2);
         assert!(integration_docs.contains(&"campaign_bible"));
-        assert!(integration_docs.contains(&"character_integration_notes"));
-        assert!(integration_docs.contains(&"major_npcs"));
-        assert!(integration_docs.contains(&"world_events_timeline"));
+        assert!(integration_docs.contains(&"major_npc_tracker"));
         
         // Active stage (no required documents)
         assert_eq!(board.required_documents("active").len(), 0);
@@ -249,11 +245,9 @@ mod tests {
     fn test_optional_documents_per_stage() {
         let board = CampaignBoard::new();
         
-        // Concept stage
+        // Concept stage - no optional documents (notes and inspiration are tools, not artifacts)
         let concept_optional = board.optional_documents("concept");
-        assert_eq!(concept_optional.len(), 2);
-        assert!(concept_optional.contains(&"campaign_notes"));
-        assert!(concept_optional.contains(&"inspiration_board"));
+        assert_eq!(concept_optional.len(), 0);
         
         // Session Zero stage
         let session_zero_optional = board.optional_documents("session_zero");

@@ -1,5 +1,5 @@
 ---
-id: major-npc-tracker
+id: major_npc_tracker
 title: Major NPC Tracker
 type: major_npc_tracker
 level: handout

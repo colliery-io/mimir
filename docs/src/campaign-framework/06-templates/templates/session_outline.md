@@ -1,5 +1,5 @@
 ---
-id: session-outline
+id: session_outline
 title: Session Outline
 type: session_outline
 level: session

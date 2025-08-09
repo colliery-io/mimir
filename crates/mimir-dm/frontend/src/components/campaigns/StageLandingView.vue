@@ -6,6 +6,15 @@
       <p class="stage-subtitle">{{ stageInfo.subtitle }}</p>
     </div>
 
+    <!-- Next Steps (shown at top when ready) -->
+    <div class="next-steps" v-if="nextStageAvailable">
+      <h3>🎉 Ready for Next Stage!</h3>
+      <p>{{ nextStagePrompt }}</p>
+      <button class="btn-primary" @click="transitionToNextStage">
+        Advance to {{ nextStageName }} →
+      </button>
+    </div>
+
     <!-- Progress Overview -->
     <div class="progress-section">
       <div class="progress-card">
@@ -60,11 +69,6 @@
           </div>
         </div>
 
-        <div class="action-section">
-          <button class="btn-primary btn-large" @click="startDocument('campaign-pitch')">
-            ✏️ Create Campaign Pitch
-          </button>
-        </div>
       </div>
 
       <!-- Session Zero Stage -->
@@ -155,15 +159,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Next Steps -->
-    <div class="next-steps" v-if="nextStageAvailable">
-      <h3>Ready for Next Stage?</h3>
-      <p>{{ nextStagePrompt }}</p>
-      <button class="btn-primary" @click="transitionToNextStage">
-        Advance to {{ nextStageName }} →
-      </button>
-    </div>
   </div>
 </template>
 
@@ -225,13 +220,26 @@ const sessionZeroDocuments = [
 // Document progress is computed from actual documents
 
 const documentProgress = computed(() => {
-  const stageDocuments = props.documents.filter(doc => {
-    // Filter documents relevant to current stage
-    return true // TODO: Implement stage filtering
-  })
+  if (!props.boardConfig) {
+    return { completed: 0, total: 0, percentage: 0 }
+  }
   
-  const completed = stageDocuments.filter(doc => doc.completed_at).length
-  const total = stageDocuments.length
+  // Get the current stage info from board config
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  if (!currentStageInfo) {
+    return { completed: 0, total: 0, percentage: 0 }
+  }
+  
+  // Count only required documents for the stage
+  const requiredDocIds = currentStageInfo.required_documents || []
+  const total = requiredDocIds.length
+  
+  // Count completed required documents
+  const completed = requiredDocIds.filter((docId: string) => {
+    const doc = props.documents.find(d => d.template_id === docId)
+    return doc?.completed_at
+  }).length
+  
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
   
   return { completed, total, percentage }

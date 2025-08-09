@@ -1,5 +1,5 @@
 ---
-id: region-overview
+id: region_overview
 title: Region Overview
 type: region_overview
 level: campaign

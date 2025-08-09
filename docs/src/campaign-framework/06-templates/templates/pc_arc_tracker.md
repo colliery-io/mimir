@@ -1,5 +1,5 @@
 ---
-id: pc-arc-tracker
+id: pc_arc_tracker
 title: PC Arc Tracker
 type: pc_arc_tracker
 level: handout

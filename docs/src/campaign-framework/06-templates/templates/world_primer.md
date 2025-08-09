@@ -1,7 +1,7 @@
 ---
-id: world-overview
-title: World Overview
-type: world_overview
+id: world_primer
+title: World Primer
+type: world_primer
 level: campaign
 purpose: High-level overview of your campaign world
 author: Mimir Team

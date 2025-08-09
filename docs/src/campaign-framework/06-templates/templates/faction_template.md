@@ -1,5 +1,5 @@
 ---
-id: faction-template
+id: faction_template
 title: Faction Template
 type: faction_template
 level: campaign

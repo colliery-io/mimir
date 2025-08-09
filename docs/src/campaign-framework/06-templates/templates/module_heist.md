@@ -1,5 +1,5 @@
 ---
-id: module-heist
+id: module_heist
 title: Heist Module
 type: module_heist
 level: module

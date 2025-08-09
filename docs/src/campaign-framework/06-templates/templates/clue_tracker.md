@@ -1,5 +1,5 @@
 ---
-id: clue-tracker
+id: clue_tracker
 title: Clue Tracker
 type: clue_tracker
 level: session

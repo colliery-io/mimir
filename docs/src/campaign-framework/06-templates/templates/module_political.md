@@ -1,5 +1,5 @@
 ---
-id: module-political
+id: module_political
 title: Political Module
 type: module_political
 level: module

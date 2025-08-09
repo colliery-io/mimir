@@ -1,5 +1,5 @@
 ---
-id: module-horror
+id: module_horror
 title: Horror Module
 type: module_horror
 level: module

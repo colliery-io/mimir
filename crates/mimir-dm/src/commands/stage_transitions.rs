@@ -26,23 +26,20 @@ use crate::types::ApiResponse;
 fn get_stage_documents(stage: &str) -> Vec<(&'static str, &'static str)> {
     match stage {
         "concept" => vec![
-            ("campaign-pitch", "Campaign Pitch"),
+            ("campaign_pitch", "Campaign Pitch"),
             // The other concept documents (sparks, big three, first adventure) 
             // are part of the creative process but not formal templates
         ],
         "session_zero" => vec![
-            ("starting-scenario", "Starting Scenario"),
-            ("world-primer", "World Primer"),
-            ("character-guidelines", "Character Guidelines"),
-            ("table-expectations", "Table Expectations"),
-            ("character-integration", "Character Integration Forms"),
-            ("session-zero-packet", "Session Zero Packet"),
+            ("starting_scenario", "Starting Scenario"),
+            ("world_primer", "World Primer"),
+            ("character_guidelines", "Character Guidelines"),
+            ("table_expectations", "Table Expectations"),
+            ("character_integration", "Character Integration Forms"),
         ],
         "integration" => vec![
-            ("campaign-bible", "Campaign Bible"),
-            ("character-integration-notes", "Character Integration Notes"),
-            ("major-npcs", "Major NPCs"),
-            ("world-timeline", "World Events Timeline"),
+            ("campaign_bible", "Campaign Bible"),
+            ("major_npc_tracker", "Major NPCs"),
         ],
         _ => vec![],
     }
@@ -131,14 +128,6 @@ fn process_template_content(
     
     let rendered = tera.render(&template.document_id, &context)?;
     Ok(rendered)
-}
-
-/// Create initial documents for a new campaign
-pub fn create_initial_documents(
-    conn: &mut DbConnection,
-    campaign: &Campaign,
-) -> Result<Vec<String>, anyhow::Error> {
-    create_stage_documents(conn, campaign, "concept")
 }
 
 /// Initialize documents for current campaign stage

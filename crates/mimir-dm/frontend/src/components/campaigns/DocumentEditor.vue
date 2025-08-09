@@ -12,20 +12,6 @@
         <span v-if="saveStatus" class="save-status" :class="saveStatus">
           {{ saveStatusText }}
         </span>
-        <button 
-          class="btn-secondary"
-          @click="togglePreview"
-          :class="{ active: showPreview }"
-        >
-          {{ showPreview ? 'Edit' : 'Preview' }}
-        </button>
-        <button 
-          class="btn-primary"
-          @click="markComplete"
-          :disabled="document?.completed_at"
-        >
-          {{ document?.completed_at ? 'Completed' : 'Mark Complete' }}
-        </button>
       </div>
     </div>
 
@@ -33,8 +19,8 @@
     <div class="editor-content">
       <!-- Editor -->
       <div class="editor-wrapper">
-        <!-- Only show toolbar when not in preview mode -->
-        <div v-if="editor && !showPreview" class="editor-toolbar">
+        <!-- Toolbar -->
+        <div v-if="editor" class="editor-toolbar">
           <button
             @click="editor?.chain().focus().toggleHeading({ level: 1 }).run()"
             :class="{ 'is-active': editor?.isActive('heading', { level: 1 }) }"
@@ -122,7 +108,7 @@
             ↷ Redo
           </button>
         </div>
-        <EditorContent :editor="editor" class="editor-area" :class="{ 'preview-mode': showPreview }" />
+        <EditorContent :editor="editor" class="editor-area" />
       </div>
     </div>
   </div>
@@ -176,9 +162,13 @@ const editor = useEditor({
   ],
   onCreate: ({ editor: e }) => {
     // Load document when editor is ready
-    if (props.document && pendingContent.value === null) {
+    if (props.document) {
       // Use a small delay to ensure editor is fully ready
       setTimeout(() => loadDocument(), 50)
+    } else if (pendingContent.value) {
+      // If we have pending content from before editor was ready, set it now
+      e.commands.setContent(pendingContent.value)
+      pendingContent.value = null
     }
   },
   onUpdate: ({ editor }) => {
@@ -239,17 +229,10 @@ const saveDocument = async () => {
     // Get content as markdown
     const markdown = getMarkdown()
     
+    // Just save the file - no need to update database for every save
     await invoke('save_document_file', {
       filePath: props.document.file_path,
       content: markdown
-    })
-    
-    // Update document in database
-    await invoke('update_document', {
-      documentId: props.document.id,
-      update: {
-        updated_at: new Date().toISOString()
-      }
     })
     
     saveStatus.value = 'saved'
@@ -259,6 +242,9 @@ const saveDocument = async () => {
   } catch (e) {
     console.error('Failed to save document:', e)
     saveStatus.value = 'error'
+    setTimeout(() => {
+      saveStatus.value = null
+    }, 3000)
   }
 }
 
@@ -334,12 +320,24 @@ const transitionToNextStage = async (nextStage: string) => {
   }
 }
 
-// Watch for document changes (skip initial load since onMounted handles it)
-watch(() => props.document, () => {
-  if (editor.value) {
-    loadDocument()
+// Watch for document changes
+watch(() => props.document, (newDoc, oldDoc) => {
+  // Load if document changed - check multiple fields since temporary docs have id = -1
+  if (newDoc && (
+    newDoc?.id !== oldDoc?.id || 
+    newDoc?.file_path !== oldDoc?.file_path ||
+    newDoc?.template_id !== oldDoc?.template_id
+  )) {
+    if (editor.value) {
+      // Clear the editor first to avoid mixing content
+      editor.value.commands.clearContent()
+      loadDocument()
+    } else {
+      // Editor not ready yet, store for later
+      pendingContent.value = null
+    }
   }
-})
+}, { deep: true })
 
 // Load content when component mounts
 onMounted(() => {

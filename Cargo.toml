@@ -49,6 +49,9 @@ dirs = "5.0"
 # Template engine
 tera = "1.19"
 
+# Frontmatter parsing
+gray_matter = "0.3"
+
 # Cryptography
 sha2 = "0.10"
 

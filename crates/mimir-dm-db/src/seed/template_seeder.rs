@@ -43,30 +43,32 @@ macro_rules! define_templates {
 // Define all templates and their content using the macro
 define_templates! {
     // Campaign Board Documents - Core campaign setup
-    CAMPAIGN_BIBLE => "campaign-bible.md",
-    CAMPAIGN_PITCH => "campaign-pitch.md",
-    STARTING_SCENARIO => "starting-scenario.md",
-    QUICK_START_KIT => "quick-start-kit.md",
-    CHARACTER_INTEGRATION => "character-integration.md",
-    MAJOR_NPC_TRACKER => "major-npc-tracker.md",
-    QUICK_NPC_REFERENCE => "quick-npc-reference.md",
-    PC_ARC_TRACKER => "pc-arc-tracker.md",
-    WORLD_OVERVIEW => "world-overview.md",
-    REGION_OVERVIEW => "region-overview.md",
-    FACTION_TEMPLATE => "faction-template.md",
+    CAMPAIGN_BIBLE => "campaign_bible.md",
+    CAMPAIGN_PITCH => "campaign_pitch.md",
+    STARTING_SCENARIO => "starting_scenario.md",
+    QUICK_START_KIT => "quick_start_kit.md",
+    CHARACTER_INTEGRATION => "character_integration.md",
+    CHARACTER_GUIDELINES => "character_guidelines.md",
+    TABLE_EXPECTATIONS => "table_expectations.md",
+    MAJOR_NPC_TRACKER => "major_npc_tracker.md",
+    QUICK_NPC_REFERENCE => "quick_npc_reference.md",
+    PC_ARC_TRACKER => "pc_arc_tracker.md",
+    WORLD_PRIMER => "world_primer.md",
+    REGION_OVERVIEW => "region_overview.md",
+    FACTION_TEMPLATE => "faction_template.md",
     
     // Module Board Documents - Module-specific templates
-    MODULE_OVERVIEW => "module-overview.md",
-    MODULE_DUNGEON => "module-dungeon.md",
-    MODULE_HEIST => "module-heist.md",
-    MODULE_HORROR => "module-horror.md",
-    MODULE_MYSTERY => "module-mystery.md",
-    MODULE_POLITICAL => "module-political.md",
+    MODULE_OVERVIEW => "module_overview.md",
+    MODULE_DUNGEON => "module_dungeon.md",
+    MODULE_HEIST => "module_heist.md",
+    MODULE_HORROR => "module_horror.md",
+    MODULE_MYSTERY => "module_mystery.md",
+    MODULE_POLITICAL => "module_political.md",
     
     // Session Board Documents - Session management
-    SESSION_OUTLINE => "session-outline.md",
-    CLUE_TRACKER => "clue-tracker.md",
-    DOCUMENT_TRACKER => "document-tracker.md",
+    SESSION_OUTLINE => "session_outline.md",
+    CLUE_TRACKER => "clue_tracker.md",
+    DOCUMENT_TRACKER => "document_tracker.md",
 }
 
 /// Seed the database with initial templates
@@ -136,14 +138,14 @@ mod tests {
         
         // Seed templates
         let count = seed_templates(&mut conn).unwrap();
-        assert_eq!(count, 20); // We have 20 templates (excluding README.md)
+        assert_eq!(count, 22); // We have 22 templates (added character-guidelines and table-expectations)
         
         // Verify a few templates exist
-        let campaign_pitch = TemplateRepository::get_latest(&mut conn, "campaign-pitch").unwrap();
+        let campaign_pitch = TemplateRepository::get_latest(&mut conn, "campaign_pitch").unwrap();
         assert_eq!(campaign_pitch.document_type.unwrap(), "campaign_pitch");
         assert_eq!(campaign_pitch.document_level.unwrap(), "campaign");
         
-        let module_overview = TemplateRepository::get_latest(&mut conn, "module-overview").unwrap();
+        let module_overview = TemplateRepository::get_latest(&mut conn, "module_overview").unwrap();
         assert_eq!(module_overview.document_type.unwrap(), "module_overview");
         assert_eq!(module_overview.document_level.unwrap(), "module");
     }

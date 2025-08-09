@@ -1,5 +1,5 @@
 ---
-id: campaign-bible
+id: campaign_bible
 title: Campaign Bible Template
 type: campaign_bible
 level: campaign

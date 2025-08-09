@@ -1,5 +1,5 @@
 ---
-id: document-tracker
+id: document_tracker
 title: Document Tracker
 type: document_tracker
 level: campaign

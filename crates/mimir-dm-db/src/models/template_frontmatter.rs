@@ -93,32 +93,32 @@ fn default_true() -> bool {
 /// ```
 
 impl TemplateFrontmatter {
-    /// Parse frontmatter from a markdown document
+    /// Parse frontmatter from a markdown document using gray_matter
     pub fn parse_from_markdown(content: &str) -> Option<Self> {
-        // Look for frontmatter delimited by ---
-        if !content.starts_with("---\n") {
+        // Parse the markdown with gray_matter
+        // We parse directly into serde_yaml::Value
+        let matter = gray_matter::Matter::<gray_matter::engine::YAML>::new();
+        let parsed = matter.parse::<serde_yaml::Value>(content).ok()?;
+        
+        // If there's no frontmatter data, return None
+        if parsed.data.is_none() {
             return None;
         }
         
-        let end_delimiter = content[4..].find("\n---\n")?;
-        let frontmatter_yaml = &content[4..end_delimiter + 4];
-        
-        serde_yaml::from_str(frontmatter_yaml).ok()
+        // Convert the parsed YAML Value to our TemplateFrontmatter struct
+        let yaml_value = parsed.data?;
+        serde_yaml::from_value(yaml_value).ok()
     }
     
-    /// Extract the content after frontmatter
+    /// Extract the content after frontmatter using gray_matter
     pub fn extract_content(markdown: &str) -> String {
-        if let Some(end_pos) = markdown.find("\n---\n") {
-            if markdown.starts_with("---\n") {
-                // Find the second ---
-                if let Some(second_end) = markdown[end_pos + 5..].find("\n---\n") {
-                    return markdown[end_pos + 5 + second_end + 5..].trim().to_string();
-                } else if let Some(second_end) = markdown[end_pos + 5..].find("---\n") {
-                    return markdown[end_pos + 5 + second_end + 4..].trim().to_string();
-                }
-            }
+        // Parse the markdown with gray_matter
+        // We use serde_yaml::Value as the type parameter since we only care about content
+        let matter = gray_matter::Matter::<gray_matter::engine::YAML>::new();
+        match matter.parse::<serde_yaml::Value>(markdown) {
+            Ok(parsed) => parsed.content,
+            Err(_) => markdown.to_string(), // If parsing fails, return original content
         }
-        markdown.to_string()
     }
     
     /// Convert to JSON for database storage

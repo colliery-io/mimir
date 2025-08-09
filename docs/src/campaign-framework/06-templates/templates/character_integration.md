@@ -1,5 +1,5 @@
 ---
-id: character-integration
+id: character_integration
 title: Character Integration
 type: character_integration
 level: session

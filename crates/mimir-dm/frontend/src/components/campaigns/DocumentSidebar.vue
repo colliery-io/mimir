@@ -37,17 +37,44 @@
                 completed: doc.instance?.completed_at,
                 locked: !isStageAccessible(stage.key)
               }"
-              @click="handleDocumentClick(doc)"
             >
+              <!-- Edit icon on the left (always visible, clickable) -->
               <img 
-                v-if="getDocumentIcon(doc)" 
-                :src="getDocumentIcon(doc)" 
-                :alt="doc.instance ? 'Edit' : 'Locked'"
-                class="document-icon"
+                v-if="!isStageAccessible(stage.key)"
+                :src="getLockedIcon()" 
+                alt="Locked"
+                class="document-icon locked"
+                title="Stage not yet accessible"
               />
-              <span v-else-if="doc.instance?.completed_at" class="document-icon-text">✓</span>
-              <span v-else class="document-icon-placeholder"></span>
-              <span class="document-title">{{ doc.title }}</span>
+              <img 
+                v-else
+                :src="getEditIcon()" 
+                alt="Edit"
+                class="document-icon"
+                @click="handleDocumentClick(doc)"
+                title="Edit document"
+              />
+              
+              <!-- Document title (also clickable) -->
+              <span 
+                class="document-title" 
+                :class="{ optional: !doc.required }"
+                @click="handleDocumentClick(doc)"
+              >
+                {{ doc.title }}
+                <span v-if="!doc.required" class="optional-label">(Optional)</span>
+              </span>
+              
+              <!-- Checkmark on the right for completion -->
+              <button 
+                v-if="doc.instance && isStageAccessible(stage.key)"
+                class="completion-checkbox"
+                :class="{ checked: doc.instance?.completed_at }"
+                @click.stop="toggleDocumentCompletion(doc)"
+                :title="doc.instance?.completed_at ? 'Mark as incomplete' : 'Mark as complete'"
+              >
+                <span v-if="doc.instance?.completed_at">✓</span>
+              </button>
             </div>
           </div>
         </div>
@@ -60,6 +87,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useThemeStore } from '../../stores/theme'
+import { debugDocument } from '../../utils/debug'
 
 // Import icon images
 import lightEditIcon from '../../assets/images/light-edit.png'
@@ -92,6 +120,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   selectDocument: [document: Document]
   createDocument: []
+  documentCompletionChanged: [document: Document]
 }>()
 
 // Get document templates from board configuration
@@ -104,14 +133,14 @@ const stageDocuments = computed(() => {
     documents[stage.key] = [
       ...stage.required_documents.map((docId: string) => ({
         templateId: docId,
-        title: docId.split('_').map((word: string) => 
+        title: docId.replace(/[-_]/g, ' ').split(' ').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)
         ).join(' '),
         required: true
       })),
       ...stage.optional_documents.map((docId: string) => ({
         templateId: docId,
-        title: docId.split('_').map((word: string) => 
+        title: docId.replace(/[-_]/g, ' ').split(' ').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)
         ).join(' '),
         required: false
@@ -153,15 +182,26 @@ const iconMap = {
 const getStageDocuments = (stage: string) => {
   const templates = stageDocuments.value[stage] || []
   const stageDocumentList = templates.map((template: any) => {
-    const instance = documents.value.find(doc => doc.template_id === template.templateId)
+    // Simple matching - everything uses snake_case now
+    const instance = documents.value.find(doc => 
+      doc.template_id === template.templateId
+    )
+    console.log('Document mapping:', {
+      templateId: template.templateId,
+      instance: instance,
+      hasInstance: !!instance,
+      documents: documents.value
+    })
     return {
       ...template,
       instance
     }
   })
   
-  const completed = stageDocumentList.filter((doc: any) => doc.instance?.completed_at).length
-  const total = stageDocumentList.length
+  // Only count required documents for completion tracking
+  const requiredDocs = stageDocumentList.filter((doc: any) => doc.required)
+  const completed = requiredDocs.filter((doc: any) => doc.instance?.completed_at).length
+  const total = requiredDocs.length
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
   
   return {
@@ -181,21 +221,16 @@ const isStageAccessible = (stage: string) => {
   return checkIndex <= currentIndex
 }
 
-// Get document icon based on state
-const getDocumentIcon = (doc: any): string | undefined => {
+// Get edit icon for current theme
+const getEditIcon = (): string => {
   const theme = themeStore.currentTheme as 'light' | 'dark' | 'hyper'
-  
-  if (!isStageAccessible(getDocumentStage(doc.templateId))) {
-    return iconMap[theme]?.locked
-  }
-  if (doc.instance?.completed_at) {
-    // For completed, we'll use a check mark or just hide the icon
-    return undefined
-  }
-  if (doc.instance) {
-    return iconMap[theme]?.edit
-  }
-  return undefined // No icon for not started
+  return iconMap[theme]?.edit || lightEditIcon
+}
+
+// Get locked icon for current theme
+const getLockedIcon = (): string => {
+  const theme = themeStore.currentTheme as 'light' | 'dark' | 'hyper'
+  return iconMap[theme]?.locked || lightLockedIcon
 }
 
 // Get which stage a template belongs to
@@ -228,18 +263,59 @@ const loadDocuments = async () => {
 
 // Handle document click
 const handleDocumentClick = async (doc: any) => {
+  debugDocument('click', { doc, stage: getDocumentStage(doc.templateId) })
+  console.log('Document clicked:', doc)
   const stage = getDocumentStage(doc.templateId)
   
   // Check if stage is accessible
   if (!isStageAccessible(stage)) {
+    debugDocument('stage-locked', { stage })
     console.log('Stage is locked:', stage)
     return
   }
   
-  // If document doesn't exist, create it
+  // If document doesn't exist in database, just create a simple object pointing to the file
   if (!doc.instance) {
-    await createDocument(doc.templateId, doc.title)
+    // The file already exists on disk, just point to it
+    const filePath = `${props.boardConfig.stages[0].key === 'concept' ? 
+      props.campaignId : props.campaignId}/${doc.templateId.replace(/_/g, '-')}.md`
+    
+    // Get campaign info to build the full path
+    const campaignResponse = await invoke<{ success: boolean; data: any }>('get_campaign', {
+      id: props.campaignId
+    })
+    
+    if (campaignResponse.success && campaignResponse.data) {
+      const simpleDoc = {
+        id: -1, // Use -1 as temporary ID to indicate it's not in database
+        campaign_id: props.campaignId,
+        template_id: doc.templateId,
+        document_type: doc.templateId.replace(/-/g, '_'),
+        title: doc.title,
+        file_path: `${campaignResponse.data.directory_path}/${doc.templateId.replace(/_/g, '-')}.md`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        completed_at: null,
+        module_id: null,
+        session_id: null
+      } as Document
+      
+      console.log('Opening existing file:', simpleDoc.file_path)
+      
+      // Add to documents array so it shows as existing
+      const existingIndex = documents.value.findIndex(d => d.template_id === doc.templateId)
+      if (existingIndex === -1) {
+        documents.value.push(simpleDoc)
+      } else {
+        documents.value[existingIndex] = simpleDoc
+      }
+      
+      // Select the document
+      selectDocument(simpleDoc)
+    }
   } else {
+    debugDocument('selecting-existing', { instance: doc.instance })
+    console.log('Selecting existing document:', doc.instance)
     selectDocument(doc.instance)
   }
 }
@@ -247,21 +323,27 @@ const handleDocumentClick = async (doc: any) => {
 // Create a new document from template
 const createDocument = async (templateId: string, title: string) => {
   try {
-    const response = await invoke<{ data: Document }>('create_document', {
-      newDocument: {
-        campaign_id: props.campaignId,
-        module_id: null,
-        session_id: null,
-        template_id: templateId,
-        document_type: templateId.replace('-', '_'),
-        title: title,
-        file_path: `${props.campaignId}/${templateId}.md`
-      }
+    console.log('Creating document with params:', {
+      campaignId: props.campaignId,
+      templateId: templateId,
+      propsType: typeof props.campaignId
     })
     
-    if (response.data) {
+    // Use create_document_from_template which creates both file and DB record
+    const response = await invoke<{ success: boolean; data: Document }>('create_document_from_template', {
+      campaignId: props.campaignId,
+      templateId: templateId
+    })
+    
+    console.log('Document creation response:', response)
+    
+    if (response.success && response.data) {
+      // Add the new document to our list
       documents.value.push(response.data)
+      // Select it immediately
       selectDocument(response.data)
+    } else {
+      console.error('Document creation failed:', response)
     }
   } catch (e) {
     console.error('Failed to create document:', e)
@@ -272,6 +354,43 @@ const createDocument = async (templateId: string, title: string) => {
 const selectDocument = (doc: Document) => {
   selectedDocument.value = doc
   emit('selectDocument', doc)
+}
+
+// Toggle document completion status
+const toggleDocumentCompletion = async (doc: any) => {
+  if (!doc.instance) return
+  
+  try {
+    const newCompletedAt = doc.instance.completed_at ? null : new Date().toISOString()
+    
+    // All documents should be in the database now, so always update via backend
+    const response = await invoke<{ success: boolean; data: Document }>('update_document', {
+      documentId: doc.instance.id,
+      update: {
+        completed_at: newCompletedAt,
+        updated_at: new Date().toISOString()
+      }
+    })
+    
+    if (response.success && response.data) {
+      // Update the document in our local list
+      const index = documents.value.findIndex(d => d.id === doc.instance.id)
+      if (index !== -1) {
+        documents.value[index] = response.data
+      }
+      
+      // Also update the instance reference
+      doc.instance = response.data
+      
+      // Force reactivity update
+      documents.value = [...documents.value]
+      
+      // Emit completion status change
+      emit('documentCompletionChanged', response.data)
+    }
+  } catch (e) {
+    console.error('Failed to toggle document completion:', e)
+  }
 }
 
 // Watch for campaign or stage changes
@@ -406,15 +525,15 @@ onMounted(() => {
   align-items: center;
   gap: var(--spacing-sm);
   border-radius: var(--radius-sm);
+  border: 2px solid transparent;
 }
 
 .document-item:hover:not(.locked) {
-  background-color: var(--color-surface-variant);
+  border-color: var(--color-border);
 }
 
 .document-item.selected {
-  background-color: var(--color-primary-100);
-  color: var(--color-primary-700);
+  border-color: var(--color-primary-400);
 }
 
 .document-item.completed {
@@ -454,6 +573,51 @@ onMounted(() => {
 .document-title {
   font-size: 0.875rem;
   color: var(--color-text);
+  flex: 1;
+}
+
+/* Optional document styling */
+.document-title.optional {
+  font-style: italic;
+}
+
+.optional-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-style: normal;
+  margin-left: var(--spacing-xs);
+}
+
+/* Completion Checkbox */
+.completion-checkbox {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+  margin-left: auto;
+}
+
+.completion-checkbox:hover {
+  border-color: var(--color-primary-400);
+  background-color: var(--color-primary-50);
+}
+
+.completion-checkbox.checked {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+}
+
+.completion-checkbox.checked:hover {
+  background-color: var(--color-success-dark);
+  border-color: var(--color-success-dark);
 }
 
 </style>
