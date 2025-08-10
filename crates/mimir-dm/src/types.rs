@@ -50,10 +50,10 @@ pub enum ApiError {
     InternalServerError(String),
 }
 
-impl From<mimir_dm_db::error::DbError> for ApiError {
-    fn from(err: mimir_dm_db::error::DbError) -> Self {
+impl From<mimir_dm_core::error::DbError> for ApiError {
+    fn from(err: mimir_dm_core::error::DbError) -> Self {
         match err {
-            mimir_dm_db::error::DbError::NotFound { entity_type, id } => {
+            mimir_dm_core::error::DbError::NotFound { entity_type, id } => {
                 ApiError::NotFound(format!("{} with id '{}' not found", entity_type, id))
             }
             _ => ApiError::Database(err.to_string()),

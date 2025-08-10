@@ -1,8 +1,8 @@
-//! Domain models for campaign management
+//! Database Models
+//! 
+//! Split into two distinct domains:
+//! - `rules`: Static D&D reference data (races, classes, spells, etc.)
+//! - `campaign`: Campaign management and story organization
 
-pub mod board;
 pub mod campaign;
-pub mod enums;
-pub mod ids;
-pub mod module;
-pub mod session;
+pub mod rules;

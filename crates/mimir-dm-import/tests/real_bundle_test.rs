@@ -70,11 +70,11 @@ async fn test_real_bundle_import() {
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let db_url = temp_file.path().to_string_lossy().to_string();
     
-    // Set up the database using mimir-dm-db test utilities
+    // Set up the database using mimir-dm-core test utilities
     {
         use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
         
-        const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../mimir-dm-db/migrations");
+        const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../mimir-dm-core/migrations");
         
         let mut conn = mimir_dm_db::establish_connection(&db_url).unwrap();
         conn.run_pending_migrations(MIGRATIONS).unwrap();

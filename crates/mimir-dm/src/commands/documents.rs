@@ -1,12 +1,12 @@
 //! Document management commands
 
-use mimir_dm_db::{
-    dal::{
+use mimir_dm_core::{
+    dal::campaign::{
         documents::DocumentRepository,
         campaigns::CampaignRepository,
         template_documents::TemplateRepository,
     },
-    models::documents::{Document, NewDocument, UpdateDocument},
+    models::campaign::documents::{Document, NewDocument, UpdateDocument},
 };
 use std::sync::Arc;
 use std::path::PathBuf;
@@ -74,7 +74,7 @@ pub async fn get_documents_by_level(
         "handout" => {
             DocumentRepository::find_handouts_by_campaign(conn, campaign_id)
         },
-        _ => Err(mimir_dm_db::error::DbError::InvalidData(format!("Invalid document level: {}", level))),
+        _ => Err(mimir_dm_core::error::DbError::InvalidData(format!("Invalid document level: {}", level))),
     };
     
     match documents {

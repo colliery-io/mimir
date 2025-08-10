@@ -9,8 +9,6 @@ repository = "https://github.com/yourusername/mimir"
 readme = "README.md"
 
 [dependencies]
-mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
-
 tokio = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }

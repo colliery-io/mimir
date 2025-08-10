@@ -34,7 +34,7 @@ pub fn init_db_pool(database_url: &str, is_memory_db: bool) -> Result<DbPool> {
     if is_memory_db {
         let mut conn = pool.get().context("Failed to get connection from pool")?;
         info!("Running migrations on in-memory database...");
-        match mimir_dm_db::run_migrations(&mut conn) {
+        match mimir_dm_core::run_migrations(&mut conn) {
             Ok(_) => info!("Migrations completed successfully"),
             Err(e) => warn!("Migration warning: {}", e),
         }

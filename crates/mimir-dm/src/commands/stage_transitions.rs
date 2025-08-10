@@ -1,12 +1,12 @@
 use std::sync::Arc;
 use tauri::State;
-use mimir_dm_db::{
-    models::{
+use mimir_dm_core::{
+    models::campaign::{
         documents::{NewDocument},
         campaigns::Campaign,
         template_documents::TemplateDocument,
     },
-    dal::{
+    dal::campaign::{
         documents::DocumentRepository,
         campaigns::CampaignRepository,
         template_documents::TemplateRepository,

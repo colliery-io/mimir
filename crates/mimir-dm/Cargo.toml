@@ -20,7 +20,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 
 # Our crates
-mimir-dm-db = { version = "0.0.0", path = "../mimir-dm-db" }
+mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
 
 # Core dependencies
 anyhow = { workspace = true }

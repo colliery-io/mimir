@@ -1,7 +1,7 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
-  "exclude": ["src/**/__tests__/*"],
+  "exclude": ["src/**/__tests__/*", "src/test/**/*", "**/*.test.ts", "**/*.spec.ts"],
   "compilerOptions": {
     "composite": true,
     "baseUrl": ".",
@@ -9,6 +9,7 @@
       "@/*": ["./src/*"]
     },
     "types": ["node"],
+    "lib": ["ES2015", "DOM", "DOM.Iterable"],
     "allowJs": true,
     "strict": true,
     "esModuleInterop": true,

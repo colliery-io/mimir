@@ -10,7 +10,6 @@ readme = "README.md"
 
 [dependencies]
 mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
-mimir-dm-db = { version = "0.0.0", path = "../mimir-dm-db" }
 mimir-dm-llm = { version = "0.0.0", path = "../mimir-dm-llm" }
 
 tokio = { workspace = true }

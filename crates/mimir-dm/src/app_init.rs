@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
-use mimir_dm_db::run_migrations;
+use mimir_dm_core::run_migrations;
 use std::fs;
 use std::path::PathBuf;
 use tracing::{info, warn};

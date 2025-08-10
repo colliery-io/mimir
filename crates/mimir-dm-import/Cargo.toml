@@ -9,7 +9,6 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 # Workspace crates
 mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
-mimir-dm-db = { version = "0.0.0", path = "../mimir-dm-db" }
 
 # Core dependencies
 tokio = { workspace = true }

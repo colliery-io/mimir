@@ -4,10 +4,10 @@ use crate::{
     services::database::DatabaseService,
     types::ApiResponse,
 };
-use mimir_dm_db::{
-    dal::{campaigns::CampaignRepository, documents::DocumentRepository},
+use mimir_dm_core::{
+    dal::campaign::{campaigns::CampaignRepository, documents::DocumentRepository},
     domain::{BoardCompletionStatus, BoardRegistry},
-    models::campaigns::Campaign as DbCampaign,
+    models::campaign::campaigns::Campaign as DbCampaign,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -52,7 +52,7 @@ pub async fn list_campaigns(
     info!("Listing campaigns");
     
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let mut service = mimir_dm_db::services::CampaignService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.list_campaigns() {
         Ok(campaigns) => {
@@ -75,7 +75,7 @@ pub async fn create_campaign(
     info!("Creating new campaign: {} at location: {}", request.name, request.directory_location);
     
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let mut service = mimir_dm_db::services::CampaignService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.create_campaign(
         &request.name,
@@ -117,7 +117,7 @@ pub async fn generate_campaign_document(
     info!("Generating document from template '{}' for campaign {}", request.template_id, request.campaign_id);
     
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let mut service = mimir_dm_db::services::TemplateService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::TemplateService::new(&mut *conn);
     
     match service.generate_document(
         request.campaign_id,
@@ -167,7 +167,7 @@ pub async fn list_templates(
     info!("Listing available templates");
     
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let mut service = mimir_dm_db::services::TemplateService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::TemplateService::new(&mut *conn);
     
     match service.list_templates() {
         Ok(templates) => {
@@ -230,7 +230,7 @@ pub async fn get_campaign(
     info!("Getting campaign with id: {}", id);
     
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let mut service = mimir_dm_db::services::CampaignService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.get_campaign(id) {
         Ok(Some(campaign)) => {
@@ -354,7 +354,7 @@ pub async fn transition_campaign_stage(
     info!("Transitioning campaign {} to stage {}", campaign_id, new_stage);
     
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let mut service = mimir_dm_db::services::CampaignService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.transition_campaign_stage(campaign_id, &new_stage) {
         Ok(updated_campaign) => {

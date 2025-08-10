@@ -8,7 +8,7 @@
 
     <!-- Next Steps (shown at top when ready) -->
     <div class="next-steps" v-if="nextStageAvailable">
-      <h3>🎉 Ready for Next Stage!</h3>
+      <h3> Ready for Next Stage! </h3>
       <p>{{ nextStagePrompt }}</p>
       <button class="btn-primary" @click="transitionToNextStage">
         Advance to {{ nextStageName }} →
@@ -38,8 +38,26 @@
       <!-- Concept Stage -->
       <div v-if="stage === 'concept'" class="stage-concept">
         <div class="activity-section">
-          <h3>🎯 Your Mission</h3>
+          <h3> Stage Objective </h3>
           <p>Transform your campaign spark into a compelling pitch that will excite your players.</p>
+          
+          <div class="document-grid" v-if="stageDocuments.length > 0">
+            <div 
+              v-for="doc in stageDocuments" 
+              :key="doc.templateId"
+              class="document-card"
+              :class="{ completed: isDocumentComplete(doc.templateId) }"
+            >
+              <h4>{{ doc.title }}</h4>
+              <p>{{ doc.description }}</p>
+              <button 
+                class="btn-small"
+                @click="startDocument(doc.templateId)"
+              >
+                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
+              </button>
+            </div>
+          </div>
           
           <div class="checklist">
             <h4>Before You Begin:</h4>
@@ -52,7 +70,7 @@
         </div>
 
         <div class="tips-section">
-          <h3>💡 Tips for Success</h3>
+          <h3> Tips for Success</h3>
           <div class="tip-card">
             <h4>The Big Three</h4>
             <p>Every great campaign needs:</p>
@@ -74,12 +92,12 @@
       <!-- Session Zero Stage -->
       <div v-else-if="stage === 'session_zero'" class="stage-session-zero">
         <div class="activity-section">
-          <h3>🎭 Preparing for Session Zero</h3>
+          <h3> Preparing for Session Zero</h3>
           <p>Create the materials that will help your players understand and engage with your world.</p>
           
           <div class="document-grid">
             <div 
-              v-for="doc in sessionZeroDocuments" 
+              v-for="doc in stageDocuments" 
               :key="doc.templateId"
               class="document-card"
               :class="{ completed: isDocumentComplete(doc.templateId) }"
@@ -97,7 +115,7 @@
         </div>
 
         <div class="tips-section">
-          <h3>📋 Session Zero Checklist</h3>
+          <h3> Session Zero Checklist</h3>
           <ul class="checklist">
             <li>Schedule session zero with all players</li>
             <li>Prepare handouts and reference materials</li>
@@ -111,8 +129,26 @@
       <!-- Integration Stage -->
       <div v-else-if="stage === 'integration'" class="stage-integration">
         <div class="activity-section">
-          <h3>🔗 Weaving It All Together</h3>
+          <h3>Weaving It All Together</h3>
           <p>Connect player characters to your world and prepare for active play.</p>
+          
+          <div class="document-grid" v-if="stageDocuments.length > 0">
+            <div 
+              v-for="doc in stageDocuments" 
+              :key="doc.templateId"
+              class="document-card"
+              :class="{ completed: isDocumentComplete(doc.templateId) }"
+            >
+              <h4>{{ doc.title }}</h4>
+              <p>{{ doc.description }}</p>
+              <button 
+                class="btn-small"
+                @click="startDocument(doc.templateId)"
+              >
+                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
+              </button>
+            </div>
+          </div>
           
           <div class="integration-tasks">
             <div class="task-card">
@@ -134,7 +170,7 @@
       <!-- Active Stage -->
       <div v-else-if="stage === 'active'" class="stage-active">
         <div class="campaign-dashboard">
-          <h3>🎲 Campaign is Active!</h3>
+          <h3>Campaign is Active!</h3>
           <p>Your campaign is up and running. Use the boards to track your progress.</p>
           
           <div class="dashboard-stats">
@@ -163,7 +199,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
+import { boardConfigService } from '../../services/boardConfigService'
 
 const props = defineProps<{
   stage: string
@@ -193,29 +230,52 @@ const stageInfo = computed(() => {
   }
 })
 
-// Session Zero document info
-const sessionZeroDocuments = [
-  {
-    templateId: 'starting-scenario',
-    title: 'Starting Scenario',
-    description: 'The opening situation that brings the party together'
-  },
-  {
-    templateId: 'world-primer',
-    title: 'World Primer',
-    description: 'Essential information about your campaign setting'
-  },
-  {
-    templateId: 'character-guidelines',
-    title: 'Character Guidelines',
-    description: 'Rules and suggestions for character creation'
-  },
-  {
-    templateId: 'table-expectations',
-    title: 'Table Expectations',
-    description: 'Gameplay style, safety tools, and social contract'
+// Initialize board configuration service on mount
+onMounted(async () => {
+  if (props.boardConfig && !boardConfigService.getBoardConfig('campaign')) {
+    // Transform and cache the board config in the service
+    const config = {
+      boardType: props.boardConfig.board_type || 'campaign',
+      stages: props.boardConfig.stages.map((stage: any) => ({
+        key: stage.key,
+        displayName: stage.display_name,
+        description: stage.description,
+        requiredDocuments: stage.required_documents || [],
+        optionalDocuments: stage.optional_documents || [],
+        metadata: {
+          displayName: stage.display_name,
+          description: stage.description,
+          completionMessage: stage.completion_message,
+          transitionPrompt: stage.transition_prompt,
+          helpText: stage.help_text
+        }
+      })),
+      transitions: props.boardConfig.transitions || {}
+    }
+    
+    // Cache it in the service
+    boardConfigService.cacheBoard(config)
   }
-]
+})
+
+// Get required documents for the current stage from board config service
+const stageDocuments = computed(() => {
+  if (!props.boardConfig || !props.stage) {
+    return []
+  }
+  
+  // Use the board configuration service to get properly formatted documents
+  const documents = boardConfigService.getStageDocuments('campaign', props.stage)
+  
+  // Filter to only required documents for display
+  return documents
+    .filter(doc => doc.category === 'required')
+    .map(doc => ({
+      templateId: doc.templateId,
+      title: doc.title,
+      description: doc.description
+    }))
+})
 
 // Document progress is computed from actual documents
 
