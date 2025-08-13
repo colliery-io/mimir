@@ -70,7 +70,19 @@ fn main() {
             transition_campaign_stage,
             initialize_stage_documents,
             get_board_configuration,
-            get_next_stage
+            get_next_stage,
+            // Module commands
+            create_module,
+            get_module,
+            list_campaign_modules,
+            update_module,
+            transition_module_stage,
+            initialize_module_documents,
+            get_module_documents,
+            check_module_completion,
+            find_modules_needing_next,
+            increment_module_sessions,
+            delete_module
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
