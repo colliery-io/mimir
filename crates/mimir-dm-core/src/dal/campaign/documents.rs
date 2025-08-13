@@ -51,6 +51,25 @@ impl DocumentRepository {
             .load(conn)
             .map_err(|e| DbError::Query(e))
     }
+    
+    /// Alias for find_by_module for compatibility
+    pub fn list_by_module(conn: &mut DbConnection, module_id: i32) -> Result<Vec<Document>> {
+        Self::find_by_module(conn, module_id)
+    }
+    
+    /// Find a document by module and template
+    pub fn find_by_module_and_template(
+        conn: &mut DbConnection, 
+        module_id: i32, 
+        template_id: &str
+    ) -> Result<Option<Document>> {
+        documents::table
+            .filter(documents::module_id.eq(module_id))
+            .filter(documents::template_id.eq(template_id))
+            .first(conn)
+            .optional()
+            .map_err(|e| DbError::Query(e))
+    }
 
     /// Get all documents for a session
     pub fn find_by_session(conn: &mut DbConnection, session_id: i32) -> Result<Vec<Document>> {

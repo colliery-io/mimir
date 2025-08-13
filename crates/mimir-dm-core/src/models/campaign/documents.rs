@@ -43,6 +43,16 @@ pub struct UpdateDocument {
     pub completed_at: Option<String>,
 }
 
+impl Default for UpdateDocument {
+    fn default() -> Self {
+        Self {
+            title: None,
+            updated_at: None,
+            completed_at: None,
+        }
+    }
+}
+
 impl Document {
     /// Check if the document has been completed
     pub fn is_completed(&self) -> bool {

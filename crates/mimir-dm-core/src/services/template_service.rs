@@ -200,10 +200,10 @@ mod tests {
     use super::*;
     use crate::{
         connection::establish_connection,
-        dal::campaigns::CampaignRepository,
-        models::campaigns::NewCampaign,
-        models::template_documents::{NewTemplateDocument},
-        dal::template_documents::TemplateRepository,
+        dal::campaign::campaigns::CampaignRepository,
+        models::campaign::campaigns::NewCampaign,
+        models::campaign::template_documents::{NewTemplateDocument},
+        dal::campaign::template_documents::TemplateRepository,
     };
     use tempfile::TempDir;
     
