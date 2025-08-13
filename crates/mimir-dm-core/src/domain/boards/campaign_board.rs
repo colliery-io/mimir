@@ -58,7 +58,7 @@ impl BoardDefinition for CampaignBoard {
             "concept" => vec![],  // No optional documents - notes and inspiration are working tools, not artifacts
             "session_zero" => vec!["safety_tools", "house_rules"],
             "integration" => vec!["player_secrets", "faction_overview"],
-            "active" => vec!["session_notes", "player_handouts"],
+            "active" => vec![],  // No documents in active stage - managed through session boards
             _ => vec![],
         }
     }
@@ -261,11 +261,9 @@ mod tests {
         assert!(integration_optional.contains(&"player_secrets"));
         assert!(integration_optional.contains(&"faction_overview"));
         
-        // Active stage
+        // Active stage - no documents (managed through session boards)
         let active_optional = board.optional_documents("active");
-        assert_eq!(active_optional.len(), 2);
-        assert!(active_optional.contains(&"session_notes"));
-        assert!(active_optional.contains(&"player_handouts"));
+        assert_eq!(active_optional.len(), 0);
         
         // Stages with no optional documents
         assert_eq!(board.optional_documents("concluding").len(), 0);
