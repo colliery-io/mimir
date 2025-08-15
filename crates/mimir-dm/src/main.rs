@@ -82,7 +82,12 @@ fn main() {
             check_module_completion,
             find_modules_needing_next,
             increment_module_sessions,
-            delete_module
+            delete_module,
+            // Session commands
+            create_session,
+            list_module_sessions,
+            transition_session_status,
+            get_session_board_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

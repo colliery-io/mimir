@@ -42,6 +42,12 @@ const routes: RouteRecordRaw[] = [
     props: true
   },
   {
+    path: '/modules/:id/board',
+    name: 'module-board',
+    component: () => import('../views/modules/ModuleBoardView.vue'),
+    props: true
+  },
+  {
     path: '/modules/:id/sessions',
     name: 'module-sessions',
     component: () => import('../views/sessions/SessionListView.vue'),

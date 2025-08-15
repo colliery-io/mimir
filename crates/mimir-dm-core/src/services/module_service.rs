@@ -9,10 +9,8 @@ use crate::models::campaign::{
     modules::{Module, NewModule, UpdateModule},
     documents::{Document, NewDocument},
 };
-use crate::services::template_service::TemplateService;
 use std::path::PathBuf;
 use std::fs;
-use std::collections::HashMap;
 use serde_json::json;
 
 /// Service for managing modules
@@ -48,6 +46,7 @@ impl<'a> ModuleService<'a> {
         
         repo.create(new_module)
     }
+    
     
     /// Get a module by ID
     pub fn get_module(&mut self, id: i32) -> Result<Option<Module>> {
@@ -116,8 +115,9 @@ impl<'a> ModuleService<'a> {
         // Get required documents for current stage
         let required_docs = board.required_documents(&module.status);
         
-        // Create module directory if it doesn't exist
+        // Create module directory in modules folder if it doesn't exist
         let module_dir = PathBuf::from(campaign_directory)
+            .join("modules")
             .join(format!("module_{:02}", module.module_number));
         
         if !module_dir.exists() {
@@ -139,18 +139,28 @@ impl<'a> ModuleService<'a> {
             )?;
             
             if existing.is_none() && !file_path.exists() {
-                // Prepare variables for template
-                let mut variables = HashMap::new();
-                variables.insert("module_name".to_string(), json!(module.name));
-                variables.insert("module_number".to_string(), json!(module.module_number));
+                // Get the template and use its create_context method for defaults
+                use crate::dal::campaign::template_documents::TemplateRepository;
+                let template = TemplateRepository::get_latest(self.conn, doc_template_id)?;
                 
-                // Generate document from template
-                let mut template_service = TemplateService::new(self.conn);
-                let content = template_service.render_template(
-                    module.campaign_id,
-                    doc_template_id,
-                    variables
-                )?;
+                // Create context with template defaults
+                let mut context = template.create_context();
+                
+                // Add module-specific variables
+                context.insert("module_name", &json!(module.name));
+                context.insert("module_number", &json!(module.module_number));
+                
+                // Render the template
+                let mut tera = tera::Tera::default();
+                tera.add_raw_template(&template.document_id, &template.document_content)
+                    .map_err(|e| diesel::result::Error::QueryBuilderError(
+                        format!("Failed to add template: {}", e).into()
+                    ))?;
+                
+                let content = tera.render(&template.document_id, &context)
+                    .map_err(|e| diesel::result::Error::QueryBuilderError(
+                        format!("Failed to render template: {}", e).into()
+                    ))?;
                 
                 // Write the file
                 fs::write(&file_path, content)?;
@@ -204,27 +214,35 @@ impl<'a> ModuleService<'a> {
         
         let required_docs = board.required_documents(&module.status);
         let optional_docs = board.optional_documents(&module.status);
+        let no_completion_docs = board.no_completion_required_documents(&module.status);
         
-        // Count completed documents
+        // Filter required docs to exclude those that don't need completion
+        let completion_required_docs: Vec<&str> = required_docs.iter()
+            .filter(|doc| !no_completion_docs.contains(doc))
+            .copied()
+            .collect();
+        
+        // Count completed documents (only for those that require completion)
         let completed_required = documents.iter()
-            .filter(|d| required_docs.contains(&d.template_id.as_str()) && d.completed_at.is_some())
+            .filter(|d| completion_required_docs.contains(&d.template_id.as_str()) && d.completed_at.is_some())
             .count();
             
         let completed_optional = documents.iter()
             .filter(|d| optional_docs.contains(&d.template_id.as_str()) && d.completed_at.is_some())
             .count();
         
-        // Find missing required documents
+        // Find missing required documents (but exclude no-completion docs from the check)
         let mut missing_required = Vec::new();
-        for req_doc in &required_docs {
-            let exists = documents.iter().any(|d| d.template_id == *req_doc);
-            if !exists {
-                missing_required.push(req_doc.to_string());
+        for req_doc in &completion_required_docs {
+            let doc = documents.iter().find(|d| d.template_id == *req_doc);
+            match doc {
+                None => missing_required.push(req_doc.to_string()),
+                Some(d) if d.completed_at.is_none() => missing_required.push(req_doc.to_string()),
+                _ => {}
             }
         }
         
-        let is_stage_complete = missing_required.is_empty() && 
-            completed_required == required_docs.len();
+        let is_stage_complete = missing_required.is_empty();
             
         let next_stage = board.next_stage(&module.status).map(|s| s.to_string());
         let can_progress = is_stage_complete && next_stage.is_some();
@@ -232,7 +250,7 @@ impl<'a> ModuleService<'a> {
         Ok(BoardCompletionStatus {
             board_type: "module".to_string(),
             current_stage: module.status.clone(),
-            total_required_documents: required_docs.len(),
+            total_required_documents: completion_required_docs.len(),
             completed_required_documents: completed_required,
             total_optional_documents: optional_docs.len(),
             completed_optional_documents: completed_optional,

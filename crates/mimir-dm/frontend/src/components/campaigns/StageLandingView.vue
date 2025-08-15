@@ -189,7 +189,7 @@
           </div>
 
           <div class="quick-actions">
-            <button class="btn-secondary">View Module Board</button>
+            <router-link :to="`/campaigns/${campaign.id}/modules`" class="btn-secondary">View Module Board</router-link>
             <button class="btn-secondary">View Session Board</button>
           </div>
         </div>
@@ -652,11 +652,14 @@ const transitionToNextStage = () => {
   cursor: pointer;
   font-weight: 500;
   transition: all var(--transition-base);
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btn-secondary:hover {
   background-color: var(--color-surface-variant);
   border-color: var(--color-primary-300);
+  color: var(--color-text);
 }
 
 .btn-small {

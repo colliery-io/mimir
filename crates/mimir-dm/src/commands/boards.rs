@@ -19,6 +19,7 @@ pub struct StageInfo {
     pub description: String,
     pub required_documents: Vec<String>,
     pub optional_documents: Vec<String>,
+    pub no_completion_required_documents: Vec<String>,
     pub completion_message: Option<String>,
     pub transition_prompt: Option<String>,
     pub help_text: Option<String>,
@@ -59,6 +60,10 @@ pub async fn get_board_configuration(board_type: String) -> Result<ApiResponse<B
                     .map(|s| s.to_string())
                     .collect(),
                 optional_documents: board.optional_documents(stage)
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                no_completion_required_documents: board.no_completion_required_documents(stage)
                     .into_iter()
                     .map(|s| s.to_string())
                     .collect(),

@@ -32,6 +32,12 @@ pub trait BoardDefinition {
     
     /// Get stage-specific metadata (e.g., prompts, help text)
     fn stage_metadata(&self, stage: &str) -> StageMetadata;
+    
+    /// Get documents that don't require completion for stage progression
+    /// (e.g., tracking documents that are ongoing)
+    fn no_completion_required_documents(&self, _stage: &str) -> Vec<&str> {
+        vec![]
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

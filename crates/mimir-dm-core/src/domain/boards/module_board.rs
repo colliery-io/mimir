@@ -42,16 +42,17 @@ impl BoardDefinition for ModuleBoard {
             "planning" => vec!["module_overview"],
             "development" => vec!["quick_npc_reference"],
             "ready" => vec!["session_outline"],
+            "active" => vec!["document_tracker"],
             _ => vec![],
         }
     }
     
     fn optional_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
-            "planning" => vec!["module_mystery", "module_dungeon", "module_heist", "module_horror", "module_political"],
+            "planning" => vec![],
             "development" => vec!["major_npc_tracker", "faction_template"],
             "ready" => vec!["clue_tracker", "region_overview"],
-            "active" => vec!["document_tracker"],
+            "active" => vec![],
             _ => vec![],
         }
     }
@@ -160,6 +161,13 @@ impl BoardDefinition for ModuleBoard {
                 transition_prompt: None,
                 help_text: None,
             },
+        }
+    }
+    
+    fn no_completion_required_documents(&self, stage: &str) -> Vec<&str> {
+        match stage {
+            "active" => vec!["document_tracker"],
+            _ => vec![],
         }
     }
 }

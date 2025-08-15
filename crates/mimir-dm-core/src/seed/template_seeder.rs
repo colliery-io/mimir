@@ -67,6 +67,7 @@ define_templates! {
     
     // Session Board Documents - Session management
     SESSION_OUTLINE => "session_outline.md",
+    SESSION_NOTES => "session_notes.md",
     CLUE_TRACKER => "clue_tracker.md",
     DOCUMENT_TRACKER => "document_tracker.md",
 }
