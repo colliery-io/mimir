@@ -297,11 +297,6 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.status-badge.backlog {
-  background-color: var(--color-gray-100);
-  color: var(--color-gray-700);
-}
-
 .status-badge.planning {
   background-color: var(--color-info-bg);
   color: var(--color-info);

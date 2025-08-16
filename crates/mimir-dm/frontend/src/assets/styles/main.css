@@ -3,6 +3,10 @@
 @import './themes/dark.css';
 @import './themes/hyper.css';
 
+/* Import shared styles */
+@import './boards.css';
+@import './components.css';
+
 /* Tailwind directives */
 @tailwind base;
 @tailwind components;
@@ -36,9 +40,23 @@
 
   /* Semantic colors */
   --color-success: #10b981;
+  --color-success-dark: #059669;
+  --color-success-light: #34d399;
+  --color-success-bg: #d1fae5;
+  --color-success-50: #ecfdf5;
   --color-warning: #f59e0b;
+  --color-warning-light: #fbbf24;
+  --color-warning-bg: #fef3c7;
   --color-error: #ef4444;
+  --color-error-dark: #dc2626;
+  --color-error-bg: #fee2e2;
   --color-info: #3b82f6;
+  --color-info-bg: #dbeafe;
+  --color-info-border: #93c5fd;
+  
+  /* Secondary color */
+  --color-secondary: #8b5cf6;
+  --color-secondary-dark: #7c3aed;
 
   /* Surface colors */
   --color-background: #ffffff;
@@ -66,8 +84,10 @@
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
   
   /* Border radius */
+  --radius-xs: 0.125rem;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;

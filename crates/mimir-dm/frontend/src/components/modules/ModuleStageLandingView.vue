@@ -1,200 +1,261 @@
 <template>
   <div class="stage-landing">
+    <!-- Stage Header -->
     <div class="stage-header">
-      <h2>{{ stageMetadata?.display_name || stage }}</h2>
-      <p class="stage-description">{{ stageMetadata?.description }}</p>
+      <h2>{{ stageInfo.title }}</h2>
+      <p class="stage-subtitle">{{ stageInfo.subtitle }}</p>
     </div>
 
-    <!-- Help Text -->
-    <div v-if="stageMetadata?.help_text" class="help-section">
-      <div class="help-icon">💡</div>
-      <div class="help-content">
-        <p>{{ stageMetadata.help_text }}</p>
-      </div>
+    <!-- Next Steps (shown at top when ready) -->
+    <div class="stage-transition-card" v-if="nextStageAvailable">
+      <h3>Ready for Next Stage!</h3>
+      <p>{{ nextStagePrompt }}</p>
+      <button class="btn btn-primary btn-large" @click="transitionToNextStage">
+        Advance to {{ nextStageName }} →
+      </button>
     </div>
 
-    <!-- Module Info -->
-    <div class="module-info">
-      <div class="info-card">
-        <h3>Module #{{ module.module_number }}: {{ module.name }}</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="label">Expected Sessions:</span>
-            <span class="value">{{ module.expected_sessions }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Actual Sessions:</span>
-            <span class="value">{{ module.actual_sessions }}</span>
-          </div>
-          <div class="info-item" v-if="module.started_at">
-            <span class="label">Started:</span>
-            <span class="value">{{ formatDate(module.started_at) }}</span>
-          </div>
-          <div class="info-item" v-if="progressPercentage > 0">
-            <span class="label">Progress:</span>
-            <span class="value">{{ progressPercentage }}%</span>
-          </div>
+    <!-- Progress Overview -->
+    <div class="progress-section">
+      <div class="progress-card">
+        <div class="progress-stat">
+          <span class="stat-value">{{ documentProgress.completed }}</span>
+          <span class="stat-label">Documents Complete</span>
+        </div>
+        <div class="progress-stat">
+          <span class="stat-value">{{ documentProgress.total }}</span>
+          <span class="stat-label">Total Required</span>
+        </div>
+        <div class="progress-stat">
+          <span class="stat-value">{{ documentProgress.percentage }}%</span>
+          <span class="stat-label">Stage Progress</span>
         </div>
       </div>
     </div>
 
-    <!-- Document Templates for current stage -->
-    <div v-if="hasDocuments" class="documents-section">
-      <h3>Stage Documents</h3>
-      
-      <!-- Required Documents -->
-      <div v-if="requiredDocuments.length > 0" class="document-category">
-        <h4>Required Documents</h4>
-        <div class="document-grid">
-          <div 
-            v-for="doc in requiredDocuments" 
-            :key="doc.templateId"
-            class="document-card"
-            :class="{ completed: doc.isCompleted }"
-          >
-            <div class="document-status">
-              <span v-if="doc.exists && doc.isCompleted" class="status-icon">✅</span>
-              <span v-else-if="doc.exists" class="status-icon">📝</span>
-              <span v-else class="status-icon">📄</span>
+    <!-- Stage-Specific Content -->
+    <div class="stage-content-section">
+      <!-- Planning Stage -->
+      <div v-if="stage === 'planning'" class="stage-planning">
+        <div class="activity-section">
+          <h3>Stage Objective</h3>
+          <p>Develop the core concept and structure for your module.</p>
+          
+          <div class="document-grid" v-if="stageDocuments.length > 0">
+            <div 
+              v-for="doc in stageDocuments" 
+              :key="doc.templateId"
+              class="document-card"
+              :class="{ completed: isDocumentComplete(doc.templateId) }"
+            >
+              <h4>{{ doc.title }}</h4>
+              <p>{{ doc.description }}</p>
+              <button 
+                class="btn btn-small btn-primary"
+                @click="startDocument(doc.templateId)"
+              >
+                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
+              </button>
             </div>
-            <h4>
-              {{ doc.title }}
-              <span v-if="!doc.requiresCompletion" class="tracking-badge">(Tracking)</span>
-            </h4>
-            <p class="document-description">{{ doc.description }}</p>
-            <div class="document-actions">
+          </div>
+          
+          <div class="checklist">
+            <h4>Before You Begin:</h4>
+            <ul>
+              <li>Have you identified the module's core conflict and stakes?</li>
+              <li>Do you know how this fits into your campaign's overall narrative?</li>
+              <li>Have you decided on the module's tone and themes?</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="tips-section">
+          <h3>Tips for Success</h3>
+          <div class="tip-card">
+            <h4>Module Design Principles</h4>
+            <p>Every great module needs:</p>
+            <ol>
+              <li><strong>Clear Stakes:</strong> What happens if the PCs fail?</li>
+              <li><strong>Player Agency:</strong> Multiple paths to success</li>
+              <li><strong>Memorable NPCs:</strong> Characters that bring the world to life</li>
+            </ol>
+          </div>
+          
+          <div class="tip-card">
+            <h4>Start Small</h4>
+            <p>Focus on the core concept first. You can add complexity during development.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Development Stage -->
+      <div v-else-if="stage === 'development'" class="stage-development">
+        <div class="activity-section">
+          <h3>Building Your Module</h3>
+          <p>Create the encounters, NPCs, and locations that bring your module to life.</p>
+          
+          <div class="document-grid">
+            <div 
+              v-for="doc in stageDocuments" 
+              :key="doc.templateId"
+              class="document-card"
+              :class="{ completed: isDocumentComplete(doc.templateId) }"
+            >
+              <h4>{{ doc.title }}</h4>
+              <p>{{ doc.description }}</p>
               <button 
-                v-if="!doc.exists"
-                @click="createDocument(doc.templateId)"
-                class="btn btn-primary"
+                class="btn btn-small btn-primary"
+                @click="startDocument(doc.templateId)"
               >
-                Create Document
+                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
               </button>
-              <button 
-                v-else
-                @click="editDocument(doc)"
-                class="btn btn-secondary"
-              >
-                Edit Document
-              </button>
+            </div>
+          </div>
+
+          <div class="task-grid">
+            <div class="task-card">
+              <h4>NPCs & Factions</h4>
+              <p>Design memorable characters and their relationships.</p>
+            </div>
+            <div class="task-card">
+              <h4>Encounters</h4>
+              <p>Create combat, social, and exploration challenges.</p>
+            </div>
+            <div class="task-card">
+              <h4>Locations</h4>
+              <p>Map out key locations and their connections.</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Optional Documents -->
-      <div v-if="optionalDocuments.length > 0" class="document-category">
-        <h4>Optional Documents</h4>
-        <div class="document-grid">
-          <div 
-            v-for="doc in optionalDocuments" 
-            :key="doc.templateId"
-            class="document-card optional"
-            :class="{ completed: doc.isCompleted }"
-          >
-            <div class="document-status">
-              <span v-if="doc.exists && doc.isCompleted" class="status-icon">✅</span>
-              <span v-else-if="doc.exists" class="status-icon">📝</span>
-              <span v-else class="status-icon">📄</span>
-            </div>
-            <h4>
-              {{ doc.title }}
-              <span v-if="!doc.requiresCompletion" class="tracking-badge">(Tracking)</span>
-            </h4>
-            <p class="document-description">{{ doc.description }}</p>
-            <div class="document-actions">
+      <!-- Ready Stage -->
+      <div v-else-if="stage === 'ready'" class="stage-ready">
+        <div class="activity-section">
+          <h3>Final Preparations</h3>
+          <p>Your module is almost ready to run. Complete final preparations.</p>
+          
+          <div class="document-grid" v-if="stageDocuments.length > 0">
+            <div 
+              v-for="doc in stageDocuments" 
+              :key="doc.templateId"
+              class="document-card"
+              :class="{ completed: isDocumentComplete(doc.templateId) }"
+            >
+              <h4>{{ doc.title }}</h4>
+              <p>{{ doc.description }}</p>
               <button 
-                v-if="!doc.exists"
-                @click="createDocument(doc.templateId)"
-                class="btn btn-outline"
+                class="btn btn-small btn-primary"
+                @click="startDocument(doc.templateId)"
               >
-                Create Optional
-              </button>
-              <button 
-                v-else
-                @click="editDocument(doc)"
-                class="btn btn-secondary"
-              >
-                Edit Document
+                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
               </button>
             </div>
           </div>
+          
+          <div class="checklist">
+            <h4>Pre-Launch Checklist:</h4>
+            <ul>
+              <li>Review all NPCs and their motivations</li>
+              <li>Prepare any handouts or maps</li>
+              <li>Create session outlines</li>
+              <li>Note potential player hooks</li>
+            </ul>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Session Management for Active Stage -->
-    <div v-if="stage === 'active'" class="session-section">
-      <h3>Session Management</h3>
-      <div class="session-info">
-        <p>Sessions Completed: {{ module.actual_sessions }} / {{ module.expected_sessions }}</p>
-        <button @click="createNewSession" class="btn btn-primary">
-          Create New Session
-        </button>
-      </div>
-      
-      <!-- List existing sessions -->
-      <div v-if="sessions.length > 0" class="sessions-list">
-        <h4>Module Sessions</h4>
-        <div class="session-grid">
-          <div v-for="session in sessions" :key="session.id" class="session-card" :class="{ active: session.status === 'active' }">
-            <div class="session-header">
-              <h5>Session #{{ session.session_number }}</h5>
-              <select 
-                v-model="session.status" 
-                @change="handleSessionStatusChange(session)"
-                class="session-status-select"
-                :class="`status-${session.status}`"
-              >
-                <option 
-                  v-for="stage in getAvailableTransitions(session.status)" 
-                  :key="stage.key"
-                  :value="stage.key"
-                  :selected="stage.key === session.status"
+      <!-- Active Stage -->
+      <div v-else-if="stage === 'active'" class="stage-active">
+        <div class="dashboard-section">
+          <h3>Module is Active!</h3>
+          <p>Track your sessions and manage module progress.</p>
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <h4>Sessions Run</h4>
+              <span class="stat-number">{{ module.actual_sessions }}</span>
+            </div>
+            <div class="stat-card">
+              <h4>Expected Sessions</h4>
+              <span class="stat-number">{{ module.expected_sessions }}</span>
+            </div>
+            <div class="stat-card">
+              <h4>Progress</h4>
+              <span class="stat-number">{{ progressPercentage }}%</span>
+            </div>
+          </div>
+
+          <div class="session-management">
+            <div class="session-controls">
+              <button @click="createNewSession" class="btn btn-primary">
+                Create New Session
+              </button>
+            </div>
+            
+            <!-- List existing sessions -->
+            <div v-if="sessions.length > 0" class="sessions-list">
+              <h3>Module Sessions</h3>
+              <div class="session-grid">
+                <div 
+                  v-for="session in sessions" 
+                  :key="session.id" 
+                  class="session-card"
+                  :class="{ active: session.status === 'running' }"
                 >
-                  {{ stage.display_name }}
-                </option>
-              </select>
-            </div>
-            <div class="session-documents">
-              <button @click="openSessionDocument(session, 'outline')" class="doc-link-btn">
-                📝 Outline
-              </button>
-              <button @click="openSessionDocument(session, 'notes')" class="doc-link-btn">
-                📔 Notes
-              </button>
+                  <div class="session-header">
+                    <h4>Session #{{ session.session_number }}</h4>
+                    <select 
+                      v-model="session.status" 
+                      @change="handleSessionStatusChange(session)"
+                      class="status-select"
+                      :class="`status-${session.status}`"
+                    >
+                      <option 
+                        v-for="stage in getAvailableTransitions(session.status)" 
+                        :key="stage.key"
+                        :value="stage.key"
+                      >
+                        {{ stage.display_name }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="session-actions">
+                    <button @click="openSessionDocument(session, 'outline')" class="btn btn-small btn-secondary">
+                      📝 Outline
+                    </button>
+                    <button @click="openSessionDocument(session, 'notes')" class="btn btn-small btn-secondary">
+                      📔 Notes
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Stage Transition -->
-    <div class="transition-section">
-      <div v-if="canProgressToNext" class="transition-card">
-        <h3>Ready to Progress?</h3>
-        <p v-if="stageMetadata?.completion_message">{{ stageMetadata.completion_message }}</p>
-        <p v-if="stageMetadata?.transition_prompt" class="transition-prompt">
-          {{ stageMetadata.transition_prompt }}
-        </p>
-        <button @click="handleTransition" class="btn btn-primary btn-large">
-          Move to {{ nextStage?.display_name || 'Next Stage' }}
-        </button>
-      </div>
-      
-      <div v-else-if="isCompleted" class="completion-card">
-        <h3>🎉 Module Complete!</h3>
-        <p>This module has been completed. Great work!</p>
-      </div>
-      
-      <div v-else class="requirements-card">
-        <h3>Stage Requirements</h3>
-        <p>Complete all required documents to progress to the next stage.</p>
-        <ul class="requirements-list">
-          <li v-for="doc in missingRequiredDocuments" :key="doc">
-            ❌ {{ formatDocumentName(doc) }}
-          </li>
-        </ul>
+      <!-- Completed Stage -->
+      <div v-else-if="stage === 'completed'" class="stage-completed">
+        <div class="dashboard-section">
+          <h3>🎉 Module Complete!</h3>
+          <p>This module has been successfully completed.</p>
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <h4>Total Sessions</h4>
+              <span class="stat-number">{{ module.actual_sessions }}</span>
+            </div>
+            <div class="stat-card">
+              <h4>Started</h4>
+              <span class="stat-number">{{ formatDate(module.started_at) }}</span>
+            </div>
+            <div class="stat-card">
+              <h4>Completed</h4>
+              <span class="stat-number">{{ formatDate(module.completed_at) }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -224,29 +285,138 @@ const emit = defineEmits<{
 const sessions = ref<any[]>([])
 const sessionBoardConfig = ref<any>(null)
 
-// Load sessions and config when entering active stage or when module changes
+// Get stage info from board configuration
+const stageInfo = computed(() => {
+  if (!props.boardConfig) {
+    return { title: '', subtitle: '' }
+  }
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  if (!currentStageInfo) {
+    return { title: '', subtitle: '' }
+  }
+  return {
+    title: currentStageInfo.display_name,
+    subtitle: currentStageInfo.description
+  }
+})
+
+// Get required documents for the current stage
+const stageDocuments = computed(() => {
+  if (!props.boardConfig || !props.stage) {
+    return []
+  }
+  
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  if (!currentStageInfo) {
+    return []
+  }
+  
+  const requiredDocs = currentStageInfo.required_documents || []
+  const noCompletionRequired = currentStageInfo.no_completion_required_documents || []
+  
+  return requiredDocs
+    .filter((docId: string) => !noCompletionRequired.includes(docId))
+    .map((docId: string) => ({
+      templateId: docId,
+      title: formatDocumentName(docId),
+      description: getDocumentDescription(docId)
+    }))
+})
+
+// Document progress computation
+const documentProgress = computed(() => {
+  if (!props.boardConfig) {
+    return { completed: 0, total: 0, percentage: 0 }
+  }
+  
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  if (!currentStageInfo) {
+    return { completed: 0, total: 0, percentage: 0 }
+  }
+  
+  const requiredDocs = currentStageInfo.required_documents || []
+  const noCompletionRequired = currentStageInfo.no_completion_required_documents || []
+  const completionRequiredDocs = requiredDocs.filter((docId: string) => 
+    !noCompletionRequired.includes(docId)
+  )
+  
+  const total = completionRequiredDocs.length
+  const completed = completionRequiredDocs.filter((docId: string) => {
+    const doc = props.documents.find(d => d.template_id === docId)
+    return doc?.completed_at
+  }).length
+  
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+  
+  return { completed, total, percentage }
+})
+
+// Check if can progress to next stage
+const nextStageAvailable = computed(() => {
+  if (!props.boardConfig || props.stage === 'completed') return false
+  
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  if (!currentStageInfo) return false
+  
+  // Check if there's a next stage
+  const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
+  const currentIndex = stageOrder.indexOf(props.stage)
+  if (currentIndex >= stageOrder.length - 1) return false
+  
+  // Check if required documents are complete
+  const requiredDocs = currentStageInfo.required_documents || []
+  const noCompletionRequired = currentStageInfo.no_completion_required_documents || []
+  const completionRequiredDocs = requiredDocs.filter((docId: string) => 
+    !noCompletionRequired.includes(docId)
+  )
+  
+  const completedDocs = props.documents.filter(doc => 
+    completionRequiredDocs.includes(doc.template_id) && doc.completed_at
+  )
+  
+  return completedDocs.length === completionRequiredDocs.length && completionRequiredDocs.length > 0
+})
+
+const nextStageName = computed(() => {
+  if (!props.boardConfig) return ''
+  const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
+  const currentIndex = stageOrder.indexOf(props.stage)
+  if (currentIndex < stageOrder.length - 1) {
+    const nextStage = props.boardConfig.stages[currentIndex + 1]
+    return nextStage.display_name
+  }
+  return ''
+})
+
+const nextStagePrompt = computed(() => {
+  if (!props.boardConfig) return ''
+  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
+  return currentStageInfo?.transition_prompt || ''
+})
+
+// Module progress percentage
+const progressPercentage = computed(() => {
+  if (props.module.expected_sessions === 0) return 0
+  return Math.round((props.module.actual_sessions / props.module.expected_sessions) * 100)
+})
+
+// Session management
 watch([() => props.stage, () => props.module], async ([newStage, newModule]) => {
-  console.log('Stage or module changed:', newStage, newModule?.id)
   if (newStage === 'active' && newModule) {
-    console.log('Loading sessions for active stage')
     await loadSessionBoardConfig()
     await loadSessions()
   }
 }, { immediate: true })
 
-// Also load when component is mounted (for when navigating back)
 onMounted(async () => {
   if (props.stage === 'active' && props.module) {
-    console.log('Component mounted, loading sessions')
     await loadSessionBoardConfig()
     await loadSessions()
   }
 })
 
-// Load when component is reactivated (if using keep-alive)
 onActivated(async () => {
   if (props.stage === 'active' && props.module) {
-    console.log('Component activated, loading sessions')
     await loadSessions()
   }
 })
@@ -256,7 +426,6 @@ const loadSessionBoardConfig = async () => {
   try {
     const response = await invoke<{ data: any }>('get_session_board_config')
     sessionBoardConfig.value = response.data
-    console.log('Loaded session board config:', sessionBoardConfig.value)
   } catch (e) {
     console.error('Failed to load session board config:', e)
   }
@@ -264,12 +433,7 @@ const loadSessionBoardConfig = async () => {
 
 // Load sessions for the module
 const loadSessions = async () => {
-  if (!props.module) {
-    console.log('No module available for loading sessions')
-    return
-  }
-  
-  console.log('Loading sessions for module:', props.module.id)
+  if (!props.module) return
   
   try {
     const response = await invoke<{ data: any[] }>('list_module_sessions', {
@@ -278,7 +442,6 @@ const loadSessions = async () => {
       }
     })
     sessions.value = response.data || []
-    console.log('Loaded sessions:', sessions.value)
   } catch (e) {
     console.error('Failed to load sessions:', e)
   }
@@ -286,24 +449,9 @@ const loadSessions = async () => {
 
 // Create a new session
 const createNewSession = async () => {
-  console.log('createNewSession called')
-  console.log('Module:', props.module)
-  console.log('Campaign:', props.campaign)
-  
-  if (!props.module || !props.campaign) {
-    console.error('Module or campaign not available', props.module, props.campaign)
-    return
-  }
+  if (!props.module || !props.campaign) return
   
   const campaignPath = props.campaign.directory_path || props.campaign.path
-  console.log('Campaign path:', campaignPath)
-  
-  console.log('Creating session with:', {
-    module_id: props.module.id,
-    campaign_id: props.module.campaign_id,
-    campaign_directory: campaignPath,
-    module_number: props.module.module_number
-  })
   
   try {
     const response = await invoke<{ data: any }>('create_session', {
@@ -317,8 +465,6 @@ const createNewSession = async () => {
     
     if (response.data) {
       sessions.value.push(response.data)
-      console.log('Created new session:', response.data)
-      // Reload documents to show new session documents
       emit('documentsUpdated')
     }
   } catch (e) {
@@ -326,215 +472,9 @@ const createNewSession = async () => {
   }
 }
 
-// Get stage metadata
-const stageMetadata = computed(() => {
-  if (!props.boardConfig) return null
-  const stage = props.boardConfig.stages.find((s: any) => s.key === props.stage)
-  return stage || null
-})
-
-// Get next stage info
-const nextStage = computed(() => {
-  if (!props.boardConfig) return null
-  const currentIndex = props.boardConfig.stages.findIndex((s: any) => s.key === props.stage)
-  if (currentIndex === -1 || currentIndex === props.boardConfig.stages.length - 1) return null
-  return props.boardConfig.stages[currentIndex + 1]
-})
-
-// Module progress percentage
-const progressPercentage = computed(() => {
-  if (props.module.expected_sessions === 0) return 0
-  return Math.round((props.module.actual_sessions / props.module.expected_sessions) * 100)
-})
-
-// Check if module is completed
-const isCompleted = computed(() => {
-  return props.stage === 'completed'
-})
-
-// Get documents for current stage
-const requiredDocuments = computed(() => {
-  if (!stageMetadata.value) return []
-  
-  const noCompletionRequired = stageMetadata.value.no_completion_required_documents || []
-  
-  return stageMetadata.value.required_documents.map((templateId: string) => {
-    const existing = props.documents.find(d => d.template_id === templateId)
-    const requiresCompletion = !noCompletionRequired.includes(templateId)
-    return {
-      templateId,
-      title: formatDocumentName(templateId),
-      description: getDocumentDescription(templateId),
-      exists: !!existing,
-      isCompleted: existing?.completed_at != null,
-      requiresCompletion,
-      document: existing
-    }
-  })
-})
-
-const optionalDocuments = computed(() => {
-  if (!stageMetadata.value) return []
-  
-  return stageMetadata.value.optional_documents.map((templateId: string) => {
-    const existing = props.documents.find(d => d.template_id === templateId)
-    return {
-      templateId,
-      title: formatDocumentName(templateId),
-      description: getDocumentDescription(templateId),
-      exists: !!existing,
-      isCompleted: existing?.completed_at != null,
-      document: existing
-    }
-  })
-})
-
-const hasDocuments = computed(() => {
-  return requiredDocuments.value.length > 0 || optionalDocuments.value.length > 0
-})
-
-// Missing required documents (only those that need completion)
-const missingRequiredDocuments = computed(() => {
-  return requiredDocuments.value
-    .filter((doc: any) => doc.requiresCompletion && (!doc.exists || !doc.isCompleted))
-    .map((doc: any) => doc.templateId)
-})
-
-// Can progress to next stage
-const canProgressToNext = computed(() => {
-  if (!nextStage.value) return false
-  if (isCompleted.value) return false
-  
-  // All required documents that need completion must be completed
-  return requiredDocuments.value
-    .filter((doc: any) => doc.requiresCompletion)
-    .every((doc: any) => doc.exists && doc.isCompleted)
-})
-
-// Format document name from template ID
-const formatDocumentName = (templateId: string): string => {
-  return templateId
-    .replace(/[-_]/g, ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-// Get document description based on template ID
-const getDocumentDescription = (templateId: string): string => {
-  const descriptions: Record<string, string> = {
-    'module_overview': 'High-level overview and planning for the module',
-    'quick_npc_reference': 'Quick reference for NPCs in this module',
-    'session_outline': 'Outline for running sessions in this module',
-    'module_mystery': 'Mystery module with investigation elements',
-    'module_dungeon': 'Dungeon crawl module template',
-    'module_heist': 'Heist module with planning and execution',
-    'module_horror': 'Horror module with atmosphere and tension',
-    'module_political': 'Political intrigue module template',
-    'major_npc_tracker': 'Track major NPCs and their relationships',
-    'faction_template': 'Define factions and their interactions',
-    'clue_tracker': 'Track clues and revelations',
-    'region_overview': 'Overview of the module\'s region',
-    'document_tracker': 'Track document completion status'
-  }
-  
-  return descriptions[templateId] || 'Module document'
-}
-
-// Format date
-const formatDate = (dateString: string): string => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleDateString()
-}
-
-// Format session status
-const formatSessionStatus = (status: string): string => {
-  const statusMap: Record<string, string> = {
-    'planning': 'Planning',
-    'in_prep': 'In Prep',
-    'ready': 'Ready',
-    'running': 'Running',
-    'complete': 'Complete'
-  }
-  return statusMap[status] || status
-}
-
-// Session management functions
-const startSession = async (session: any) => {
-  await transitionSessionStatus(session.id, 'in_prep')
-}
-
-const markReady = async (session: any) => {
-  await transitionSessionStatus(session.id, 'ready')
-}
-
-const runSession = async (session: any) => {
-  await transitionSessionStatus(session.id, 'running')
-}
-
-const completeSession = async (session: any) => {
-  await transitionSessionStatus(session.id, 'complete')
-}
-
-const transitionSessionStatus = async (sessionId: number, newStatus: string) => {
-  try {
-    const response = await invoke<{ data: any }>('transition_session_status', {
-      request: {
-        session_id: sessionId,
-        new_status: newStatus
-      }
-    })
-    
-    if (response.data) {
-      // Update the session in our list
-      const index = sessions.value.findIndex(s => s.id === sessionId)
-      if (index !== -1) {
-        sessions.value[index] = response.data
-      }
-    }
-  } catch (e) {
-    console.error('Failed to transition session:', e)
-  }
-}
-
-// Open session document
-const openSessionDocument = (session: any, docType: string) => {
-  console.log('Opening', docType, 'for session', session.session_number)
-  console.log('Campaign path:', props.campaign?.directory_path)
-  
-  if (!props.campaign?.directory_path) {
-    console.error('No campaign directory path available')
-    return
-  }
-  
-  // Build the full file path for the session document
-  const fileName = docType === 'outline' ? 'session-outline.md' : 'session-notes.md'
-  const relativePath = `modules/module_${String(props.module.module_number).padStart(2, '0')}/session_${String(session.session_number).padStart(3, '0')}/${fileName}`
-  const fullPath = `${props.campaign.directory_path}/${relativePath}`
-  
-  console.log('Opening session document at:', fullPath)
-  
-  // Create a document object that matches what the editor expects
-  const sessionDocument = {
-    id: `session-${session.id}-${docType}`,
-    campaign_id: props.module.campaign_id,
-    module_id: props.module.id,
-    session_id: session.id,
-    template_id: `session_${docType}`,
-    document_type: `session_${docType}`,
-    title: `Session ${session.session_number} ${docType === 'outline' ? 'Outline' : 'Notes'}`,
-    file_path: fullPath,  // Use full path
-    completed_at: null
-  }
-  
-  emit('editDocument', sessionDocument)
-}
-
 // Get available transitions for a session status
 const getAvailableTransitions = (currentStatus: string) => {
   if (!sessionBoardConfig.value) {
-    // Return current status only if config not loaded
     return [{ key: currentStatus, display_name: formatSessionStatus(currentStatus) }]
   }
   
@@ -543,7 +483,6 @@ const getAvailableTransitions = (currentStatus: string) => {
     return [{ key: currentStatus, display_name: formatSessionStatus(currentStatus) }]
   }
   
-  // Include current status and all valid transitions
   const transitions = [
     { key: currentStatus, display_name: currentStage.display_name }
   ]
@@ -558,262 +497,153 @@ const getAvailableTransitions = (currentStatus: string) => {
   return transitions
 }
 
-// Handle session status change from dropdown
+// Handle session status change
 const handleSessionStatusChange = async (session: any) => {
-  console.log('Session status changing to:', session.status)
-  await transitionSessionStatus(session.id, session.status)
-}
-
-// Create a new document
-const createDocument = (templateId: string) => {
-  emit('createDocument', templateId)
-}
-
-// Edit existing document
-const editDocument = (doc: any) => {
-  if (doc.document) {
-    emit('editDocument', doc.document)
+  try {
+    const response = await invoke<{ data: any }>('transition_session_status', {
+      request: {
+        session_id: session.id,
+        new_status: session.status
+      }
+    })
+    
+    if (response.data) {
+      const index = sessions.value.findIndex(s => s.id === session.id)
+      if (index !== -1) {
+        sessions.value[index] = response.data
+      }
+    }
+  } catch (e) {
+    console.error('Failed to transition session:', e)
   }
 }
 
-// Handle stage transition
-const handleTransition = () => {
-  if (nextStage.value) {
-    emit('transitionStage', nextStage.value.key)
+// Open session document
+const openSessionDocument = (session: any, docType: string) => {
+  if (!props.campaign?.directory_path) return
+  
+  const fileName = docType === 'outline' ? 'session-outline.md' : 'session-notes.md'
+  const relativePath = `modules/module_${String(props.module.module_number).padStart(2, '0')}/session_${String(session.session_number).padStart(3, '0')}/${fileName}`
+  const fullPath = `${props.campaign.directory_path}/${relativePath}`
+  
+  const sessionDocument = {
+    id: `session-${session.id}-${docType}`,
+    campaign_id: props.module.campaign_id,
+    module_id: props.module.id,
+    session_id: session.id,
+    template_id: `session_${docType}`,
+    document_type: `session_${docType}`,
+    title: `Session ${session.session_number} ${docType === 'outline' ? 'Outline' : 'Notes'}`,
+    file_path: fullPath,
+    completed_at: null
   }
+  
+  emit('editDocument', sessionDocument)
+}
+
+// Helper methods
+const isDocumentComplete = (templateId: string) => {
+  return props.documents.some(doc => 
+    doc.template_id === templateId && doc.completed_at
+  )
+}
+
+const startDocument = (templateId: string) => {
+  const existing = props.documents.find(doc => doc.template_id === templateId)
+  if (existing) {
+    emit('editDocument', existing)
+  } else {
+    emit('createDocument', templateId)
+  }
+}
+
+const transitionToNextStage = () => {
+  if (!props.boardConfig) return
+  const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
+  const currentIndex = stageOrder.indexOf(props.stage)
+  if (currentIndex < stageOrder.length - 1) {
+    emit('transitionStage', stageOrder[currentIndex + 1])
+  }
+}
+
+const formatDocumentName = (templateId: string): string => {
+  return templateId
+    .replace(/[-_]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const getDocumentDescription = (templateId: string): string => {
+  const descriptions: Record<string, string> = {
+    'module_overview': 'High-level overview and planning for the module',
+    'quick_npc_reference': 'Quick reference for NPCs in this module',
+    'session_outline': 'Outline for running sessions in this module',
+    'major_npc_tracker': 'Track major NPCs and their relationships',
+    'faction_template': 'Define factions and their interactions',
+    'clue_tracker': 'Track clues and revelations',
+    'region_overview': 'Overview of the module\'s region',
+    'document_tracker': 'Track document completion status'
+  }
+  
+  return descriptions[templateId] || 'Module document'
+}
+
+const formatDate = (dateString: string): string => {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return date.toLocaleDateString()
+}
+
+const formatSessionStatus = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'planning': 'Planning',
+    'in_prep': 'In Prep',
+    'ready': 'Ready',
+    'running': 'Running',
+    'complete': 'Complete'
+  }
+  return statusMap[status] || status
 }
 </script>
 
 <style scoped>
+/* Module-specific additions to common styles */
 .stage-landing {
-  padding: var(--spacing-xl);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
+/* Module has centered stage headers like campaign */
 .stage-header {
-  margin-bottom: var(--spacing-xl);
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
 }
 
-.stage-header h2 {
-  margin: 0 0 var(--spacing-sm) 0;
-  font-size: 2rem;
-  color: var(--color-text);
-}
-
-.stage-description {
+.stage-subtitle {
+  margin: 0;
   font-size: 1.125rem;
   color: var(--color-text-secondary);
-  margin: 0;
 }
 
-/* Help Section */
-.help-section {
-  display: flex;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg);
-  background-color: var(--color-info-bg);
-  border: 1px solid var(--color-info-border);
-  border-radius: var(--radius-md);
+/* Session Management specific styles */
+.session-management {
+  margin-top: var(--spacing-xl);
+}
+
+.session-controls {
+  text-align: center;
   margin-bottom: var(--spacing-xl);
-}
-
-.help-icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.help-content p {
-  margin: 0;
-  color: var(--color-text);
-}
-
-/* Module Info */
-.module-info {
-  margin-bottom: var(--spacing-xl);
-}
-
-.info-card {
-  padding: var(--spacing-lg);
-  background-color: var(--color-surface-variant);
-  border-radius: var(--radius-md);
-}
-
-.info-card h3 {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-text);
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-md);
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.info-item .label {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-.info-item .value {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-/* Documents Section */
-.documents-section {
-  margin-bottom: var(--spacing-xl);
-}
-
-.documents-section h3 {
-  margin: 0 0 var(--spacing-lg) 0;
-  color: var(--color-text);
-}
-
-.document-category {
-  margin-bottom: var(--spacing-xl);
-}
-
-.document-category h4 {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-text-secondary);
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.document-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-.document-card {
-  padding: var(--spacing-lg);
-  background-color: var(--color-surface-variant);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-base);
-}
-
-.document-card.optional {
-  border-style: dashed;
-  opacity: 0.9;
-}
-
-.document-card.completed {
-  border-color: var(--color-success);
-  background-color: var(--color-success-bg);
-}
-
-.document-card:hover {
-  border-color: var(--color-primary-400);
-  transform: translateY(-2px);
-}
-
-.document-status {
-  margin-bottom: var(--spacing-sm);
-}
-
-.status-icon {
-  font-size: 1.5rem;
-}
-
-.document-card h4 {
-  margin: 0 0 var(--spacing-sm) 0;
-  color: var(--color-text);
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.tracking-badge {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  background-color: var(--color-surface);
-  padding: 2px 6px;
-  border-radius: var(--radius-xs);
-  font-weight: normal;
-  font-style: italic;
-}
-
-.document-description {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.document-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-/* Session Section */
-.session-section {
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  background-color: var(--color-surface-variant);
-  border-radius: var(--radius-md);
-}
-
-.session-section h3 {
-  margin: 0 0 var(--spacing-lg) 0;
-  color: var(--color-text);
-}
-
-.session-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
-  background-color: var(--color-surface);
-  border-radius: var(--radius-sm);
-}
-
-.session-info p {
-  margin: 0;
-  color: var(--color-text);
 }
 
 .sessions-list {
-  margin-top: var(--spacing-lg);
+  margin-top: var(--spacing-xl);
 }
 
-.sessions-list h4 {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-text-secondary);
-}
-
-.session-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: var(--spacing-md);
-}
-
-.session-card {
-  padding: var(--spacing-lg);
-  background-color: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-base);
-}
-
-.session-card:hover {
-  border-color: var(--color-primary-400);
-  transform: translateY(-2px);
-}
-
-.session-card.active {
-  border-color: var(--color-primary-500);
-  background-color: var(--color-primary-50);
+.sessions-list h3 {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 1.5rem;
+  color: var(--color-text);
 }
 
 .session-header {
@@ -823,70 +653,9 @@ const handleTransition = () => {
   margin-bottom: var(--spacing-md);
 }
 
-.session-header h5 {
+.session-header h4 {
   margin: 0;
-  color: var(--color-text);
   font-size: 1.125rem;
-}
-
-.session-status-select {
-  padding: 4px 8px;
-  border-radius: var(--radius-xs);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  background-color: var(--color-surface-variant);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: all var(--transition-base);
-}
-
-.session-status-select:hover {
-  border-color: var(--color-primary-400);
-}
-
-.session-status-select:focus {
-  outline: none;
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 2px var(--color-primary-100);
-}
-
-.session-status-select.status-next_week {
-  background-color: var(--color-info-bg);
-  color: var(--color-info);
-}
-
-.session-status-select.status-prep_needed {
-  background-color: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.session-status-select.status-in_prep {
-  background-color: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.session-status-select.status-ready {
-  background-color: var(--color-success-bg);
-  color: var(--color-success);
-}
-
-.session-status-select.status-complete {
-  background-color: var(--color-surface-variant);
-  color: var(--color-text-secondary);
-}
-
-.session-details {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.session-date {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
 }
 
 .session-actions {
@@ -894,155 +663,38 @@ const handleTransition = () => {
   gap: var(--spacing-sm);
 }
 
-.session-documents {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
-}
-
-.doc-link-btn {
+/* Status select colors */
+.status-select {
   padding: var(--spacing-xs) var(--spacing-sm);
-  background-color: var(--color-surface-variant);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xs);
-  color: var(--color-text);
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all var(--transition-base);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.doc-link-btn:hover {
-  background-color: var(--color-primary-50);
-  border-color: var(--color-primary-400);
-  transform: translateY(-1px);
-}
-
-.btn-sm {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: 0.813rem;
-}
-
-.btn-success {
-  background-color: var(--color-success);
-  color: white;
-}
-
-.btn-success:hover {
-  background-color: var(--color-success-dark);
-}
-
-/* Transition Section */
-.transition-section {
-  margin-top: var(--spacing-xl);
-}
-
-.transition-card,
-.completion-card,
-.requirements-card {
-  padding: var(--spacing-xl);
-  background-color: var(--color-surface-variant);
-  border-radius: var(--radius-lg);
-  text-align: center;
-}
-
-.transition-card {
-  border: 2px solid var(--color-primary-400);
-  background-color: var(--color-surface);
-  box-shadow: 0 0 0 1px var(--color-primary-200) inset;
-}
-
-.completion-card {
-  border: 2px solid var(--color-success);
-  background-color: var(--color-surface);
-  box-shadow: 0 0 0 1px var(--color-success-light) inset;
-}
-
-.requirements-card {
-  border: 2px solid var(--color-warning);
-  background-color: var(--color-surface);
-  box-shadow: 0 0 0 1px var(--color-warning-light) inset;
-}
-
-.transition-card h3,
-.completion-card h3,
-.requirements-card h3 {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-text);
-}
-
-.transition-card p,
-.completion-card p,
-.requirements-card p {
-  color: var(--color-text);
-}
-
-.transition-prompt {
-  font-style: italic;
-  color: var(--color-text);
-  opacity: 0.9;
-  margin: var(--spacing-md) 0;
-}
-
-.requirements-list {
-  list-style: none;
-  padding: 0;
-  margin: var(--spacing-md) 0 0 0;
-  text-align: left;
-  max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.requirements-list li {
-  padding: var(--spacing-sm);
-  color: var(--color-text);
-}
-
-/* Buttons */
-.btn {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: none;
   border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
   font-size: 0.875rem;
-  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-base);
 }
 
-.btn-primary {
-  background-color: var(--color-primary-500);
-  color: white;
+.status-select.status-planning {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
 }
 
-.btn-primary:hover {
-  background-color: var(--color-primary-600);
+.status-select.status-in_prep {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
-.btn-secondary {
-  background-color: var(--color-secondary);
-  color: white;
+.status-select.status-ready {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
-.btn-secondary:hover {
-  background-color: var(--color-secondary-dark);
+.status-select.status-running {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-600);
 }
 
-.btn-outline {
-  background-color: transparent;
-  color: var(--color-primary-500);
-  border: 1px solid var(--color-primary-500);
-}
-
-.btn-outline:hover {
-  background-color: var(--color-primary-50);
-}
-
-.btn-large {
-  padding: var(--spacing-md) var(--spacing-xl);
-  font-size: 1rem;
+.status-select.status-complete {
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-600);
 }
 </style>

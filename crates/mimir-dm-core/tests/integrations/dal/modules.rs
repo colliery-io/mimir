@@ -28,20 +28,17 @@ fn test_module_lifecycle() {
         campaign_id: campaign.id,
         name: "The Brittle Steel Mystery".to_string(),
         module_number: 1,
-        status: "backlog".to_string(),
+        status: "planning".to_string(),
         expected_sessions: 4,
     };
     
     let module = module_repo.create(new_module).unwrap();
     assert_eq!(module.name, "The Brittle Steel Mystery");
-    assert_eq!(module.status, "backlog");
+    assert_eq!(module.status, "planning");
     assert_eq!(module.expected_sessions, 4);
     assert_eq!(module.actual_sessions, 0);
     
     // Test status transitions
-    let updated = module_repo.transition_status(module.id, "planning").unwrap();
-    assert_eq!(updated.status, "planning");
-    
     let updated = module_repo.transition_status(module.id, "development").unwrap();
     assert_eq!(updated.status, "development");
     

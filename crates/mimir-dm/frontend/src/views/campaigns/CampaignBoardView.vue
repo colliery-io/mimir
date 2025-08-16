@@ -24,6 +24,7 @@
               active: currentStage === stage.key,
               completed: isStageCompleted(stage.key)
             }"
+            :style="{ zIndex: stages.length - index }"
           >
             <div class="stage-content">
               <div class="stage-name">{{ stage.name }}</div>
@@ -286,6 +287,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Campaign-specific overrides */
 .campaign-board-container {
   display: flex;
   height: 100%;
@@ -298,128 +300,9 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-/* Stage Progress */
-.stage-progress {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--spacing-xl);
-  gap: 0;
-  overflow: hidden;
-}
-
+/* Campaign boards have slightly wider stage indicators */
 .stage-indicator {
-  background-color: var(--color-surface-variant);
-  border: 2px solid var(--color-border);
-  padding: 0;
-  position: relative;
-  transition: all var(--transition-base);
-  margin-right: -2px; /* Overlap borders */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  flex: 1;
   max-width: 200px;
   min-width: 120px;
-}
-
-/* First stage has rounded left corners */
-.stage-indicator:first-child {
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-}
-
-/* Last stage has different styling */
-.stage-indicator:last-child {
-  margin-right: 0;
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-
-.stage-indicator:last-child .stage-arrow-point {
-  display: none;
-}
-
-/* Arrow point on the right */
-.stage-arrow-point {
-  position: absolute;
-  right: -18px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-left: 18px solid var(--color-border);
-  border-top: 18px solid transparent;
-  border-bottom: 18px solid transparent;
-  z-index: 3;
-}
-
-.stage-arrow-point::before {
-  content: '';
-  position: absolute;
-  right: 2px;
-  top: -16px;
-  width: 0;
-  height: 0;
-  border-left: 16px solid var(--color-surface-variant);
-  border-top: 16px solid transparent;
-  border-bottom: 16px solid transparent;
-}
-
-/* Completed stages - only border changes */
-.stage-indicator.completed {
-  border-color: var(--color-success);
-}
-
-.stage-indicator.completed .stage-arrow-point {
-  border-left-color: var(--color-success);
-}
-
-/* Active stage - only border changes */
-.stage-indicator.active {
-  border-color: var(--color-primary-500);
-}
-
-.stage-indicator.active .stage-arrow-point {
-  border-left-color: var(--color-primary-500);
-}
-
-.stage-content {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: 0 var(--spacing-md);
-  z-index: 2;
-  position: relative;
-}
-
-.stage-name {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.stage-indicator.active .stage-name,
-.stage-indicator.completed .stage-name {
-  color: var(--color-text);
-}
-
-.stage-marker {
-  color: var(--color-primary-600);
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-/* Main Content Area */
-.main-content {
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  min-height: calc(100vh - 300px);
-  overflow-y: auto;
 }
 </style>

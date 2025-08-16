@@ -14,6 +14,14 @@
       
       <!-- Main Board Content -->
       <div class="module-board">
+        <!-- Stage Transition Button -->
+        <div v-if="canProgressToNext && !selectedDocument" class="stage-transition-prompt">
+          <p>All required documents are complete for this stage.</p>
+          <button @click="proceedToNextStage" class="btn btn-primary btn-large">
+            Proceed to {{ nextStageName }}
+          </button>
+        </div>
+        
         <!-- Kanban Stage Progress -->
         <div class="stage-progress">
           <div 
@@ -24,6 +32,7 @@
               active: currentStage === stage.key,
               completed: isStageCompleted(stage.key)
             }"
+            :style="{ zIndex: stages.length - index }"
           >
             <div class="stage-content">
               <div class="stage-name">{{ stage.name }}</div>
@@ -122,7 +131,7 @@ const stages = computed(() => {
 
 // Current stage
 const currentStage = computed(() => {
-  return module.value?.status || 'backlog'
+  return module.value?.status || 'planning'
 })
 
 // Check if a stage is completed (before the current stage)
@@ -132,6 +141,54 @@ const isStageCompleted = (stageKey: string): boolean => {
   const currentIndex = stageOrder.indexOf(currentStage.value)
   const checkIndex = stageOrder.indexOf(stageKey)
   return checkIndex < currentIndex
+}
+
+// Get next stage info
+const nextStage = computed(() => {
+  if (!boardConfig.value || !module.value) return null
+  const stageOrder = boardConfig.value.stages.map((s: any) => s.key)
+  const currentIndex = stageOrder.indexOf(currentStage.value)
+  if (currentIndex === -1 || currentIndex >= stageOrder.length - 1) return null
+  return boardConfig.value.stages[currentIndex + 1]
+})
+
+const nextStageName = computed(() => {
+  return nextStage.value?.display_name || 'Next Stage'
+})
+
+// Check if can progress to next stage
+const canProgressToNext = computed(() => {
+  if (!boardConfig.value || !module.value || !nextStage.value) return false
+  if (module.value.status === 'completed') return false
+  
+  // Get current stage metadata
+  const currentStageConfig = boardConfig.value.stages.find((s: any) => s.key === currentStage.value)
+  if (!currentStageConfig) return false
+  
+  // Get required documents for current stage
+  const requiredDocs = currentStageConfig.required_documents || []
+  
+  // Check which documents don't require completion
+  const noCompletionDocs = currentStageConfig.no_completion_required_documents || []
+  
+  // Filter to only documents that need completion
+  const completionRequiredDocs = requiredDocs.filter((docId: string) => 
+    !noCompletionDocs.includes(docId)
+  )
+  
+  // Check if all required documents that need completion are complete
+  const completedDocs = documents.value.filter(doc => 
+    completionRequiredDocs.includes(doc.template_id) && doc.completed_at
+  )
+  
+  return completedDocs.length === completionRequiredDocs.length && completionRequiredDocs.length > 0
+})
+
+// Proceed to next stage
+const proceedToNextStage = async () => {
+  if (nextStage.value) {
+    await handleTransitionStage(nextStage.value.key)
+  }
 }
 
 // Load board configuration
@@ -335,6 +392,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Module-specific container styles */
 .module-board-container {
   display: flex;
   height: 100%;
@@ -347,128 +405,31 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-/* Stage Progress */
-.stage-progress {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background-color: var(--color-surface);
+/* Stage Transition Prompt */
+.stage-transition-prompt {
+  background-color: var(--color-success-bg);
+  border: 2px solid var(--color-success);
   border-radius: var(--radius-lg);
-  margin-bottom: var(--spacing-xl);
-  gap: 0;
-  overflow: hidden;
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+  animation: slideDown 0.3s ease-out;
 }
 
-.stage-indicator {
-  background-color: var(--color-surface-variant);
-  border: 2px solid var(--color-border);
-  padding: 0;
-  position: relative;
-  transition: all var(--transition-base);
-  margin-right: -2px; /* Overlap borders */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  flex: 1;
-  max-width: 180px;
-  min-width: 100px;
+.stage-transition-prompt p {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-success-dark);
+  font-weight: 500;
 }
 
-/* First stage has rounded left corners */
-.stage-indicator:first-child {
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-}
-
-/* Last stage has different styling */
-.stage-indicator:last-child {
-  margin-right: 0;
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-
-.stage-indicator:last-child .stage-arrow-point {
-  display: none;
-}
-
-/* Arrow point on the right */
-.stage-arrow-point {
-  position: absolute;
-  right: -18px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-left: 18px solid var(--color-border);
-  border-top: 18px solid transparent;
-  border-bottom: 18px solid transparent;
-  z-index: 3;
-}
-
-.stage-arrow-point::before {
-  content: '';
-  position: absolute;
-  right: 2px;
-  top: -16px;
-  width: 0;
-  height: 0;
-  border-left: 16px solid var(--color-surface-variant);
-  border-top: 16px solid transparent;
-  border-bottom: 16px solid transparent;
-}
-
-/* Completed stages */
-.stage-indicator.completed {
-  border-color: var(--color-success);
-}
-
-.stage-indicator.completed .stage-arrow-point {
-  border-left-color: var(--color-success);
-}
-
-/* Active stage */
-.stage-indicator.active {
-  border-color: var(--color-primary-500);
-}
-
-.stage-indicator.active .stage-arrow-point {
-  border-left-color: var(--color-primary-500);
-}
-
-.stage-content {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: 0 var(--spacing-md);
-  z-index: 2;
-  position: relative;
-}
-
-.stage-name {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.stage-indicator.active .stage-name,
-.stage-indicator.completed .stage-name {
-  color: var(--color-text);
-}
-
-.stage-marker {
-  color: var(--color-primary-600);
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-/* Main Content Area */
-.main-content {
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  min-height: calc(100vh - 300px);
-  overflow-y: auto;
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

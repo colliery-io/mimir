@@ -20,32 +20,10 @@ impl AppPaths {
     pub fn init() -> Result<Self> {
         // Check if we're in development mode
         let is_dev = cfg!(debug_assertions) || std::env::var("MIMIR_DEV").is_ok();
-        let use_memory_db = is_dev && std::env::var("MIMIR_USE_FILE_DB").is_err();
         
-        if use_memory_db {
-            info!("Development mode: Using in-memory database");
-            // Still create directories for campaign files
-            let project_dirs = ProjectDirs::from("com", "mimir", "mimir")
-                .context("Failed to determine application directories")?;
-            
-            let app_dir = project_dirs.data_dir().to_path_buf();
-            let config_dir = project_dirs.config_dir().to_path_buf();
-            let data_dir = app_dir.join("data");
-            
-            fs::create_dir_all(&app_dir).ok();
-            fs::create_dir_all(&config_dir).ok();
-            fs::create_dir_all(&data_dir).ok();
-            
-            return Ok(AppPaths {
-                app_dir,
-                config_dir,
-                data_dir,
-                database_path: PathBuf::from(":memory:"),
-                is_memory_db: true,
-            });
-        }
-        
-        let project_dirs = ProjectDirs::from("com", "mimir", "mimir")
+        // Determine app name based on mode
+        let app_name = if is_dev { "mimir-test" } else { "mimir" };
+        let project_dirs = ProjectDirs::from("com", "mimir", app_name)
             .context("Failed to determine application directories")?;
 
         let app_dir = project_dirs.data_dir().to_path_buf();
@@ -53,7 +31,7 @@ impl AppPaths {
         let data_dir = app_dir.join("data");
         let database_path = data_dir.join("mimir.db");
 
-        info!("Initializing application directories:");
+        info!("Initializing {} application directories:", if is_dev { "DEVELOPMENT" } else { "PRODUCTION" });
         info!("  App dir: {}", app_dir.display());
         info!("  Config dir: {}", config_dir.display());
         info!("  Data dir: {}", data_dir.display());
@@ -81,34 +59,30 @@ impl AppPaths {
     /// Initialize the database, running migrations if needed
     pub fn init_database(&self) -> Result<()> {
         let db_path = self.database_path.to_string_lossy();
-        let is_new_db = self.is_memory_db || !self.database_path.exists();
+        let is_new_db = !self.database_path.exists();
 
-        if self.is_memory_db {
-            info!("Using in-memory database");
-        } else if is_new_db {
+        if is_new_db {
             info!("Creating new database at: {}", db_path);
         } else {
             info!("Using existing database at: {}", db_path);
         }
 
         // Initialize the connection pool
-        let pool = crate::db_connection::init_db_pool(&db_path, self.is_memory_db)
+        let pool = crate::db_connection::init_db_pool(&db_path, false)
             .context("Failed to initialize database pool")?;
         
-        // For file-based databases, run migrations
-        if !self.is_memory_db {
-            let mut conn = pool.get()
-                .context("Failed to get connection from pool")?;
-            
-            info!("Running database migrations...");
-            match run_migrations(&mut *conn) {
-                Ok(_) => {
-                    info!("Database migrations completed successfully");
-                }
-                Err(e) => {
-                    warn!("Database migration warning: {}", e);
-                    // Don't fail on migration warnings - database might already be up to date
-                }
+        // Run migrations
+        let mut conn = pool.get()
+            .context("Failed to get connection from pool")?;
+        
+        info!("Running database migrations...");
+        match run_migrations(&mut *conn) {
+            Ok(_) => {
+                info!("Database migrations completed successfully");
+            }
+            Err(e) => {
+                warn!("Database migration warning: {}", e);
+                // Don't fail on migration warnings - database might already be up to date
             }
         }
         

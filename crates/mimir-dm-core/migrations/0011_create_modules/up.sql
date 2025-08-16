@@ -4,7 +4,7 @@ CREATE TABLE modules (
     campaign_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     module_number INTEGER NOT NULL,
-    status TEXT NOT NULL CHECK(status IN ('backlog', 'planning', 'development', 'ready', 'active', 'completed')),
+    status TEXT NOT NULL CHECK(status IN ('planning', 'development', 'ready', 'active', 'completed')),
     expected_sessions INTEGER NOT NULL DEFAULT 4,
     actual_sessions INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),

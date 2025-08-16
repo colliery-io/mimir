@@ -52,7 +52,7 @@ mod tests {
         assert_eq!(module.name, "Test Module");
         assert_eq!(module.campaign_id, campaign_id);
         assert_eq!(module.module_number, 1);
-        assert_eq!(module.status, "backlog");
+        assert_eq!(module.status, "planning");
         assert_eq!(module.expected_sessions, 4);
     }
 
@@ -140,10 +140,6 @@ mod tests {
             4,
         ).unwrap();
         
-        // Valid transition: backlog -> planning
-        let updated = service.transition_module_stage(module.id, "planning").unwrap();
-        assert_eq!(updated.status, "planning");
-        
         // Valid transition: planning -> development
         let updated = service.transition_module_stage(module.id, "development").unwrap();
         assert_eq!(updated.status, "development");
@@ -176,7 +172,7 @@ mod tests {
             4,
         ).unwrap();
         
-        // Invalid transition: backlog -> ready (skipping stages)
+        // Invalid transition: planning -> ready (skipping stages)
         let result = service.transition_module_stage(module.id, "ready");
         assert!(result.is_err());
     }
@@ -195,16 +191,11 @@ mod tests {
         ).unwrap();
         
         // Move to development
-        service.transition_module_stage(module.id, "planning").unwrap();
         service.transition_module_stage(module.id, "development").unwrap();
         
         // Can move back to planning
         let updated = service.transition_module_stage(module.id, "planning").unwrap();
         assert_eq!(updated.status, "planning");
-        
-        // Can move back to backlog
-        let updated = service.transition_module_stage(module.id, "backlog").unwrap();
-        assert_eq!(updated.status, "backlog");
     }
 
     #[test]
@@ -244,8 +235,7 @@ mod tests {
             4,
         ).unwrap();
         
-        // Transition to planning to have required documents
-        service.transition_module_stage(module.id, "planning").unwrap();
+        // Module starts in planning, so already has required documents
         
         // Initialize documents
         let created_files = service.initialize_module_documents(

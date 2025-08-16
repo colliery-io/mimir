@@ -169,8 +169,9 @@ Pinia stores manage application state:
 ```
 
 ### Development Environment
-- **Memory Database**: Set `MIMIR_DEV=1` for in-memory database
-- **File Database**: Set `MIMIR_USE_FILE_DB=1` to force file database in dev
+- **Development Mode**: Automatically uses `mimir-test` directory for persistent test data
+- **Production Mode**: Uses `mimir` directory for production data
+- **Force Dev Mode**: Set `MIMIR_DEV=1` to force development mode
 
 ## Dependencies
 

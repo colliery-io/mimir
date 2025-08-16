@@ -7,10 +7,10 @@
     </div>
 
     <!-- Next Steps (shown at top when ready) -->
-    <div class="next-steps" v-if="nextStageAvailable">
-      <h3> Ready for Next Stage! </h3>
+    <div class="stage-transition-card" v-if="nextStageAvailable">
+      <h3>Ready for Next Stage!</h3>
       <p>{{ nextStagePrompt }}</p>
-      <button class="btn-primary" @click="transitionToNextStage">
+      <button class="btn btn-primary btn-large" @click="transitionToNextStage">
         Advance to {{ nextStageName }} →
       </button>
     </div>
@@ -34,7 +34,7 @@
     </div>
 
     <!-- Stage-Specific Content -->
-    <div class="stage-content">
+    <div class="stage-content-section">
       <!-- Concept Stage -->
       <div v-if="stage === 'concept'" class="stage-concept">
         <div class="activity-section">
@@ -51,7 +51,7 @@
               <h4>{{ doc.title }}</h4>
               <p>{{ doc.description }}</p>
               <button 
-                class="btn-small"
+                class="btn btn-small btn-primary"
                 @click="startDocument(doc.templateId)"
               >
                 {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
@@ -105,7 +105,7 @@
               <h4>{{ doc.title }}</h4>
               <p>{{ doc.description }}</p>
               <button 
-                class="btn-small"
+                class="btn btn-small btn-primary"
                 @click="startDocument(doc.templateId)"
               >
                 {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
@@ -142,7 +142,7 @@
               <h4>{{ doc.title }}</h4>
               <p>{{ doc.description }}</p>
               <button 
-                class="btn-small"
+                class="btn btn-small btn-primary"
                 @click="startDocument(doc.templateId)"
               >
                 {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
@@ -189,8 +189,8 @@
           </div>
 
           <div class="quick-actions">
-            <router-link :to="`/campaigns/${campaign.id}/modules`" class="btn-secondary">View Module Board</router-link>
-            <button class="btn-secondary">View Session Board</button>
+            <router-link :to="`/campaigns/${campaign.id}/modules`" class="btn btn-secondary">View Module Board</router-link>
+            <button class="btn btn-secondary">View Session Board</button>
           </div>
         </div>
       </div>
@@ -374,22 +374,16 @@ const transitionToNextStage = () => {
 </script>
 
 <style scoped>
+/* Campaign-specific stage landing styles */
 .stage-landing {
-  padding: var(--spacing-xl);
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* Stage Header */
+/* Campaign has centered stage headers */
 .stage-header {
   text-align: center;
   margin-bottom: var(--spacing-2xl);
-}
-
-.stage-header h2 {
-  margin: 0 0 var(--spacing-sm) 0;
-  font-size: 2rem;
-  color: var(--color-text);
 }
 
 .stage-subtitle {
@@ -398,158 +392,11 @@ const transitionToNextStage = () => {
   color: var(--color-text-secondary);
 }
 
-/* Progress Section */
-.progress-section {
-  margin-bottom: var(--spacing-2xl);
-}
-
-.progress-card {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-}
-
-.progress-stat {
+/* Campaign-specific styles */
+.campaign-dashboard {
   text-align: center;
 }
 
-.stat-value {
-  display: block;
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--color-primary-600);
-  margin-bottom: var(--spacing-xs);
-}
-
-.stat-label {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Stage Content */
-.stage-content {
-  margin-bottom: var(--spacing-2xl);
-}
-
-.activity-section,
-.tips-section {
-  margin-bottom: var(--spacing-xl);
-}
-
-.activity-section h3,
-.tips-section h3 {
-  margin: 0 0 var(--spacing-md) 0;
-  font-size: 1.5rem;
-  color: var(--color-text);
-}
-
-/* Checklist */
-.checklist {
-  background-color: var(--color-surface-variant);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
-  margin: var(--spacing-lg) 0;
-}
-
-.checklist h4 {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-text);
-}
-
-.checklist ul {
-  margin: 0;
-  padding-left: var(--spacing-lg);
-}
-
-.checklist li {
-  margin-bottom: var(--spacing-sm);
-  color: var(--color-text-secondary);
-}
-
-/* Tip Cards */
-.tip-card {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-md);
-}
-
-.tip-card h4 {
-  margin: 0 0 var(--spacing-sm) 0;
-  color: var(--color-primary-600);
-}
-
-.tip-card p {
-  margin: 0 0 var(--spacing-sm) 0;
-  color: var(--color-text-secondary);
-}
-
-.tip-card ol {
-  margin: 0;
-  padding-left: var(--spacing-lg);
-}
-
-.tip-card li {
-  margin-bottom: var(--spacing-xs);
-}
-
-/* Action Section */
-.action-section {
-  text-align: center;
-  margin: var(--spacing-2xl) 0;
-}
-
-.btn-large {
-  padding: var(--spacing-md) var(--spacing-xl);
-  font-size: 1.125rem;
-}
-
-/* Document Grid */
-.document-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-lg);
-  margin-top: var(--spacing-lg);
-}
-
-.document-card {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
-  transition: all var(--transition-base);
-}
-
-.document-card:hover {
-  border-color: var(--color-primary-300);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.document-card.completed {
-  border-color: var(--color-success);
-  background-color: var(--color-success-50);
-}
-
-.document-card h4 {
-  margin: 0 0 var(--spacing-sm) 0;
-  color: var(--color-text);
-}
-
-.document-card p {
-  margin: 0 0 var(--spacing-md) 0;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-/* Integration Tasks */
 .integration-tasks {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -557,113 +404,10 @@ const transitionToNextStage = () => {
   margin-top: var(--spacing-lg);
 }
 
-.task-card {
-  background-color: var(--color-surface-variant);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
-}
-
-.task-card h4 {
-  margin: 0 0 var(--spacing-sm) 0;
-  color: var(--color-primary-600);
-}
-
-/* Campaign Dashboard */
-.campaign-dashboard {
-  text-align: center;
-}
-
-.dashboard-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-lg);
-  margin: var(--spacing-xl) 0;
-}
-
-.stat-card {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
-}
-
-.stat-card h4 {
-  margin: 0 0 var(--spacing-sm) 0;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-secondary);
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-primary-600);
-}
-
 .quick-actions {
   display: flex;
   gap: var(--spacing-md);
   justify-content: center;
   margin-top: var(--spacing-xl);
-}
-
-/* Next Steps */
-.next-steps {
-  background-color: var(--color-primary-50);
-  border: 2px solid var(--color-primary-200);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  text-align: center;
-}
-
-.next-steps h3 {
-  margin: 0 0 var(--spacing-sm) 0;
-  color: var(--color-primary-700);
-}
-
-.next-steps p {
-  margin: 0 0 var(--spacing-lg) 0;
-  color: var(--color-primary-600);
-}
-
-/* Buttons */
-.btn-primary {
-  background-color: var(--color-primary-500);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color var(--transition-base);
-}
-
-.btn-primary:hover {
-  background-color: var(--color-primary-600);
-}
-
-.btn-secondary {
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  cursor: pointer;
-  font-weight: 500;
-  transition: all var(--transition-base);
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn-secondary:hover {
-  background-color: var(--color-surface-variant);
-  border-color: var(--color-primary-300);
-  color: var(--color-text);
-}
-
-.btn-small {
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: 0.875rem;
 }
 </style>

@@ -82,7 +82,7 @@ fn test_module_card_workflow() {
         campaign_id: campaign.id,
         name: "Test Module".to_string(),
         module_number: 1,
-        status: "backlog".to_string(),
+        status: "planning".to_string(),
         expected_sessions: 4,
     }).unwrap();
     
@@ -94,7 +94,7 @@ fn test_module_card_workflow() {
         board_type: "module".to_string(),
         title: "The Brittle Steel Mystery".to_string(),
         description: None,
-        workflow_state: "backlog".to_string(),
+        workflow_state: "planning".to_string(),
         campaign_id: None,
         module_id: Some(module.id),
         session_id: None,
@@ -102,7 +102,6 @@ fn test_module_card_workflow() {
     }).unwrap();
     
     // Test module card state transitions
-    card_repo.move_to_state(&card.id, "planning").unwrap();
     card_repo.move_to_state(&card.id, "development").unwrap();
     card_repo.move_to_state(&card.id, "ready").unwrap();
     card_repo.move_to_state(&card.id, "active").unwrap();
@@ -230,7 +229,7 @@ fn test_list_cards_by_board() {
         campaign_id: campaign.id,
         name: "Test Module".to_string(),
         module_number: 1,
-        status: "backlog".to_string(),
+        status: "planning".to_string(),
         expected_sessions: 4,
     }).unwrap();
     

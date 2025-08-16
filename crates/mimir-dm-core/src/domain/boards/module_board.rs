@@ -16,20 +16,18 @@ impl BoardDefinition for ModuleBoard {
     }
     
     fn stages(&self) -> Vec<&str> {
-        vec!["backlog", "planning", "development", "ready", "active", "completed"]
+        vec!["planning", "development", "ready", "active", "completed"]
     }
     
     fn can_transition(&self, from: &str, to: &str) -> bool {
         match (from, to) {
             // Forward progression
-            ("backlog", "planning") => true,
             ("planning", "development") => true,
             ("development", "ready") => true,
             ("ready", "active") => true,
             ("active", "completed") => true,
             
             // Allow moving back
-            ("planning", "backlog") => true,
             ("development", "planning") => true,
             ("ready", "development") => true,
             
@@ -59,7 +57,6 @@ impl BoardDefinition for ModuleBoard {
     
     fn next_stage(&self, current: &str) -> Option<&str> {
         match current {
-            "backlog" => Some("planning"),
             "planning" => Some("development"),
             "development" => Some("ready"),
             "ready" => Some("active"),
@@ -70,19 +67,6 @@ impl BoardDefinition for ModuleBoard {
     
     fn stage_metadata(&self, stage: &str) -> StageMetadata {
         match stage {
-            "backlog" => StageMetadata {
-                display_name: "Backlog".to_string(),
-                description: "Module ideas waiting to be developed".to_string(),
-                completion_message: None,
-                transition_prompt: Some(
-                    "Ready to start planning this module? You'll begin outlining the core concept and structure."
-                        .to_string()
-                ),
-                help_text: Some(
-                    "The backlog holds module ideas that haven't been started yet. When you're ready to develop a new module, move it to planning."
-                        .to_string()
-                ),
-            },
             "planning" => StageMetadata {
                 display_name: "Planning".to_string(),
                 description: "Developing the module concept and structure".to_string(),

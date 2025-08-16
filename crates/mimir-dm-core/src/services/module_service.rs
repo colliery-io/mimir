@@ -40,7 +40,7 @@ impl<'a> ModuleService<'a> {
             campaign_id,
             name,
             module_number,
-            status: "backlog".to_string(),
+            status: "planning".to_string(),
             expected_sessions,
         };
         

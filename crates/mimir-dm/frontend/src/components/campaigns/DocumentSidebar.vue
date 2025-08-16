@@ -404,6 +404,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Campaign document sidebar uses common sidebar styles from components.css */
 .document-sidebar {
   width: 320px;
   height: 100%;
@@ -411,18 +412,6 @@ onMounted(() => {
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-}
-
-.sidebar-header {
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.sidebar-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text);
 }
 
 /* Stage Groups */
