@@ -21,20 +21,25 @@ variables:
     description: One exciting sentence that captures the essence
     default: "[One exciting sentence that captures the essence of your campaign - make them lean forward]"
     required: true
-  - name: big_bad
+  - name: core_conflict
     type: string
-    description: Who or what threatens the world
-    default: "[Who or what threatens the world - one compelling sentence]"
+    description: The fundamental tension driving the campaign
+    default: "[The fundamental tension driving your campaign - what's the central problem?]"
+    required: true
+  - name: unique_element
+    type: string
+    description: What makes this campaign special and different
+    default: "[What makes this different from generic fantasy - your unique twist]"
+    required: true
+  - name: player_role
+    type: string
+    description: How the PCs fit into this world and conflict
+    default: "[How the PCs fit into this world - who are they and why do they matter?]"
     required: true
   - name: stakes
     type: string
     description: What happens if the heroes fail
     default: "[What happens if the heroes fail - make it personal AND epic]"
-    required: true
-  - name: connection
-    type: string
-    description: Why the PCs specifically must act
-    default: "[Why the PCs specifically are the ones who must act]"
     required: true
   - name: starting_location
     type: string
@@ -79,14 +84,19 @@ variables:
 
 ## The Big Three
 
-### 1. The Big Bad
-{{ big_bad }}
+### 1. Core Conflict
+{{ core_conflict }}
 
-### 2. The Stakes  
+### 2. Unique Element  
+{{ unique_element }}
+
+### 3. Player Role
+{{ player_role }}
+
+---
+
+## The Stakes
 {{ stakes }}
-
-### 3. Your Connection
-{{ connection }}
 
 ---
 

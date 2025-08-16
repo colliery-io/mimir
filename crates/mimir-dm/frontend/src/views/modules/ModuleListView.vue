@@ -63,39 +63,46 @@
         <p>No modules yet. Create your first module to get started!</p>
       </div>
 
-      <div v-else class="modules-grid">
-        <div v-for="module in modules" :key="module.id" class="module-card">
-          <div class="module-header">
-            <h3>Module #{{ module.module_number }}: {{ module.name }}</h3>
-            <span class="status-badge" :class="module.status">
-              {{ formatStatus(module.status) }}
-            </span>
-          </div>
-          
-          <div class="module-info">
-            <div class="info-item">
-              <span class="label">Sessions:</span>
-              <span class="value">{{ module.actual_sessions }} / {{ module.expected_sessions }}</span>
-            </div>
-            <div v-if="module.started_at" class="info-item">
-              <span class="label">Started:</span>
-              <span class="value">{{ formatDate(module.started_at) }}</span>
-            </div>
-            <div v-if="getProgress(module) > 0" class="progress-bar">
-              <div class="progress-fill" :style="{ width: getProgress(module) + '%' }"></div>
-            </div>
-          </div>
-
-          <div class="module-actions">
-            <router-link :to="`/modules/${module.id}/board`" class="btn btn-primary">
-              Open Board
-            </router-link>
-            <button @click="deleteModule(module.id)" class="btn btn-danger">
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+      <table v-else class="modules-table">
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Status</th>
+            <th>Sessions</th>
+            <th>Progress</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="module in modules" :key="module.id" class="module-row">
+            <td class="module-name">
+              <strong>Module #{{ module.module_number }}:</strong> {{ module.name }}
+            </td>
+            <td>
+              <span class="status-badge" :class="module.status">
+                {{ formatStatus(module.status) }}
+              </span>
+            </td>
+            <td class="sessions-info">
+              {{ module.actual_sessions }} / {{ module.expected_sessions }}
+            </td>
+            <td class="progress-cell">
+              <div v-if="getProgress(module) > 0" class="progress-bar">
+                <div class="progress-fill" :style="{ width: getProgress(module) + '%' }"></div>
+              </div>
+              <span v-else class="no-progress">—</span>
+            </td>
+            <td class="actions-cell">
+              <router-link :to="`/modules/${module.id}/board`" class="btn btn-primary btn-small">
+                Open Board
+              </router-link>
+              <button @click="deleteModule(module.id)" class="btn btn-danger btn-small">
+                Delete
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </MainLayout>
 </template>
@@ -264,29 +271,78 @@ onMounted(() => {
   color: var(--color-text-secondary);
 }
 
-.modules-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-.module-card {
+/* Table Styles */
+.modules-table {
+  width: 100%;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
 }
 
-.module-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--spacing-md);
+.modules-table thead {
+  background-color: var(--color-surface-variant);
 }
 
-.module-header h3 {
-  margin: 0;
-  font-size: 1.125rem;
+.modules-table th {
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.modules-table tbody tr {
+  transition: background-color var(--transition-base);
+}
+
+.modules-table tbody tr:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.modules-table tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modules-table td {
+  padding: var(--spacing-md) var(--spacing-lg);
+  vertical-align: middle;
+}
+
+.module-name {
+  font-size: 1rem;
+}
+
+.module-name strong {
+  color: var(--color-text);
+}
+
+.sessions-info {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.progress-cell {
+  min-width: 150px;
+}
+
+.no-progress {
+  color: var(--color-text-secondary);
+  font-size: 1.25rem;
+}
+
+.actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.actions-cell .btn {
+  margin-left: var(--spacing-sm);
 }
 
 .status-badge {
@@ -322,25 +378,6 @@ onMounted(() => {
   color: white;
 }
 
-.module-info {
-  margin-bottom: var(--spacing-lg);
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-sm);
-}
-
-.info-item .label {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
-.info-item .value {
-  font-weight: 600;
-}
-
 .progress-bar {
   height: 8px;
   background-color: var(--color-surface-variant);
@@ -355,11 +392,6 @@ onMounted(() => {
   transition: width var(--transition-base);
 }
 
-.module-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
 .btn {
   padding: var(--spacing-sm) var(--spacing-md);
   border: none;
@@ -370,6 +402,11 @@ onMounted(() => {
   transition: all var(--transition-base);
   text-decoration: none;
   display: inline-block;
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.8rem;
 }
 
 .btn-primary {

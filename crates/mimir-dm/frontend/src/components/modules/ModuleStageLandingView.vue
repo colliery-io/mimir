@@ -15,20 +15,16 @@
       </button>
     </div>
 
-    <!-- Progress Overview -->
-    <div class="progress-section">
-      <div class="progress-card">
-        <div class="progress-stat">
-          <span class="stat-value">{{ documentProgress.completed }}</span>
-          <span class="stat-label">Documents Complete</span>
+    <!-- Module Stats Dashboard -->
+    <div class="module-stats-section">
+      <div class="module-stats-card">
+        <div class="module-stat">
+          <span class="stat-value">{{ module.actual_sessions || 0 }}</span>
+          <span class="stat-label">Sessions Run</span>
         </div>
-        <div class="progress-stat">
-          <span class="stat-value">{{ documentProgress.total }}</span>
-          <span class="stat-label">Total Required</span>
-        </div>
-        <div class="progress-stat">
-          <span class="stat-value">{{ documentProgress.percentage }}%</span>
-          <span class="stat-label">Stage Progress</span>
+        <div class="module-stat">
+          <span class="stat-value">{{ availableModulesCount }}</span>
+          <span class="stat-label">Modules Available</span>
         </div>
       </div>
     </div>
@@ -400,6 +396,13 @@ const progressPercentage = computed(() => {
   return Math.round((props.module.actual_sessions / props.module.expected_sessions) * 100)
 })
 
+// Count of available modules (placeholder - would need to fetch from parent/store)
+const availableModulesCount = computed(() => {
+  // This would typically come from a parent component or store
+  // For now, showing 1 if module is in ready/active state
+  return ['ready', 'active'].includes(props.stage) ? 1 : 0
+})
+
 // Session management
 watch([() => props.stage, () => props.module], async ([newStage, newModule]) => {
   if (newStage === 'active' && newModule) {
@@ -624,6 +627,42 @@ const formatSessionStatus = (status: string): string => {
   margin: 0;
   font-size: 1.125rem;
   color: var(--color-text-secondary);
+}
+
+/* Module Stats Dashboard */
+.module-stats-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.module-stats-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+.module-stat {
+  text-align: center;
+  min-width: 120px;
+}
+
+.module-stat .stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary-600);
+  margin-bottom: var(--spacing-xs);
+}
+
+.module-stat .stat-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* Session Management specific styles */

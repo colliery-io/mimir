@@ -3,7 +3,7 @@
     <!-- Stage Header -->
     <div class="stage-header">
       <h2>{{ stageInfo.title }}</h2>
-      <p class="stage-subtitle">{{ stageInfo.subtitle }}</p>
+      <p class="stage-subtitle"> Crystallize your campaign idea into a compelling one-page pitch that excites players.</p>
     </div>
 
     <!-- Next Steps (shown at top when ready) -->
@@ -15,155 +15,92 @@
       </button>
     </div>
 
-    <!-- Progress Overview -->
-    <div class="progress-section">
-      <div class="progress-card">
-        <div class="progress-stat">
-          <span class="stat-value">{{ documentProgress.completed }}</span>
-          <span class="stat-label">Documents Complete</span>
-        </div>
-        <div class="progress-stat">
-          <span class="stat-value">{{ documentProgress.total }}</span>
-          <span class="stat-label">Total Required</span>
-        </div>
-        <div class="progress-stat">
-          <span class="stat-value">{{ documentProgress.percentage }}%</span>
-          <span class="stat-label">Stage Progress</span>
-        </div>
-      </div>
-    </div>
 
     <!-- Stage-Specific Content -->
     <div class="stage-content-section">
       <!-- Concept Stage -->
       <div v-if="stage === 'concept'" class="stage-concept">
         <div class="activity-section">
-          <h3> Stage Objective </h3>
-          <p>Transform your campaign spark into a compelling pitch that will excite your players.</p>
           
-          <div class="document-grid" v-if="stageDocuments.length > 0">
-            <div 
-              v-for="doc in stageDocuments" 
-              :key="doc.templateId"
-              class="document-card"
-              :class="{ completed: isDocumentComplete(doc.templateId) }"
-            >
-              <h4>{{ doc.title }}</h4>
-              <p>{{ doc.description }}</p>
-              <button 
-                class="btn btn-small btn-primary"
-                @click="startDocument(doc.templateId)"
-              >
-                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
-              </button>
-            </div>
-          </div>
           
-          <div class="checklist">
-            <h4>Before You Begin:</h4>
-            <ul>
-              <li>Have you identified your campaign's "spark" - the core idea that excites you?</li>
-              <li>Can you describe your campaign in one exciting sentence?</li>
-              <li>Do you know what kind of players would enjoy this campaign?</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="tips-section">
-          <h3> Tips for Success</h3>
           <div class="tip-card">
-            <h4>The Big Three</h4>
-            <p>Every great campaign needs:</p>
+            <h4>Focus on Three Elements</h4>
             <ol>
-              <li><strong>Core Conflict:</strong> The fundamental tension driving the campaign</li>
-              <li><strong>Unique Element:</strong> What makes this different from generic fantasy</li>
-              <li><strong>Player Role:</strong> How the PCs fit into this world</li>
+              <li>
+                <strong>Core Conflict:</strong> The fundamental tension driving your campaign
+                <br><em>Example: "Ancient seals are weakening, releasing primordial titans" or "Two merchant houses vie for control of magical trade routes"</em>
+              </li>
+              <li>
+                <strong>Unique Element:</strong> What makes this campaign special
+                <br><em>Example: "Set in a city built on a massive dragon turtle's back" or "Magic only works during eclipses"</em>
+              </li>
+              <li>
+                <strong>Player Role:</strong> How the PCs will shape the story
+                <br><em>Example: "Agents of a secret order maintaining the balance" or "Founders of a new frontier settlement"</em>
+              </li>
             </ol>
           </div>
-          
-          <div class="tip-card">
-            <h4>Keep It Simple</h4>
-            <p>Your pitch should be one page that sells the campaign. Save the details for later - focus on what makes it exciting!</p>
-          </div>
         </div>
-
       </div>
 
       <!-- Session Zero Stage -->
       <div v-else-if="stage === 'session_zero'" class="stage-session-zero">
         <div class="activity-section">
-          <h3> Preparing for Session Zero</h3>
-          <p>Create the materials that will help your players understand and engage with your world.</p>
+          <h3>Prepare Your Session Zero</h3>
+          <p>Create player-facing materials that bridge your vision with their expectations.</p>
           
-          <div class="document-grid">
-            <div 
-              v-for="doc in stageDocuments" 
-              :key="doc.templateId"
-              class="document-card"
-              :class="{ completed: isDocumentComplete(doc.templateId) }"
-            >
-              <h4>{{ doc.title }}</h4>
-              <p>{{ doc.description }}</p>
-              <button 
-                class="btn btn-small btn-primary"
-                @click="startDocument(doc.templateId)"
-              >
-                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
-              </button>
-            </div>
+          <div class="tip-card">
+            <h4>Essential Session Zero Documents</h4>
+            <p>Prepare these documents before meeting with your players:</p>
+            <ol>
+              <li>
+                <strong>Starting Scenario:</strong> Where they are and what brings them together
+                <br><em>Example: "You've been in the Foreign Quarter for two weeks when the Merchant Guild offers a job..."</em>
+              </li>
+              <li>
+                <strong>World Primer:</strong> Essential setting knowledge their characters would have
+                <br><em>Example: "The five major clans, why the forges are failing, common rumors..."</em>
+              </li>
+              <li>
+                <strong>Table Expectations:</strong> How we'll play together safely and enjoyably
+                <br><em>Example: "PG-13 rating, collaborative storytelling, attendance expectations, safety tools..."</em>
+              </li>
+              <li>
+                <strong>Character Guidelines:</strong> How to build characters that fit the campaign
+                <br><em>Example: "You're outsiders with unique skills, levels 1-3, standard array..."</em>
+              </li>
+              <li>
+                <strong>Character Integration:</strong> Questions to connect characters to the world
+                <br><em>Example: "Why did you come to Ironhold? What skills make you valuable? Who do you trust?"</em>
+              </li>
+            </ol>
           </div>
-        </div>
-
-        <div class="tips-section">
-          <h3> Session Zero Checklist</h3>
-          <ul class="checklist">
-            <li>Schedule session zero with all players</li>
-            <li>Prepare handouts and reference materials</li>
-            <li>Plan character creation guidelines</li>
-            <li>Set expectations for gameplay style</li>
-            <li>Discuss safety tools and boundaries</li>
-          </ul>
         </div>
       </div>
 
       <!-- Integration Stage -->
       <div v-else-if="stage === 'integration'" class="stage-integration">
         <div class="activity-section">
-          <h3>Weaving It All Together</h3>
-          <p>Connect player characters to your world and prepare for active play.</p>
+          <h3>Transform Session Zero Into Your Campaign</h3>
+          <p>Take player contributions from Session Zero and weave them into your world.</p>
           
-          <div class="document-grid" v-if="stageDocuments.length > 0">
-            <div 
-              v-for="doc in stageDocuments" 
-              :key="doc.templateId"
-              class="document-card"
-              :class="{ completed: isDocumentComplete(doc.templateId) }"
-            >
-              <h4>{{ doc.title }}</h4>
-              <p>{{ doc.description }}</p>
-              <button 
-                class="btn btn-small btn-primary"
-                @click="startDocument(doc.templateId)"
-              >
-                {{ isDocumentComplete(doc.templateId) ? 'Edit' : 'Create' }}
-              </button>
-            </div>
-          </div>
-          
-          <div class="integration-tasks">
-            <div class="task-card">
-              <h4>Character Integration</h4>
-              <p>Review character backstories and find connection points to your campaign themes.</p>
-            </div>
-            <div class="task-card">
-              <h4>World Building</h4>
-              <p>Expand your world based on player interests and character backgrounds.</p>
-            </div>
-            <div class="task-card">
-              <h4>First Module</h4>
-              <p>Plan your opening adventure that introduces the campaign's themes.</p>
-            </div>
-          </div>
+          <h4>Post-Session Zero Tasks</h4>
+          <p>Review what your players created and make it official:</p>
+          <ol>
+            <li>
+              <strong>Campaign Bible:</strong> Compile all world information into one master reference
+              <br><em>Example: "Incorporate player-created NPCs, locations they mentioned, backstory elements..."</em>
+            </li>
+            <li>
+              <strong>Major NPC Tracker:</strong> Document all NPCs from player backstories and Session Zero
+              <br><em>Example: "The merchant who cheated Tom's rogue, Marcus's old commander, Lisa's temple contacts..."</em>
+            </li>
+            <li>
+              <strong>First Module Hooks:</strong> Create personal stakes for each character
+              <br><em>Example: "Sarah's wizard notices forge-magic anomalies, Tom's contacts go silent..."</em>
+            </li>
+          </ol>
+          <p class="integration-note">This stage transforms collaborative ideas into playable content.</p>
         </div>
       </div>
 
@@ -173,18 +110,18 @@
           <h3>Campaign is Active!</h3>
           <p>Your campaign is up and running. Use the boards to track your progress.</p>
           
-          <div class="dashboard-stats">
-            <div class="stat-card">
-              <h4>Sessions Run</h4>
-              <span class="stat-number">{{ sessionCount || 0 }}</span>
+          <div class="campaign-stats-card">
+            <div class="campaign-stat">
+              <span class="stat-value">{{ sessionCount || 0 }}</span>
+              <span class="stat-label">Sessions Run</span>
             </div>
-            <div class="stat-card">
-              <h4>Active Modules</h4>
-              <span class="stat-number">{{ activeModules || 0 }}</span>
+            <div class="campaign-stat">
+              <span class="stat-value">{{ activeModules || 0 }}</span>
+              <span class="stat-label">Active Modules</span>
             </div>
-            <div class="stat-card">
-              <h4>Player Characters</h4>
-              <span class="stat-number">{{ playerCount || 0 }}</span>
+            <div class="campaign-stat">
+              <span class="stat-value">{{ playerCount || 0 }}</span>
+              <span class="stat-label">Player Characters</span>
             </div>
           </div>
 
@@ -210,8 +147,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  createDocument: [templateId: string]
-  editDocument: [document: any]
   transitionStage: [newStage: string]
 }>()
 
@@ -258,53 +193,7 @@ onMounted(async () => {
   }
 })
 
-// Get required documents for the current stage from board config service
-const stageDocuments = computed(() => {
-  if (!props.boardConfig || !props.stage) {
-    return []
-  }
-  
-  // Use the board configuration service to get properly formatted documents
-  const documents = boardConfigService.getStageDocuments('campaign', props.stage)
-  
-  // Filter to only required documents for display
-  return documents
-    .filter(doc => doc.category === 'required')
-    .map(doc => ({
-      templateId: doc.templateId,
-      title: doc.title,
-      description: doc.description
-    }))
-})
-
-// Document progress is computed from actual documents
-
-const documentProgress = computed(() => {
-  if (!props.boardConfig) {
-    return { completed: 0, total: 0, percentage: 0 }
-  }
-  
-  // Get the current stage info from board config
-  const currentStageInfo = props.boardConfig.stages.find((s: any) => s.key === props.stage)
-  if (!currentStageInfo) {
-    return { completed: 0, total: 0, percentage: 0 }
-  }
-  
-  // Count only required documents for the stage
-  const requiredDocIds = currentStageInfo.required_documents || []
-  const total = requiredDocIds.length
-  
-  // Count completed required documents
-  const completed = requiredDocIds.filter((docId: string) => {
-    const doc = props.documents.find(d => d.template_id === docId)
-    return doc?.completed_at
-  }).length
-  
-  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
-  
-  return { completed, total, percentage }
-})
-
+// Check if can progress to next stage
 const nextStageAvailable = computed(() => {
   // Check if all required documents are complete
   if (!props.boardConfig) return false
@@ -348,21 +237,6 @@ const activeModules = computed(() => 0)
 const playerCount = computed(() => 0)
 
 // Methods
-const isDocumentComplete = (templateId: string) => {
-  return props.documents.some(doc => 
-    doc.template_id === templateId && doc.completed_at
-  )
-}
-
-const startDocument = (templateId: string) => {
-  const existing = props.documents.find(doc => doc.template_id === templateId)
-  if (existing) {
-    emit('editDocument', existing)
-  } else {
-    emit('createDocument', templateId)
-  }
-}
-
 const transitionToNextStage = () => {
   if (!props.boardConfig) return
   const stageOrder = props.boardConfig.stages.map((s: any) => s.key)
@@ -395,6 +269,39 @@ const transitionToNextStage = () => {
 /* Campaign-specific styles */
 .campaign-dashboard {
   text-align: center;
+}
+
+/* Campaign Stats Card */
+.campaign-stats-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  margin: var(--spacing-xl) 0;
+}
+
+.campaign-stat {
+  text-align: center;
+  min-width: 120px;
+}
+
+.campaign-stat .stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary-600);
+  margin-bottom: var(--spacing-xs);
+}
+
+.campaign-stat .stat-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .integration-tasks {

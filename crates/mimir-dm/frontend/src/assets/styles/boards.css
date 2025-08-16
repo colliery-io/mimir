@@ -41,8 +41,8 @@
   justify-content: center;
   height: 42px;
   flex: 1;
-  max-width: 180px;
-  min-width: 120px;
+  max-width: 200px;
+  min-width: 140px;
 }
 
 /* First stage has rounded left corners */
@@ -112,7 +112,7 @@
 }
 
 .stage-name {
-  font-size: 0.875rem;
+  font-size: 0.775rem;
   font-weight: 600;
   color: var(--color-text-secondary);
   white-space: nowrap;
@@ -126,7 +126,7 @@
 .stage-marker {
   text-align: center;
   color: var(--color-primary-600);
-  font-size: 1.25rem;
+  font-size: 0.875rem;
 }
 
 /* ========================================
