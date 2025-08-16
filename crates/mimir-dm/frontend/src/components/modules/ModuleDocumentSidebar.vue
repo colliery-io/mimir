@@ -38,20 +38,24 @@
                 locked: !isStageAccessible(stage.key)
               }"
             >
-              <!-- Edit icon on the left -->
-              <span 
+              <!-- Edit icon on the left (always visible, clickable) -->
+              <img 
                 v-if="!isStageAccessible(stage.key)"
+                :src="getLockedIcon()" 
+                alt="Locked"
                 class="document-icon locked"
                 title="Stage not yet accessible"
-              >🔒</span>
-              <span 
+              />
+              <img 
                 v-else
+                :src="getEditIcon()" 
+                alt="Edit"
                 class="document-icon"
                 @click="handleDocumentClick(doc)"
                 title="Edit document"
-              >📝</span>
+              />
               
-              <!-- Document title -->
+              <!-- Document title (also clickable) -->
               <span 
                 class="document-title" 
                 :class="{ optional: !doc.required }"
@@ -82,6 +86,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useThemeStore } from '../../stores/theme'
+
+// Import icon images
+import lightEditIcon from '../../assets/images/light-edit.png'
+import lightLockedIcon from '../../assets/images/light-locked.png'
+import darkEditIcon from '../../assets/images/dark-edit.png'
+import darkLockedIcon from '../../assets/images/dark-locked.png'
+import hyperEditIcon from '../../assets/images/hyper-edit.png'
+import hyperLockedIcon from '../../assets/images/hyper-locked.png'
 
 interface Document {
   id: number
@@ -143,6 +156,25 @@ const selectedDocument = ref<Document | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+// Theme store for icon selection
+const themeStore = useThemeStore()
+
+// Icon mapping
+const iconMap = {
+  light: {
+    edit: lightEditIcon,
+    locked: lightLockedIcon
+  },
+  dark: {
+    edit: darkEditIcon,
+    locked: darkLockedIcon
+  },
+  hyper: {
+    edit: hyperEditIcon,
+    locked: hyperLockedIcon
+  }
+}
+
 // Get documents for a specific stage
 const getStageDocuments = (stage: string) => {
   const templates = stageDocuments.value[stage] || []
@@ -177,6 +209,18 @@ const isStageAccessible = (stage: string) => {
   const currentIndex = stageOrder.indexOf(props.moduleStage)
   const checkIndex = stageOrder.indexOf(stage)
   return checkIndex <= currentIndex
+}
+
+// Get edit icon for current theme
+const getEditIcon = (): string => {
+  const theme = themeStore.currentTheme as 'light' | 'dark' | 'hyper'
+  return iconMap[theme]?.edit || lightEditIcon
+}
+
+// Get locked icon for current theme
+const getLockedIcon = (): string => {
+  const theme = themeStore.currentTheme as 'light' | 'dark' | 'hyper'
+  return iconMap[theme]?.locked || lightLockedIcon
 }
 
 // Load all documents for the module
@@ -247,6 +291,16 @@ const handleDocumentClick = async (doc: any) => {
         } as Document
         
         console.log('Opening document:', simpleDoc.file_path)
+        
+        // Add to documents array so it shows as existing
+        const existingIndex = documents.value.findIndex(d => d.template_id === doc.templateId)
+        if (existingIndex === -1) {
+          documents.value.push(simpleDoc)
+        } else {
+          documents.value[existingIndex] = simpleDoc
+        }
+        
+        // Select the document
         selectDocument(simpleDoc)
       }
     }
@@ -444,10 +498,7 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
+  object-fit: contain;
 }
 
 .document-icon.locked {

@@ -127,7 +127,6 @@
 
           <div class="quick-actions">
             <router-link :to="`/campaigns/${campaign.id}/modules`" class="btn btn-secondary">View Module Board</router-link>
-            <button class="btn btn-secondary">View Session Board</button>
           </div>
         </div>
       </div>

@@ -14,14 +14,6 @@
       
       <!-- Main Board Content -->
       <div class="module-board">
-        <!-- Stage Transition Button -->
-        <div v-if="canProgressToNext && !selectedDocument" class="stage-transition-prompt">
-          <p>All required documents are complete for this stage.</p>
-          <button @click="proceedToNextStage" class="btn btn-primary btn-large">
-            Proceed to {{ nextStageName }}
-          </button>
-        </div>
-        
         <!-- Kanban Stage Progress -->
         <div class="stage-progress">
           <div 
@@ -75,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useRoute } from 'vue-router'
 import MainLayout from '../../components/layout/MainLayout.vue'
@@ -185,12 +177,6 @@ const canProgressToNext = computed(() => {
 })
 
 // Proceed to next stage
-const proceedToNextStage = async () => {
-  if (nextStage.value) {
-    await handleTransitionStage(nextStage.value.key)
-  }
-}
-
 // Load board configuration
 const loadBoardConfiguration = async () => {
   try {
@@ -386,6 +372,18 @@ const handleStageTransitioned = (updatedModule: Module) => {
   selectedDocument.value = null
 }
 
+// Watch for module ID changes (when navigating between modules)
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId !== oldId && newId) {
+    // Clear current state
+    selectedDocument.value = null
+    documents.value = []
+    
+    // Reload module data
+    loadModule()
+  }
+})
+
 onMounted(() => {
   loadModule()
 })
@@ -406,30 +404,4 @@ onMounted(() => {
 }
 
 /* Stage Transition Prompt */
-.stage-transition-prompt {
-  background-color: var(--color-success-bg);
-  border: 2px solid var(--color-success);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
-  text-align: center;
-  animation: slideDown 0.3s ease-out;
-}
-
-.stage-transition-prompt p {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--color-success-dark);
-  font-weight: 500;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 </style>

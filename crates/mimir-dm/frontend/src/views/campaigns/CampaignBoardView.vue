@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../../components/layout/MainLayout.vue'
 import DocumentSidebar from '../../components/campaigns/DocumentSidebar.vue'
@@ -280,6 +280,18 @@ const handleStageTransitioned = (updatedCampaign: any) => {
   // Clear document selection to show landing page
   selectedDocument.value = null
 }
+
+// Watch for campaign ID changes (when switching campaigns via dropdown)
+watch(() => props.id, (newId, oldId) => {
+  if (newId !== oldId) {
+    // Clear current state
+    selectedDocument.value = null
+    documents.value = []
+    
+    // Reload campaign data
+    loadCampaign()
+  }
+})
 
 onMounted(() => {
   loadCampaign()

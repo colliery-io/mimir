@@ -6,9 +6,6 @@
           <img :src="skullIcon" alt="Mimir" class="skull-icon" />
         </router-link>
         <CampaignSelector />
-        <button @click="createNewCampaign" class="new-campaign-button" title="Create New Campaign">
-          <img :src="newIcon" alt="New Campaign" class="new-icon" />
-        </button>
       </div>
       
       <div class="header-center">
@@ -26,7 +23,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { useThemeStore } from '../../stores/theme'
 import CampaignSelector from '../campaign/CampaignSelector.vue'
 // Gear icons
@@ -37,19 +33,8 @@ import hyperGear from '../../assets/images/themes/hyper/gear.png'
 import lightMimir from '../../assets/images/themes/light/mimir.png'
 import darkMimir from '../../assets/images/themes/dark/mimir.png'
 import hyperMimir from '../../assets/images/themes/hyper/mimir.png'
-// New campaign icons
-import lightNew from '../../assets/images/themes/light/new.png'
-import darkNew from '../../assets/images/themes/dark/new.png'
-import hyperNew from '../../assets/images/themes/hyper/new.png'
 
-const route = useRoute()
-const router = useRouter()
 const themeStore = useThemeStore()
-
-// Navigate to new campaign page
-const createNewCampaign = () => {
-  router.push('/campaigns/new')
-}
 
 // Dynamically select gear icon based on current theme
 const gearIcon = computed(() => {
@@ -72,18 +57,6 @@ const skullIcon = computed(() => {
       return hyperMimir
     default:
       return lightMimir
-  }
-})
-
-// Dynamically select new campaign icon based on current theme
-const newIcon = computed(() => {
-  switch (themeStore.currentTheme) {
-    case 'dark':
-      return darkNew
-    case 'hyper':
-      return hyperNew
-    default:
-      return lightNew
   }
 })
 </script>
@@ -178,36 +151,5 @@ const newIcon = computed(() => {
 
 .settings-icon:hover .gear-icon {
   transform: rotate(45deg) scale(1.25);
-}
-
-.new-campaign-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: var(--radius-md);
-  background-color: transparent;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  padding: 0;
-}
-
-.new-campaign-button:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.new-icon {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  transition: transform var(--transition-fast);
-  /* Scale up to eat negative space in the image */
-  transform: scale(1.2);
-}
-
-.new-campaign-button:hover .new-icon {
-  transform: scale(1.35);
 }
 </style>

@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../../components/layout/MainLayout.vue'
@@ -242,6 +242,14 @@ const getProgress = (module: Module): number => {
   if (module.expected_sessions === 0) return 0
   return Math.round((module.actual_sessions / module.expected_sessions) * 100)
 }
+
+// Watch for campaign ID changes in route
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId !== oldId && newId) {
+    // Reload modules for new campaign
+    loadModules()
+  }
+})
 
 onMounted(() => {
   loadModules()
