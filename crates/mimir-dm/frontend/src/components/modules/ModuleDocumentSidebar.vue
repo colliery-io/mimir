@@ -257,52 +257,46 @@ const handleDocumentClick = async (doc: any) => {
   
   // If document doesn't exist in database, create it first
   if (!doc.instance) {
-    // Get module info to get campaign ID
-    const moduleResponse = await invoke<{ success: boolean; data: any }>('get_module', {
-      id: props.moduleId
-    })
-    
-    if (moduleResponse.success && moduleResponse.data) {
-      const module = moduleResponse.data
-      
-      // Get campaign info for directory path
-      const campaignResponse = await invoke<{ success: boolean; data: any }>('get_campaign', {
-        id: module.campaign_id
+    try {
+      // First get the module to get the campaign ID
+      const moduleResponse = await invoke<{ success: boolean; data: any }>('get_module', {
+        id: props.moduleId
       })
       
-      if (campaignResponse.success && campaignResponse.data) {
-        const campaign = campaignResponse.data
-        // For module_overview, the file is always module-overview.md
-        const fileName = doc.templateId === 'module_overview' ? 'module-overview.md' : `${doc.templateId.replace(/_/g, '-')}.md`
-        const filePath = `${campaign.directory_path}/modules/module_${String(module.module_number).padStart(2, '0')}/${fileName}`
+      if (!moduleResponse.success || !moduleResponse.data) {
+        console.error('Failed to get module info')
+        return
+      }
+      
+      const module = moduleResponse.data
+      
+      // Create the document in the database AND on disk
+      const response = await invoke<{ data: Document }>('create_document_from_template', {
+        campaignId: module.campaign_id,
+        moduleId: props.moduleId,
+        templateId: doc.templateId
+      })
+      
+      if (response.data) {
+        // Check if document already exists and update or add
+        const existingIndex = documents.value.findIndex(d => 
+          d.template_id === response.data.template_id && d.module_id === props.moduleId
+        )
         
-        const simpleDoc = {
-          id: -1, // Temporary ID
-          campaign_id: module.campaign_id,
-          module_id: props.moduleId,
-          session_id: null,
-          template_id: doc.templateId,
-          document_type: doc.templateId,
-          title: doc.title,
-          file_path: filePath,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          completed_at: null
-        } as Document
-        
-        console.log('Opening document:', simpleDoc.file_path)
-        
-        // Add to documents array so it shows as existing
-        const existingIndex = documents.value.findIndex(d => d.template_id === doc.templateId)
-        if (existingIndex === -1) {
-          documents.value.push(simpleDoc)
+        if (existingIndex !== -1) {
+          documents.value[existingIndex] = response.data
         } else {
-          documents.value[existingIndex] = simpleDoc
+          documents.value.push(response.data)
         }
         
+        // Force reactivity update to make checkbox appear
+        documents.value = [...documents.value]
+        
         // Select the document
-        selectDocument(simpleDoc)
+        selectDocument(response.data)
       }
+    } catch (e) {
+      console.error('Failed to create document from template:', e)
     }
   } else {
     console.log('Selecting existing document:', doc.instance)
@@ -369,6 +363,11 @@ watch([() => props.moduleId, () => props.moduleStage], () => {
 
 onMounted(() => {
   loadDocuments()
+})
+
+// Expose loadDocuments for parent to call
+defineExpose({
+  loadDocuments
 })
 </script>
 

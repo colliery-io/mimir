@@ -4,6 +4,7 @@
       <!-- Document Sidebar -->
       <ModuleDocumentSidebar 
         v-if="module && boardConfig"
+        ref="documentSidebar"
         :module-id="module.id"
         :module-stage="module.status"
         :board-config="boardConfig"
@@ -111,6 +112,7 @@ const selectedDocument = ref<Document | null>(null)
 const documents = ref<Document[]>([])
 const boardConfig = ref<any>(null)
 const campaign = ref<any>(null)
+const documentSidebar = ref<any>(null)
 
 // Dynamic stages from board configuration
 const stages = computed(() => {
@@ -251,6 +253,11 @@ const initializeStageDocuments = async () => {
       console.log('Initialized module documents:', response.data)
       // Reload documents after initialization
       await loadDocuments()
+      
+      // Force sidebar to reload documents too
+      if (documentSidebar.value?.loadDocuments) {
+        await documentSidebar.value.loadDocuments()
+      }
     }
   } catch (e) {
     console.error('Failed to initialize module documents:', e)
@@ -359,14 +366,22 @@ const handleDocumentCompletionChanged = (updatedDocument: Document) => {
 }
 
 // Handle stage transition
-const handleStageTransitioned = (updatedModule: Module) => {
-  // Update the module status
+const handleStageTransitioned = async (updatedModule: Module) => {
+  // Update the module with proper reactivity
   if (module.value) {
-    module.value.status = updatedModule.status
+    module.value = { ...module.value, status: updatedModule.status }
   }
   
+  // Initialize documents for the new stage
+  await initializeStageDocuments()
+  
   // Reload documents for the new stage
-  loadDocuments()
+  await loadDocuments()
+  
+  // Force sidebar to reload documents
+  if (documentSidebar.value?.loadDocuments) {
+    await documentSidebar.value.loadDocuments()
+  }
   
   // Clear document selection to show landing page
   selectedDocument.value = null

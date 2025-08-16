@@ -6,7 +6,7 @@ created_at: 2025-08-02T19:44:31.247004+00:00
 updated_at: 2025-08-02T19:44:31.247004+00:00
 parent: mvp-development-strategy
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#initiative"

@@ -35,7 +35,7 @@ pub enum ImportError {
 
     /// Database operation failed
     #[error("Database error: {0}")]
-    Database(#[from] mimir_dm_db::DbError),
+    Database(#[from] mimir_dm_core::DbError),
 
     /// JSON parsing error
     #[error("JSON parsing error in {filename}: {source}")]

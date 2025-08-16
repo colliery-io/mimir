@@ -3,13 +3,32 @@
 use crate::bundle::Bundle;
 use crate::error::{ImportError, ImportResult};
 use crate::progress::ImportProgress;
-use mimir_dm_db::{
-    dal::{backgrounds::BackgroundRepository, classes::ClassRepository, creatures::CreatureRepository, 
-          feats::FeatRepository, items::ItemRepository, races::RaceRepository, 
-          rule_systems::RuleSystemRepository, sources::SourceRepository, spells::SpellRepository,
-          traits::AsyncRepository},
-    models::{backgrounds::Background, classes::Class, creatures::Creature, feats::Feat, 
-             items::{Item, NewItem}, races::Race, rule_systems::RuleSystem, sources::Source, spells::Spell},
+use mimir_dm_core::{
+    dal::{
+        rules::{
+            backgrounds::BackgroundRepository, 
+            classes::ClassRepository, 
+            creatures::CreatureRepository, 
+            feats::FeatRepository, 
+            items::ItemRepository, 
+            races::RaceRepository, 
+            rule_systems::RuleSystemRepository, 
+            sources::SourceRepository, 
+            spells::SpellRepository
+        },
+        traits::AsyncRepository
+    },
+    models::rules::{
+        backgrounds::Background, 
+        classes::Class, 
+        creatures::Creature, 
+        feats::Feat, 
+        items::{Item, NewItem}, 
+        races::Race, 
+        rule_systems::RuleSystem, 
+        sources::Source, 
+        spells::Spell
+    },
 };
 use std::path::Path;
 use tracing::{debug, info};

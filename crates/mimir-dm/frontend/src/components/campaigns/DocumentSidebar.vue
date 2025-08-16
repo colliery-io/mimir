@@ -1,13 +1,45 @@
 <template>
   <div class="document-sidebar">
     <div class="sidebar-header">
-      <h3>📋 Documents</h3>
+      <h3 v-if="['active', 'concluding', 'completed'].includes(campaignStage)">Campaign Documents</h3>
+      <h3 v-else>📋 Documents</h3>
     </div>
 
     <!-- Document List Grouped by Stage -->
     <div class="document-content">
       <div v-if="loading" class="loading-state">
         Loading documents...
+      </div>
+      
+      <div v-else-if="['active', 'concluding', 'completed'].includes(campaignStage)" class="active-documents">
+        <!-- Simple list for active/concluding/completed campaigns -->
+        <div class="document-items">
+          <div 
+            v-for="doc in getAllDocumentsForActive()" 
+            :key="doc.templateId"
+            class="document-item"
+            :class="{ 
+              selected: selectedDocument?.template_id === doc.templateId
+            }"
+          >
+            <!-- Edit icon on the left -->
+            <img 
+              :src="getEditIcon()" 
+              alt="Edit"
+              class="document-icon"
+              @click="handleDocumentClick(doc)"
+              title="Edit document"
+            />
+            
+            <!-- Document title -->
+            <span 
+              class="document-title"
+              @click="handleDocumentClick(doc)"
+            >
+              {{ doc.title }}
+            </span>
+          </div>
+        </div>
       </div>
       
       <div v-else class="stage-groups">
@@ -241,6 +273,32 @@ const getDocumentStage = (templateId: string): string => {
     }
   }
   return 'concept'
+}
+
+// Get all documents for active/concluding/completed campaigns (simplified view)
+const getAllDocumentsForActive = () => {
+  const allDocs: any[] = []
+  
+  // Collect all documents from all stages (both required and optional)
+  if (props.boardConfig) {
+    for (const stage of props.boardConfig.stages) {
+      const templates = stageDocuments.value[stage.key] || []
+      for (const template of templates) {
+        const instance = documents.value.find(doc => 
+          doc.template_id === template.templateId
+        )
+        
+        // Include all documents (with or without instance)
+        allDocs.push({
+          ...template,
+          instance
+        })
+      }
+    }
+  }
+  
+  // Sort alphabetically by title
+  return allDocs.sort((a, b) => a.title.localeCompare(b.title))
 }
 
 // Load all documents for the campaign
@@ -478,6 +536,27 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-md);
+}
+
+/* Active Documents View (simplified for active/concluding/completed states) */
+.active-documents {
+  padding-top: var(--spacing-sm);
+}
+
+.active-documents .document-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.active-documents .document-item {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.active-documents .document-item:hover {
+  background-color: var(--color-surface-variant);
 }
 
 .document-list {
