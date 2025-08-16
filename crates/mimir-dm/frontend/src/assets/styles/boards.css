@@ -232,8 +232,9 @@
 }
 
 .document-card.completed {
-  border-color: rgb(34, 197, 94);
-  background-color: rgba(34, 197, 94, 0.1);
+  border-color: var(--color-status-complete);
+  background-color: var(--color-surface-variant);
+  opacity: 0.9;
 }
 
 .document-card:hover {
@@ -440,30 +441,57 @@
    Stage Transition Card
    ======================================== */
 .stage-transition-card {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(168, 85, 247, 0.1));
-  border: 2px solid rgba(236, 72, 153, 0.3);
+  background: var(--gradient-chromatic-subtle);
+  border: 2px solid var(--color-chromatic-border);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
   text-align: center;
   margin-bottom: var(--spacing-xl);
   animation: slideDown 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add a subtle animated shimmer effect */
+.stage-transition-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 .stage-transition-card h3 {
   margin: 0 0 var(--spacing-sm) 0;
-  color: rgb(147, 51, 234);
+  background: var(--gradient-chromatic);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .stage-transition-card p {
   margin: 0 0 var(--spacing-lg) 0;
-  color: rgb(147, 51, 234);
+  color: var(--color-text);
+  position: relative;
+  z-index: 1;
 }
 
 .stage-transition-card .btn {
-  background: linear-gradient(135deg, rgb(236, 72, 153), rgb(168, 85, 247));
+  background: var(--gradient-chromatic);
+  position: relative;
+  z-index: 1;
   border: none;
-  color: white;
+  color: var(--color-background);
   padding: var(--spacing-md) var(--spacing-xl);
   font-size: 1rem;
   font-weight: 500;

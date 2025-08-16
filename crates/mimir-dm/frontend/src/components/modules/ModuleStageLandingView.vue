@@ -774,7 +774,7 @@ const formatSessionStatus = (status: string): string => {
 .module-completion .btn-success:hover {
   background-color: var(--color-success-dark);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 .completion-note {
@@ -784,7 +784,7 @@ const formatSessionStatus = (status: string): string => {
   font-style: italic;
 }
 
-/* Status select colors - gradient from purple to green */
+/* Status select colors */
 .status-select {
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--color-border);
@@ -792,41 +792,45 @@ const formatSessionStatus = (status: string): string => {
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  background-color: #000000;
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-secondary);
   transition: all var(--transition-base);
 }
 
-/* Session statuses - purple to green gradient */
+/* Session statuses using theme colors */
+.status-select.status-planning {
+  color: var(--color-status-planning);
+}
+
 .status-select.status-next_week {
-  background-color: #000000;
-  color: #a78bfa; /* Purple */
+  color: var(--color-status-next-week);
 }
 
 .status-select.status-prep_needed {
-  background-color: #000000;
-  color: #60a5fa; /* Blue */
+  color: var(--color-status-prep-needed);
 }
 
 .status-select.status-in_prep {
-  background-color: #000000;
-  color: #22d3ee; /* Cyan */
+  color: var(--color-status-in-prep);
 }
 
 .status-select.status-ready {
-  background-color: #000000;
-  color: #fbbf24; /* Amber */
+  color: var(--color-status-ready);
+}
+
+.status-select.status-running {
+  color: var(--color-status-running);
 }
 
 .status-select.status-complete {
-  background-color: #000000;
-  color: #34d399; /* Green */
+  color: var(--color-status-complete);
 }
 
 /* Hover states for better interactivity */
 .status-select:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .status-select:focus {

@@ -525,8 +525,8 @@ onMounted(() => {
     45deg,
     transparent,
     transparent 10px,
-    rgba(0, 0, 0, 0.05) 10px,
-    rgba(0, 0, 0, 0.05) 20px
+    var(--color-overlay-light) 10px,
+    var(--color-overlay-light) 20px
   );
   border-radius: 8px;
 }

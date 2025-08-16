@@ -103,7 +103,7 @@ const skullIcon = computed(() => {
   width: 44px;
   height: 44px;
   object-fit: contain;
-  filter: drop-shadow(0 0 4px rgba(125, 211, 252, 0.2));
+  /* Removed decorative glow effect for theme consistency */
   transition: transform var(--transition-fast);
   /* Scale up to eat negative space in the image */
   transform: scale(1.2);

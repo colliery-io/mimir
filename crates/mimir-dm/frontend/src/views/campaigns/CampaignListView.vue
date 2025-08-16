@@ -140,18 +140,21 @@ const formatDate = (dateString: string) => {
 }
 
 .status-planning {
-  background-color: var(--color-primary-100);
-  color: var(--color-primary-700);
+  background-color: var(--color-surface-variant);
+  color: var(--color-status-planning);
+  border: 1px solid var(--color-border);
 }
 
 .status-active {
-  background-color: #10b98133;
-  color: #15803d;
+  background-color: var(--color-surface-variant);
+  color: var(--color-status-active);
+  border: 1px solid var(--color-status-active);
 }
 
 .status-completed {
-  background-color: #6b728033;
-  color: var(--color-text-secondary);
+  background-color: var(--color-surface-variant);
+  color: var(--color-status-completed);
+  border: 1px solid var(--color-border);
 }
 
 .campaign-date {
@@ -170,7 +173,7 @@ const formatDate = (dateString: string) => {
 .btn-primary {
   padding: var(--spacing-sm) var(--spacing-lg);
   background-color: var(--color-primary-500);
-  color: white;
+  color: var(--color-background);
   border-radius: var(--radius-md);
   text-decoration: none;
   font-weight: 500;
@@ -191,13 +194,5 @@ const formatDate = (dateString: string) => {
   color: var(--color-error);
 }
 
-.theme-dark .status-planning {
-  background-color: var(--color-primary-900);
-  color: var(--color-primary-300);
-}
-
-.theme-dark .status-active {
-  background-color: #10b98133;
-  color: #34d399;
-}
+/* Theme-specific overrides no longer needed - using theme variables */
 </style>

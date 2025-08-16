@@ -28,7 +28,7 @@
 /* Button variants */
 .btn-primary {
   background-color: var(--color-primary-500);
-  color: white;
+  color: var(--color-background);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -37,7 +37,7 @@
 
 .btn-secondary {
   background-color: var(--color-secondary);
-  color: white;
+  color: var(--color-background);
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -46,7 +46,7 @@
 
 .btn-success {
   background-color: var(--color-success);
-  color: white;
+  color: var(--color-background);
 }
 
 .btn-success:hover:not(:disabled) {
@@ -55,7 +55,7 @@
 
 .btn-danger {
   background-color: var(--color-error);
-  color: white;
+  color: var(--color-background);
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -415,7 +415,7 @@
   transform: translateX(-50%);
   padding: var(--spacing-xs) var(--spacing-sm);
   background-color: var(--color-gray-900);
-  color: white;
+  color: var(--color-background);
   font-size: 0.75rem;
   border-radius: var(--radius-sm);
   white-space: nowrap;

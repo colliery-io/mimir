@@ -61,7 +61,7 @@ const skullImage = computed(() => {
   width: 400px;
   height: 400px;
   object-fit: contain;
-  filter: drop-shadow(0 0 30px rgba(125, 211, 252, 0.4));
+  /* Removed decorative glow effect for theme consistency */
   display: block;
 }
 
