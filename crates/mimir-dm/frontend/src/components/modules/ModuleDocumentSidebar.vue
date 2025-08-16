@@ -1,13 +1,52 @@
 <template>
   <div class="document-sidebar">
     <div class="sidebar-header">
-      <h3>📋 Module Documents</h3>
+      <h3 v-if="['active', 'completed'].includes(moduleStage)">Module Documents</h3>
+      <h3 v-else>📋 Module Documents</h3>
+    </div>
+    
+    <!-- Back to Campaign Button -->
+    <div class="back-button-container" v-if="campaignId">
+      <router-link :to="`/campaigns/${campaignId}/board`" class="back-to-campaign">
+        ← Back to Campaign
+      </router-link>
     </div>
 
     <!-- Document List Grouped by Stage -->
     <div class="document-content">
       <div v-if="loading" class="loading-state">
         Loading documents...
+      </div>
+      
+      <div v-else-if="['active', 'completed'].includes(moduleStage)" class="active-documents">
+        <!-- Simple list for active/completed modules -->
+        <div class="document-items">
+          <div 
+            v-for="doc in getAllDocumentsForActive()" 
+            :key="doc.templateId"
+            class="document-item"
+            :class="{ 
+              selected: selectedDocument?.template_id === doc.templateId
+            }"
+          >
+            <!-- Edit icon on the left -->
+            <img 
+              :src="getEditIcon()" 
+              alt="Edit"
+              class="document-icon"
+              @click="handleDocumentClick(doc)"
+              title="Edit document"
+            />
+            
+            <!-- Document title -->
+            <span 
+              class="document-title"
+              @click="handleDocumentClick(doc)"
+            >
+              {{ doc.title }}
+            </span>
+          </div>
+        </div>
       </div>
       
       <div v-else class="stage-groups">
@@ -114,6 +153,7 @@ const props = defineProps<{
   moduleId: number
   moduleStage: string
   boardConfig: any
+  campaignId?: number
 }>()
 
 const emit = defineEmits<{
@@ -221,6 +261,32 @@ const getEditIcon = (): string => {
 const getLockedIcon = (): string => {
   const theme = themeStore.currentTheme as 'light' | 'dark' | 'hyper'
   return iconMap[theme]?.locked || lightLockedIcon
+}
+
+// Get all documents for active/completed modules (simplified view)
+const getAllDocumentsForActive = () => {
+  const allDocs: any[] = []
+  
+  // Collect all documents from all stages (both required and optional)
+  if (props.boardConfig) {
+    for (const stage of props.boardConfig.stages) {
+      const templates = stageDocuments.value[stage.key] || []
+      for (const template of templates) {
+        const instance = documents.value.find(doc => 
+          doc.template_id === template.templateId && doc.module_id === props.moduleId
+        )
+        
+        // Include all documents (with or without instance)
+        allDocs.push({
+          ...template,
+          instance
+        })
+      }
+    }
+  }
+  
+  // Sort alphabetically by title
+  return allDocs.sort((a, b) => a.title.localeCompare(b.title))
 }
 
 // Load all documents for the module
@@ -552,5 +618,60 @@ defineExpose({
 .completion-checkbox.checked:hover {
   background-color: var(--color-success-dark);
   border-color: var(--color-success-dark);
+}
+
+/* Active Documents View (simplified for active/completed states) */
+.active-documents {
+  padding-top: var(--spacing-sm);
+}
+
+.active-documents .document-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.active-documents .document-item {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.active-documents .document-item:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.active-documents .document-title {
+  cursor: pointer;
+}
+
+/* Back to Campaign Button */
+.back-button-container {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.back-to-campaign {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-surface-variant);
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all var(--transition-base);
+  width: 100%;
+  justify-content: center;
+}
+
+.back-to-campaign:hover {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-600);
+  transform: translateX(-2px);
 }
 </style>

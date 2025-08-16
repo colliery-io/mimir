@@ -8,6 +8,7 @@
         :module-id="module.id"
         :module-stage="module.status"
         :board-config="boardConfig"
+        :campaign-id="module.campaign_id"
         @select-document="handleSelectDocument"
         @create-document="handleCreateDocument"
         @document-completion-changed="handleDocumentCompletionChanged"

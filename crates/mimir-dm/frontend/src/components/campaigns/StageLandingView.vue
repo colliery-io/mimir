@@ -109,21 +109,6 @@
         <div class="campaign-dashboard">
           <h3>Campaign is Active!</h3>
           <p>Your campaign is up and running. Track your modules and sessions below.</p>
-          
-          <div class="campaign-stats-card">
-            <div class="campaign-stat">
-              <span class="stat-value">{{ totalSessionsRun || 0 }}</span>
-              <span class="stat-label">Sessions Run</span>
-            </div>
-            <div class="campaign-stat">
-              <span class="stat-value">{{ modules.length || 0 }}</span>
-              <span class="stat-label">Total Modules</span>
-            </div>
-            <div class="campaign-stat">
-              <span class="stat-value">{{ activeModuleCount || 0 }}</span>
-              <span class="stat-label">Active Modules</span>
-            </div>
-          </div>
 
           <!-- Module Management Section -->
           <div class="modules-section">
@@ -234,7 +219,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useRouter } from 'vue-router'
 import { boardConfigService } from '../../services/boardConfigService'
@@ -341,15 +326,6 @@ const nextStagePrompt = computed(() => {
   return currentStageInfo?.transition_prompt || ''
 })
 
-// Module computed properties
-const totalSessionsRun = computed(() => {
-  return modules.value.reduce((total, module) => total + module.actual_sessions, 0)
-})
-
-const activeModuleCount = computed(() => {
-  return modules.value.filter(m => m.status === 'active').length
-})
-
 // Methods
 const transitionToNextStage = () => {
   if (!props.boardConfig) return
@@ -427,6 +403,13 @@ watch(() => props.stage, (newStage) => {
 
 // Load modules if already in active stage
 onMounted(() => {
+  if (props.stage === 'active') {
+    loadModules()
+  }
+})
+
+// Reload modules when component is reactivated (e.g., returning from module view)
+onActivated(() => {
   if (props.stage === 'active') {
     loadModules()
   }

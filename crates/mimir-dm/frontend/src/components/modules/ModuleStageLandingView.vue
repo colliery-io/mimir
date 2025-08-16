@@ -1,8 +1,8 @@
 <template>
   <div class="stage-landing">
-    <!-- Stage Header -->
+    <!-- Module Header -->
     <div class="stage-header">
-      <h2>{{ stageInfo.title }}</h2>
+      <h2>{{ module?.name || 'Module' }}</h2>
       <p class="stage-subtitle">{{ stageInfo.subtitle }}</p>
     </div>
 
@@ -178,22 +178,49 @@
       <!-- Completed Stage -->
       <div v-else-if="stage === 'completed'" class="stage-completed">
         <div class="dashboard-section">
-          <h3>🎉 Module Complete!</h3>
-          <p>This module has been successfully completed.</p>
+          <h3>Module Complete!</h3>
+          <p>This module has been successfully completed. You can still review all session documents.</p>
           
-          <div class="stats-grid">
-            <div class="stat-card">
-              <h4>Total Sessions</h4>
-              <span class="stat-number">{{ module.actual_sessions }}</span>
-            </div>
-            <div class="stat-card">
-              <h4>Started</h4>
-              <span class="stat-number">{{ formatDate(module.started_at) }}</span>
-            </div>
-            <div class="stat-card">
-              <h4>Completed</h4>
-              <span class="stat-number">{{ formatDate(module.completed_at) }}</span>
-            </div>
+          <!-- Sessions Table (Read-only for completed modules) -->
+          <div v-if="sessions.length > 0" class="sessions-list">
+            <table class="sessions-table">
+              <thead>
+                <tr>
+                  <th>Session</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="session in sessions" 
+                  :key="session.id"
+                  class="session-row"
+                  :class="{ completed: session.status === 'complete' }"
+                >
+                  <td class="session-name">
+                    <strong>Session #{{ session.session_number }}</strong>
+                  </td>
+                  <td>
+                    <span class="status-badge" :class="`status-${session.status}`">
+                      {{ formatSessionStatus(session.status) }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <button @click="openSessionDocument(session, 'outline')" class="btn btn-small btn-secondary">
+                      Outline
+                    </button>
+                    <button @click="openSessionDocument(session, 'notes')" class="btn btn-small btn-secondary">
+                      Notes
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div v-else class="empty-sessions">
+            <p>No sessions were recorded for this module.</p>
           </div>
         </div>
       </div>
@@ -377,21 +404,21 @@ const availableModulesCount = computed(() => {
 
 // Session management
 watch([() => props.stage, () => props.module], async ([newStage, newModule]) => {
-  if (newStage === 'active' && newModule) {
+  if ((newStage === 'active' || newStage === 'completed') && newModule) {
     await loadSessionBoardConfig()
     await loadSessions()
   }
 }, { immediate: true })
 
 onMounted(async () => {
-  if (props.stage === 'active' && props.module) {
+  if ((props.stage === 'active' || props.stage === 'completed') && props.module) {
     await loadSessionBoardConfig()
     await loadSessions()
   }
 })
 
 onActivated(async () => {
-  if (props.stage === 'active' && props.module) {
+  if ((props.stage === 'active' || props.stage === 'completed') && props.module) {
     await loadSessions()
   }
 })
@@ -805,5 +832,53 @@ const formatSessionStatus = (status: string): string => {
 .status-select:focus {
   outline: 2px solid var(--color-primary-400);
   outline-offset: 2px;
+}
+
+/* Status Badge for completed view */
+.status-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.status-badge.status-complete {
+  background-color: var(--color-surface-variant);
+  color: var(--color-success);
+}
+
+.status-badge.status-planning {
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-secondary);
+}
+
+.status-badge.status-in_prep {
+  background-color: var(--color-surface-variant);
+  color: var(--color-warning);
+}
+
+.status-badge.status-ready {
+  background-color: var(--color-surface-variant);
+  color: var(--color-primary);
+}
+
+.status-badge.status-running {
+  background-color: var(--color-surface-variant);
+  color: var(--color-info);
+}
+
+/* Completed module sessions table */
+.stage-completed .sessions-table tbody tr.completed {
+  background-color: var(--color-surface);
+  opacity: 0.9;
+}
+
+.stage-completed .dashboard-section {
+  margin-top: var(--spacing-lg);
 }
 </style>
