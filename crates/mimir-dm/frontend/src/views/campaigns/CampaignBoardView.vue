@@ -1,7 +1,12 @@
 <template>
-  <MainLayout>
-    <div class="campaign-board-container">
-      <!-- Document Sidebar -->
+  <BaseBoardView
+    entity-type="campaign"
+    :entity="campaign"
+    :board-config="boardConfig"
+    :completed-stages="completedStages"
+  >
+    <!-- Document Sidebar -->
+    <template #sidebar>
       <DocumentSidebar 
         v-if="campaign && boardConfig"
         :campaign-id="campaign.id"
@@ -11,66 +16,45 @@
         @create-document="handleCreateDocument"
         @document-completion-changed="handleDocumentCompletionChanged"
       />
+    </template>
+    
+    <!-- Main Content -->
+    <template #content>
+      <!-- Stage Landing View (default) -->
+      <StageLandingView 
+        v-if="!selectedDocument && campaign && boardConfig"
+        :stage="currentStage"
+        :documents="documents"
+        :campaign="campaign"
+        :boardConfig="boardConfig"
+        @create-document="handleCreateDocumentFromTemplate"
+        @edit-document="handleEditDocument" 
+        @transition-stage="handleTransitionStage"
+      />
       
-      <!-- Main Board Content -->
-      <div class="campaign-board">
-        <!-- Kanban Stage Progress -->
-        <div class="stage-progress">
-          <div 
-            v-for="(stage, index) in stages" 
-            :key="stage.key"
-            class="stage-indicator"
-            :class="{ 
-              active: currentStage === stage.key,
-              completed: isStageCompleted(stage.key)
-            }"
-            :style="{ zIndex: stages.length - index }"
-          >
-            <div class="stage-content">
-              <div class="stage-name">{{ stage.name }}</div>
-              <div class="stage-marker" v-if="currentStage === stage.key">●</div>
-            </div>
-            <div class="stage-arrow-point"></div>
-          </div>
-        </div>
-
-        <!-- Main Content Area -->
-        <div class="main-content">
-          <!-- Stage Landing View (default) -->
-          <StageLandingView 
-            v-if="!selectedDocument && campaign && boardConfig"
-            :stage="currentStage"
-            :documents="documents"
-            :campaign="campaign"
-            :boardConfig="boardConfig"
-            @create-document="handleCreateDocumentFromTemplate"
-            @edit-document="handleEditDocument" 
-            @transition-stage="handleTransitionStage"
-          />
-          
-          <!-- Document Editor (when document selected) -->
-          <DocumentEditor 
-            v-else-if="selectedDocument"
-            :document="selectedDocument"
-            :campaign-id="parseInt(id)"
-            @close="selectedDocument = null"
-            @updated="handleDocumentUpdated"
-            @stage-transitioned="handleStageTransitioned"
-          />
-        </div>
-      </div>
-    </div>
-  </MainLayout>
+      <!-- Document Editor (when document selected) -->
+      <DocumentEditor 
+        v-else-if="selectedDocument"
+        :document="selectedDocument"
+        :campaign-id="parseInt(id)"
+        @close="selectedDocument = null"
+        @updated="handleDocumentUpdated"
+        @stage-transitioned="handleStageTransitioned"
+      />
+    </template>
+  </BaseBoardView>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import MainLayout from '../../components/layout/MainLayout.vue'
+import BaseBoardView from '../../components/common/BaseBoardView.vue'
 import DocumentSidebar from '../../components/campaigns/DocumentSidebar.vue'
 import StageLandingView from '../../components/campaigns/StageLandingView.vue'
 import DocumentEditor from '../../components/campaigns/DocumentEditor.vue'
-import type { Campaign } from '../../types/campaign'
+import { useStageProgress } from '../../composables/useStageProgress'
+import { useApiCall } from '../../composables/useApiCall'
+import type { Campaign, BoardConfig } from '../../types'
 
 const props = defineProps<{
   id: string
@@ -78,69 +62,51 @@ const props = defineProps<{
 
 // Local state
 const campaign = ref<Campaign | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
 const selectedDocument = ref<any>(null)
 const documents = ref<any[]>([])
-const boardConfig = ref<any>(null)
+const boardConfig = ref<BoardConfig | null>(null)
 
-// Dynamic stages from board configuration
-const stages = computed(() => {
+// Use composables
+const { loading: boardLoading, error: boardError, execute: loadBoardApi } = useApiCall<BoardConfig>()
+const { loading: campaignLoading, error: campaignError, execute: loadCampaignApi } = useApiCall<Campaign>()
+const campaignComputed = computed(() => campaign.value)
+const boardConfigComputed = computed(() => boardConfig.value)
+const { currentStage, isStageCompleted, getStageIndex } = useStageProgress(
+  campaignComputed,
+  boardConfigComputed,
+  'campaign'
+)
+
+// Completed stages for visual indication
+const completedStages = computed(() => {
   if (!boardConfig.value) return []
-  return boardConfig.value.stages.map((stage: any) => ({
-    key: stage.key,
-    name: stage.display_name.toUpperCase()
-  }))
+  return boardConfig.value.stages
+    .filter(stage => isStageCompleted(stage.key))
+    .map(stage => stage.key)
 })
-
-// Map status to stage for display
-const currentStage = computed(() => {
-  if (!campaign.value) return 'concept'
-  
-  // Map planning status to concept stage
-  if (campaign.value.status === 'planning') {
-    return 'concept'
-  }
-  
-  // Otherwise use status directly as the stage
-  return campaign.value.status
-})
-
-// Check if a stage is completed (before the current stage)
-const isStageCompleted = (stageKey: string): boolean => {
-  if (!boardConfig.value) return false
-  const stageOrder = boardConfig.value.stages.map((s: any) => s.key)
-  const currentIndex = stageOrder.indexOf(currentStage.value)
-  const checkIndex = stageOrder.indexOf(stageKey)
-  return checkIndex < currentIndex
-}
 
 // Load board configuration
 const loadBoardConfiguration = async () => {
-  try {
-    const response = await invoke<{ data: any }>('get_board_configuration', {
-      boardType: 'campaign'
-    })
-    boardConfig.value = response.data
+  const data = await loadBoardApi('get_board_configuration', {
+    boardType: 'campaign'
+  })
+  if (data) {
+    boardConfig.value = data
     console.log('Loaded board configuration:', boardConfig.value)
-  } catch (e) {
-    console.error('Failed to load board configuration:', e)
   }
 }
 
 // Load campaign data
 const loadCampaign = async () => {
-  loading.value = true
-  error.value = null
+  // Load board configuration first
+  await loadBoardConfiguration()
   
-  try {
-    // Load board configuration first
-    await loadBoardConfiguration()
-    
-    const response = await invoke<{ data: Campaign }>('get_campaign', { 
-      id: parseInt(props.id) 
-    })
-    campaign.value = response.data
+  const data = await loadCampaignApi('get_campaign', { 
+    id: parseInt(props.id) 
+  })
+  
+  if (data) {
+    campaign.value = data
     console.log('Loaded campaign:', campaign.value)
     
     // Initialize stage documents if this is the first time
@@ -148,11 +114,6 @@ const loadCampaign = async () => {
     
     // Load existing documents
     await loadDocuments()
-  } catch (e) {
-    console.error('Failed to load campaign:', e)
-    error.value = 'Failed to load campaign'
-  } finally {
-    loading.value = false
   }
 }
 
@@ -299,22 +260,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Campaign-specific overrides */
-.campaign-board-container {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-}
-
-.campaign-board {
-  flex: 1;
-  padding: var(--spacing-lg);
-  overflow-y: auto;
-}
-
-/* Campaign boards have slightly wider stage indicators */
-.stage-indicator {
-  max-width: 200px;
-  min-width: 120px;
-}
+/* Campaign-specific overrides if needed */
 </style>

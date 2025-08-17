@@ -1,7 +1,12 @@
 <template>
-  <MainLayout>
-    <div class="module-board-container">
-      <!-- Document Sidebar -->
+  <BaseBoardView
+    entity-type="module"
+    :entity="module"
+    :board-config="boardConfig"
+    :completed-stages="completedStages"
+  >
+    <!-- Document Sidebar -->
+    <template #sidebar>
       <ModuleDocumentSidebar 
         v-if="module && boardConfig"
         ref="documentSidebar"
@@ -13,139 +18,85 @@
         @create-document="handleCreateDocument"
         @document-completion-changed="handleDocumentCompletionChanged"
       />
+    </template>
+    
+    <!-- Main Content -->
+    <template #content>
+      <!-- Stage Landing View (default) -->
+      <ModuleStageLandingView 
+        v-if="!selectedDocument && module && boardConfig"
+        :stage="currentStage"
+        :documents="documents"
+        :module="module"
+        :boardConfig="boardConfig"
+        :campaign="campaign"
+        @create-document="handleCreateDocumentFromTemplate"
+        @edit-document="handleEditDocument" 
+        @transition-stage="handleTransitionStage"
+        @open-session-document="handleEditDocument"
+      />
       
-      <!-- Main Board Content -->
-      <div class="module-board">
-        <!-- Kanban Stage Progress -->
-        <div class="stage-progress">
-          <div 
-            v-for="(stage, index) in stages" 
-            :key="stage.key"
-            class="stage-indicator"
-            :class="{ 
-              active: currentStage === stage.key,
-              completed: isStageCompleted(stage.key)
-            }"
-            :style="{ zIndex: stages.length - index }"
-          >
-            <div class="stage-content">
-              <div class="stage-name">{{ stage.name }}</div>
-              <div class="stage-marker" v-if="currentStage === stage.key">●</div>
-            </div>
-            <div class="stage-arrow-point"></div>
-          </div>
-        </div>
-
-        <!-- Main Content Area -->
-        <div class="main-content">
-          <!-- Stage Landing View (default) -->
-          <ModuleStageLandingView 
-            v-if="!selectedDocument && module && boardConfig"
-            :stage="currentStage"
-            :documents="documents"
-            :module="module"
-            :boardConfig="boardConfig"
-            :campaign="campaign"
-            @create-document="handleCreateDocumentFromTemplate"
-            @edit-document="handleEditDocument" 
-            @transition-stage="handleTransitionStage"
-            @open-session-document="handleEditDocument"
-          />
-          
-          <!-- Document Editor (when document selected) -->
-          <DocumentEditor 
-            v-else-if="selectedDocument && module"
-            :document="selectedDocument"
-            :campaign-id="module.campaign_id"
-            :module-id="module.id"
-            @close="selectedDocument = null"
-            @updated="handleDocumentUpdated"
-            @stage-transitioned="handleStageTransitioned"
-          />
-        </div>
-      </div>
-    </div>
-  </MainLayout>
+      <!-- Document Editor (when document selected) -->
+      <DocumentEditor 
+        v-else-if="selectedDocument && module"
+        :document="selectedDocument"
+        :campaign-id="module.campaign_id"
+        :module-id="module.id"
+        @close="selectedDocument = null"
+        @updated="handleDocumentUpdated"
+        @stage-transitioned="handleStageTransitioned"
+      />
+    </template>
+  </BaseBoardView>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useRoute } from 'vue-router'
-import MainLayout from '../../components/layout/MainLayout.vue'
+import BaseBoardView from '../../components/common/BaseBoardView.vue'
 import ModuleDocumentSidebar from '../../components/modules/ModuleDocumentSidebar.vue'
 import ModuleStageLandingView from '../../components/modules/ModuleStageLandingView.vue'
 import DocumentEditor from '../../components/campaigns/DocumentEditor.vue'
+import { useStageProgress } from '../../composables/useStageProgress'
+import { useApiCall } from '../../composables/useApiCall'
+import type { Module, Document, BoardConfig, Campaign } from '../../types'
 
 const route = useRoute()
 const moduleId = computed(() => parseInt(route.params.id as string))
 
-// Types
-interface Module {
-  id: number
-  campaign_id: number
-  name: string
-  module_number: number
-  status: string
-  expected_sessions: number
-  actual_sessions: number
-  created_at: string
-  started_at: string | null
-  completed_at: string | null
-}
-
-interface Document {
-  id: number
-  campaign_id: number
-  module_id: number | null
-  template_id: string
-  document_type: string
-  title: string
-  file_path: string
-  completed_at: string | null
-}
-
 // Local state
 const module = ref<Module | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
 const selectedDocument = ref<Document | null>(null)
 const documents = ref<Document[]>([])
-const boardConfig = ref<any>(null)
-const campaign = ref<any>(null)
+const boardConfig = ref<BoardConfig | null>(null)
+const campaign = ref<Campaign | null>(null)
 const documentSidebar = ref<any>(null)
 
-// Dynamic stages from board configuration
-const stages = computed(() => {
+// Use composables
+const { loading: boardLoading, error: boardError, execute: loadBoardApi } = useApiCall<BoardConfig>()
+const { loading: moduleLoading, error: moduleError, execute: loadModuleApi } = useApiCall<Module>()
+const moduleComputed = computed(() => module.value)
+const boardConfigComputed = computed(() => boardConfig.value)
+const { 
+  currentStage, 
+  isStageCompleted, 
+  nextStage,
+  getStageIndex 
+} = useStageProgress(
+  moduleComputed,
+  boardConfigComputed,
+  'module'
+)
+
+// Completed stages for visual indication
+const completedStages = computed(() => {
   if (!boardConfig.value) return []
-  return boardConfig.value.stages.map((stage: any) => ({
-    key: stage.key,
-    name: stage.display_name.toUpperCase()
-  }))
+  return boardConfig.value.stages
+    .filter(stage => isStageCompleted(stage.key))
+    .map(stage => stage.key)
 })
 
-// Current stage
-const currentStage = computed(() => {
-  return module.value?.status || 'planning'
-})
-
-// Check if a stage is completed (before the current stage)
-const isStageCompleted = (stageKey: string): boolean => {
-  if (!boardConfig.value || !module.value) return false
-  const stageOrder = boardConfig.value.stages.map((s: any) => s.key)
-  const currentIndex = stageOrder.indexOf(currentStage.value)
-  const checkIndex = stageOrder.indexOf(stageKey)
-  return checkIndex < currentIndex
-}
-
-// Get next stage info
-const nextStage = computed(() => {
-  if (!boardConfig.value || !module.value) return null
-  const stageOrder = boardConfig.value.stages.map((s: any) => s.key)
-  const currentIndex = stageOrder.indexOf(currentStage.value)
-  if (currentIndex === -1 || currentIndex >= stageOrder.length - 1) return null
-  return boardConfig.value.stages[currentIndex + 1]
-})
 
 const nextStageName = computed(() => {
   return nextStage.value?.display_name || 'Next Stage'
@@ -182,22 +133,17 @@ const canProgressToNext = computed(() => {
 // Proceed to next stage
 // Load board configuration
 const loadBoardConfiguration = async () => {
-  try {
-    const response = await invoke<{ data: any }>('get_board_configuration', {
-      boardType: 'module'
-    })
-    boardConfig.value = response.data
+  const data = await loadBoardApi('get_board_configuration', {
+    boardType: 'module'
+  })
+  if (data) {
+    boardConfig.value = data
     console.log('Loaded module board configuration:', boardConfig.value)
-  } catch (e) {
-    console.error('Failed to load board configuration:', e)
   }
 }
 
 // Load module data
 const loadModule = async () => {
-  loading.value = true
-  error.value = null
-  
   try {
     // Load board configuration first
     await loadBoardConfiguration()
@@ -218,9 +164,6 @@ const loadModule = async () => {
     await loadDocuments()
   } catch (e) {
     console.error('Failed to load module:', e)
-    error.value = 'Failed to load module'
-  } finally {
-    loading.value = false
   }
 }
 
@@ -406,18 +349,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Module-specific container styles */
-.module-board-container {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-}
-
-.module-board {
-  flex: 1;
-  padding: var(--spacing-lg);
-  overflow-y: auto;
-}
-
-/* Stage Transition Prompt */
+/* Module-specific overrides if needed */
 </style>

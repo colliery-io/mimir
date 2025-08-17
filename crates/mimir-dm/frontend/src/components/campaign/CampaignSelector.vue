@@ -143,14 +143,18 @@ onUnmounted(() => {
 })
 
 // Watch for route changes to update campaign context
-watch(() => router.currentRoute.value.params.campaignId, (newId) => {
+// Note: Use 'id' not 'campaignId' since the route param is ':id'
+watch(() => router.currentRoute.value.params.id, (newId) => {
   if (newId && typeof newId === 'string') {
     const id = parseInt(newId, 10)
     if (!isNaN(id) && id !== selectedCampaignId.value) {
-      selectCampaign(id)
+      // Just update the selection, don't navigate again
+      selectedCampaignId.value = id
+      campaignStore.getCampaign(id)
+      localStorage.setItem('selectedCampaignId', id.toString())
     }
   }
-})
+}, { immediate: true })
 </script>
 
 <style scoped>
