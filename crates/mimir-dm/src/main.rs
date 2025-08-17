@@ -3,6 +3,8 @@
 mod app_init;
 mod commands;
 mod db_connection;
+mod embedded_rules;
+mod rules_init;
 mod seed_templates;
 mod services;
 mod types;

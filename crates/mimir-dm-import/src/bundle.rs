@@ -4,7 +4,7 @@ use crate::error::{ImportError, ImportResult};
 use crate::manifest::BundleManifest;
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
-use std::io::Read;
+use std::io::{Cursor, Read};
 use std::path::Path;
 use tar::Archive;
 use tracing::{debug, info};
@@ -142,5 +142,76 @@ impl Bundle {
     /// Check if a required file exists
     pub fn has_file(&self, filename: &str) -> bool {
         self.files.contains_key(filename)
+    }
+
+    /// Extract and parse a bundle from embedded bytes
+    pub async fn from_bytes(bundle_bytes: &[u8]) -> ImportResult<Self> {
+        info!("Extracting bundle from embedded bytes");
+
+        // Create a cursor to read from the byte slice
+        let cursor = Cursor::new(bundle_bytes);
+        let gz_decoder = GzDecoder::new(cursor);
+        let mut archive = Archive::new(gz_decoder);
+
+        let mut files = HashMap::new();
+        let mut root_dir = String::new();
+        let mut manifest_content = None;
+
+        // Extract all files
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            let path = entry.path()?.into_owned();
+            let path_str = path.to_string_lossy();
+
+            debug!("Extracting: {}", path_str);
+
+            // Determine root directory from first entry
+            if root_dir.is_empty() {
+                if let Some(first_component) = path.components().next() {
+                    root_dir = first_component.as_os_str().to_string_lossy().to_string();
+                }
+            }
+
+            // Read file contents
+            let mut contents = Vec::new();
+            entry.read_to_end(&mut contents)?;
+
+            // Store file, using relative path from root
+            let relative_path = path
+                .strip_prefix(&root_dir)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .to_string();
+
+            // Special handling for manifest
+            if relative_path == "manifest.json" {
+                manifest_content = Some(contents.clone());
+            }
+
+            files.insert(relative_path, contents);
+        }
+
+        // Parse manifest
+        let manifest_bytes = manifest_content.ok_or_else(|| ImportError::MissingFile {
+            filename: "manifest.json".to_string(),
+        })?;
+
+        let manifest: BundleManifest = serde_json::from_slice(&manifest_bytes)
+            .map_err(|e| ImportError::JsonParsing {
+                filename: "manifest.json".to_string(),
+                source: e,
+            })?;
+
+        info!(
+            "Extracted bundle '{}' with {} files",
+            manifest.bundle_name,
+            files.len()
+        );
+
+        Ok(Bundle {
+            manifest,
+            root_dir,
+            files,
+        })
     }
 }

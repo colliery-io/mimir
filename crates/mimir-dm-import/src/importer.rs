@@ -53,6 +53,14 @@ impl BundleImporter {
         let bundle = Bundle::from_archive(bundle_path).await?;
         info!("Extracted bundle: {}", bundle.manifest.bundle_name);
 
+        // Use the direct import method
+        self.import_bundle_direct(bundle).await
+    }
+
+    /// Import a bundle that has already been extracted
+    pub async fn import_bundle_direct(&self, bundle: Bundle) -> ImportResult<()> {
+        info!("Starting import of bundle: {}", bundle.manifest.bundle_name);
+
         // Create progress reporter
         let total_entities = bundle.manifest.total_entities();
         let mut progress = ImportProgress::new(total_entities);
