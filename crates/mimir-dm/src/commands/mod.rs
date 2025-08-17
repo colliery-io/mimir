@@ -7,6 +7,7 @@ pub mod stage_transitions;
 pub mod boards;
 pub mod modules;
 pub mod sessions;
+pub mod rules;
 
 pub use campaigns::*;
 pub use app_info::*;
@@ -15,3 +16,4 @@ pub use stage_transitions::*;
 pub use boards::*;
 pub use modules::*;
 pub use sessions::*;
+pub use rules::*;

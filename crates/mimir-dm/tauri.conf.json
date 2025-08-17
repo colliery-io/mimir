@@ -18,7 +18,20 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "default",
+          "windows": ["*"],
+          "permissions": [
+            "core:window:allow-create",
+            "core:window:allow-get-all-windows",
+            "core:window:allow-set-focus",
+            "core:window:allow-close",
+            "core:webview:allow-create-webview-window"
+          ]
+        }
+      ]
     }
   },
   "bundle": {

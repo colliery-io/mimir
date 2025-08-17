@@ -89,7 +89,10 @@ fn main() {
             create_session,
             list_module_sessions,
             transition_session_status,
-            get_session_board_config
+            get_session_board_config,
+            // Rules commands
+            list_rule_systems,
+            get_rule_system
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -13,6 +13,9 @@
       </div>
       
       <div class="header-right">
+        <button @click="handleOpenRules" class="rules-button" title="Open Rules Reference (new window)">
+          Rules
+        </button>
         <router-link to="/settings" class="settings-icon" title="Settings">
           <img :src="gearIcon" alt="Settings" class="gear-icon" />
         </router-link>
@@ -25,6 +28,7 @@
 import { computed } from 'vue'
 import { useThemeStore } from '../../stores/theme'
 import CampaignSelector from '../campaign/CampaignSelector.vue'
+import { openRulesReference } from '../../utils/windows'
 // Gear icons
 import lightGear from '../../assets/images/themes/light/gear.png'
 import darkGear from '../../assets/images/themes/dark/gear.png'
@@ -35,6 +39,15 @@ import darkMimir from '../../assets/images/themes/dark/mimir.png'
 import hyperMimir from '../../assets/images/themes/hyper/mimir.png'
 
 const themeStore = useThemeStore()
+
+// Handle opening the rules reference window
+const handleOpenRules = async () => {
+  try {
+    await openRulesReference()
+  } catch (error) {
+    console.error('Failed to open rules window:', error)
+  }
+}
 
 // Dynamically select gear icon based on current theme
 const gearIcon = computed(() => {
@@ -151,5 +164,27 @@ const skullIcon = computed(() => {
 
 .settings-icon:hover .gear-icon {
   transform: rotate(45deg) scale(1.25);
+}
+
+.rules-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.rules-button:hover {
+  background-color: var(--color-surface-variant);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.rules-button:active {
+  transform: scale(0.98);
 }
 </style>

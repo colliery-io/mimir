@@ -13,7 +13,13 @@ export default defineConfig({
   // Tauri expects the dist folder to be in this location
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        rules: fileURLToPath(new URL('./rules.html', import.meta.url))
+      }
+    }
   },
   server: {
     port: 5173,
