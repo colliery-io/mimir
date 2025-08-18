@@ -5,24 +5,36 @@ use crate::{
     APP_PATHS,
 };
 use std::fs;
-use std::path::Path;
-use tracing::{error, info};
+use std::path::{Path, PathBuf};
+use tracing::{error, info, debug};
 use base64::{engine::general_purpose::STANDARD, Engine};
+use tar::Archive;
+use flate2::read::GzDecoder;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-/// Add a book file to the library with a custom name
+/// Upload and extract a book archive (tar.gz format from mimir-5esplit)
 #[tauri::command]
-pub async fn add_book_to_library(
-    book_name: String,
-    file_path: String,
-) -> Result<ApiResponse<String>, String> {
-    info!("Adding book '{}' from: {}", book_name, file_path);
+pub async fn upload_book_archive(
+    archive_path: String,
+) -> Result<ApiResponse<BookInfo>, String> {
+    info!("Uploading book archive from: {}", archive_path);
     
     // Get app paths
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
-    // Sanitize book name for folder creation
-    let sanitized_name = sanitize_folder_name(&book_name);
+    // Verify archive exists
+    let archive_file = Path::new(&archive_path);
+    if !archive_file.exists() {
+        return Ok(ApiResponse::error(format!("Archive not found: {}", archive_path)));
+    }
+    
+    // Open the archive
+    let tar_gz = fs::File::open(archive_file)
+        .map_err(|e| format!("Failed to open archive: {}", e))?;
+    let tar = GzDecoder::new(tar_gz);
+    let mut archive = Archive::new(tar);
     
     // Create books directory if it doesn't exist
     let books_dir = app_paths.data_dir.join("books");
@@ -32,54 +44,95 @@ pub async fn add_book_to_library(
         info!("Created books directory at: {:?}", books_dir);
     }
     
-    // Create book folder
-    let book_dir = books_dir.join(&sanitized_name);
-    if book_dir.exists() {
+    // Extract to a temporary directory first to validate structure
+    let temp_dir = tempfile::TempDir::new()
+        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    
+    archive.unpack(temp_dir.path())
+        .map_err(|e| format!("Failed to extract archive: {}", e))?;
+    
+    // Find the book directory (should be the only top-level directory)
+    let mut book_id = None;
+    let mut book_metadata = None;
+    let mut book_data = None;
+    
+    for entry in fs::read_dir(temp_dir.path())
+        .map_err(|e| format!("Failed to read temp directory: {}", e))? {
+        
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let path = entry.path();
+        
+        if path.is_dir() {
+            // Found the book directory - use its name as the ID
+            book_id = Some(entry.file_name().to_string_lossy().to_string());
+            
+            // Look for metadata.json from mimir-5esplit
+            let metadata_path = path.join("metadata.json");
+            if metadata_path.exists() {
+                let metadata_content = fs::read_to_string(&metadata_path)
+                    .map_err(|e| format!("Failed to read metadata: {}", e))?;
+                book_metadata = serde_json::from_str::<serde_json::Value>(&metadata_content).ok();
+            }
+            
+            // Look for the main book content
+            let book_content_path = find_book_content_file(&path)?;
+            if let Some(content_path) = book_content_path {
+                let content = fs::read_to_string(&content_path)
+                    .map_err(|e| format!("Failed to read book content: {}", e))?;
+                book_data = serde_json::from_str::<serde_json::Value>(&content).ok();
+            }
+            
+            break;
+        }
+    }
+    
+    let book_id = book_id
+        .ok_or_else(|| "No book directory found in archive".to_string())?;
+    
+    // Extract book name from metadata or book data
+    let book_name = book_metadata
+        .as_ref()
+        .and_then(|m| m.get("name"))
+        .and_then(|n| n.as_str())
+        .or_else(|| {
+            book_data.as_ref()
+                .and_then(|d| d.get("data"))
+                .and_then(|d| d.get(0))
+                .and_then(|d| d.get("name"))
+                .and_then(|n| n.as_str())
+        })
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| book_id.clone());
+    
+    // Check if book already exists
+    let final_book_dir = books_dir.join(&book_id);
+    if final_book_dir.exists() {
         return Ok(ApiResponse::error(format!("Book '{}' already exists", book_name)));
     }
     
-    fs::create_dir_all(&book_dir)
-        .map_err(|e| format!("Failed to create book directory: {}", e))?;
+    // Move the entire extracted book directory to its final location
+    let temp_book_dir = temp_dir.path().join(&book_id);
+    fs::rename(&temp_book_dir, &final_book_dir)
+        .or_else(|_| {
+            // If rename fails (e.g., across filesystems), copy recursively
+            copy_dir_recursive(&temp_book_dir, &final_book_dir)
+        })
+        .map_err(|e| format!("Failed to move book directory: {}", e))?;
     
-    // Create images folder
-    let images_dir = book_dir.join("images");
-    fs::create_dir_all(&images_dir)
-        .map_err(|e| format!("Failed to create images directory: {}", e))?;
+    // Count images
+    let image_count = count_images_recursive(&final_book_dir);
     
-    // Get source file path
-    let source_path = Path::new(&file_path);
-    if !source_path.exists() {
-        return Ok(ApiResponse::error(format!("File not found: {}", file_path)));
-    }
+    // Get book size
+    let size = get_directory_size(&final_book_dir);
     
-    // Copy book JSON as book.json
-    let dest_path = book_dir.join("book.json");
-    match fs::copy(&source_path, &dest_path) {
-        Ok(bytes_copied) => {
-            info!("Successfully copied {} bytes to {:?}", bytes_copied, dest_path);
-            
-            // Save metadata file with the display name
-            let metadata_path = book_dir.join("metadata.json");
-            let metadata = BookMetadata {
-                display_name: book_name.clone(),
-                folder_name: sanitized_name.clone(),
-                added_date: chrono::Utc::now().to_rfc3339(),
-            };
-            
-            let metadata_json = serde_json::to_string_pretty(&metadata)
-                .map_err(|e| format!("Failed to serialize metadata: {}", e))?;
-            fs::write(&metadata_path, metadata_json)
-                .map_err(|e| format!("Failed to write metadata: {}", e))?;
-            
-            Ok(ApiResponse::success(sanitized_name))
-        }
-        Err(e) => {
-            // Clean up created directory on failure
-            let _ = fs::remove_dir_all(&book_dir);
-            error!("Failed to copy file: {}", e);
-            Ok(ApiResponse::error(format!("Failed to copy file: {}", e)))
-        }
-    }
+    info!("Successfully imported book '{}' with {} images", book_name, image_count);
+    
+    Ok(ApiResponse::success(BookInfo {
+        id: book_id,
+        name: book_name,
+        size_bytes: size,
+        image_count,
+    }))
 }
 
 /// List all books in the library
@@ -108,58 +161,50 @@ pub async fn list_library_books() -> Result<ApiResponse<Vec<BookInfo>>, String> 
                     let path = entry.path();
                     // Look for directories (each book is in its own folder)
                     if path.is_dir() {
-                        // Check if it has a book.json file
-                        let book_json_path = path.join("book.json");
-                        if book_json_path.exists() {
-                            // Read metadata to get display name
-                            let metadata_path = path.join("metadata.json");
-                            let display_name = if metadata_path.exists() {
-                                match fs::read_to_string(&metadata_path) {
-                                    Ok(content) => {
-                                        serde_json::from_str::<BookMetadata>(&content)
-                                            .map(|m| m.display_name)
-                                            .unwrap_or_else(|_| {
-                                                path.file_name()
-                                                    .map(|n| n.to_string_lossy().to_string())
-                                                    .unwrap_or_else(|| "Unknown".to_string())
-                                            })
-                                    }
-                                    Err(_) => {
-                                        path.file_name()
-                                            .map(|n| n.to_string_lossy().to_string())
-                                            .unwrap_or_else(|| "Unknown".to_string())
+                        // Get the book ID from directory name
+                        let book_id = entry.file_name().to_string_lossy().to_string();
+                        
+                        // Try to get book name from metadata or book content
+                        let mut book_name = book_id.clone();
+                        
+                        // Check metadata.json first
+                        let metadata_path = path.join("metadata.json");
+                        if metadata_path.exists() {
+                            if let Ok(content) = fs::read_to_string(&metadata_path) {
+                                if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
+                                    if let Some(name) = metadata.get("name").and_then(|n| n.as_str()) {
+                                        book_name = name.to_string();
                                     }
                                 }
-                            } else {
-                                path.file_name()
-                                    .map(|n| n.to_string_lossy().to_string())
-                                    .unwrap_or_else(|| "Unknown".to_string())
-                            };
-                            
-                            // Get book.json size
-                            let size = fs::metadata(&book_json_path)
-                                .map(|m| m.len())
-                                .unwrap_or(0);
-                            
-                            // Count images in images folder
-                            let images_dir = path.join("images");
-                            let image_count = if images_dir.exists() {
-                                fs::read_dir(&images_dir)
-                                    .map(|entries| entries.filter(|e| e.is_ok()).count())
-                                    .unwrap_or(0)
-                            } else {
-                                0
-                            };
-                            
-                            books.push(BookInfo {
-                                name: display_name,
-                                folder_name: path.file_name()
-                                    .map(|n| n.to_string_lossy().to_string())
-                                    .unwrap_or_else(|| "unknown".to_string()),
-                                size_bytes: size,
-                                image_count,
-                            });
+                            }
                         }
+                        
+                        // If no name in metadata, try to get from book content
+                        if book_name == book_id {
+                            if let Some(book_file) = find_book_content_file(&path).ok().flatten() {
+                                if let Ok(content) = fs::read_to_string(&book_file) {
+                                    if let Ok(book_data) = serde_json::from_str::<serde_json::Value>(&content) {
+                                        if let Some(name) = book_data.get("data")
+                                            .and_then(|d| d.get(0))
+                                            .and_then(|d| d.get("name"))
+                                            .and_then(|n| n.as_str()) {
+                                            book_name = name.to_string();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Count images and get size
+                        let image_count = count_images_recursive(&path);
+                        let size_bytes = get_directory_size(&path);
+                        
+                        books.push(BookInfo {
+                            id: book_id,
+                            name: book_name,
+                            size_bytes,
+                            image_count,
+                        });
                     }
                 }
             }
@@ -177,25 +222,25 @@ pub async fn list_library_books() -> Result<ApiResponse<Vec<BookInfo>>, String> 
 /// Remove a book from the library
 #[tauri::command]
 pub async fn remove_book_from_library(
-    folder_name: String,
+    book_id: String,
 ) -> Result<ApiResponse<()>, String> {
-    info!("Removing book from library: {}", folder_name);
+    info!("Removing book from library: {}", book_id);
     
     // Get app paths
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
     // Get book directory path
-    let book_dir = app_paths.data_dir.join("books").join(&folder_name);
+    let book_dir = app_paths.data_dir.join("books").join(&book_id);
     
     if !book_dir.exists() {
-        return Ok(ApiResponse::error(format!("Book not found: {}", folder_name)));
+        return Ok(ApiResponse::error(format!("Book not found: {}", book_id)));
     }
     
     // Delete the entire directory
     match fs::remove_dir_all(&book_dir) {
         Ok(_) => {
-            info!("Successfully removed book: {}", folder_name);
+            info!("Successfully removed book: {}", book_id);
             Ok(ApiResponse::success(()))
         }
         Err(e) => {
@@ -205,29 +250,52 @@ pub async fn remove_book_from_library(
     }
 }
 
-/// Get book content from JSON file
+/// Get book content from the archive structure
 #[tauri::command]
 pub async fn get_book_content(
-    folder_name: String,
+    book_id: String,
 ) -> Result<ApiResponse<serde_json::Value>, String> {
-    info!("Getting book content for: {}", folder_name);
+    info!("Getting book content for: {}", book_id);
     
     // Get app paths
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
-    // Get book.json path
-    let book_json_path = app_paths.data_dir
+    // Get book directory
+    let book_dir = app_paths.data_dir
         .join("books")
-        .join(&folder_name)
-        .join("book.json");
+        .join(&book_id);
     
-    if !book_json_path.exists() {
-        return Ok(ApiResponse::error(format!("Book content not found: {}", folder_name)));
+    info!("Looking for book at: {:?}", book_dir);
+    
+    if !book_dir.exists() {
+        error!("Book directory does not exist: {:?}", book_dir);
+        return Ok(ApiResponse::error(format!("Book not found: {}", book_id)));
     }
     
+    // List contents of book directory for debugging
+    info!("Book directory contents:");
+    if let Ok(entries) = fs::read_dir(&book_dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                info!("  - {:?} ({})", 
+                    entry.file_name(), 
+                    if entry.path().is_dir() { "dir" } else { "file" }
+                );
+            }
+        }
+    }
+    
+    // Find the main book content file
+    info!("Searching for book content file...");
+    let book_content_path = find_book_content_file(&book_dir)?
+        .ok_or_else(|| {
+            error!("No book content file found in {:?}", book_dir);
+            format!("No book content found for: {}", book_id)
+        })?;
+    
     // Read and parse JSON
-    match fs::read_to_string(&book_json_path) {
+    match fs::read_to_string(&book_content_path) {
         Ok(content) => {
             match serde_json::from_str::<serde_json::Value>(&content) {
                 Ok(json) => Ok(ApiResponse::success(json)),
@@ -244,107 +312,45 @@ pub async fn get_book_content(
     }
 }
 
-/// Add images to an existing book
-#[tauri::command]
-pub async fn add_book_images(
-    folder_name: String,
-    image_paths: Vec<String>,
-) -> Result<ApiResponse<usize>, String> {
-    info!("Adding {} images to book: {}", image_paths.len(), folder_name);
-    
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
-    
-    // Get images directory
-    let images_dir = app_paths.data_dir
-        .join("books")
-        .join(&folder_name)
-        .join("images");
-    
-    if !images_dir.exists() {
-        return Ok(ApiResponse::error(format!("Book not found: {}", folder_name)));
-    }
-    
-    let mut copied_count = 0;
-    
-    for image_path in image_paths {
-        let source = Path::new(&image_path);
-        if source.exists() {
-            if let Some(file_name) = source.file_name() {
-                let dest = images_dir.join(file_name);
-                if let Ok(_) = fs::copy(&source, &dest) {
-                    copied_count += 1;
-                    info!("Copied image: {:?}", file_name);
-                }
-            }
-        }
-    }
-    
-    info!("Successfully copied {} images", copied_count);
-    Ok(ApiResponse::success(copied_count))
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct BookInfo {
-    pub name: String,           // Display name
-    pub folder_name: String,    // Folder name on disk
-    pub size_bytes: u64,
-    pub image_count: usize,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct BookMetadata {
-    display_name: String,
-    folder_name: String,
-    added_date: String,
-}
-
-/// Sanitize a name to be safe for folder creation
-fn sanitize_folder_name(name: &str) -> String {
-    name.chars()
-        .map(|c| match c {
-            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '-',
-            _ => c,
-        })
-        .collect::<String>()
-        .trim()
-        .to_lowercase()
-        .replace(' ', "-")
-}
-
-/// Serve an image from a book's folder as base64
+/// Serve an image from a book's archive structure as base64
 #[tauri::command]
 pub async fn serve_book_image(
-    folder_name: String,
-    image_name: String,
+    book_id: String,
+    image_path: String,
 ) -> Result<ApiResponse<String>, String> {
-    info!("Serving image {} from book {}", image_name, folder_name);
+    info!("Serving image {} from book {}", image_path, book_id);
     
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
     let books_dir = app_paths.data_dir.join("books");
     
-    // Sanitize the folder name to prevent directory traversal
-    let sanitized_folder = folder_name.replace("..", "").replace("/", "").replace("\\", "");
-    let sanitized_image = image_name.replace("..", "").replace("/", "").replace("\\", "");
+    // Sanitize inputs to prevent directory traversal
+    let sanitized_book = book_id.replace("..", "").replace("/", "").replace("\\", "");
+    let sanitized_image = image_path.replace("..", "");
     
-    let image_path = books_dir
-        .join(&sanitized_folder)
-        .join("images")
-        .join(&sanitized_image);
+    // The image path from JSON is like "book/PHB/image.webp" but files are at "img/book/PHB/image.webp"
+    // So we need to prepend "img/" if it's not already there
+    let image_path_with_img = if sanitized_image.starts_with("img/") {
+        sanitized_image.clone()
+    } else {
+        format!("img/{}", sanitized_image)
+    };
     
-    if !image_path.exists() {
-        error!("Image not found: {:?}", image_path);
+    let full_image_path = books_dir
+        .join(&sanitized_book)
+        .join(&image_path_with_img);
+    
+    if !full_image_path.exists() {
+        error!("Image not found: {:?}", full_image_path);
         return Ok(ApiResponse::error("Image not found".to_string()));
     }
     
     // Read the image file
-    match fs::read(&image_path) {
+    match fs::read(&full_image_path) {
         Ok(image_data) => {
             // Determine MIME type based on extension
-            let mime_type = match image_path.extension().and_then(|ext| ext.to_str()) {
+            let mime_type = match full_image_path.extension().and_then(|ext| ext.to_str()) {
                 Some("png") => "image/png",
                 Some("jpg") | Some("jpeg") => "image/jpeg",
                 Some("webp") => "image/webp",
@@ -356,7 +362,7 @@ pub async fn serve_book_image(
             let base64_data = STANDARD.encode(&image_data);
             let data_url = format!("data:{};base64,{}", mime_type, base64_data);
             
-            info!("Successfully served image: {} ({}KB)", sanitized_image, image_data.len() / 1024);
+            info!("Successfully served image: {} ({}KB)", image_path_with_img, image_data.len() / 1024);
             Ok(ApiResponse::success(data_url))
         }
         Err(e) => {
@@ -364,4 +370,462 @@ pub async fn serve_book_image(
             Ok(ApiResponse::error(format!("Failed to read image: {}", e)))
         }
     }
+}
+
+// Helper structures
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BookInfo {
+    pub id: String,           // Book ID (e.g., "phb", "dmg")
+    pub name: String,         // Display name (e.g., "Player's Handbook")
+    pub size_bytes: u64,      // Total size of book directory
+    pub image_count: usize,   // Number of images
+}
+
+// Helper functions
+
+/// Find the main book content file in the archive structure
+fn find_book_content_file(dir: &Path) -> Result<Option<PathBuf>, String> {
+    info!("find_book_content_file: searching in {:?}", dir);
+    
+    // Check for book directory with book-*.json files
+    let book_dir = dir.join("book");
+    info!("Checking for book subdirectory at: {:?}", book_dir);
+    
+    if book_dir.exists() {
+        info!("Book subdirectory exists, listing contents:");
+        for entry in fs::read_dir(&book_dir)
+            .map_err(|e| format!("Failed to read book directory: {}", e))? {
+            
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let path = entry.path();
+            
+            info!("  - Found: {:?} (is_file: {})", path, path.is_file());
+            
+            if path.is_file() {
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    info!("    Checking filename: {}", name);
+                    if name.starts_with("book-") && name.ends_with(".json") {
+                        info!("    ✓ Found book content file: {:?}", path);
+                        return Ok(Some(path));
+                    }
+                }
+            }
+        }
+        info!("No matching book-*.json files found in book subdirectory");
+    } else {
+        info!("Book subdirectory does not exist");
+    }
+    
+    // Check for direct book.json in root
+    let root_book = dir.join("book.json");
+    info!("Checking for book.json in root: {:?}", root_book);
+    if root_book.exists() {
+        info!("Found book.json in root");
+        return Ok(Some(root_book));
+    }
+    
+    info!("No book content file found");
+    Ok(None)
+}
+
+/// Count images recursively in a directory
+fn count_images_recursive(dir: &Path) -> usize {
+    let mut count = 0;
+    
+    for entry in walkdir::WalkDir::new(dir) {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if matches!(ext.to_lowercase().as_str(), "png" | "jpg" | "jpeg" | "webp" | "gif") {
+                        count += 1;
+                    }
+                }
+            }
+        }
+    }
+    
+    count
+}
+
+/// Get total size of a directory recursively
+fn get_directory_size(dir: &Path) -> u64 {
+    let mut size = 0;
+    
+    for entry in walkdir::WalkDir::new(dir) {
+        if let Ok(entry) = entry {
+            if let Ok(metadata) = entry.metadata() {
+                size += metadata.len();
+            }
+        }
+    }
+    
+    size
+}
+
+/// Copy directory recursively
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), std::io::Error> {
+    fs::create_dir_all(dst)?;
+    
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        
+        if path.is_dir() {
+            copy_dir_recursive(&path, &dst_path)?;
+        } else {
+            fs::copy(&path, &dst_path)?;
+        }
+    }
+    
+    Ok(())
+}
+
+/// Reference lookup data structure
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReferenceData {
+    pub ref_type: String,
+    pub name: String,
+    pub source: Option<String>,
+    pub data: Value,
+    pub preview: String,
+}
+
+/// Look up a cross-reference in the book data
+#[tauri::command]
+pub async fn lookup_reference(
+    ref_type: String,
+    ref_name: String,
+    ref_source: Option<String>,
+) -> Result<ApiResponse<ReferenceData>, String> {
+    info!("Looking up reference: {} '{}' from {:?}", ref_type, ref_name, ref_source);
+    
+    let app_paths = APP_PATHS.get()
+        .ok_or_else(|| "App paths not initialized".to_string())?;
+    
+    let books_dir = app_paths.data_dir.join("books");
+    
+    // Determine which book to search in
+    let source_book = ref_source.as_deref().unwrap_or("PHB").to_lowercase();
+    
+    // Map source codes to book IDs
+    let book_id = match source_book.as_str() {
+        "phb" => "PHB",
+        "dmg" => "DMG",
+        "mm" => "MM",
+        "test-book" => "test-book",
+        "test-book-two" => "test-book-two",
+        "tb2" => "test-book-two",
+        "test" => "test-book",
+        _ => &source_book,
+    };
+    
+    // Try to find the reference in the specified book
+    let book_dir = books_dir.join(book_id);
+    if !book_dir.exists() {
+        // If specific book not found, search all books
+        return search_all_books_for_reference(&books_dir, &ref_type, &ref_name).await;
+    }
+    
+    // Search in the specific book
+    match search_book_for_reference(&book_dir, &ref_type, &ref_name).await {
+        Ok(Some(data)) => Ok(ApiResponse::success(data)),
+        Ok(None) => {
+            // Not found in specified book, search all
+            search_all_books_for_reference(&books_dir, &ref_type, &ref_name).await
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Search a specific book for a reference
+async fn search_book_for_reference(
+    book_dir: &Path,
+    ref_type: &str,
+    ref_name: &str,
+) -> Result<Option<ReferenceData>, String> {
+    debug!("Searching book {:?} for {} '{}'", book_dir, ref_type, ref_name);
+    
+    // Map reference types to data file patterns
+    let file_patterns = match ref_type {
+        "spell" => vec!["spells-*.json", "book-*.json"],
+        "item" => vec!["items-*.json", "book-*.json"],
+        "creature" | "monster" => vec!["bestiary-*.json", "book-*.json"],
+        "class" => vec!["class-*.json", "book-*.json"],
+        "race" => vec!["race-*.json", "book-*.json"],
+        "feat" => vec!["feats-*.json", "book-*.json"],
+        "background" => vec!["backgrounds-*.json", "book-*.json"],
+        _ => vec!["book-*.json"],
+    };
+    
+    // Check data subdirectory first
+    let data_dir = book_dir.join("data");
+    let search_dirs = if data_dir.exists() {
+        vec![data_dir, book_dir.join("book")]
+    } else {
+        vec![book_dir.join("book")]
+    };
+    
+    for dir in search_dirs {
+        if !dir.exists() {
+            continue;
+        }
+        
+        // Search through relevant JSON files
+        for pattern in &file_patterns {
+            if let Ok(entries) = fs::read_dir(&dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let file_name = path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("");
+                    
+                    // Check if filename matches pattern
+                    if matches_pattern(file_name, pattern) {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            if let Ok(json) = serde_json::from_str::<Value>(&content) {
+                                if let Some(data) = find_reference_in_json(&json, ref_type, ref_name) {
+                                    return Ok(Some(data));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(None)
+}
+
+/// Search all books for a reference
+async fn search_all_books_for_reference(
+    books_dir: &Path,
+    ref_type: &str,
+    ref_name: &str,
+) -> Result<ApiResponse<ReferenceData>, String> {
+    debug!("Searching all books for {} '{}'", ref_type, ref_name);
+    
+    if let Ok(entries) = fs::read_dir(books_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Ok(Some(data)) = search_book_for_reference(&path, ref_type, ref_name).await {
+                    return Ok(ApiResponse::success(data));
+                }
+            }
+        }
+    }
+    
+    Ok(ApiResponse::error(format!("Reference not found: {} '{}'", ref_type, ref_name)))
+}
+
+/// Check if a filename matches a pattern (simple glob)
+fn matches_pattern(filename: &str, pattern: &str) -> bool {
+    if pattern.contains('*') {
+        let parts: Vec<&str> = pattern.split('*').collect();
+        if parts.len() == 2 {
+            return filename.starts_with(parts[0]) && filename.ends_with(parts[1]);
+        }
+    }
+    filename == pattern
+}
+
+/// Find a reference in a JSON data structure
+fn find_reference_in_json(json: &Value, ref_type: &str, ref_name: &str) -> Option<ReferenceData> {
+    let ref_name_lower = ref_name.to_lowercase();
+    
+    // Check for typed arrays (spell, item, creature, etc.)
+    let type_key = match ref_type {
+        "creature" | "monster" => "monster",
+        other => other,
+    };
+    
+    if let Some(array) = json.get(type_key).and_then(|v| v.as_array()) {
+        for item in array {
+            if let Some(name) = item.get("name").and_then(|v| v.as_str()) {
+                if name.to_lowercase() == ref_name_lower {
+                    return Some(create_reference_data(ref_type, name, item));
+                }
+            }
+        }
+    }
+    
+    // Check in book data structure
+    if let Some(data_array) = json.get("data").and_then(|v| v.as_array()) {
+        for section in data_array {
+            if let Some(found) = search_entries_for_reference(section, ref_type, &ref_name_lower) {
+                return Some(found);
+            }
+        }
+    }
+    
+    None
+}
+
+/// Search through entries recursively for references
+fn search_entries_for_reference(entry: &Value, ref_type: &str, ref_name_lower: &str) -> Option<ReferenceData> {
+    // Check if this entry is the reference we're looking for
+    if let Some(entry_type) = entry.get("type").and_then(|v| v.as_str()) {
+        if entry_type == ref_type || (ref_type == "spell" && entry_type == "spellList") {
+            if let Some(name) = entry.get("name").and_then(|v| v.as_str()) {
+                if name.to_lowercase() == *ref_name_lower {
+                    return Some(create_reference_data(ref_type, name, entry));
+                }
+            }
+        }
+    }
+    
+    // Search in entries array
+    if let Some(entries) = entry.get("entries").and_then(|v| v.as_array()) {
+        for sub_entry in entries {
+            if let Some(found) = search_entries_for_reference(sub_entry, ref_type, ref_name_lower) {
+                return Some(found);
+            }
+        }
+    }
+    
+    None
+}
+
+/// Create a ReferenceData object from JSON data
+fn create_reference_data(ref_type: &str, name: &str, data: &Value) -> ReferenceData {
+    let preview = generate_preview(ref_type, data);
+    
+    ReferenceData {
+        ref_type: ref_type.to_string(),
+        name: name.to_string(),
+        source: data.get("source").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        data: data.clone(),
+        preview,
+    }
+}
+
+/// Generate a preview string for tooltips
+fn generate_preview(ref_type: &str, data: &Value) -> String {
+    match ref_type {
+        "spell" => {
+            let level = data.get("level").and_then(|v| v.as_u64()).unwrap_or(0);
+            let school = data.get("school").and_then(|v| v.as_str())
+                .map(|s| get_spell_school_name(s))
+                .unwrap_or("Unknown");
+            let range = format_spell_range(data.get("range"));
+            
+            if level == 0 {
+                format!("Cantrip • {}<br/>{}", school, range)
+            } else {
+                format!("Level {} • {}<br/>{}", level, school, range)
+            }
+        }
+        "item" => {
+            let item_type = data.get("type").and_then(|v| v.as_str()).unwrap_or("Item");
+            let rarity = data.get("rarity").and_then(|v| v.as_str()).unwrap_or("");
+            let value = data.get("value").and_then(|v| v.as_u64()).map(|v| format!("{} gp", v)).unwrap_or_default();
+            
+            format!("{}{}<br/>{}", 
+                item_type,
+                if !rarity.is_empty() { format!(" • {}", rarity) } else { String::new() },
+                value
+            )
+        }
+        "creature" | "monster" => {
+            let cr = data.get("cr").and_then(|v| {
+                if let Some(s) = v.as_str() {
+                    Some(s.to_string())
+                } else if let Some(obj) = v.as_object() {
+                    obj.get("cr").and_then(|c| c.as_str()).map(|s| s.to_string())
+                } else {
+                    None
+                }
+            }).unwrap_or_else(|| "?".to_string());
+            
+            let type_str = data.get("type").and_then(|v| {
+                if let Some(s) = v.as_str() {
+                    Some(s.to_string())
+                } else if let Some(obj) = v.as_object() {
+                    obj.get("type").and_then(|t| t.as_str()).map(|s| s.to_string())
+                } else {
+                    None
+                }
+            }).unwrap_or_else(|| "creature".to_string());
+            
+            let ac = data.get("ac").and_then(|v| {
+                if let Some(n) = v.as_u64() {
+                    Some(n.to_string())
+                } else if let Some(arr) = v.as_array() {
+                    arr.first().and_then(|a| {
+                        if let Some(n) = a.as_u64() {
+                            Some(n.to_string())
+                        } else if let Some(obj) = a.as_object() {
+                            obj.get("ac").and_then(|ac| ac.as_u64()).map(|n| n.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                }
+            }).unwrap_or_else(|| "?".to_string());
+            
+            let hp = data.get("hp").and_then(|v| {
+                if let Some(obj) = v.as_object() {
+                    obj.get("average").and_then(|a| a.as_u64()).map(|n| n.to_string())
+                } else {
+                    None
+                }
+            }).unwrap_or_else(|| "?".to_string());
+            
+            format!("{} • CR {}<br/>AC {}, HP {}", type_str, cr, ac, hp)
+        }
+        "class" => {
+            let hd = data.get("hd").and_then(|v| v.as_object())
+                .and_then(|o| o.get("faces").and_then(|f| f.as_u64()))
+                .map(|d| format!("d{}", d))
+                .unwrap_or_else(|| "d?".to_string());
+            
+            format!("Class • {} Hit Die", hd)
+        }
+        _ => format!("{}: {}", ref_type, data.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown"))
+    }
+}
+
+/// Get spell school full name from abbreviation
+fn get_spell_school_name(abbr: &str) -> &'static str {
+    match abbr {
+        "A" => "Abjuration",
+        "C" => "Conjuration", 
+        "D" => "Divination",
+        "E" => "Enchantment",
+        "V" => "Evocation",
+        "I" => "Illusion",
+        "N" => "Necromancy",
+        "T" => "Transmutation",
+        _ => "Unknown",
+    }
+}
+
+/// Format spell range for display
+fn format_spell_range(range: Option<&Value>) -> String {
+    if let Some(range_val) = range {
+        if let Some(range_type) = range_val.get("type").and_then(|v| v.as_str()) {
+            match range_type {
+                "point" => {
+                    if let Some(distance) = range_val.get("distance") {
+                        if let Some(dist_type) = distance.get("type").and_then(|v| v.as_str()) {
+                            if let Some(amount) = distance.get("amount").and_then(|v| v.as_u64()) {
+                                return format!("Range: {} {}", amount, dist_type);
+                            }
+                        }
+                    }
+                }
+                "self" => return "Range: Self".to_string(),
+                "touch" => return "Range: Touch".to_string(),
+                "sight" => return "Range: Sight".to_string(),
+                "unlimited" => return "Range: Unlimited".to_string(),
+                _ => {}
+            }
+        }
+    }
+    "Range: Varies".to_string()
 }

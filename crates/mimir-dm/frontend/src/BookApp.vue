@@ -1,25 +1,5 @@
 <template>
   <div id="rules-app" :class="`theme-${currentTheme}`">
-    <!-- Name Input Dialog -->
-    <div v-if="showNameInput" class="dialog-overlay" @click.self="handleNameDialogCancel">
-      <div class="dialog-content">
-        <h3>Name Your Book</h3>
-        <p>Enter a custom name to distinguish this book (e.g., "PHB 2014" vs "PHB 2024")</p>
-        <input 
-          v-model="nameInputValue" 
-          @keyup.enter="handleNameDialogSubmit"
-          @keyup.escape="handleNameDialogCancel"
-          type="text" 
-          class="name-input"
-          autofocus
-        />
-        <div class="dialog-actions">
-          <button @click="handleNameDialogCancel" class="btn-cancel">Cancel</button>
-          <button @click="handleNameDialogSubmit" class="btn-submit" :disabled="!nameInputValue.trim()">Add Book</button>
-        </div>
-      </div>
-    </div>
-    
     <div class="rules-container">
       <!-- Header -->
       <header class="rules-header">
@@ -40,21 +20,21 @@
         <aside class="books-panel">
           <div class="panel-header">
             <h3 class="panel-title">My Books</h3>
-            <button @click="handleAddImages" class="add-images-btn" v-if="selectedBook" title="Add images to selected book">
-              + Images
-            </button>
           </div>
           <div class="books-list">
             <div 
               v-for="book in libraryBooks" 
-              :key="book.folder_name"
+              :key="book.id"
               class="book-item"
               @click="selectedBook = book"
-              :class="{ active: selectedBook?.folder_name === book.folder_name }"
+              :class="{ active: selectedBook?.id === book.id }"
             >
               <div class="book-info-wrapper">
                 <span class="book-name">{{ book.name }}</span>
-                <span class="book-meta">{{ book.image_count }} images</span>
+                <span class="book-meta">
+                  <span v-if="book.id === 'test-book'" class="dev-badge">DEV</span>
+                  {{ book.image_count }} images
+                </span>
               </div>
               <button 
                 @click.stop="removeBook(book)" 
@@ -106,7 +86,7 @@
           <div v-if="!selectedBook" class="welcome-message">
             <h2>Welcome to the Reference Library</h2>
             <p>Add books to your library to start reading.</p>
-            <p>Click "Add Book" to import 5etools JSON files.</p>
+            <p>Click "Add Book" to import book archives (tar.gz files).</p>
           </div>
           
           <div v-else-if="isLoading" class="loading-container">
@@ -126,19 +106,42 @@
         </main>
       </div>
     </div>
+    
+    <!-- Cross-reference Tooltip -->
+    <div 
+      v-if="tooltipVisible" 
+      class="cross-ref-tooltip"
+      :style="{ left: tooltipPosition.x + 'px', top: tooltipPosition.y + 'px' }"
+    >
+      <div v-html="tooltipContent"></div>
+    </div>
+    
+    <!-- Cross-reference Modal -->
+    <div v-if="modalVisible" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>{{ modalTitle }}</h2>
+          <button class="modal-close" @click="closeModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="modalContent" v-html="renderModalContent(modalContent)"></div>
+          <div v-else class="loading-message">Loading reference data...</div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useThemeStore } from './stores/theme'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 
 // Types
 interface BookInfo {
+  id: string             // Book ID (e.g., "phb", "dmg")
   name: string           // Display name
-  folder_name: string    // Folder name on disk
   size_bytes: number
   image_count: number
 }
@@ -157,37 +160,14 @@ const selectedBook = ref<BookInfo | null>(null)
 const bookContent = ref<any>(null)
 const selectedSection = ref<number>(0)
 
-// Dialog state
-const showNameInput = ref(false)
-const nameInputValue = ref('')
-const nameInputResolve = ref<((value: string | null) => void) | null>(null)
-
-// Simple name dialog function
-const showNameDialog = (defaultName: string): Promise<string | null> => {
-  return new Promise((resolve) => {
-    nameInputValue.value = defaultName
-    nameInputResolve.value = resolve
-    showNameInput.value = true
-  })
-}
-
-const handleNameDialogSubmit = () => {
-  if (nameInputResolve.value && nameInputValue.value.trim()) {
-    nameInputResolve.value(nameInputValue.value.trim())
-    showNameInput.value = false
-    nameInputResolve.value = null
-    nameInputValue.value = ''
-  }
-}
-
-const handleNameDialogCancel = () => {
-  if (nameInputResolve.value) {
-    nameInputResolve.value(null)
-    showNameInput.value = false
-    nameInputResolve.value = null
-    nameInputValue.value = ''
-  }
-}
+// Cross-reference state
+const tooltipVisible = ref(false)
+const tooltipContent = ref('')
+const tooltipPosition = ref({ x: 0, y: 0 })
+const modalVisible = ref(false)
+const modalContent = ref<any>(null)
+const modalTitle = ref('')
+let hoverTimeout: number | null = null
 
 // Load library books
 const loadLibraryBooks = async () => {
@@ -204,15 +184,19 @@ const loadLibraryBooks = async () => {
 // Load book content
 const loadBookContent = async (book: BookInfo) => {
   try {
+    console.log('Loading book content for:', book.id, book)
     isLoading.value = true
     const response = await invoke<{ success: boolean; data: any; message?: string }>('get_book_content', {
-      folderName: book.folder_name
+      bookId: book.id
     })
+    console.log('Book content response:', response)
     if (response.success) {
+      console.log('Book content loaded successfully:', response.data)
       bookContent.value = response.data
       selectedSection.value = 0
     } else {
       console.error('Failed to load book content:', response.message)
+      console.error('Full response:', response)
       bookContent.value = null
     }
   } catch (error) {
@@ -241,10 +225,10 @@ const handleAddBook = async () => {
     const selected = await open({
       multiple: false,
       filters: [{
-        name: 'JSON',
-        extensions: ['json']
+        name: 'Book Archive',
+        extensions: ['tar.gz', 'gz']
       }],
-      title: 'Select a 5etools book file to add to your library'
+      title: 'Select a book archive to add to your library'
     })
     
     console.log('File selected:', selected)
@@ -253,27 +237,15 @@ const handleAddBook = async () => {
       // Handle both string and array returns
       const filePath = Array.isArray(selected) ? selected[0] : selected
       
-      // Extract filename without extension for default name
-      const defaultName = filePath.split('/').pop()?.replace('.json', '') || 'Book'
-      
-      // For now, use a simple Vue reactive dialog since prompt() doesn't work in Tauri
-      // We'll create a proper dialog component later
-      const bookName = await showNameDialog(defaultName)
-      if (!bookName) {
-        console.log('User cancelled name input')
-        return
-      }
-      
-      console.log('Calling backend with:', { bookName, filePath })
-      // Call backend to copy the file with custom name
-      const response = await invoke<{ success: boolean; data?: string; message?: string }>('add_book_to_library', {
-        bookName: bookName,
-        filePath: filePath
+      console.log('Calling backend to upload archive:', filePath)
+      // Call backend to upload and extract the archive
+      const response = await invoke<{ success: boolean; data?: BookInfo; message?: string }>('upload_book_archive', {
+        archivePath: filePath
       })
       
       console.log('Backend response:', response)
       
-      if (response.success) {
+      if (response.success && response.data) {
         console.log('Book added successfully:', response.data)
         // Reload books list
         await loadLibraryBooks()
@@ -290,57 +262,6 @@ const handleAddBook = async () => {
   }
 }
 
-// Handle adding images to a book
-const handleAddImages = async () => {
-  if (!selectedBook.value) return
-  
-  try {
-    console.log('Opening image file dialog...')
-    // Open file dialog for images
-    const selected = await open({
-      multiple: true,
-      filters: [{
-        name: 'Images',
-        extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif']
-      }],
-      title: `Select images to add to "${selectedBook.value.name}"`
-    })
-    
-    console.log('Images selected:', selected)
-    
-    if (selected) {
-      // Handle both string and array returns
-      const imagePaths = Array.isArray(selected) ? selected : [selected]
-      
-      console.log('Calling backend to add images:', { 
-        folderName: selectedBook.value.folder_name, 
-        imagePaths 
-      })
-      
-      // Call backend to copy the images
-      const response = await invoke<{ success: boolean; data?: number; message?: string }>('add_book_images', {
-        folderName: selectedBook.value.folder_name,
-        imagePaths: imagePaths
-      })
-      
-      console.log('Backend response:', response)
-      
-      if (response.success) {
-        console.log(`Added ${response.data} images successfully`)
-        alert(`Successfully added ${response.data} images to "${selectedBook.value.name}"`)
-        // Reload books list to update image count
-        await loadLibraryBooks()
-      } else {
-        console.error('Failed to add images:', response.message)
-        alert(`Failed to add images: ${response.message}`)
-      }
-    }
-  } catch (error) {
-    console.error('Error in handleAddImages:', error)
-    alert(`Error adding images: ${error}`)
-  }
-}
-
 // Remove book from library
 const removeBook = async (book: BookInfo) => {
   if (!confirm(`Remove "${book.name}" from your library?`)) {
@@ -349,13 +270,13 @@ const removeBook = async (book: BookInfo) => {
   
   try {
     const response = await invoke<{ success: boolean; message?: string }>('remove_book_from_library', {
-      folderName: book.folder_name
+      bookId: book.id
     })
     
     if (response.success) {
       console.log('Book removed successfully')
       // Clear selection if it was the removed book
-      if (selectedBook.value?.folder_name === book.folder_name) {
+      if (selectedBook.value?.id === book.id) {
         selectedBook.value = null
         bookContent.value = null
       }
@@ -423,12 +344,8 @@ const jumpToEntry = (sectionIndex: number, entryId: string) => {
   })
 }
 
-// Render a section with proper HTML
-const renderSection = (section: any): string => {
-  if (!section) return ''
-  
-  // Process all 5etools formatting tags
-  const processFormatting = (text: string): string => {
+// Process all 5etools formatting tags
+const processFormatting = (text: string): string => {
     if (!text) return ''
     
     // Process formatting tags like {@b bold}, {@i italic}, etc.
@@ -452,11 +369,25 @@ const renderSection = (section: any): string => {
     // Note {@note text}
     processed = processed.replace(/{@note\s+([^}]+)}/g, '<span class="note">$1</span>')
     
-    // Dice rolls {@dice 1d20+5} or {@damage 2d6}
-    processed = processed.replace(/{@(?:dice|damage)\s+([^}]+)}/g, '<span class="dice-roll">$1</span>')
+    // Dice rolls {@dice 1d20+5}
+    processed = processed.replace(/{@dice\s+([^}]+)}/g, '<span class="dice-roll">$1</span>')
+    
+    // Damage rolls {@damage 2d6}
+    processed = processed.replace(/{@damage\s+([^}]+)}/g, '<span class="damage-roll">$1</span>')
+    
+    // d20 rolls {@d20 15}
+    processed = processed.replace(/{@d20\s+(\d+)}/g, '<span class="d20-check">d20 ≥ $1</span>')
     
     // DC checks {@dc 15}
     processed = processed.replace(/{@dc\s+(\d+)}/g, '<span class="dc-check">DC $1</span>')
+    
+    // Scaled damage {@scaledamage 2d6|1-9|1d6}
+    processed = processed.replace(/{@scaledamage\s+([^|}\s]+)(?:\|([^|}]+))?(?:\|([^}]+))?}/g, 
+      (match, baseDamage) => `<span class="scaled-value">${baseDamage}</span>`)
+    
+    // Scaled dice {@scaledice 1d6|5-9|1d6}
+    processed = processed.replace(/{@scaledice\s+([^|}\s]+)(?:\|([^|}]+))?(?:\|([^}]+))?}/g, 
+      (match, baseDice) => `<span class="scaled-value">${baseDice}</span>`)
     
     // Skill checks {@skill Athletics} 
     processed = processed.replace(/{@skill\s+([^}]+)}/g, '<span class="skill-check">$1</span>')
@@ -469,53 +400,65 @@ const renderSection = (section: any): string => {
       return `<span class="condition" title="${condition}">${condition}</span>`
     })
     
+    // Status {@status prone}
+    processed = processed.replace(/{@status\s+([^}]+)}/g, (match, status) => {
+      return `<span class="status" title="${status}">${status}</span>`
+    })
+    
     // Spells {@spell fireball} or {@spell fireball|phb|PHB}
     processed = processed.replace(/{@spell\s+([^}|]+)(?:\|([^}|]+))?(?:\|([^}]+))?}/g, (match, spell, source, display) => {
       const spellName = display || spell
       const title = source ? `${spell} (${source})` : spell
-      return `<span class="spell-ref" title="${title}">${spellName}</span>`
+      const dataAttrs = `data-ref-type="spell" data-ref-name="${spell}" data-ref-source="${source || ''}"` 
+      return `<span class="spell-ref cross-ref-link" title="${title}" ${dataAttrs}>${spellName}</span>`
     })
     
     // Items {@item longsword} or {@item longsword|phb|PHB}
     processed = processed.replace(/{@item\s+([^}|]+)(?:\|([^}|]+))?(?:\|([^}]+))?}/g, (match, item, source, display) => {
       const itemName = display || item
       const title = source ? `${item} (${source})` : item
-      return `<span class="item-ref" title="${title}">${itemName}</span>`
+      const dataAttrs = `data-ref-type="item" data-ref-name="${item}" data-ref-source="${source || ''}"` 
+      return `<span class="item-ref cross-ref-link" title="${title}" ${dataAttrs}>${itemName}</span>`
     })
     
     // Creatures {@creature goblin} or {@creature goblin|mm|MM}
     processed = processed.replace(/{@creature\s+([^}|]+)(?:\|([^}|]+))?(?:\|([^}]+))?}/g, (match, creature, source, display) => {
       const creatureName = display || creature
       const title = source ? `${creature} (${source})` : creature
-      return `<span class="creature-ref" title="${title}">${creatureName}</span>`
+      const dataAttrs = `data-ref-type="creature" data-ref-name="${creature}" data-ref-source="${source || ''}"` 
+      return `<span class="creature-ref cross-ref-link" title="${title}" ${dataAttrs}>${creatureName}</span>`
     })
     
     // Races {@race dragonborn} or {@race dragonborn|phb}
     processed = processed.replace(/{@race\s+([^}|]+)(?:\|([^}|]+))?(?:\|([^}]+))?}/g, (match, race, source, display) => {
       const raceName = display || race
       const title = source ? `${race} (${source})` : race
-      return `<span class="race-ref" title="${title}">${raceName}</span>`
+      const dataAttrs = `data-ref-type="race" data-ref-name="${race}" data-ref-source="${source || ''}"` 
+      return `<span class="race-ref cross-ref-link" title="${title}" ${dataAttrs}>${raceName}</span>`
     })
     
     // Classes {@class fighter} or {@class fighter|phb}
     processed = processed.replace(/{@class\s+([^}|]+)(?:\|([^}|]+))?(?:\|([^}|]+))?(?:\|([^}]+))?}/g, (match, className, source, subclass, display) => {
       const displayName = display || className
       const title = subclass ? `${className} (${subclass})` : className
-      return `<span class="class-ref" title="${title}">${displayName}</span>`
+      const dataAttrs = `data-ref-type="class" data-ref-name="${className}" data-ref-source="${source || ''}" data-ref-subclass="${subclass || ''}"` 
+      return `<span class="class-ref cross-ref-link" title="${title}" ${dataAttrs}>${displayName}</span>`
     })
     
     // Backgrounds {@background soldier} or {@background soldier|phb}
     processed = processed.replace(/{@background\s+([^}|]+)(?:\|([^}|]+))?(?:\|([^}]+))?}/g, (match, background, source, display) => {
       const backgroundName = display || background
       const title = source ? `${background} (${source})` : background
-      return `<span class="background-ref" title="${title}">${backgroundName}</span>`
+      const dataAttrs = `data-ref-type="background" data-ref-name="${background}" data-ref-source="${source || ''}"` 
+      return `<span class="background-ref cross-ref-link" title="${title}" ${dataAttrs}>${backgroundName}</span>`
     })
     
     // Feats {@feat alert} or {@feat alert|phb}
     processed = processed.replace(/{@feat\s+([^}|]+)(?:\|([^}|]+))?(?:\|([^}]+))?}/g, (match, feat, source, display) => {
       const featName = display || feat
       const title = source ? `${feat} (${source})` : feat
-      return `<span class="feat-ref" title="${title}">${featName}</span>`
+      const dataAttrs = `data-ref-type="feat" data-ref-name="${feat}" data-ref-source="${source || ''}"` 
+      return `<span class="feat-ref cross-ref-link" title="${title}" ${dataAttrs}>${featName}</span>`
     })
     
     // Books {@book Player's Handbook|PHB}
@@ -535,15 +478,38 @@ const renderSection = (section: any): string => {
     })
     
     // Hit bonus {@hit +5} or {@hit 5}
-    processed = processed.replace(/{@hit\s+([+-]?\d+)}/g, '<span class="hit-bonus">$1</span>')
+    processed = processed.replace(/{@hit\s+([+-]?\d+)}/g, (match, bonus) => {
+      const formattedBonus = bonus.startsWith('+') || bonus.startsWith('-') ? bonus : `+${bonus}`
+      return `<span class="hit-bonus">${formattedBonus}</span>`
+    })
+    
+    // Attack type {@atk mw} for "Melee Weapon Attack", {@atk rw} for "Ranged Weapon Attack", etc.
+    processed = processed.replace(/{@atk\s+([^}]+)}/g, (match, type) => {
+      const attackTypes: Record<string, string> = {
+        'mw': 'Melee Weapon Attack',
+        'rw': 'Ranged Weapon Attack',
+        'ms': 'Melee Spell Attack',
+        'rs': 'Ranged Spell Attack',
+        'mw,rw': 'Melee or Ranged Weapon Attack',
+        'ms,rs': 'Melee or Ranged Spell Attack'
+      }
+      return `<em>${attackTypes[type] || type}:</em>`
+    })
+    
+    // Hit indicator {@h} for "Hit:"
+    processed = processed.replace(/{@h}/g, '<em>Hit:</em>')
     
     // Recharge {@recharge} or {@recharge 5} 
     processed = processed.replace(/{@recharge\s*(\d+)?}/g, (match, num) => {
-      return num ? `<span class="recharge">(Recharge ${num}-6)</span>` : '<span class="recharge">(Recharge)</span>'
+      return num ? `<span class="recharge">Recharge ${num}-6</span>` : '<span class="recharge">Recharge</span>'
     })
     
     return processed
-  }
+}
+
+// Render a section with proper HTML
+const renderSection = (section: any): string => {
+  if (!section) return ''
   
   // Recursive renderer for entries
   const renderEntry = (entry: any, index: number = 0, depth: number = 0): string => {
@@ -625,8 +591,8 @@ const renderSection = (section: any): string => {
         if (imgElement && selectedBook.value) {
           try {
             const response = await invoke<{ success: boolean; data?: string; message?: string }>('serve_book_image', {
-              folderName: selectedBook.value.folder_name,
-              imageName: imageName
+              bookId: selectedBook.value.id,
+              imagePath: imagePath
             })
             
             if (response.success && response.data) {
@@ -669,11 +635,500 @@ const renderSection = (section: any): string => {
   return renderEntry(section, 0, 0)
 }
 
+// Cache for reference lookups
+const referenceCache = new Map<string, any>()
+
+// Lookup reference data from backend
+const lookupReference = async (refType: string, refName: string, refSource?: string): Promise<any> => {
+  const cacheKey = `${refType}:${refName}:${refSource || ''}`
+  
+  // Check cache first
+  if (referenceCache.has(cacheKey)) {
+    return referenceCache.get(cacheKey)
+  }
+  
+  try {
+    const response = await invoke<{ success: boolean; data?: any; message?: string }>('lookup_reference', {
+      refType,
+      refName,
+      refSource
+    })
+    
+    if (response.success && response.data) {
+      // Cache the result
+      referenceCache.set(cacheKey, response.data)
+      return response.data
+    }
+  } catch (error) {
+    console.error('Failed to lookup reference:', error)
+  }
+  
+  return null
+}
+
+// Handle cross-reference hover
+const handleCrossRefHover = async (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (!target.classList.contains('cross-ref-link')) return
+  
+  // Clear any existing timeout
+  if (hoverTimeout) {
+    clearTimeout(hoverTimeout)
+  }
+  
+  // Set timeout for showing tooltip
+  hoverTimeout = window.setTimeout(async () => {
+    const refType = target.dataset.refType || ''
+    const refName = target.dataset.refName || ''
+    const refSource = target.dataset.refSource
+    
+    // Get tooltip content from backend
+    const refData = await lookupReference(refType, refName, refSource)
+    
+    if (refData && refData.preview) {
+      tooltipContent.value = refData.preview
+    } else {
+      tooltipContent.value = `${refType}: ${refName}<br/><em>Click for details</em>`
+    }
+    
+    // Position tooltip near the element
+    const rect = target.getBoundingClientRect()
+    tooltipPosition.value = {
+      x: rect.left + window.scrollX,
+      y: rect.bottom + window.scrollY + 5
+    }
+    
+    tooltipVisible.value = true
+  }, 300) // 300ms delay before showing tooltip
+}
+
+// Handle mouse leave from cross-reference
+const handleCrossRefLeave = () => {
+  if (hoverTimeout) {
+    clearTimeout(hoverTimeout)
+    hoverTimeout = null
+  }
+  tooltipVisible.value = false
+}
+
+// Handle cross-reference clicks
+const handleCrossRefClick = async (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (!target.classList.contains('cross-ref-link')) return
+  
+  event.preventDefault()
+  event.stopPropagation()
+  
+  // Hide tooltip when clicking
+  tooltipVisible.value = false
+  
+  const refType = target.dataset.refType || ''
+  const refName = target.dataset.refName || ''
+  const refSource = target.dataset.refSource
+  
+  console.log('Cross-reference clicked:', { refType, refName, refSource })
+  
+  // Set modal title
+  modalTitle.value = `${refName}`
+  
+  // Show loading state
+  modalContent.value = null
+  modalTitle.value = `${refName} (Loading...)`
+  modalVisible.value = true
+  
+  // Load reference content
+  const refData = await lookupReference(refType, refName, refSource)
+  if (refData) {
+    modalContent.value = {
+      ...refData.data,
+      ref_type: refType  // Store the type for rendering
+    }
+    modalTitle.value = refData.name
+  } else {
+    modalTitle.value = refName
+    modalContent.value = {
+      type: refType,
+      name: refName,
+      entries: [`No data found for ${refType}: ${refName}`]
+    }
+  }
+}
+
+// Render modal content based on type
+const renderModalContent = (content: any): string => {
+  if (!content) return ''
+  
+  let html = '<div class="reference-details">'
+  
+  const refType = content.ref_type || content.type || 'unknown'
+  
+  if (refType === 'spell' || content.level !== undefined) {
+    const level = content.level || 0
+    const school = content.school || 'Unknown'
+    const castingTime = content.time?.[0] ? 
+      `${content.time[0].number} ${content.time[0].unit}` : '1 action'
+    const range = formatRange(content.range)
+    const components = formatComponents(content.components)
+    const duration = formatDuration(content.duration)
+    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    
+    html += `
+      <div class="spell-details">
+        <p><strong>Level:</strong> ${level === 0 ? 'Cantrip' : level}</p>
+        <p><strong>School:</strong> ${getSchoolName(school)}</p>
+        <p><strong>Casting Time:</strong> ${castingTime}</p>
+        <p><strong>Range:</strong> ${range}</p>
+        <p><strong>Components:</strong> ${components}</p>
+        <p><strong>Duration:</strong> ${duration}</p>
+        <div class="description">${description}</div>
+      </div>
+    `
+  } else if (refType === 'item') {
+    const itemType = content.type || 'Item'
+    const rarity = content.rarity || ''
+    const value = content.value || ''
+    const weight = content.weight || ''
+    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    
+    html += `
+      <div class="item-details">
+        <p><strong>Type:</strong> ${itemType}</p>
+        ${rarity ? `<p><strong>Rarity:</strong> ${rarity}</p>` : ''}
+        ${value ? `<p><strong>Value:</strong> ${value} gp</p>` : ''}
+        ${weight ? `<p><strong>Weight:</strong> ${weight} lb</p>` : ''}
+        <div class="description">${description}</div>
+      </div>
+    `
+  } else if (refType === 'creature' || refType === 'monster') {
+    const size = content.size || 'Medium'
+    const type = content.type || 'creature'
+    const alignment = formatAlignment(content.alignment)
+    const ac = formatAC(content.ac)
+    const hp = formatHP(content.hp)
+    const speed = formatSpeed(content.speed)
+    const cr = content.cr || '0'
+    
+    // Ability scores
+    const str = content.str || 10
+    const dex = content.dex || 10
+    const con = content.con || 10
+    const int = content.int || 10
+    const wis = content.wis || 10
+    const cha = content.cha || 10
+    
+    // Calculate modifiers
+    const getModifier = (score: number) => {
+      const mod = Math.floor((score - 10) / 2)
+      return mod >= 0 ? `+${mod}` : `${mod}`
+    }
+    
+    html += `
+      <div class="creature-details">
+        <div class="creature-type">${getSizeName(size)} ${type}${alignment ? `, ${alignment}` : ''}</div>
+        
+        <div class="creature-stats">
+          <p><strong>Armor Class:</strong> ${ac}</p>
+          <p><strong>Hit Points:</strong> ${hp}</p>
+          <p><strong>Speed:</strong> ${speed}</p>
+        </div>
+        
+        <div class="ability-scores">
+          <table>
+            <tr>
+              <th>STR</th>
+              <th>DEX</th>
+              <th>CON</th>
+              <th>INT</th>
+              <th>WIS</th>
+              <th>CHA</th>
+            </tr>
+            <tr>
+              <td>${str} (${getModifier(str)})</td>
+              <td>${dex} (${getModifier(dex)})</td>
+              <td>${con} (${getModifier(con)})</td>
+              <td>${int} (${getModifier(int)})</td>
+              <td>${wis} (${getModifier(wis)})</td>
+              <td>${cha} (${getModifier(cha)})</td>
+            </tr>
+          </table>
+        </div>
+        
+        ${content.skill ? `<p><strong>Skills:</strong> ${formatSkills(content.skill)}</p>` : ''}
+        ${content.senses ? `<p><strong>Senses:</strong> ${content.senses.join(', ')}</p>` : ''}
+        ${content.languages ? `<p><strong>Languages:</strong> ${content.languages.join(', ')}</p>` : ''}
+        <p><strong>Challenge:</strong> ${cr}</p>
+        
+        ${content.trait && content.trait.length > 0 ? `
+          <div class="creature-traits">
+            <h4>Traits</h4>
+            ${content.trait.map((t: any) => `
+              <div class="trait">
+                <strong>${t.name}.</strong> ${t.entries ? t.entries.map((e: any) => processFormatting(e)).join(' ') : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        
+        ${content.action && content.action.length > 0 ? `
+          <div class="creature-actions">
+            <h4>Actions</h4>
+            ${content.action.map((a: any) => `
+              <div class="action">
+                <strong>${a.name}.</strong> ${a.entries ? a.entries.map((e: any) => processFormatting(e)).join(' ') : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `
+  } else if (refType === 'class') {
+    const hitDice = content.hd?.faces || 8
+    const primaryAbility = content.primaryAbility || 'Varies'
+    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || 
+                       content.fluff?.[0]?.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    
+    html += `
+      <div class="class-details">
+        <p><strong>Hit Die:</strong> d${hitDice}</p>
+        <p><strong>Primary Ability:</strong> ${primaryAbility}</p>
+        <div class="description">${description}</div>
+      </div>
+    `
+  } else if (refType === 'race') {
+    const size = getSizeName(content.size?.[0] || 'M')
+    const speed = content.speed || 30
+    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    
+    // Format ability score improvements
+    let abilityScores = ''
+    if (content.ability && content.ability.length > 0) {
+      const abilities = content.ability[0]
+      const scores = []
+      if (abilities.str) scores.push(`Strength +${abilities.str}`)
+      if (abilities.dex) scores.push(`Dexterity +${abilities.dex}`)
+      if (abilities.con) scores.push(`Constitution +${abilities.con}`)
+      if (abilities.int) scores.push(`Intelligence +${abilities.int}`)
+      if (abilities.wis) scores.push(`Wisdom +${abilities.wis}`)
+      if (abilities.cha) scores.push(`Charisma +${abilities.cha}`)
+      abilityScores = scores.join(', ')
+    }
+    
+    html += `
+      <div class="race-details">
+        <p><strong>Size:</strong> ${size}</p>
+        <p><strong>Speed:</strong> ${speed} ft.</p>
+        ${abilityScores ? `<p><strong>Ability Score Increase:</strong> ${abilityScores}</p>` : ''}
+        <div class="description">${description}</div>
+      </div>
+    `
+  } else if (refType === 'background') {
+    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    
+    // Format skill proficiencies
+    let skills = ''
+    if (content.skillProficiencies && content.skillProficiencies.length > 0) {
+      const skillList = Object.keys(content.skillProficiencies[0])
+        .map(skill => skill.charAt(0).toUpperCase() + skill.slice(1))
+        .join(', ')
+      skills = skillList
+    }
+    
+    html += `
+      <div class="background-details">
+        ${skills ? `<p><strong>Skill Proficiencies:</strong> ${skills}</p>` : ''}
+        <div class="description">${description}</div>
+      </div>
+    `
+  } else if (refType === 'feat') {
+    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    const prerequisite = content.prerequisite?.map((p: any) => {
+      if (typeof p === 'string') return p
+      if (p.level) return `${p.level}th level`
+      if (p.race) return `${p.race.name || p.race} race`
+      if (p.ability) {
+        const abilities = []
+        for (const [key, value] of Object.entries(p.ability)) {
+          abilities.push(`${key.toUpperCase()} ${value}`)
+        }
+        return abilities.join(' or ')
+      }
+      return JSON.stringify(p)
+    }).join(', ')
+    
+    html += `
+      <div class="feat-details">
+        ${prerequisite ? `<p><strong>Prerequisite:</strong> ${prerequisite}</p>` : ''}
+        <div class="description">${description}</div>
+      </div>
+    `
+  } else {
+    // Generic fallback
+    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || 
+                       (content.description ? processFormatting(content.description) : '') || 
+                       JSON.stringify(content, null, 2)
+    
+    html += `
+      <div class="generic-details">
+        <div class="description">${description}</div>
+      </div>
+    `
+  }
+  
+  html += '</div>'
+  return html
+}
+
+// Helper functions for formatting
+const getSchoolName = (school: string): string => {
+  const schools: Record<string, string> = {
+    'A': 'Abjuration',
+    'C': 'Conjuration',
+    'D': 'Divination',
+    'E': 'Enchantment',
+    'V': 'Evocation',
+    'I': 'Illusion',
+    'N': 'Necromancy',
+    'T': 'Transmutation'
+  }
+  return schools[school] || school
+}
+
+const getSizeName = (size: string): string => {
+  const sizes: Record<string, string> = {
+    'T': 'Tiny',
+    'S': 'Small',
+    'M': 'Medium',
+    'L': 'Large',
+    'H': 'Huge',
+    'G': 'Gargantuan'
+  }
+  return sizes[size] || size
+}
+
+const formatRange = (range: any): string => {
+  if (!range) return 'Varies'
+  if (range.type === 'point') {
+    if (range.distance) {
+      return `${range.distance.amount} ${range.distance.type}`
+    }
+  }
+  return range.type || 'Varies'
+}
+
+const formatComponents = (components: any): string => {
+  if (!components) return 'None'
+  const parts = []
+  if (components.v) parts.push('V')
+  if (components.s) parts.push('S')
+  if (components.m) parts.push(`M (${typeof components.m === 'string' ? components.m : 'materials'})`)
+  return parts.join(', ') || 'None'
+}
+
+const formatDuration = (duration: any): string => {
+  if (!duration || !duration[0]) return 'Instantaneous'
+  const d = duration[0]
+  if (d.type === 'instant') return 'Instantaneous'
+  if (d.type === 'timed') {
+    return `${d.duration.amount} ${d.duration.type}${d.duration.amount > 1 ? 's' : ''}`
+  }
+  return d.type || 'Varies'
+}
+
+const formatAC = (ac: any): string => {
+  if (!ac) return '10'
+  if (typeof ac === 'number') return ac.toString()
+  if (Array.isArray(ac) && ac[0]) {
+    if (typeof ac[0] === 'number') return ac[0].toString()
+    if (ac[0].ac) return ac[0].ac.toString()
+  }
+  return '10'
+}
+
+const formatHP = (hp: any): string => {
+  if (!hp) return '1'
+  if (hp.average) return `${hp.average} (${hp.formula || ''})`
+  return '1'
+}
+
+const formatSpeed = (speed: any): string => {
+  if (!speed) return '30 ft.'
+  const speeds = []
+  if (speed.walk) speeds.push(`${speed.walk} ft.`)
+  if (speed.fly) speeds.push(`fly ${speed.fly} ft.`)
+  if (speed.swim) speeds.push(`swim ${speed.swim} ft.`)
+  if (speed.climb) speeds.push(`climb ${speed.climb} ft.`)
+  if (speed.burrow) speeds.push(`burrow ${speed.burrow} ft.`)
+  return speeds.length > 0 ? speeds.join(', ') : '30 ft.'
+}
+
+const formatAlignment = (alignment: any): string => {
+  if (!alignment) return ''
+  if (typeof alignment === 'string') return alignment
+  if (Array.isArray(alignment)) {
+    const alignmentMap: Record<string, string> = {
+      'L': 'lawful',
+      'N': 'neutral',
+      'C': 'chaotic',
+      'G': 'good',
+      'E': 'evil',
+      'U': 'unaligned',
+      'A': 'any alignment'
+    }
+    return alignment.map(a => alignmentMap[a] || a).join(' ')
+  }
+  return ''
+}
+
+const formatSkills = (skills: any): string => {
+  if (!skills) return ''
+  if (typeof skills === 'object') {
+    return Object.entries(skills).map(([skill, bonus]) => `${skill} ${bonus}`).join(', ')
+  }
+  return ''
+}
+
+// Close modal
+const closeModal = () => {
+  modalVisible.value = false
+  modalContent.value = null
+}
+
 // Apply theme and initialize synchronization on mount
 onMounted(async () => {
   themeStore.applyTheme()
   await themeStore.initThemeSync()
+  
+  // Check if in dev mode and auto-install test book
+  try {
+    const isDevMode = await invoke<boolean>('is_dev_mode')
+    console.log('Dev mode check:', isDevMode)
+    if (isDevMode) {
+      console.log('Dev mode detected, installing test book...')
+      const response = await invoke<{ success: boolean; data?: string; message?: string }>('install_dev_test_book')
+      console.log('Install test book response:', response)
+      if (response.success) {
+        console.log('Dev test book installed:', response.data)
+      } else {
+        console.error('Failed to install test book:', response.message)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to check dev mode:', error)
+  }
+  
   await loadLibraryBooks()
+  
+  // Add global event handlers for cross-references
+  document.addEventListener('click', handleCrossRefClick)
+  document.addEventListener('mouseover', handleCrossRefHover)
+  document.addEventListener('mouseout', handleCrossRefLeave)
+})
+
+// Clean up event listeners on unmount
+onUnmounted(() => {
+  document.removeEventListener('click', handleCrossRefClick)
+  document.removeEventListener('mouseover', handleCrossRefHover)
+  document.removeEventListener('mouseout', handleCrossRefLeave)
 })
 </script>
 
@@ -967,22 +1422,6 @@ onMounted(async () => {
   margin: 0;
 }
 
-/* Add Images Button */
-.add-images-btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background-color: var(--color-primary);
-  color: var(--color-primary-text);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.add-images-btn:hover {
-  background-color: var(--color-primary-dark);
-}
-
 /* Book Item Updates */
 .book-info-wrapper {
   flex: 1;
@@ -995,6 +1434,18 @@ onMounted(async () => {
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
   margin-top: var(--spacing-xs);
+}
+
+.dev-badge {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: #fbbf24;
+  color: #451a03;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 0.7em;
+  text-transform: uppercase;
+  margin-right: 4px;
 }
 
 /* Table of Contents */
@@ -1212,219 +1663,339 @@ code {
   font-size: 0.95em;
 }
 
-.dice-roll {
-  display: inline-block;
-  padding: 2px 6px;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  color: #451a03;
-  border-radius: 4px;
-  font-weight: 600;
-  font-family: 'Courier New', monospace;
-  cursor: help;
-}
-
-.dc-check {
-  display: inline-block;
-  padding: 2px 8px;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 0.9em;
-}
-
-.skill-check {
-  color: #0891b2;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.action-name {
-  color: #16a34a;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.9em;
-  letter-spacing: 0.5px;
-}
-
-.condition {
-  color: #ea580c;
-  font-weight: 600;
-  cursor: help;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-}
-
-.spell-ref {
-  color: #7c3aed;
-  font-style: italic;
-  cursor: help;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-}
-
-.spell-ref:hover {
-  color: #6d28d9;
-  text-decoration-style: solid;
-}
-
-.item-ref {
-  color: #059669;
-  font-weight: 500;
-  cursor: help;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-}
-
-.item-ref:hover {
-  color: #047857;
-  text-decoration-style: solid;
-}
-
-.creature-ref {
-  color: #dc2626;
-  font-weight: 600;
-  cursor: help;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-}
-
-.creature-ref:hover {
-  color: #b91c1c;
-  text-decoration-style: solid;
-}
-
-.book-ref {
-  color: var(--color-primary);
-  font-weight: 500;
-  font-style: italic;
-  cursor: help;
-}
-
-.chance {
-  color: #8b5cf6;
-  font-weight: 500;
-}
-
-.hit-bonus {
-  display: inline-block;
-  padding: 1px 4px;
-  background-color: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
-  border-radius: 3px;
-  font-weight: 600;
-  font-family: 'Courier New', monospace;
-}
-
-.recharge {
-  display: inline-block;
-  padding: 2px 6px;
-  background-color: rgba(59, 130, 246, 0.1);
-  color: var(--color-primary);
-  border-radius: 3px;
-  font-weight: 500;
-  font-size: 0.9em;
-}
-
-/* Dialog Styles */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.dialog-content {
-  background-color: var(--color-bg-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  max-width: 400px;
-  width: 90%;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.dialog-content h3 {
-  margin: 0 0 var(--spacing-sm) 0;
-  color: var(--color-text-primary);
-}
-
-.dialog-content p {
-  color: var(--color-text-secondary);
-  margin-bottom: var(--spacing-lg);
-  font-size: 0.9rem;
-}
-
-.name-input {
-  width: 100%;
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  font-size: 1rem;
-  margin-bottom: var(--spacing-lg);
-}
-
-.name-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-}
-
-.btn-cancel, .btn-submit {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-secondary);
-}
-
-.btn-cancel:hover {
-  background-color: var(--color-bg-tertiary);
-}
-
-.btn-submit {
-  background-color: var(--color-primary);
-  color: white;
-}
-
-.btn-submit:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.btn-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>
 
 <style>
 /* Global styles for book content (non-scoped) */
 .book-content {
   padding: 10px 15px;
+}
+
+/* Game Mechanics - Subtle, theme-aware formatting */
+.dice-roll {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.damage-roll {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.d20-check {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.dc-check {
+  display: inline-block;
+  padding: 1px 5px;
+  background-color: rgba(236, 72, 153, 0.1);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.9em;
+}
+
+.scaled-value {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.skill-check {
+  display: inline-block;
+  padding: 0 3px;
+  color: var(--color-primary-600);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.action-name {
+  display: inline-block;
+  padding: 0 3px;
+  color: var(--color-success);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.9em;
+  letter-spacing: 0.3px;
+}
+
+.condition {
+  display: inline-block;
+  padding: 0 3px;
+  color: var(--color-warning);
+  font-weight: 600;
+  font-style: italic;
+}
+
+.status {
+  display: inline-block;
+  padding: 0 3px;
+  color: var(--color-warning);
+  font-weight: 600;
+  font-style: italic;
+}
+
+.chance {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: var(--color-surface);
+  color: var(--color-primary-600);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.hit-bonus {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: rgba(34, 197, 94, 0.1);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.recharge {
+  display: inline-block;
+  padding: 1px 4px;
+  background-color: var(--color-info-light);
+  color: var(--color-info);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+/* Cross-reference styles - Subtle and theme-aware */
+.spell-ref {
+  color: var(--color-primary-600);
+  font-style: italic;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--color-primary-300);
+}
+
+.spell-ref:hover {
+  color: var(--color-primary-700);
+  text-decoration-color: var(--color-primary-500);
+}
+
+.item-ref {
+  color: var(--color-success);
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--color-success-light);
+}
+
+.item-ref:hover {
+  color: var(--color-success-dark);
+  text-decoration-color: var(--color-success);
+}
+
+.creature-ref {
+  color: var(--color-danger);
+  font-weight: 500;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--color-danger-light);
+}
+
+.creature-ref:hover {
+  color: var(--color-danger-dark);
+  text-decoration-color: var(--color-danger);
+}
+
+.book-ref {
+  color: var(--color-primary-500);
+  font-style: italic;
+  cursor: help;
+}
+
+/* Tooltip styles */
+.cross-ref-tooltip {
+  position: absolute;
+  z-index: 10000;
+  background: var(--color-surface, #2a2a2a);
+  color: var(--color-text, #e0e0e0);
+  border: 1px solid var(--color-border, #404040);
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  font-size: 0.9em;
+  pointer-events: none;
+  line-height: 1.4;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+
+.modal-content {
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
+  max-width: 800px;
+  max-height: 80vh;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 1.5em;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2em;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Creature stat block styling */
+.creature-details .creature-type {
+  font-style: italic;
+  margin-bottom: 10px;
+  color: var(--color-text-secondary);
+}
+
+.creature-details .creature-stats {
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 10px 0;
+  margin: 10px 0;
+}
+
+.creature-details .creature-stats p {
+  margin: 5px 0;
+}
+
+.creature-details .ability-scores {
+  margin: 15px 0;
+}
+
+.creature-details .ability-scores table {
+  width: 100%;
+  text-align: center;
+  border-collapse: collapse;
+}
+
+.creature-details .ability-scores th {
+  font-weight: bold;
+  padding: 5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.creature-details .ability-scores td {
+  padding: 5px;
+}
+
+.creature-details .creature-traits,
+.creature-details .creature-actions {
+  margin-top: 20px;
+  border-top: 2px solid var(--color-primary);
+  padding-top: 10px;
+}
+
+.creature-details .creature-traits h4,
+.creature-details .creature-actions h4 {
+  color: var(--color-primary);
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.creature-details .trait,
+.creature-details .action {
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.modal-body {
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.reference-details {
+  line-height: 1.6;
+}
+
+.reference-details p {
+  margin: var(--spacing-sm) 0;
+}
+
+.reference-details .description {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.loading-message {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xl);
 }
 
 .content-wrapper {
@@ -1570,10 +2141,7 @@ code {
   color: var(--color-text);
 }
 
-/* Formatting tags */
-.book-content .spell-ref,
-.book-content .item-ref,
-.book-content .creature-ref,
+/* Additional reference styles */
 .book-content .race-ref,
 .book-content .class-ref,
 .book-content .background-ref,
