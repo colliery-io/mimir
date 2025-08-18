@@ -3,8 +3,6 @@
 mod app_init;
 mod commands;
 mod db_connection;
-mod embedded_rules;
-mod rules_init;
 mod seed_templates;
 mod services;
 mod types;
@@ -90,9 +88,13 @@ fn main() {
             list_module_sessions,
             transition_session_status,
             get_session_board_config,
-            // Rules commands
-            list_rule_systems,
-            get_rule_system
+            // Book library commands
+            add_book_to_library,
+            list_library_books,
+            remove_book_from_library,
+            get_book_content,
+            add_book_images,
+            serve_book_image
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
