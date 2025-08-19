@@ -48,7 +48,9 @@ fn main() {
             
             // Initialize spell catalog
             let spell_catalog = Mutex::new(commands::catalog::SpellCatalog::new());
+            let item_catalog = Mutex::new(commands::catalog::ItemCatalog::new());
             app.manage(spell_catalog);
+            app.manage(item_catalog);
             
             Ok(())
         })
@@ -108,7 +110,10 @@ fn main() {
             // Catalog commands
             initialize_spell_catalog,
             search_spells,
-            get_spell_details
+            get_spell_details,
+            initialize_item_catalog,
+            search_items,
+            get_item_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

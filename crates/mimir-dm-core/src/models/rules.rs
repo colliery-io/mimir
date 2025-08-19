@@ -155,6 +155,122 @@ pub struct SpellData {
     pub spell: Vec<Spell>,
 }
 
+/// A D&D 5e item
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Item {
+    pub name: String,
+    pub source: String,
+    pub page: Option<u32>,
+    #[serde(rename = "type")]
+    pub item_type: String,
+    pub rarity: Option<String>,
+    pub value: Option<u32>, // Value in copper pieces
+    pub weight: Option<f32>,
+    pub entries: Option<Vec<serde_json::Value>>,
+    pub additional_entries: Option<Vec<serde_json::Value>>,
+    
+    // Weapon properties
+    pub weapon_category: Option<String>,
+    pub property: Option<Vec<String>>,
+    pub dmg1: Option<String>,
+    pub dmg2: Option<String>,
+    pub dmg_type: Option<String>,
+    pub range: Option<String>,
+    pub weapon: Option<bool>,
+    
+    // Armor properties
+    pub ac: Option<u8>,
+    pub strength: Option<String>,
+    pub stealth: Option<bool>,
+    pub armor: Option<bool>,
+    
+    // Other flags
+    pub srd: Option<bool>,
+    pub basic_rules: Option<bool>,
+    pub misc_tags: Option<Vec<String>>,
+}
+
+/// Container for item data from 5etools JSON
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ItemData {
+    pub item: Vec<Item>,
+}
+
+/// Simplified item for search results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ItemSummary {
+    pub name: String,
+    pub item_type: String,
+    pub type_name: String, // Human-readable type
+    pub source: String,
+    pub rarity: String,
+    pub value: Option<u32>,
+    pub weight: Option<f32>,
+    pub ac: Option<u8>,
+    pub damage: Option<String>,
+    pub description: String,
+}
+
+impl From<&Item> for ItemSummary {
+    fn from(item: &Item) -> Self {
+        // Map type codes to readable names
+        let type_name = match item.item_type.as_str() {
+            "G" => "Adventuring Gear",
+            "AT" => "Artisan's Tools",
+            "GS" => "Gaming Set",
+            "SCF" => "Spellcasting Focus",
+            "T" => "Tools",
+            "TAH" => "Tack and Harness",
+            "MNT" => "Mount",
+            "VEH" => "Vehicle",
+            "FD" => "Food & Drink",
+            "TG" => "Trade Good",
+            "$C" => "Treasure",
+            "M" => "Martial Weapon",
+            "S" => "Simple Weapon",
+            "R" => "Ranged Weapon",
+            "LA" => "Light Armor",
+            "MA" => "Medium Armor",
+            "HA" => "Heavy Armor",
+            _ => "Other",
+        }.to_string();
+        
+        // Get damage string for weapons
+        let damage = if item.weapon.unwrap_or(false) {
+            item.dmg1.clone()
+        } else {
+            None
+        };
+        
+        // Extract first entry as description
+        let description = item.entries.as_ref()
+            .and_then(|e| e.first())
+            .and_then(|e| e.as_str())
+            .map(|s| {
+                if s.len() > 200 {
+                    format!("{}...", &s[..197])
+                } else {
+                    s.to_string()
+                }
+            })
+            .unwrap_or_else(|| "No description available".to_string());
+        
+        ItemSummary {
+            name: item.name.clone(),
+            item_type: item.item_type.clone(),
+            type_name,
+            source: item.source.clone(),
+            rarity: item.rarity.clone().unwrap_or_else(|| "none".to_string()),
+            value: item.value,
+            weight: item.weight,
+            ac: item.ac,
+            damage,
+            description,
+        }
+    }
+}
+
 /// Simplified spell for search results
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpellSummary {

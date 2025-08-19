@@ -25,11 +25,35 @@ export interface SpellFilters {
   concentration?: boolean
 }
 
+export interface ItemSummary {
+  name: string
+  item_type: string
+  type_name: string
+  source: string
+  rarity: string
+  value?: number
+  weight?: number
+  ac?: number
+  damage?: string
+  description: string
+}
+
+export interface ItemFilters {
+  query?: string
+  sources?: string[]
+  types?: string[]
+  rarities?: string[]
+  min_value?: number
+  max_value?: number
+}
+
 export function useCatalog() {
   const isInitialized = ref(false)
+  const isItemsInitialized = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const spells = ref<SpellSummary[]>([])
+  const items = ref<ItemSummary[]>([])
 
   // Initialize the spell catalog (load data from files)
   async function initializeCatalog() {
@@ -44,6 +68,24 @@ export function useCatalog() {
     } catch (e) {
       error.value = `Failed to initialize catalog: ${e}`
       console.error('Failed to initialize catalog:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Initialize the item catalog
+  async function initializeItemCatalog() {
+    if (isItemsInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('initialize_item_catalog')
+      isItemsInitialized.value = true
+      console.log('Item catalog initialized')
+    } catch (e) {
+      error.value = `Failed to initialize item catalog: ${e}`
+      console.error('Failed to initialize item catalog:', e)
     } finally {
       isLoading.value = false
     }
@@ -91,13 +133,60 @@ export function useCatalog() {
     }
   }
 
+  // Search items with filters
+  async function searchItems(filters: ItemFilters): Promise<ItemSummary[]> {
+    // Initialize if needed
+    if (!isItemsInitialized.value) {
+      await initializeItemCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const results = await invoke<ItemSummary[]>('search_items', {
+        query: filters.query || null,
+        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+        types: filters.types && filters.types.length > 0 ? filters.types : null,
+        rarities: filters.rarities && filters.rarities.length > 0 ? filters.rarities : null,
+        minValue: filters.min_value !== undefined ? filters.min_value : null,
+        maxValue: filters.max_value !== undefined ? filters.max_value : null,
+      })
+      
+      items.value = results
+      return results
+    } catch (e) {
+      error.value = `Search failed: ${e}`
+      console.error('Search failed:', e)
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Get detailed item information
+  async function getItemDetails(name: string, source: string) {
+    try {
+      const item = await invoke('get_item_details', { name, source })
+      return item
+    } catch (e) {
+      console.error('Failed to get item details:', e)
+      return null
+    }
+  }
+
   return {
     isInitialized,
+    isItemsInitialized,
     isLoading,
     error,
     spells,
+    items,
     initializeCatalog,
+    initializeItemCatalog,
     searchSpells,
+    searchItems,
     getSpellDetails,
+    getItemDetails,
   }
 }

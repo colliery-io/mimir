@@ -9,12 +9,15 @@
             v-model="selectedCategoryLocal"
             class="category-select"
           >
-            <option value="Spells">Spells</option>
-            <option value="Items">Items</option>
-            <option value="Creatures">Creatures</option>
-            <option value="Classes">Classes</option>
-            <option value="Races">Races</option>
-            <option value="Feats">Feats</option>
+            <option value="Spells">Spells ✓</option>
+            <option value="Monsters">Monsters</option>
+            <option value="Equipment">Equipment</option>
+            <option value="Magic Items">Magic Items (coming soon)</option>
+            <option value="Classes">Classes (coming soon)</option>
+            <option value="Races">Races (coming soon)</option>
+            <option value="Feats">Feats (coming soon)</option>
+            <option value="Backgrounds">Backgrounds (coming soon)</option>
+            <option value="Conditions">Conditions (coming soon)</option>
           </select>
         </div>
         <div class="search-bar">
@@ -119,9 +122,65 @@
         </table>
       </div>
       
+      <!-- Equipment Table -->
+      <div v-else-if="selectedCategoryLocal === 'Equipment'" class="table-container">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th class="col-name">
+                Name
+                <button class="sort-btn" @click="toggleSort('name')">
+                  {{ getSortIcon('name') }}
+                </button>
+              </th>
+              <th class="col-type">
+                <select v-model="equipmentFilters.type" @change="applyEquipmentFilters" class="filter-select">
+                  <option value="">Type</option>
+                  <option value="G">Adventuring Gear</option>
+                  <option value="AT">Artisan's Tools</option>
+                  <option value="T">Tools</option>
+                  <option value="GS">Gaming Set</option>
+                  <option value="SCF">Spellcasting Focus</option>
+                  <option value="MNT">Mount</option>
+                  <option value="TAH">Tack & Harness</option>
+                  <option value="VEH">Vehicle</option>
+                  <option value="FD">Food & Drink</option>
+                  <option value="TG">Trade Good</option>
+                  <option value="$C">Treasure</option>
+                </select>
+              </th>
+              <th class="col-cost">Cost</th>
+              <th class="col-weight">Weight</th>
+              <th class="col-source">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="item in filteredEquipment" 
+              :key="`${item.name}-${item.source}`"
+              class="item-row"
+              @click="selectItem(item)"
+            >
+              <td class="col-name">
+                <span class="item-name">{{ item.name }}</span>
+              </td>
+              <td class="col-type">{{ item.type_name }}</td>
+              <td class="col-cost">{{ formatCost(item.value) }}</td>
+              <td class="col-weight">{{ item.weight ? `${item.weight} lb.` : '—' }}</td>
+              <td class="col-source">{{ item.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Monsters placeholder -->
+      <div v-else-if="selectedCategoryLocal === 'Monsters'" class="placeholder-text">
+        <p>Monsters catalog coming soon...</p>
+      </div>
+      
       <!-- Other categories placeholder -->
       <div v-else class="placeholder-text">
-        <p>{{ selectedCategory }} catalog coming soon...</p>
+        <p>{{ selectedCategoryLocal }} catalog coming soon...</p>
       </div>
     </div>
     
@@ -140,7 +199,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
-import { useCatalog, type SpellSummary } from '../../composables/catalog/useCatalog'
+import { useCatalog, type SpellSummary, type ItemSummary } from '../../composables/catalog/useCatalog'
 
 interface Props {
   selectedCategory?: string
@@ -152,10 +211,20 @@ const props = withDefaults(defineProps<Props>(), {
   selectedSources: () => []
 })
 
-const { isLoading, error, searchSpells, initializeCatalog, getSpellDetails } = useCatalog()
+const { 
+  isLoading, 
+  error, 
+  searchSpells, 
+  initializeCatalog, 
+  getSpellDetails,
+  searchItems,
+  initializeItemCatalog,
+  getItemDetails
+} = useCatalog()
 
 const searchQuery = ref('')
 const spellResults = ref<SpellSummary[]>([])
+const itemResults = ref<ItemSummary[]>([])
 const searchPerformed = ref(false)
 let searchTimeout: NodeJS.Timeout | null = null
 
@@ -169,12 +238,18 @@ const modalContent = ref({
   content: ''
 })
 
-// Filtering state
+// Spell filtering state
 const filters = ref({
   level: '',
   school: '',
   concentration: false,
   ritual: false
+})
+
+// Equipment filtering state
+const equipmentFilters = ref({
+  type: '',
+  rarity: ''
 })
 
 // Sorting state
@@ -199,6 +274,9 @@ onMounted(async () => {
     await initializeCatalog()
     // Load all spells by default
     await performSearch()
+  } else if (selectedCategoryLocal.value === 'Equipment') {
+    await initializeItemCatalog()
+    await performSearch()
   }
 })
 
@@ -207,6 +285,9 @@ watch(selectedCategoryLocal, async (newCategory) => {
   if (newCategory === 'Spells') {
     await initializeCatalog()
     // Always load spells when switching to spells category
+    await performSearch()
+  } else if (newCategory === 'Equipment') {
+    await initializeItemCatalog()
     await performSearch()
   }
 })
@@ -231,17 +312,25 @@ function debouncedSearch() {
 
 // Perform the actual search
 async function performSearch() {
-  if (selectedCategoryLocal.value !== 'Spells') return
-  
   searchPerformed.value = true
   
-  // Always perform search, even with empty query (to show all spells)
-  const results = await searchSpells({
-    query: searchQuery.value || undefined,
-    sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
-  })
-  
-  spellResults.value = results
+  if (selectedCategoryLocal.value === 'Spells') {
+    // Always perform search, even with empty query (to show all spells)
+    const results = await searchSpells({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+    })
+    
+    spellResults.value = results
+  } else if (selectedCategoryLocal.value === 'Equipment') {
+    const results = await searchItems({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+      types: equipmentFilters.value.type ? [equipmentFilters.value.type] : undefined,
+    })
+    
+    itemResults.value = results
+  }
 }
 
 // Computed filtered and sorted results
@@ -290,9 +379,43 @@ const filteredResults = computed(() => {
   return results
 })
 
+// Computed filtered equipment
+const filteredEquipment = computed(() => {
+  let results = [...itemResults.value]
+  
+  // Apply type filter (already applied in search, but can do client-side too)
+  if (equipmentFilters.value.type) {
+    results = results.filter(item => item.item_type === equipmentFilters.value.type)
+  }
+  
+  // Apply sorting
+  results.sort((a, b) => {
+    let aVal: any = a[sortColumn.value as keyof ItemSummary]
+    let bVal: any = b[sortColumn.value as keyof ItemSummary]
+    
+    // Handle different types
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase()
+      bVal = bVal.toLowerCase()
+    }
+    
+    if (sortDirection.value === 'asc') {
+      return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+    } else {
+      return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+    }
+  })
+  
+  return results
+})
+
 // Apply filters (triggers the computed properties)
 function applyFilters() {
   // Filters are applied via computed properties
+}
+
+function applyEquipmentFilters() {
+  performSearch()
 }
 
 // Toggle sort direction for a column
@@ -340,8 +463,40 @@ async function selectSpell(spell: SpellSummary) {
   }
 }
 
+async function selectItem(item: ItemSummary) {
+  // Fetch full item details
+  const details = await getItemDetails(item.name, item.source)
+  
+  if (details) {
+    // Format the item details for display
+    modalContent.value = {
+      visible: true,
+      title: item.name,
+      content: formatItemDetails(item, details)
+    }
+  }
+}
+
 function closeModal() {
   modalContent.value.visible = false
+}
+
+// Format cost from copper pieces to standard notation
+function formatCost(value?: number): string {
+  if (!value) return '—'
+  
+  // Convert copper to gold/silver/copper
+  const gold = Math.floor(value / 100)
+  const silver = Math.floor((value % 100) / 10)
+  const copper = value % 10
+  
+  if (gold > 0) {
+    return `${gold} gp`
+  } else if (silver > 0) {
+    return `${silver} sp`
+  } else {
+    return `${copper} cp`
+  }
 }
 
 function formatSpellDetails(summary: SpellSummary, details: any): string {
@@ -439,6 +594,104 @@ function formatSpellDetails(summary: SpellSummary, details: any): string {
   
   // Source
   html += `<div class="spell-source"><em>Source: ${summary.source}</em></div>`
+  
+  html += '</div>'
+  return html
+}
+
+function formatItemDetails(summary: ItemSummary, details: any): string {
+  let html = '<div class="item-details">'
+  
+  // Header info
+  html += '<div class="item-header-info">'
+  html += `<div class="item-type">${summary.type_name}</div>`
+  if (summary.rarity && summary.rarity !== 'none') {
+    html += `<div class="item-rarity">${summary.rarity}</div>`
+  }
+  html += '</div>'
+  
+  // Item properties
+  html += '<div class="item-properties">'
+  if (summary.value) {
+    html += `<div><strong>Cost:</strong> ${formatCost(summary.value)}</div>`
+  }
+  if (summary.weight) {
+    html += `<div><strong>Weight:</strong> ${summary.weight} lb.</div>`
+  }
+  if (summary.ac) {
+    html += `<div><strong>AC:</strong> ${summary.ac}</div>`
+  }
+  if (summary.damage) {
+    html += `<div><strong>Damage:</strong> ${summary.damage}</div>`
+  }
+  html += '</div>'
+  
+  // Description/Entries
+  html += '<div class="item-description">'
+  if (details.entries) {
+    for (const entry of details.entries) {
+      if (typeof entry === 'string') {
+        html += `<p>${parse5etoolsTags(entry)}</p>`
+      } else if (entry.type === 'list' && entry.items) {
+        html += '<ul>'
+        for (const item of entry.items) {
+          html += `<li>${parse5etoolsTags(item)}</li>`
+        }
+        html += '</ul>'
+      } else if (entry.type === 'entries' && entry.entries) {
+        if (entry.name) {
+          html += `<h4>${parse5etoolsTags(entry.name)}</h4>`
+        }
+        for (const subEntry of entry.entries) {
+          if (typeof subEntry === 'string') {
+            html += `<p>${parse5etoolsTags(subEntry)}</p>`
+          }
+        }
+      }
+    }
+  }
+  
+  // Additional entries (for tools, etc.)
+  if (details.additionalEntries) {
+    html += '<div class="item-additional">'
+    for (const entry of details.additionalEntries) {
+      if (typeof entry === 'string') {
+        html += `<p>${parse5etoolsTags(entry)}</p>`
+      } else if (entry.type === 'entries' && entry.entries) {
+        if (entry.name) {
+          html += `<h4>${parse5etoolsTags(entry.name)}</h4>`
+        }
+        for (const subEntry of entry.entries) {
+          if (typeof subEntry === 'string') {
+            html += `<p>${parse5etoolsTags(subEntry)}</p>`
+          }
+        }
+      } else if (entry.type === 'table' && entry.rows) {
+        html += '<table class="item-table">'
+        if (entry.colLabels) {
+          html += '<thead><tr>'
+          for (const label of entry.colLabels) {
+            html += `<th>${label}</th>`
+          }
+          html += '</tr></thead>'
+        }
+        html += '<tbody>'
+        for (const row of entry.rows) {
+          html += '<tr>'
+          for (const cell of row) {
+            html += `<td>${parse5etoolsTags(cell)}</td>`
+          }
+          html += '</tr>'
+        }
+        html += '</tbody></table>'
+      }
+    }
+    html += '</div>'
+  }
+  html += '</div>'
+  
+  // Source
+  html += `<div class="item-source"><em>Source: ${summary.source}</em></div>`
   
   html += '</div>'
   return html
