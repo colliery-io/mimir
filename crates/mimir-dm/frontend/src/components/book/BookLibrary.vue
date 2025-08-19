@@ -1,6 +1,6 @@
 <template>
   <Panel title="Library" variant="surface">
-    <template #actions>
+    <template #actions v-if="mode === 'reading'">
       <button 
         @click="handleAddBook" 
         class="add-book-btn"
@@ -23,7 +23,9 @@
       </div>
       
       <div v-else class="book-list">
+        <!-- Reading Mode: Clickable books -->
         <div 
+          v-if="mode === 'reading'"
           v-for="book in libraryBooks" 
           :key="book.id"
           :class="['book-item', { active: selectedBook?.id === book.id }]"
@@ -44,13 +46,36 @@
             ×
           </button>
         </div>
+        
+        <!-- Catalog Mode: Books with checkboxes -->
+        <div 
+          v-else
+          v-for="book in libraryBooks" 
+          :key="`catalog-${book.id}`"
+          class="book-item-checkbox"
+        >
+          <label class="book-checkbox-label">
+            <input 
+              type="checkbox" 
+              :value="book.id"
+              :checked="selectedSources.includes(book.id)"
+              @change="toggleSource(book.id)"
+            />
+            <div class="book-info">
+              <span class="book-name">{{ book.name }}</span>
+              <span class="book-meta">
+                <span v-if="book.id === 'test-book'" class="dev-badge">DEV</span>
+              </span>
+            </div>
+          </label>
+        </div>
       </div>
     </div>
   </Panel>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Panel from '../layout/Panel.vue'
 import type { BookInfo } from '../../types/book'
 
@@ -59,16 +84,31 @@ interface Props {
   selectedBook: BookInfo | null
   isLoadingLibrary: boolean
   isDevelopment: boolean
+  mode?: 'reading' | 'catalog'
 }
 
 interface Emits {
   (e: 'select', book: BookInfo): void
+  (e: 'updateSources', sources: string[]): void
   (e: 'add'): void
   (e: 'remove', book: BookInfo): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  mode: 'reading'
+})
 const emit = defineEmits<Emits>()
+
+// Selected sources for catalog mode - initialize with all books
+const selectedSources = ref<string[]>([])
+
+// Initialize sources when books are loaded
+watch(() => props.libraryBooks, (books) => {
+  if (books.length > 0 && selectedSources.value.length === 0) {
+    selectedSources.value = books.map(b => b.id)
+    emit('updateSources', selectedSources.value)
+  }
+}, { immediate: true })
 
 function handleAddBook() {
   emit('add')
@@ -76,6 +116,16 @@ function handleAddBook() {
 
 function handleRemoveBook(book: BookInfo) {
   emit('remove', book)
+}
+
+function toggleSource(bookId: string) {
+  const index = selectedSources.value.indexOf(bookId)
+  if (index > -1) {
+    selectedSources.value.splice(index, 1)
+  } else {
+    selectedSources.value.push(bookId)
+  }
+  emit('updateSources', selectedSources.value)
 }
 </script>
 
@@ -188,5 +238,31 @@ function handleRemoveBook(book: BookInfo) {
 .remove-btn:hover {
   color: var(--color-danger, #ff4444);
   background: var(--color-danger-alpha, rgba(255, 68, 68, 0.1));
+}
+
+/* Catalog checkbox mode styles */
+.book-item-checkbox {
+  padding: var(--spacing-xs, 4px) var(--spacing-md, 12px);
+  transition: background-color 0.2s;
+}
+
+.book-item-checkbox:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
+}
+
+.book-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  cursor: pointer;
+}
+
+.book-checkbox-label input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
+}
+
+.book-checkbox-label .book-info {
+  flex: 1;
 }
 </style>

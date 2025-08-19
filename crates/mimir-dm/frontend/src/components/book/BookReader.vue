@@ -1,5 +1,24 @@
 <template>
   <div id="book-reader" :class="`theme-${currentTheme}`">
+    <!-- Mode Switcher -->
+    <div class="mode-switcher-bar">
+      <div class="mode-switcher">
+        <button 
+          :class="['mode-button', { active: currentMode === 'reading' }]"
+          @click="currentMode = 'reading'"
+        >
+          Reading
+        </button>
+        <button 
+          :class="['mode-button', { active: currentMode === 'catalog' }]"
+          @click="currentMode = 'catalog'"
+        >
+          Catalog
+        </button>
+      </div>
+    </div>
+    
+    <!-- Keep the three-panel layout for both modes -->
     <ThreePanelLayout>
       <template #left>
         <BookLibrary
@@ -7,34 +26,47 @@
           :selected-book="selectedBook"
           :is-loading-library="isLoadingLibrary"
           :is-development="isDevelopment"
+          :mode="currentMode"
           @select="selectBook"
+          @updateSources="selectedSources = $event"
           @add="addBook"
           @remove="removeBook"
         />
       </template>
       
       <template #center>
-        <BookTableOfContents
-          v-if="selectedBook && bookContent?.data"
-          :sections="bookContent.data"
-          :selected-section="selectedSection"
-          @select="selectedSection = $event"
-          @jump="jumpToEntry"
-        />
-        <Panel v-else title="Contents" variant="default">
-          <div class="empty-toc">
-            <p>Select a book to view contents</p>
-          </div>
-        </Panel>
+        <!-- Reading mode: Show table of contents -->
+        <template v-if="currentMode === 'reading'">
+          <BookTableOfContents
+            v-if="selectedBook && bookContent?.data"
+            :sections="bookContent.data"
+            :selected-section="selectedSection"
+            @select="selectedSection = $event"
+            @jump="jumpToEntry"
+          />
+          <Panel v-else title="Contents" variant="default">
+            <div class="empty-toc">
+              <p>Select a book to view contents</p>
+            </div>
+          </Panel>
+        </template>
+        
+        <!-- Catalog mode: Show filters -->
+        <CatalogFilters v-else @categoryChange="selectedCatalogCategory = $event" />
       </template>
       
       <template #right>
+        <!-- Reading mode: Show book content -->
         <BookContentViewer
+          v-if="currentMode === 'reading'"
           :selected-book="selectedBook"
           :content="currentSection"
           :is-loading="isLoading"
           :error="error"
         />
+        
+        <!-- Catalog mode: Show catalog browser -->
+        <CatalogPanel v-else :selected-category="selectedCatalogCategory" :selected-sources="selectedSources" />
       </template>
     </ThreePanelLayout>
     
@@ -60,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useThemeStore } from '../../stores/theme'
 import { useBookLibrary } from '../../composables/book/useBookLibrary'
 import { useBookContent } from '../../composables/book/useBookContent'
@@ -73,10 +105,20 @@ import Panel from '../layout/Panel.vue'
 import BookLibrary from './BookLibrary.vue'
 import BookTableOfContents from './BookTableOfContents.vue'
 import BookContentViewer from './BookContentViewer.vue'
+import CatalogPanel from '../catalog/CatalogPanel.vue'
+import CatalogFilters from '../catalog/CatalogFilters.vue'
 
 // Theme
 const themeStore = useThemeStore()
 const currentTheme = computed(() => themeStore.currentTheme)
+
+// Mode state (reading vs catalog)
+type AppMode = 'reading' | 'catalog'
+const currentMode = ref<AppMode>('reading')
+
+// Catalog state
+const selectedCatalogCategory = ref('Spells')
+const selectedSources = ref<string[]>([])
 
 // Book library management
 const {
@@ -180,6 +222,8 @@ watch([bookContent, selectedSection], () => {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--color-background, #0d0d0d);
   color: var(--color-text, #e0e0e0);
 }
@@ -790,5 +834,45 @@ watch([bookContent, selectedSection], () => {
 .book-content .note {
   font-style: italic;
   color: var(--color-text-secondary);
+}
+
+/* Mode Switcher */
+.mode-switcher-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 48px;
+  background: var(--color-surface, #1a1a1a);
+  border-bottom: 1px solid var(--color-border, #333);
+  flex-shrink: 0;
+}
+
+.mode-switcher {
+  display: flex;
+  gap: 0;
+  background: var(--color-background, #0d0d0d);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.mode-button {
+  padding: 6px 16px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary, #999);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.mode-button:hover {
+  color: var(--color-text, #e0e0e0);
+}
+
+.mode-button.active {
+  background: var(--color-primary, #4a9eff);
+  color: var(--color-background, #0d0d0d);
 }
 </style>
