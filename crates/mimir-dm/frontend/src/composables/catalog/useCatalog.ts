@@ -47,13 +47,38 @@ export interface ItemFilters {
   max_value?: number
 }
 
+export interface MonsterSummary {
+  name: string
+  source: string
+  size: string
+  creature_type: string
+  alignment: string
+  cr: string
+  cr_numeric: number
+  hp: number
+  ac: number
+  environment: string[]
+}
+
+export interface MonsterFilters {
+  query?: string
+  sources?: string[]
+  sizes?: string[]
+  types?: string[]
+  min_cr?: number
+  max_cr?: number
+  environments?: string[]
+}
+
 export function useCatalog() {
   const isInitialized = ref(false)
   const isItemsInitialized = ref(false)
+  const isMonstersInitialized = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const spells = ref<SpellSummary[]>([])
   const items = ref<ItemSummary[]>([])
+  const monsters = ref<MonsterSummary[]>([])
 
   // Initialize the spell catalog (load data from files)
   async function initializeCatalog() {
@@ -175,18 +200,84 @@ export function useCatalog() {
     }
   }
 
+  // Initialize the monster catalog
+  async function initializeMonsterCatalog() {
+    if (isMonstersInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('initialize_monster_catalog')
+      isMonstersInitialized.value = true
+      console.log('Monster catalog initialized')
+    } catch (e) {
+      error.value = `Failed to initialize monster catalog: ${e}`
+      console.error('Failed to initialize monster catalog:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Search monsters with filters
+  async function searchMonsters(filters: MonsterFilters): Promise<MonsterSummary[]> {
+    // Initialize if needed
+    if (!isMonstersInitialized.value) {
+      await initializeMonsterCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const results = await invoke<MonsterSummary[]>('search_monsters', {
+        query: filters.query || null,
+        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
+        types: filters.types && filters.types.length > 0 ? filters.types : null,
+        minCr: filters.min_cr !== undefined ? filters.min_cr : null,
+        maxCr: filters.max_cr !== undefined ? filters.max_cr : null,
+        environments: filters.environments && filters.environments.length > 0 ? filters.environments : null,
+      })
+      
+      monsters.value = results
+      return results
+    } catch (e) {
+      error.value = `Search failed: ${e}`
+      console.error('Search failed:', e)
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Get detailed monster information
+  async function getMonsterDetails(name: string, source: string) {
+    try {
+      const monster = await invoke('get_monster_details', { name, source })
+      return monster
+    } catch (e) {
+      console.error('Failed to get monster details:', e)
+      return null
+    }
+  }
+
   return {
     isInitialized,
     isItemsInitialized,
+    isMonstersInitialized,
     isLoading,
     error,
     spells,
     items,
+    monsters,
     initializeCatalog,
     initializeItemCatalog,
+    initializeMonsterCatalog,
     searchSpells,
     searchItems,
+    searchMonsters,
     getSpellDetails,
     getItemDetails,
+    getMonsterDetails,
   }
 }

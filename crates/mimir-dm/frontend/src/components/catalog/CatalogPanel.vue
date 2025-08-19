@@ -32,8 +32,11 @@
       </div>
       <div class="header-info">
         <h2>{{ selectedCategoryLocal }}</h2>
-        <span class="results-count" v-if="spellResults.length > 0">
+        <span class="results-count" v-if="selectedCategoryLocal === 'Spells' && spellResults.length > 0">
           {{ filteredResults.length }} of {{ spellResults.length }} spells
+        </span>
+        <span class="results-count" v-else-if="selectedCategoryLocal === 'Equipment' && itemResults.length > 0">
+          {{ filteredEquipment.length }} of {{ itemResults.length }} items
         </span>
       </div>
     </div>
@@ -136,17 +139,35 @@
               <th class="col-type">
                 <select v-model="equipmentFilters.type" @change="applyEquipmentFilters" class="filter-select">
                   <option value="">Type</option>
-                  <option value="G">Adventuring Gear</option>
-                  <option value="AT">Artisan's Tools</option>
-                  <option value="T">Tools</option>
-                  <option value="GS">Gaming Set</option>
-                  <option value="SCF">Spellcasting Focus</option>
-                  <option value="MNT">Mount</option>
-                  <option value="TAH">Tack & Harness</option>
-                  <option value="VEH">Vehicle</option>
-                  <option value="FD">Food & Drink</option>
-                  <option value="TG">Trade Good</option>
-                  <option value="$C">Treasure</option>
+                  <optgroup label="Weapons">
+                    <option value="S">Simple Weapon</option>
+                    <option value="M">Martial Weapon</option>
+                    <option value="R">Ranged Weapon</option>
+                    <option value="A">Ammunition</option>
+                  </optgroup>
+                  <optgroup label="Armor">
+                    <option value="LA">Light Armor</option>
+                    <option value="MA">Medium Armor</option>
+                    <option value="HA">Heavy Armor</option>
+                  </optgroup>
+                  <optgroup label="Equipment">
+                    <option value="G">Adventuring Gear</option>
+                    <option value="AT">Artisan's Tools</option>
+                    <option value="T">Tools</option>
+                    <option value="GS">Gaming Set</option>
+                    <option value="SCF">Spellcasting Focus</option>
+                    <option value="INS">Instrument</option>
+                  </optgroup>
+                  <optgroup label="Transport">
+                    <option value="MNT">Mount</option>
+                    <option value="TAH">Tack & Harness</option>
+                    <option value="VEH">Vehicle</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option value="FD">Food & Drink</option>
+                    <option value="TG">Trade Good</option>
+                    <option value="$C">Treasure</option>
+                  </optgroup>
                 </select>
               </th>
               <th class="col-cost">Cost</th>
@@ -163,10 +184,12 @@
             >
               <td class="col-name">
                 <span class="item-name">{{ item.name }}</span>
+                <span v-if="item.damage" class="item-damage">{{ item.damage }}</span>
+                <span v-if="item.ac" class="item-ac">AC {{ item.ac }}</span>
               </td>
               <td class="col-type">{{ item.type_name }}</td>
               <td class="col-cost">{{ formatCost(item.value) }}</td>
-              <td class="col-weight">{{ item.weight ? `${item.weight} lb.` : '—' }}</td>
+              <td class="col-weight">{{ formatWeight(item.weight) }}</td>
               <td class="col-source">{{ item.source }}</td>
             </tr>
           </tbody>
@@ -174,8 +197,79 @@
       </div>
       
       <!-- Monsters placeholder -->
-      <div v-else-if="selectedCategoryLocal === 'Monsters'" class="placeholder-text">
-        <p>Monsters catalog coming soon...</p>
+      <!-- Monsters Table -->
+      <div v-else-if="selectedCategoryLocal === 'Monsters'" class="table-container">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th class="col-name">
+                <button class="sort-header" @click="sortBy('name')">
+                  Name
+                  {{ getSortIcon('name') }}
+                </button>
+              </th>
+              <th class="col-size">
+                <select v-model="monsterFilters.size" @change="applyMonsterFilters" class="filter-select">
+                  <option value="">Size</option>
+                  <option value="T">Tiny</option>
+                  <option value="S">Small</option>
+                  <option value="M">Medium</option>
+                  <option value="L">Large</option>
+                  <option value="H">Huge</option>
+                  <option value="G">Gargantuan</option>
+                </select>
+              </th>
+              <th class="col-type">
+                <select v-model="monsterFilters.type" @change="applyMonsterFilters" class="filter-select">
+                  <option value="">Type</option>
+                  <option value="aberration">Aberration</option>
+                  <option value="beast">Beast</option>
+                  <option value="celestial">Celestial</option>
+                  <option value="construct">Construct</option>
+                  <option value="dragon">Dragon</option>
+                  <option value="elemental">Elemental</option>
+                  <option value="fey">Fey</option>
+                  <option value="fiend">Fiend</option>
+                  <option value="giant">Giant</option>
+                  <option value="humanoid">Humanoid</option>
+                  <option value="monstrosity">Monstrosity</option>
+                  <option value="ooze">Ooze</option>
+                  <option value="plant">Plant</option>
+                  <option value="undead">Undead</option>
+                </select>
+              </th>
+              <th class="col-cr">
+                <button class="sort-header" @click="sortBy('cr_numeric')">
+                  CR
+                  {{ getSortIcon('cr_numeric') }}
+                </button>
+              </th>
+              <th class="col-hp">HP</th>
+              <th class="col-ac">AC</th>
+              <th class="col-alignment">Alignment</th>
+              <th class="col-source">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="monster in filteredMonsters"
+              :key="`${monster.name}-${monster.source}`"
+              class="monster-row"
+              @click="selectMonster(monster)"
+            >
+              <td class="col-name">
+                <span class="monster-name">{{ monster.name }}</span>
+              </td>
+              <td class="col-size">{{ monster.size }}</td>
+              <td class="col-type">{{ monster.creature_type }}</td>
+              <td class="col-cr">{{ monster.cr }}</td>
+              <td class="col-hp">{{ monster.hp }}</td>
+              <td class="col-ac">{{ monster.ac }}</td>
+              <td class="col-alignment">{{ monster.alignment }}</td>
+              <td class="col-source">{{ monster.source }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       
       <!-- Other categories placeholder -->
@@ -199,7 +293,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
-import { useCatalog, type SpellSummary, type ItemSummary } from '../../composables/catalog/useCatalog'
+import { useCatalog, type SpellSummary, type ItemSummary, type MonsterSummary } from '../../composables/catalog/useCatalog'
 
 interface Props {
   selectedCategory?: string
@@ -219,12 +313,16 @@ const {
   getSpellDetails,
   searchItems,
   initializeItemCatalog,
-  getItemDetails
+  getItemDetails,
+  searchMonsters,
+  initializeMonsterCatalog,
+  getMonsterDetails
 } = useCatalog()
 
 const searchQuery = ref('')
 const spellResults = ref<SpellSummary[]>([])
 const itemResults = ref<ItemSummary[]>([])
+const monsterResults = ref<MonsterSummary[]>([])
 const searchPerformed = ref(false)
 let searchTimeout: NodeJS.Timeout | null = null
 
@@ -250,6 +348,14 @@ const filters = ref({
 const equipmentFilters = ref({
   type: '',
   rarity: ''
+})
+
+// Monster filtering state
+const monsterFilters = ref({
+  size: '',
+  type: '',
+  minCr: undefined as number | undefined,
+  maxCr: undefined as number | undefined
 })
 
 // Sorting state
@@ -288,6 +394,9 @@ watch(selectedCategoryLocal, async (newCategory) => {
     await performSearch()
   } else if (newCategory === 'Equipment') {
     await initializeItemCatalog()
+    await performSearch()
+  } else if (newCategory === 'Monsters') {
+    await initializeMonsterCatalog()
     await performSearch()
   }
 })
@@ -330,6 +439,17 @@ async function performSearch() {
     })
     
     itemResults.value = results
+  } else if (selectedCategoryLocal.value === 'Monsters') {
+    const results = await searchMonsters({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+      sizes: monsterFilters.value.size ? [monsterFilters.value.size] : undefined,
+      types: monsterFilters.value.type ? [monsterFilters.value.type] : undefined,
+      min_cr: monsterFilters.value.minCr,
+      max_cr: monsterFilters.value.maxCr,
+    })
+    
+    monsterResults.value = results
   }
 }
 
@@ -409,12 +529,65 @@ const filteredEquipment = computed(() => {
   return results
 })
 
+// Computed filtered and sorted monsters
+const filteredMonsters = computed(() => {
+  let results = [...monsterResults.value]
+  
+  // Apply size filter (already applied in search, but can do client-side too)
+  if (monsterFilters.value.size) {
+    results = results.filter(monster => {
+      // Convert size code to match frontend filter
+      const sizeMap: Record<string, string> = {
+        'Tiny': 'T',
+        'Small': 'S', 
+        'Medium': 'M',
+        'Large': 'L',
+        'Huge': 'H',
+        'Gargantuan': 'G'
+      }
+      const sizeCode = sizeMap[monster.size] || monster.size
+      return sizeCode === monsterFilters.value.size
+    })
+  }
+  
+  // Apply type filter
+  if (monsterFilters.value.type) {
+    results = results.filter(monster => 
+      monster.creature_type.toLowerCase().includes(monsterFilters.value.type.toLowerCase())
+    )
+  }
+  
+  // Apply sorting
+  results.sort((a, b) => {
+    let aVal: any = a[sortColumn.value as keyof MonsterSummary]
+    let bVal: any = b[sortColumn.value as keyof MonsterSummary]
+    
+    // Handle different types
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase()
+      bVal = bVal.toLowerCase()
+    }
+    
+    if (sortDirection.value === 'asc') {
+      return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+    } else {
+      return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+    }
+  })
+  
+  return results
+})
+
 // Apply filters (triggers the computed properties)
 function applyFilters() {
   // Filters are applied via computed properties
 }
 
 function applyEquipmentFilters() {
+  performSearch()
+}
+
+function applyMonsterFilters() {
   performSearch()
 }
 
@@ -426,6 +599,11 @@ function toggleSort(column: string) {
     sortColumn.value = column
     sortDirection.value = 'asc'
   }
+}
+
+// Sort by a column (alias for toggleSort)
+function sortBy(column: string) {
+  toggleSort(column)
 }
 
 // Get sort icon for a column
@@ -477,18 +655,179 @@ async function selectItem(item: ItemSummary) {
   }
 }
 
+async function selectMonster(monster: MonsterSummary) {
+  // Fetch full monster details
+  const details = await getMonsterDetails(monster.name, monster.source)
+  
+  if (details) {
+    // Format the monster details for display
+    modalContent.value = {
+      visible: true,
+      title: monster.name,
+      content: formatMonsterDetails(monster, details)
+    }
+  }
+}
+
 function closeModal() {
   modalContent.value.visible = false
 }
 
+function formatMonsterDetails(summary: MonsterSummary, details: any): string {
+  let html = '<div class="monster-details">'
+  
+  // Header info
+  html += '<div class="monster-header">'
+  html += `<div class="monster-type">${summary.size} ${summary.creature_type}, ${summary.alignment}</div>`
+  html += '</div>'
+  
+  // Core stats
+  html += '<div class="monster-stats">'
+  html += `<div class="stat-row"><strong>Armor Class:</strong> ${summary.ac}`
+  // Handle AC details (can be array or single value)
+  if (details.ac) {
+    if (Array.isArray(details.ac) && details.ac[0] && details.ac[0].from) {
+      html += ` (${details.ac[0].from.join(', ')})`
+    } else if (details.ac.from) {
+      html += ` (${details.ac.from.join(', ')})`
+    }
+  }
+  html += '</div>'
+  
+  html += `<div class="stat-row"><strong>Hit Points:</strong> ${summary.hp}`
+  // Handle HP details (can be object or number)
+  if (details.hp && typeof details.hp === 'object' && details.hp.formula) {
+    html += ` (${details.hp.formula})`
+  }
+  html += '</div>'
+  
+  // Speed
+  if (details.speed) {
+    let speeds = []
+    // Helper to extract speed value from number or object
+    const getSpeed = (val: any) => {
+      if (typeof val === 'number') return val
+      if (val && typeof val === 'object' && val.number) return val.number
+      return null
+    }
+    
+    const walk = getSpeed(details.speed.walk)
+    const fly = getSpeed(details.speed.fly)
+    const swim = getSpeed(details.speed.swim)
+    const climb = getSpeed(details.speed.climb)
+    const burrow = getSpeed(details.speed.burrow)
+    
+    if (walk) speeds.push(`${walk} ft.`)
+    if (fly) {
+      let flyStr = `fly ${fly} ft.`
+      if (details.speed.hover || details.speed.canHover) flyStr += ' (hover)'
+      speeds.push(flyStr)
+    }
+    if (swim) speeds.push(`swim ${swim} ft.`)
+    if (climb) speeds.push(`climb ${climb} ft.`)
+    if (burrow) speeds.push(`burrow ${burrow} ft.`)
+    
+    if (speeds.length > 0) {
+      html += `<div class="stat-row"><strong>Speed:</strong> ${speeds.join(', ')}</div>`
+    }
+  }
+  html += '</div>'
+  
+  // Ability scores
+  html += '<div class="ability-scores">'
+  html += '<table class="abilities-table"><tr>'
+  html += `<th>STR</th><th>DEX</th><th>CON</th><th>INT</th><th>WIS</th><th>CHA</th>`
+  html += '</tr><tr>'
+  html += `<td>${details.str || 10} (${getModifier(details.str || 10)})</td>`
+  html += `<td>${details.dex || 10} (${getModifier(details.dex || 10)})</td>`
+  html += `<td>${details.con || 10} (${getModifier(details.con || 10)})</td>`
+  html += `<td>${details.int || 10} (${getModifier(details.int || 10)})</td>`
+  html += `<td>${details.wis || 10} (${getModifier(details.wis || 10)})</td>`
+  html += `<td>${details.cha || 10} (${getModifier(details.cha || 10)})</td>`
+  html += '</tr></table>'
+  html += '</div>'
+  
+  // Skills, senses, languages
+  html += '<div class="monster-details-section">'
+  if (details.skill) {
+    const skills = Object.entries(details.skill).map(([skill, bonus]) => `${skill} ${bonus}`).join(', ')
+    html += `<div><strong>Skills:</strong> ${skills}</div>`
+  }
+  if (details.senses && details.senses.length > 0) {
+    html += `<div><strong>Senses:</strong> ${details.senses.join(', ')}, passive Perception ${details.passive || 10}</div>`
+  }
+  if (details.languages && details.languages.length > 0) {
+    html += `<div><strong>Languages:</strong> ${details.languages.join(', ')}</div>`
+  }
+  html += `<div><strong>Challenge:</strong> ${summary.cr}</div>`
+  html += '</div>'
+  
+  // Traits
+  if (details.trait_entries && details.trait_entries.length > 0) {
+    html += '<div class="monster-traits">'
+    html += '<h4>Traits</h4>'
+    for (const trait of details.trait_entries) {
+      if (trait.name) {
+        html += `<div class="trait"><strong>${trait.name}.</strong> `
+        if (trait.entries) {
+          for (const entry of trait.entries) {
+            if (typeof entry === 'string') {
+              html += parse5etoolsTags(entry)
+            }
+          }
+        }
+        html += '</div>'
+      }
+    }
+    html += '</div>'
+  }
+  
+  // Actions
+  if (details.action && details.action.length > 0) {
+    html += '<div class="monster-actions">'
+    html += '<h4>Actions</h4>'
+    for (const action of details.action) {
+      if (action.name) {
+        html += `<div class="action"><strong>${action.name}.</strong> `
+        if (action.entries) {
+          for (const entry of action.entries) {
+            if (typeof entry === 'string') {
+              html += parse5etoolsTags(entry)
+            }
+          }
+        }
+        html += '</div>'
+      }
+    }
+    html += '</div>'
+  }
+  
+  // Source
+  html += `<div class="monster-source"><em>Source: ${summary.source}</em></div>`
+  
+  html += '</div>'
+  return html
+}
+
+// Get ability modifier
+function getModifier(score: number): string {
+  const mod = Math.floor((score - 10) / 2)
+  return mod >= 0 ? `+${mod}` : `${mod}`
+}
+
 // Format cost from copper pieces to standard notation
 function formatCost(value?: number): string {
-  if (!value) return '—'
+  if (!value && value !== 0) return '—'
+  
+  // Handle fractional copper (for items worth less than 1 cp)
+  if (value < 1) {
+    return `${value} cp`
+  }
   
   // Convert copper to gold/silver/copper
   const gold = Math.floor(value / 100)
   const silver = Math.floor((value % 100) / 10)
-  const copper = value % 10
+  const copper = Math.floor(value % 10)
   
   if (gold > 0) {
     return `${gold} gp`
@@ -497,6 +836,19 @@ function formatCost(value?: number): string {
   } else {
     return `${copper} cp`
   }
+}
+
+// Format weight with proper decimal handling
+function formatWeight(weight?: number): string {
+  if (!weight) return '—'
+  
+  // If it's a whole number, show without decimal
+  if (weight === Math.floor(weight)) {
+    return `${weight} lb.`
+  }
+  
+  // Otherwise show with appropriate decimals
+  return `${weight} lb.`
 }
 
 function formatSpellDetails(summary: SpellSummary, details: any): string {
@@ -903,7 +1255,27 @@ function parse5etoolsTags(text: string): string {
 }
 
 /* Column widths */
-.col-name { min-width: 150px; max-width: 250px; }
+.col-name { 
+  min-width: 150px; 
+  max-width: 250px; 
+}
+.item-damage, .item-ac {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+.item-damage {
+  background: rgba(220, 38, 38, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+.item-ac {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
 .col-level { width: 80px; }
 .col-school { width: 110px; }
 .col-time { width: 100px; }
@@ -1373,5 +1745,64 @@ function parse5etoolsTags(text: string): string {
 .modal-body :deep(.tagged) {
   color: var(--color-text-secondary, #999);
   font-style: italic;
+}
+
+/* Monster-specific styles */
+.col-size { width: 80px; }
+.col-cr { width: 60px; }
+.col-hp { width: 60px; }
+.col-ac { width: 60px; }
+.col-alignment { width: 120px; }
+
+.monster-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.monster-row:hover {
+  background: var(--color-surface-hover, #252525);
+}
+
+.monster-details .abilities-table {
+  margin: 12px 0;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.monster-details .abilities-table th {
+  background: var(--color-surface, #1a1a1a);
+  padding: 4px 8px;
+  border: 1px solid var(--color-border, #333);
+  font-weight: 600;
+}
+
+.monster-details .abilities-table td {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border, #333);
+  text-align: center;
+}
+
+.monster-traits,
+.monster-actions,
+.monster-reactions,
+.monster-legendary {
+  margin-top: 16px;
+}
+
+.monster-traits h4,
+.monster-actions h4,
+.monster-reactions h4,
+.monster-legendary h4 {
+  color: var(--color-primary, #007bff);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-border, #333);
+  padding-bottom: 4px;
+}
+
+.trait,
+.action,
+.reaction,
+.legendary {
+  margin-bottom: 8px;
 }
 </style>

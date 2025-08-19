@@ -65,7 +65,7 @@ pub fn collect_book_content(book: &Book, repo_path: &Path) -> Result<BookContent
     // Collect class content (filtered)
     collect_filtered_content(&mut content, &data_dir, "class", source)?;
     
-    // Collect items (filtered)
+    // Collect items (filtered from both items.json and items-base.json)
     collect_filtered_items(&mut content, &data_dir, source)?;
     
     // Collect races (filtered)
@@ -79,6 +79,22 @@ pub fn collect_book_content(book: &Book, repo_path: &Path) -> Result<BookContent
     
     // Collect optional features (filtered)
     collect_filtered_optfeatures(&mut content, &data_dir, source)?;
+    
+    // Collect additional content types with source filtering
+    collect_filtered_generic(&mut content, &data_dir, source, "actions.json", "action", "actions")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "conditionsdiseases.json", "condition", "conditions")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "conditionsdiseases.json", "disease", "diseases")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "cultsboons.json", "cult", "cults")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "cultsboons.json", "boon", "boons")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "deities.json", "deity", "deities")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "languages.json", "language", "languages")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "objects.json", "object", "objects")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "rewards.json", "reward", "rewards")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "tables.json", "table", "tables")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "trapshazards.json", "trap", "traps")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "trapshazards.json", "hazard", "hazards")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "variantrules.json", "variantrule", "variantrules")?;
+    collect_filtered_generic(&mut content, &data_dir, source, "vehicles.json", "vehicle", "vehicles")?;
     
     // Collect images
     collect_images(&mut content, repo_path, source)?;
@@ -169,18 +185,29 @@ fn collect_filtered_content(
     Ok(())
 }
 
-/// Collect filtered items
+/// Collect filtered items (from both items.json and items-base.json)
 fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &str) -> Result<()> {
+    let mut all_items = Vec::new();
+    
+    // Collect from items.json (magic items, etc.)
     let items_file = data_dir.join("items.json");
-    if !items_file.exists() {
-        return Ok(());
+    if items_file.exists() {
+        let data = parser::load_json_file(&items_file)?;
+        let filtered = parser::filter_by_source(&data, source, "item");
+        all_items.extend(filtered);
     }
     
-    let data = parser::load_json_file(&items_file)?;
-    let filtered = parser::filter_by_source(&data, source, "item");
+    // Collect from items-base.json (weapons, armor, basic gear)
+    let items_base_file = data_dir.join("items-base.json");
+    if items_base_file.exists() {
+        let data = parser::load_json_file(&items_base_file)?;
+        let filtered = parser::filter_by_source(&data, source, "baseitem");
+        all_items.extend(filtered);
+    }
     
-    if !filtered.is_empty() {
-        let result = json!({ "item": filtered });
+    // Save all items if any were found
+    if !all_items.is_empty() {
+        let result = json!({ "item": all_items });
         content.add_json(&format!("items/{}.json", source.to_lowercase()), &result)?;
     }
     
@@ -291,6 +318,44 @@ fn collect_filtered_optfeatures(content: &mut BookContent, data_dir: &Path, sour
     if !filtered.is_empty() {
         let result = json!({ "optionalfeature": filtered });
         content.add_json(&format!("optionalfeatures/{}.json", source.to_lowercase()), &result)?;
+    }
+    
+    Ok(())
+}
+
+/// Generic function to collect and filter content from any JSON file
+fn collect_filtered_generic(
+    content: &mut BookContent,
+    data_dir: &Path,
+    source: &str,
+    filename: &str,
+    json_key: &str,
+    output_dir: &str,
+) -> Result<()> {
+    let file_path = data_dir.join(filename);
+    if !file_path.exists() {
+        return Ok(());
+    }
+    
+    let data = parser::load_json_file(&file_path)?;
+    let filtered = parser::filter_by_source(&data, source, json_key);
+    
+    if !filtered.is_empty() {
+        let result = json!({ json_key: filtered });
+        content.add_json(&format!("{}/{}.json", output_dir, source.to_lowercase()), &result)?;
+    }
+    
+    // Check for corresponding fluff file
+    let fluff_filename = format!("fluff-{}", filename);
+    let fluff_file = data_dir.join(&fluff_filename);
+    if fluff_file.exists() {
+        let data = parser::load_json_file(&fluff_file)?;
+        let fluff_key = format!("{}Fluff", json_key);
+        let filtered = parser::filter_by_source(&data, source, &fluff_key);
+        if !filtered.is_empty() {
+            let result = json!({ fluff_key: filtered });
+            content.add_json(&format!("{}/fluff-{}.json", output_dir, source.to_lowercase()), &result)?;
+        }
     }
     
     Ok(())

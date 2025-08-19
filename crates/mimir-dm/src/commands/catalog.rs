@@ -4,7 +4,11 @@ use std::path::PathBuf;
 use std::fs;
 use tauri::State;
 use serde_json;
-use mimir_dm_core::models::rules::{Spell, SpellData, SpellSummary, Item, ItemData, ItemSummary};
+use mimir_dm_core::models::rules::{
+    Spell, SpellData, SpellSummary, 
+    Item, ItemData, ItemSummary,
+    Monster, MonsterData, MonsterSummary
+};
 
 /// Spell catalog state - holds all loaded spells in memory
 pub struct SpellCatalog {
@@ -287,8 +291,8 @@ impl ItemCatalog {
         sources: Vec<String>,
         types: Vec<String>,
         rarities: Vec<String>,
-        min_value: Option<u32>,
-        max_value: Option<u32>
+        min_value: Option<f64>,
+        max_value: Option<f64>
     ) -> Vec<ItemSummary> {
         println!("Searching items - query: {:?}, sources: {:?}, total items: {}", 
                  query, sources, self.items.len());
@@ -308,8 +312,11 @@ impl ItemCatalog {
                 }
                 
                 // Filter by type
-                if !types.is_empty() && !types.contains(&item.item_type) {
-                    return false;
+                if !types.is_empty() {
+                    let item_type = item.item_type.as_ref().map(|t| t.as_str()).unwrap_or("?");
+                    if !types.iter().any(|t| t == item_type) {
+                        return false;
+                    }
                 }
                 
                 // Filter by rarity
@@ -322,13 +329,13 @@ impl ItemCatalog {
                 
                 // Filter by value range
                 if let Some(min) = min_value {
-                    if item.value.unwrap_or(0) < min {
+                    if item.value.unwrap_or(0.0) < min {
                         return false;
                     }
                 }
                 
                 if let Some(max) = max_value {
-                    if item.value.unwrap_or(u32::MAX) > max {
+                    if item.value.unwrap_or(f64::MAX) > max {
                         return false;
                     }
                 }
@@ -370,8 +377,8 @@ pub async fn search_items(
     sources: Option<Vec<String>>,
     types: Option<Vec<String>>,
     rarities: Option<Vec<String>>,
-    min_value: Option<u32>,
-    max_value: Option<u32>,
+    min_value: Option<f64>,
+    max_value: Option<f64>,
 ) -> Result<Vec<ItemSummary>, String> {
     let catalog = catalog.lock().map_err(|e| e.to_string())?;
     
@@ -401,4 +408,236 @@ pub async fn get_item_details(
         .cloned();
     
     Ok(item)
+}
+
+/// Monster catalog state - holds all loaded monsters in memory
+pub struct MonsterCatalog {
+    monsters: Vec<Monster>,
+}
+
+impl MonsterCatalog {
+    pub fn new() -> Self {
+        Self {
+            monsters: Vec::new(),
+        }
+    }
+    
+    /// Load monsters from book directories (extracted archives)
+    pub fn load_from_books_directory(&mut self, books_dir: &PathBuf) -> Result<(), String> {
+        if !books_dir.exists() {
+            println!("Books directory not found: {:?}", books_dir);
+            return Ok(()); // Not an error, just no books yet
+        }
+        
+        // Clear existing monsters
+        self.monsters.clear();
+        
+        // Iterate through each book directory
+        for entry in fs::read_dir(books_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let book_path = entry.path();
+            
+            if !book_path.is_dir() {
+                continue;
+            }
+            
+            let book_id = entry.file_name().to_string_lossy().to_string();
+            
+            // Check the bestiary directory
+            let bestiary_dir = book_path.join("bestiary");
+            if bestiary_dir.exists() {
+                for bestiary_entry in fs::read_dir(&bestiary_dir).map_err(|e| e.to_string())? {
+                    let bestiary_entry = bestiary_entry.map_err(|e| e.to_string())?;
+                    let bestiary_file = bestiary_entry.path();
+                    
+                    // Skip non-JSON files and fluff files
+                    if bestiary_file.extension().and_then(|s| s.to_str()) != Some("json") {
+                        continue;
+                    }
+                    
+                    let filename = bestiary_file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if filename.starts_with("fluff-") || filename == "index.json" || filename == "foundry.json" {
+                        continue;
+                    }
+                    
+                    // This should match files like "bestiary-mm.json"
+                    if filename.starts_with("bestiary-") {
+                        match fs::read_to_string(&bestiary_file) {
+                            Ok(content) => {
+                                match serde_json::from_str::<MonsterData>(&content) {
+                                    Ok(monster_data) => {
+                                        println!("Loaded {} monsters from {}/{}", 
+                                                monster_data.monster.len(), book_id, filename);
+                                        self.monsters.extend(monster_data.monster);
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Failed to parse {}/{}: {}", book_id, filename, e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to read {}/{}: {}", book_id, filename, e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        println!("Total monsters loaded: {}", self.monsters.len());
+        Ok(())
+    }
+    
+    /// Search monsters with filters
+    pub fn search(&self, 
+        query: Option<String>,
+        sources: Vec<String>,
+        sizes: Vec<String>,
+        types: Vec<String>,
+        min_cr: Option<f32>,
+        max_cr: Option<f32>,
+        environments: Vec<String>
+    ) -> Vec<MonsterSummary> {
+        println!("Searching monsters - query: {:?}, sources: {:?}, total monsters: {}", 
+                 query, sources, self.monsters.len());
+        
+        let results: Vec<MonsterSummary> = self.monsters.iter()
+            .filter(|monster| {
+                // Filter by query (search in name)
+                if let Some(q) = &query {
+                    if !q.is_empty() && !monster.name.to_lowercase().contains(&q.to_lowercase()) {
+                        return false;
+                    }
+                }
+                
+                // Filter by sources
+                if !sources.is_empty() && !sources.contains(&monster.source) {
+                    return false;
+                }
+                
+                // Filter by size
+                if !sizes.is_empty() {
+                    let monster_size = monster.size.as_ref()
+                        .and_then(|s| s.first())
+                        .map(|s| s.as_str())
+                        .unwrap_or("");
+                    if !sizes.iter().any(|s| s == monster_size) {
+                        return false;
+                    }
+                }
+                
+                // Filter by type (handle both string and object)
+                if !types.is_empty() {
+                    let monster_type = match &monster.creature_type {
+                        Some(serde_json::Value::String(s)) => s.as_str(),
+                        Some(serde_json::Value::Object(obj)) => {
+                            obj.get("type")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                        },
+                        _ => "",
+                    };
+                    if !types.iter().any(|t| t == monster_type) {
+                        return false;
+                    }
+                }
+                
+                // Filter by environment
+                if !environments.is_empty() {
+                    if let Some(envs) = &monster.environment {
+                        let has_env = environments.iter().any(|e| envs.contains(e));
+                        if !has_env {
+                            return false;
+                        }
+                    } else {
+                        return false;  // No environments means it doesn't match filter
+                    }
+                }
+                
+                true
+            })
+            .map(MonsterSummary::from)
+            .filter(|summary| {
+                // Apply CR range filter on the summary (which has cr_numeric)
+                if let Some(min) = min_cr {
+                    if summary.cr_numeric < min {
+                        return false;
+                    }
+                }
+                
+                if let Some(max) = max_cr {
+                    if summary.cr_numeric > max {
+                        return false;
+                    }
+                }
+                
+                true
+            })
+            .collect();
+            
+        println!("Found {} monsters matching criteria", results.len());
+        results
+    }
+}
+
+/// Initialize the monster catalog by loading data from the books directory
+#[tauri::command]
+pub async fn initialize_monster_catalog(
+    catalog: State<'_, std::sync::Mutex<MonsterCatalog>>
+) -> Result<(), String> {
+    use crate::APP_PATHS;
+    
+    // Get app paths to find the books directory
+    let app_paths = APP_PATHS.get()
+        .ok_or_else(|| "App paths not initialized".to_string())?;
+    
+    let books_dir = app_paths.data_dir.join("books");
+    
+    let mut catalog = catalog.lock().map_err(|e| e.to_string())?;
+    catalog.load_from_books_directory(&books_dir)?;
+    
+    Ok(())
+}
+
+/// Search monsters with optional filters
+#[tauri::command]
+pub async fn search_monsters(
+    catalog: State<'_, std::sync::Mutex<MonsterCatalog>>,
+    query: Option<String>,
+    sources: Option<Vec<String>>,
+    sizes: Option<Vec<String>>,
+    types: Option<Vec<String>>,
+    min_cr: Option<f32>,
+    max_cr: Option<f32>,
+    environments: Option<Vec<String>>,
+) -> Result<Vec<MonsterSummary>, String> {
+    let catalog = catalog.lock().map_err(|e| e.to_string())?;
+    
+    let results = catalog.search(
+        query,
+        sources.unwrap_or_default(),
+        sizes.unwrap_or_default(),
+        types.unwrap_or_default(),
+        min_cr,
+        max_cr,
+        environments.unwrap_or_default()
+    );
+    
+    Ok(results)
+}
+
+/// Get details for a specific monster
+#[tauri::command]
+pub async fn get_monster_details(
+    catalog: State<'_, std::sync::Mutex<MonsterCatalog>>,
+    name: String,
+    source: String,
+) -> Result<Option<Monster>, String> {
+    let catalog = catalog.lock().map_err(|e| e.to_string())?;
+    
+    let monster = catalog.monsters.iter()
+        .find(|m| m.name == name && m.source == source)
+        .cloned();
+    
+    Ok(monster)
 }

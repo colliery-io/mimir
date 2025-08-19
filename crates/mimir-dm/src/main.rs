@@ -46,11 +46,13 @@ fn main() {
             let db_service = Arc::new(DatabaseService);
             app.manage(db_service);
             
-            // Initialize spell catalog
+            // Initialize catalogs
             let spell_catalog = Mutex::new(commands::catalog::SpellCatalog::new());
             let item_catalog = Mutex::new(commands::catalog::ItemCatalog::new());
+            let monster_catalog = Mutex::new(commands::catalog::MonsterCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
+            app.manage(monster_catalog);
             
             Ok(())
         })
@@ -113,7 +115,10 @@ fn main() {
             get_spell_details,
             initialize_item_catalog,
             search_items,
-            get_item_details
+            get_item_details,
+            initialize_monster_catalog,
+            search_monsters,
+            get_monster_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
