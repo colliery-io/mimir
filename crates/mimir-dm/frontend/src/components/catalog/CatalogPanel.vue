@@ -12,12 +12,12 @@
             <option value="Spells">Spells ✓</option>
             <option value="Monsters">Monsters</option>
             <option value="Equipment">Equipment</option>
-            <option value="Magic Items">Magic Items (coming soon)</option>
-            <option value="Classes">Classes (coming soon)</option>
-            <option value="Races">Races (coming soon)</option>
-            <option value="Feats">Feats (coming soon)</option>
-            <option value="Backgrounds">Backgrounds (coming soon)</option>
-            <option value="Conditions">Conditions (coming soon)</option>
+            <option value="Magic Items">Magic Items</option>
+            <option value="Classes">Classes</option>
+            <option value="Races">Races</option>
+            <option value="Feats">Feats</option>
+            <option value="Backgrounds">Backgrounds</option>
+            <option value="Conditions">Conditions</option>
           </select>
         </div>
         <div class="search-bar">
@@ -272,6 +272,62 @@
         </table>
       </div>
       
+      <!-- Magic Items Table (reuses equipment infrastructure) -->
+      <div v-else-if="selectedCategoryLocal === 'Magic Items'" class="table-container">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th class="col-name">
+                <button class="sort-header" @click="sortBy('name')">
+                  Name
+                  {{ getSortIcon('name') }}
+                </button>
+              </th>
+              <th class="col-rarity">
+                <select v-model="magicItemFilters.rarity" @change="applyMagicItemFilters" class="filter-select">
+                  <option value="">Rarity</option>
+                  <option value="common">Common</option>
+                  <option value="uncommon">Uncommon</option>
+                  <option value="rare">Rare</option>
+                  <option value="very rare">Very Rare</option>
+                  <option value="legendary">Legendary</option>
+                  <option value="artifact">Artifact</option>
+                </select>
+              </th>
+              <th class="col-type">Type</th>
+              <th class="col-attunement">Attunement</th>
+              <th class="col-source">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="item in filteredMagicItems"
+              :key="`${item.name}-${item.source}`"
+              class="item-row"
+              @click="selectItem(item)"
+            >
+              <td class="col-name">
+                <span class="item-name">{{ item.name }}</span>
+              </td>
+              <td class="col-rarity">
+                <span :class="`rarity-${item.rarity}`">{{ capitalizeRarity(item.rarity) }}</span>
+              </td>
+              <td class="col-type">{{ item.type_name }}</td>
+              <td class="col-attunement">{{ item.reqAttune || '—' }}</td>
+              <td class="col-source">{{ item.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Simplified placeholder tables for other categories -->
+      <div v-else-if="['Classes', 'Races', 'Feats', 'Backgrounds', 'Conditions'].includes(selectedCategoryLocal)" class="table-container">
+        <div class="placeholder-text">
+          <p>{{ selectedCategoryLocal }} catalog implementation in progress...</p>
+          <p class="subtext">This category will display {{ selectedCategoryLocal.toLowerCase() }} from all loaded books.</p>
+        </div>
+      </div>
+      
       <!-- Other categories placeholder -->
       <div v-else class="placeholder-text">
         <p>{{ selectedCategoryLocal }} catalog coming soon...</p>
@@ -358,6 +414,11 @@ const monsterFilters = ref({
   maxCr: undefined as number | undefined
 })
 
+// Magic Item filtering state
+const magicItemFilters = ref({
+  rarity: ''
+})
+
 // Sorting state
 const sortColumn = ref<string>('name')
 const sortDirection = ref<'asc' | 'desc'>('asc')
@@ -397,6 +458,9 @@ watch(selectedCategoryLocal, async (newCategory) => {
     await performSearch()
   } else if (newCategory === 'Monsters') {
     await initializeMonsterCatalog()
+    await performSearch()
+  } else if (newCategory === 'Magic Items') {
+    await initializeItemCatalog()
     await performSearch()
   }
 })
@@ -450,6 +514,15 @@ async function performSearch() {
     })
     
     monsterResults.value = results
+  } else if (selectedCategoryLocal.value === 'Magic Items') {
+    // Search all items but we'll filter for magic items on the frontend
+    const results = await searchItems({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+    })
+    
+    // Filter for magic items (those with rarity other than 'none')
+    itemResults.value = results.filter(item => item.rarity && item.rarity !== 'none')
   }
 }
 
@@ -578,6 +651,36 @@ const filteredMonsters = computed(() => {
   return results
 })
 
+// Computed filtered and sorted magic items
+const filteredMagicItems = computed(() => {
+  let results = [...itemResults.value]
+  
+  // Apply rarity filter
+  if (magicItemFilters.value.rarity) {
+    results = results.filter(item => item.rarity === magicItemFilters.value.rarity)
+  }
+  
+  // Apply sorting
+  results.sort((a, b) => {
+    let aVal: any = a[sortColumn.value as keyof ItemSummary]
+    let bVal: any = b[sortColumn.value as keyof ItemSummary]
+    
+    // Handle different types
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase()
+      bVal = bVal.toLowerCase()
+    }
+    
+    if (sortDirection.value === 'asc') {
+      return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+    } else {
+      return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+    }
+  })
+  
+  return results
+})
+
 // Apply filters (triggers the computed properties)
 function applyFilters() {
   // Filters are applied via computed properties
@@ -589,6 +692,17 @@ function applyEquipmentFilters() {
 
 function applyMonsterFilters() {
   performSearch()
+}
+
+function applyMagicItemFilters() {
+  // Magic items are filtered client-side via computed property
+}
+
+function capitalizeRarity(rarity: string): string {
+  if (rarity === 'very rare') return 'Very Rare'
+  return rarity.split(' ').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ')
 }
 
 // Toggle sort direction for a column
@@ -1391,6 +1505,11 @@ function parse5etoolsTags(text: string): string {
   font-style: italic;
   padding: var(--spacing-xl, 24px);
 }
+.placeholder-text .subtext {
+  margin-top: 12px;
+  font-size: 0.9em;
+  opacity: 0.7;
+}
 
 /* Loading and error states */
 .loading-message,
@@ -1805,4 +1924,15 @@ function parse5etoolsTags(text: string): string {
 .legendary {
   margin-bottom: 8px;
 }
+
+/* Rarity colors */
+.col-rarity { width: 100px; }
+.col-attunement { width: 180px; }
+
+.rarity-common { color: #8b8b8b; }
+.rarity-uncommon { color: #1eff00; }
+.rarity-rare { color: #0070dd; }
+.rarity-very.rare { color: #a335ee; }
+.rarity-legendary { color: #ff8000; }
+.rarity-artifact { color: #e6cc80; }
 </style>

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::fs;
 use tauri::State;
 use serde_json;
+use tracing::{debug, info, warn, error};
 use mimir_dm_core::models::rules::{
     Spell, SpellData, SpellSummary, 
     Item, ItemData, ItemSummary,
@@ -25,7 +26,7 @@ impl SpellCatalog {
     /// Load spells from book directories (extracted archives)
     pub fn load_from_books_directory(&mut self, books_dir: &PathBuf) -> Result<(), String> {
         if !books_dir.exists() {
-            println!("Books directory not found: {:?}", books_dir);
+            info!("Books directory not found: {:?}", books_dir);
             return Ok(()); // Not an error, just no books yet
         }
         
@@ -66,17 +67,17 @@ impl SpellCatalog {
                             Ok(content) => {
                                 match serde_json::from_str::<SpellData>(&content) {
                                     Ok(spell_data) => {
-                                        println!("Loaded {} spells from {}/{}", 
+                                        debug!("Loaded {} spells from {}/{}", 
                                                 spell_data.spell.len(), book_id, filename);
                                         self.spells.extend(spell_data.spell);
                                     }
                                     Err(e) => {
-                                        eprintln!("Failed to parse {}/{}: {}", book_id, filename, e);
+                                        warn!("Failed to parse {}/{}: {}", book_id, filename, e);
                                     }
                                 }
                             }
                             Err(e) => {
-                                eprintln!("Failed to read {}/{}: {}", book_id, filename, e);
+                                error!("Failed to read {}/{}: {}", book_id, filename, e);
                             }
                         }
                     }
@@ -84,7 +85,7 @@ impl SpellCatalog {
             }
         }
         
-        println!("Total spells loaded: {}", self.spells.len());
+        info!("Total spells loaded: {}", self.spells.len());
         Ok(())
     }
     
@@ -97,7 +98,7 @@ impl SpellCatalog {
         ritual: Option<bool>,
         concentration: Option<bool>
     ) -> Vec<SpellSummary> {
-        println!("Searching spells - query: {:?}, sources: {:?}, total spells: {}", 
+        debug!("Searching spells - query: {:?}, sources: {:?}, total spells: {}", 
                  query, sources, self.spells.len());
         
         let results: Vec<SpellSummary> = self.spells.iter()
@@ -145,7 +146,7 @@ impl SpellCatalog {
             .map(SpellSummary::from)
             .collect();
             
-        println!("Found {} spells matching criteria", results.len());
+        debug!("Found {} spells matching criteria", results.len());
         results
     }
 }
@@ -225,7 +226,7 @@ impl ItemCatalog {
     /// Load items from book directories (extracted archives)
     pub fn load_from_books_directory(&mut self, books_dir: &PathBuf) -> Result<(), String> {
         if !books_dir.exists() {
-            println!("Books directory not found: {:?}", books_dir);
+            info!("Books directory not found: {:?}", books_dir);
             return Ok(()); // Not an error, just no books yet
         }
         
@@ -264,7 +265,7 @@ impl ItemCatalog {
                         Ok(content) => {
                             match serde_json::from_str::<ItemData>(&content) {
                                 Ok(item_data) => {
-                                    println!("Loaded {} items from {}/{}", 
+                                    debug!("Loaded {} items from {}/{}", 
                                             item_data.item.len(), book_id, filename);
                                     self.items.extend(item_data.item);
                                 }
@@ -281,7 +282,7 @@ impl ItemCatalog {
             }
         }
         
-        println!("Total items loaded: {}", self.items.len());
+        info!("Total items loaded: {}", self.items.len());
         Ok(())
     }
     
@@ -294,7 +295,7 @@ impl ItemCatalog {
         min_value: Option<f64>,
         max_value: Option<f64>
     ) -> Vec<ItemSummary> {
-        println!("Searching items - query: {:?}, sources: {:?}, total items: {}", 
+        debug!("Searching items - query: {:?}, sources: {:?}, total items: {}", 
                  query, sources, self.items.len());
         
         let results: Vec<ItemSummary> = self.items.iter()
@@ -345,7 +346,7 @@ impl ItemCatalog {
             .map(ItemSummary::from)
             .collect();
             
-        println!("Found {} items matching criteria", results.len());
+        debug!("Found {} items matching criteria", results.len());
         results
     }
 }
@@ -425,7 +426,7 @@ impl MonsterCatalog {
     /// Load monsters from book directories (extracted archives)
     pub fn load_from_books_directory(&mut self, books_dir: &PathBuf) -> Result<(), String> {
         if !books_dir.exists() {
-            println!("Books directory not found: {:?}", books_dir);
+            info!("Books directory not found: {:?}", books_dir);
             return Ok(()); // Not an error, just no books yet
         }
         
@@ -466,17 +467,17 @@ impl MonsterCatalog {
                             Ok(content) => {
                                 match serde_json::from_str::<MonsterData>(&content) {
                                     Ok(monster_data) => {
-                                        println!("Loaded {} monsters from {}/{}", 
+                                        debug!("Loaded {} monsters from {}/{}", 
                                                 monster_data.monster.len(), book_id, filename);
                                         self.monsters.extend(monster_data.monster);
                                     }
                                     Err(e) => {
-                                        eprintln!("Failed to parse {}/{}: {}", book_id, filename, e);
+                                        warn!("Failed to parse {}/{}: {}", book_id, filename, e);
                                     }
                                 }
                             }
                             Err(e) => {
-                                eprintln!("Failed to read {}/{}: {}", book_id, filename, e);
+                                error!("Failed to read {}/{}: {}", book_id, filename, e);
                             }
                         }
                     }
@@ -484,7 +485,7 @@ impl MonsterCatalog {
             }
         }
         
-        println!("Total monsters loaded: {}", self.monsters.len());
+        info!("Total monsters loaded: {}", self.monsters.len());
         Ok(())
     }
     
@@ -498,7 +499,7 @@ impl MonsterCatalog {
         max_cr: Option<f32>,
         environments: Vec<String>
     ) -> Vec<MonsterSummary> {
-        println!("Searching monsters - query: {:?}, sources: {:?}, total monsters: {}", 
+        debug!("Searching monsters - query: {:?}, sources: {:?}, total monsters: {}", 
                  query, sources, self.monsters.len());
         
         let results: Vec<MonsterSummary> = self.monsters.iter()
@@ -575,7 +576,7 @@ impl MonsterCatalog {
             })
             .collect();
             
-        println!("Found {} monsters matching criteria", results.len());
+        debug!("Found {} monsters matching criteria", results.len());
         results
     }
 }

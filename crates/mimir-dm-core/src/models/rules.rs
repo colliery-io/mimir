@@ -185,6 +185,11 @@ pub struct Item {
     pub stealth: Option<bool>,
     pub armor: Option<bool>,
     
+    // Magic item properties
+    pub req_attune: Option<serde_json::Value>,  // Can be bool or string
+    pub tier: Option<String>,
+    pub curse: Option<bool>,
+    
     // Other flags
     pub srd: Option<serde_json::Value>,  // Can be bool or string
     pub basic_rules: Option<bool>,
@@ -199,6 +204,7 @@ pub struct ItemData {
 
 /// Simplified item for search results
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ItemSummary {
     pub name: String,
     pub item_type: String,
@@ -209,6 +215,7 @@ pub struct ItemSummary {
     pub weight: Option<f64>,
     pub ac: Option<u8>,
     pub damage: Option<String>,
+    pub req_attune: Option<String>,
     pub description: String,
 }
 
@@ -274,6 +281,12 @@ impl From<&Item> for ItemSummary {
             weight: item.weight,
             ac: item.ac,
             damage,
+            req_attune: match &item.req_attune {
+                Some(serde_json::Value::Bool(true)) => Some("Yes".to_string()),
+                Some(serde_json::Value::Bool(false)) => None,
+                Some(serde_json::Value::String(s)) => Some(s.clone()),
+                _ => None,
+            },
             description,
         }
     }

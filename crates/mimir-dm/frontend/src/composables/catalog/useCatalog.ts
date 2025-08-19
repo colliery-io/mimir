@@ -35,6 +35,7 @@ export interface ItemSummary {
   weight?: number
   ac?: number
   damage?: string
+  reqAttune?: string
   description: string
 }
 
