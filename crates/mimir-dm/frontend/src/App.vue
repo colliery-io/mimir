@@ -31,6 +31,8 @@ onMounted(async () => {
   await themeStore.loadThemes()
   // Apply saved theme preference
   themeStore.applyTheme()
+  // Initialize cross-window theme synchronization
+  await themeStore.initThemeSync()
 })
 </script>
 

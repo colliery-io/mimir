@@ -549,23 +549,35 @@ async fn search_book_for_reference(
     
     // Map reference types to data file patterns
     let file_patterns = match ref_type {
-        "spell" => vec!["spells-*.json", "book-*.json"],
-        "item" => vec!["items-*.json", "book-*.json"],
-        "creature" | "monster" => vec!["bestiary-*.json", "book-*.json"],
-        "class" => vec!["class-*.json", "book-*.json"],
-        "race" => vec!["race-*.json", "book-*.json"],
-        "feat" => vec!["feats-*.json", "book-*.json"],
-        "background" => vec!["backgrounds-*.json", "book-*.json"],
+        "spell" => vec!["spells-*.json", "*.json", "book-*.json"],
+        "item" => vec!["items-*.json", "*.json", "book-*.json"],
+        "creature" | "monster" => vec!["bestiary-*.json", "*.json", "book-*.json"],
+        "class" => vec!["class-*.json", "*.json", "book-*.json"],
+        "race" => vec!["race-*.json", "*.json", "book-*.json"],
+        "feat" => vec!["feats-*.json", "*.json", "book-*.json"],
+        "background" => vec!["backgrounds-*.json", "*.json", "book-*.json"],
         _ => vec!["book-*.json"],
     };
     
-    // Check data subdirectory first
+    // Check data subdirectory first, then type-specific directories
     let data_dir = book_dir.join("data");
-    let search_dirs = if data_dir.exists() {
+    let mut search_dirs = if data_dir.exists() {
         vec![data_dir, book_dir.join("book")]
     } else {
         vec![book_dir.join("book")]
     };
+    
+    // Add type-specific directories
+    match ref_type {
+        "spell" => search_dirs.push(book_dir.join("spells")),
+        "item" => search_dirs.push(book_dir.join("items")),
+        "creature" | "monster" => search_dirs.push(book_dir.join("bestiary")),
+        "class" => search_dirs.push(book_dir.join("class")),
+        "race" => search_dirs.push(book_dir.join("races")),
+        "feat" => search_dirs.push(book_dir.join("feats")),
+        "background" => search_dirs.push(book_dir.join("backgrounds")),
+        _ => {}
+    }
     
     for dir in search_dirs {
         if !dir.exists() {

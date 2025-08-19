@@ -23,7 +23,7 @@ export const WINDOW_CONFIGS = {
   rulesReference: {
     label: 'rules-reference',
     url: 'rules.html',
-    title: 'D&D Rules Reference',
+    title: 'Reference Library',
     width: 1200,
     height: 800,
     minWidth: 900,

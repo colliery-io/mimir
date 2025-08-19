@@ -1,8 +1,8 @@
 //! Tests for template duplicate detection using content hashing
 
 use crate::common::TestDatabase;
-use mimir_dm_db::dal::template_documents::TemplateRepository;
-use mimir_dm_db::models::template_documents::{NewTemplateDocument, UpdateTemplateDocument};
+use mimir_dm_core::dal::campaign::template_documents::TemplateRepository;
+use mimir_dm_core::models::campaign::template_documents::{NewTemplateDocument, UpdateTemplateDocument};
 
 #[test]
 fn test_duplicate_content_prevents_new_version() {

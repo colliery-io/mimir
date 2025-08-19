@@ -1,11 +1,9 @@
 //! Common test utilities
 
-use mimir_dm_db::{DbConnection, DbError, Result};
+use mimir_dm_core::{establish_connection, run_migrations};
+use mimir_dm_core::error::Result;
 use diesel::prelude::*;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use tempfile::{TempDir, NamedTempFile};
-
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 /// Test database fixture that handles setup and cleanup
 pub struct TestDatabase {
@@ -21,7 +19,7 @@ impl TestDatabase {
         let url = temp_file.path().to_string_lossy().to_string();
         
         // Set up the database
-        let mut conn = DbConnection::establish(&url)?;
+        let mut conn = establish_connection(&url)?;
         Self::setup_database(&mut conn)?;
         drop(conn); // Close connection
         
@@ -33,16 +31,14 @@ impl TestDatabase {
     }
     
     /// Get a new connection to this test database
-    pub fn connection(&self) -> Result<DbConnection> {
-        mimir_dm_db::establish_connection(&self.url)
+    pub fn connection(&self) -> Result<SqliteConnection> {
+        establish_connection(&self.url)
     }
     
     /// Set up the database with migrations and test settings
-    fn setup_database(conn: &mut DbConnection) -> Result<()> {
+    fn setup_database(conn: &mut SqliteConnection) -> Result<()> {
         // Run migrations
-        conn.run_pending_migrations(MIGRATIONS).map_err(|e| {
-            DbError::Migration(format!("Failed to run migrations: {}", e))
-        })?;
+        run_migrations(conn)?;
         
         // Enable foreign keys
         diesel::sql_query("PRAGMA foreign_keys = ON")
@@ -57,15 +53,4 @@ impl TestDatabase {
         
         Ok(())
     }
-}
-
-/// Run a test with a fresh database (legacy function for compatibility)
-pub fn with_test_db<F, R>(f: F) -> Result<R>
-where
-    F: FnOnce(&mut DbConnection) -> Result<R>,
-{
-    // For in-memory database, we need to set up after establishing connection
-    let mut conn = mimir_dm_db::establish_connection(":memory:")?;
-    TestDatabase::setup_database(&mut conn)?;
-    f(&mut conn)
 }

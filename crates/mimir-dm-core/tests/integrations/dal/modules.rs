@@ -1,10 +1,10 @@
 //! Integration tests for module DAL
 
 use crate::common::TestDatabase;
-use mimir_dm_db::dal::campaigns::CampaignRepository;
-use mimir_dm_db::dal::modules::ModuleRepository;
-use mimir_dm_db::models::campaigns::NewCampaign;
-use mimir_dm_db::models::modules::NewModule;
+use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
+use mimir_dm_core::dal::campaign::modules::ModuleRepository;
+use mimir_dm_core::models::campaign::campaigns::NewCampaign;
+use mimir_dm_core::models::campaign::modules::NewModule;
 use tempfile::TempDir;
 
 #[test]

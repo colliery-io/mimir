@@ -5,4 +5,3 @@
 //! - `campaign`: Campaign management and story organization
 
 pub mod campaign;
-pub mod rules;

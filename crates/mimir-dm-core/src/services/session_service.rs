@@ -171,9 +171,10 @@ mod tests {
             .values((
                 modules::campaign_id.eq(1),
                 modules::name.eq("Test Module"),
-                modules::module_type.eq("mystery"),
                 modules::module_number.eq(1),
                 modules::status.eq("active"),
+                modules::expected_sessions.eq(5),
+                modules::actual_sessions.eq(0),
                 modules::created_at.eq(chrono::Utc::now().to_rfc3339()),
             ))
             .execute(&mut conn)

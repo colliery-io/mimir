@@ -28,7 +28,7 @@ const themeStore = useThemeStore()
 
 const selectedTheme = computed({
   get: () => themeStore.currentTheme,
-  set: (value) => themeStore.setTheme(value)
+  set: async (value) => await themeStore.setTheme(value)
 })
 
 const availableThemes = computed(() => {
@@ -43,9 +43,9 @@ const availableThemes = computed(() => {
   return themeStore.themes.length > 0 ? themeStore.themes : defaultThemes
 })
 
-const handleThemeChange = () => {
-  // Theme change is handled by the computed setter
-  // This method is here for any additional side effects if needed
+const handleThemeChange = async () => {
+  // Ensure the async setTheme completes
+  await themeStore.setTheme(selectedTheme.value)
 }
 </script>
 

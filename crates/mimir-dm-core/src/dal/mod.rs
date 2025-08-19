@@ -5,5 +5,4 @@
 //! - `campaign`: Repositories for campaign management
 
 pub mod campaign;
-pub mod rules;
 pub mod traits;

@@ -13,8 +13,8 @@
       </div>
       
       <div class="header-right">
-        <button @click="handleOpenRules" class="rules-button" title="Open Rules Reference (new window)">
-          Rules
+        <button @click="handleOpenRules" class="rules-button" title="Open Reference Library (new window)">
+          Reference
         </button>
         <router-link to="/settings" class="settings-icon" title="Settings">
           <img :src="gearIcon" alt="Settings" class="gear-icon" />

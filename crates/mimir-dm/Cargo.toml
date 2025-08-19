@@ -21,7 +21,6 @@ tauri-plugin-dialog = "2"
 
 # Our crates
 mimir-dm-core = { version = "0.0.0", path = "../mimir-dm-core" }
-mimir-dm-import = { version = "0.0.0", path = "../mimir-dm-import" }
 
 # Core dependencies
 anyhow = { workspace = true }
@@ -36,6 +35,11 @@ chrono = { workspace = true }
 tera = "1.19"
 thiserror = { workspace = true }
 tokio = { workspace = true }
+base64 = "0.22.1"
+tar = "0.4"
+flate2 = "1.0"
+tempfile = "3.10"
+walkdir = "2.5"
 
 # Remove TUI dependencies since we're going GUI
 # config = { workspace = true }

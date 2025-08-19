@@ -3,6 +3,7 @@
 mod app_init;
 mod commands;
 mod db_connection;
+mod embedded_test_book;
 mod seed_templates;
 mod services;
 mod types;
@@ -89,12 +90,16 @@ fn main() {
             transition_session_status,
             get_session_board_config,
             // Book library commands
-            add_book_to_library,
+            upload_book_archive,
             list_library_books,
             remove_book_from_library,
             get_book_content,
-            add_book_images,
-            serve_book_image
+            serve_book_image,
+            lookup_reference,
+            // Dev tools
+            is_dev_mode,
+            install_dev_test_book,
+            remove_dev_test_book
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

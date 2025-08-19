@@ -1,13 +1,15 @@
-use mimir_dm_db::{establish_connection, DbConnection};
-use mimir_dm_db::services::{CampaignService, TemplateService};
-use mimir_dm_db::models::documents::{NewDocument, UpdateDocument};
-use mimir_dm_db::dal::campaigns::CampaignRepository;
-use mimir_dm_db::dal::documents::DocumentRepository;
-use mimir_dm_db::dal::template_documents::TemplateRepository;
-use mimir_dm_db::seed::template_seeder::seed_templates;
+use mimir_dm_core::{establish_connection, run_migrations};
+use mimir_dm_core::services::campaign_service::CampaignService;
+use mimir_dm_core::services::template_service::TemplateService;
+use mimir_dm_core::models::campaign::documents::{NewDocument, UpdateDocument};
+use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
+use mimir_dm_core::dal::campaign::documents::DocumentRepository;
+use mimir_dm_core::dal::campaign::template_documents::TemplateRepository;
+use mimir_dm_core::seed::template_seeder::seed_templates;
+use diesel::prelude::*;
 use tempfile::TempDir;
 
-fn setup_test_db() -> (DbConnection, TempDir) {
+fn setup_test_db() -> (SqliteConnection, TempDir) {
     // Create a temporary directory for test databases
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
@@ -16,7 +18,7 @@ fn setup_test_db() -> (DbConnection, TempDir) {
     let mut conn = establish_connection(db_path.to_str().unwrap()).unwrap();
     
     // Run migrations and seed templates
-    mimir_dm_db::run_migrations(&mut conn).unwrap();
+    run_migrations(&mut conn).unwrap();
     seed_templates(&mut conn).unwrap();
     
     (conn, temp_dir)
@@ -210,7 +212,7 @@ fn test_board_configuration() {
     let (_conn, _temp_dir) = setup_test_db();
     
     // Get board configuration from registry
-    use mimir_dm_db::domain::BoardRegistry;
+    use mimir_dm_core::domain::BoardRegistry;
     let registry = BoardRegistry::new();
     let board = registry.get("campaign").unwrap();
     

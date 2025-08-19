@@ -91,30 +91,6 @@ impl AppPaths {
             .set(pool)
             .map_err(|_| anyhow::anyhow!("Failed to set global database pool"))?;
 
-        // Check if core rules need to be imported
-        // We do this for both new databases and existing ones that might not have rules yet
-        // Use tokio runtime to run async code in sync context
-        let rt = tokio::runtime::Runtime::new()
-            .context("Failed to create tokio runtime")?;
-        
-        rt.block_on(async {
-            match crate::rules_init::check_rules_imported(&db_path).await {
-                Ok(has_rules) => {
-                    if !has_rules {
-                        info!("Core D&D rules not found, importing...");
-                        if let Err(e) = crate::rules_init::import_embedded_rules(&db_path).await {
-                            warn!("Failed to import core rules: {}", e);
-                            // Don't fail app init if import fails - app can still work without rules
-                        }
-                    }
-                }
-                Err(e) => {
-                    warn!("Failed to check for core rules: {}", e);
-                    // Continue without rules if we can't check
-                }
-            }
-        });
-
         if is_new_db {
             info!("Database initialized successfully");
             

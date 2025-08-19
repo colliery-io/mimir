@@ -8,7 +8,6 @@ pub mod connection;
 pub mod dal;
 pub mod domain;
 pub mod error;
-pub mod json_types;
 pub mod models;
 pub mod schema;
 pub mod seed;
@@ -20,11 +19,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 pub use connection::{establish_connection, DbConnection};
 pub use error::{DbError, Result};
 
-// Re-export rules models
-pub use models::rules::{
-    RuleSystem, Source, Race, Class, Item, Creature, 
-    Spell, Feat, Background
-};
+
 
 // Re-export campaign models  
 pub use models::campaign::{

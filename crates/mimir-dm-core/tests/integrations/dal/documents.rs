@@ -1,14 +1,14 @@
 //! Integration tests for Document repository
 
-use mimir_dm_db::{
-    dal::{
+use mimir_dm_core::{
+    dal::campaign::{
         documents::DocumentRepository,
         campaigns::CampaignRepository,
         modules::ModuleRepository,
         sessions::SessionRepository,
         template_documents::TemplateRepository,
     },
-    models::{
+    models::campaign::{
         documents::{NewDocument, UpdateDocument, DocumentLevel},
         campaigns::NewCampaign,
         modules::NewModule,

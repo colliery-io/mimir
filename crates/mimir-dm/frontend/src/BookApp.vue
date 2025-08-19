@@ -716,6 +716,10 @@ const handleCrossRefClick = async (event: MouseEvent) => {
   const target = event.target as HTMLElement
   if (!target.classList.contains('cross-ref-link')) return
   
+  // Only handle clicks within book content
+  const bookContent = document.querySelector('.book-content')
+  if (!bookContent || !bookContent.contains(target)) return
+  
   event.preventDefault()
   event.stopPropagation()
   
@@ -728,29 +732,35 @@ const handleCrossRefClick = async (event: MouseEvent) => {
   
   console.log('Cross-reference clicked:', { refType, refName, refSource })
   
-  // Set modal title
-  modalTitle.value = `${refName}`
-  
-  // Show loading state
-  modalContent.value = null
-  modalTitle.value = `${refName} (Loading...)`
-  modalVisible.value = true
-  
-  // Load reference content
-  const refData = await lookupReference(refType, refName, refSource)
-  if (refData) {
-    modalContent.value = {
-      ...refData.data,
-      ref_type: refType  // Store the type for rendering
+  try {
+    // Set modal title
+    modalTitle.value = `${refName}`
+    
+    // Show loading state
+    modalContent.value = null
+    modalTitle.value = `${refName} (Loading...)`
+    modalVisible.value = true
+    
+    // Load reference content
+    const refData = await lookupReference(refType, refName, refSource)
+    if (refData) {
+      modalContent.value = {
+        ...refData.data,
+        ref_type: refType  // Store the type for rendering
+      }
+      modalTitle.value = refData.name
+    } else {
+      modalTitle.value = refName
+      modalContent.value = {
+        type: refType,
+        name: refName,
+        entries: [`No data found for ${refType}: ${refName}`]
+      }
     }
-    modalTitle.value = refData.name
-  } else {
-    modalTitle.value = refName
-    modalContent.value = {
-      type: refType,
-      name: refName,
-      entries: [`No data found for ${refType}: ${refName}`]
-    }
+  } catch (error) {
+    console.error('Error handling cross-reference click:', error)
+    modalVisible.value = false
+    alert(`Error loading reference: ${error}`)
   }
 }
 
@@ -770,7 +780,22 @@ const renderModalContent = (content: any): string => {
     const range = formatRange(content.range)
     const components = formatComponents(content.components)
     const duration = formatDuration(content.duration)
-    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    const description = content.entries?.map((e: any) => {
+      if (typeof e === 'string') {
+        return processFormatting(e)
+      } else if (e && typeof e === 'object') {
+        // Handle complex entry objects
+        if (e.type === 'entries' && e.entries) {
+          const header = e.name ? `<strong>${e.name}:</strong> ` : ''
+          const entryContent = e.entries.map((subEntry: any) => 
+            typeof subEntry === 'string' ? processFormatting(subEntry) : ''
+          ).join(' ')
+          return header + entryContent
+        }
+        return '' // Skip other complex types for now
+      }
+      return ''
+    }).filter((e: string) => e).join('<br/><br/>') || ''
     
     html += `
       <div class="spell-details">
@@ -788,7 +813,22 @@ const renderModalContent = (content: any): string => {
     const rarity = content.rarity || ''
     const value = content.value || ''
     const weight = content.weight || ''
-    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    const description = content.entries?.map((e: any) => {
+      if (typeof e === 'string') {
+        return processFormatting(e)
+      } else if (e && typeof e === 'object') {
+        // Handle complex entry objects
+        if (e.type === 'entries' && e.entries) {
+          const header = e.name ? `<strong>${e.name}:</strong> ` : ''
+          const entryContent = e.entries.map((subEntry: any) => 
+            typeof subEntry === 'string' ? processFormatting(subEntry) : ''
+          ).join(' ')
+          return header + entryContent
+        }
+        return '' // Skip other complex types for now
+      }
+      return ''
+    }).filter((e: string) => e).join('<br/><br/>') || ''
     
     html += `
       <div class="item-details">
@@ -863,7 +903,9 @@ const renderModalContent = (content: any): string => {
             <h4>Traits</h4>
             ${content.trait.map((t: any) => `
               <div class="trait">
-                <strong>${t.name}.</strong> ${t.entries ? t.entries.map((e: any) => processFormatting(e)).join(' ') : ''}
+                <strong>${t.name}.</strong> ${t.entries ? t.entries.map((e: any) => 
+                  typeof e === 'string' ? processFormatting(e) : ''
+                ).join(' ') : ''}
               </div>
             `).join('')}
           </div>
@@ -874,7 +916,9 @@ const renderModalContent = (content: any): string => {
             <h4>Actions</h4>
             ${content.action.map((a: any) => `
               <div class="action">
-                <strong>${a.name}.</strong> ${a.entries ? a.entries.map((e: any) => processFormatting(e)).join(' ') : ''}
+                <strong>${a.name}.</strong> ${a.entries ? a.entries.map((e: any) => 
+                  typeof e === 'string' ? processFormatting(e) : ''
+                ).join(' ') : ''}
               </div>
             `).join('')}
           </div>
@@ -884,8 +928,28 @@ const renderModalContent = (content: any): string => {
   } else if (refType === 'class') {
     const hitDice = content.hd?.faces || 8
     const primaryAbility = content.primaryAbility || 'Varies'
-    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || 
-                       content.fluff?.[0]?.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    const description = content.entries?.map((e: any) => {
+      if (typeof e === 'string') {
+        return processFormatting(e)
+      } else if (e && typeof e === 'object') {
+        // Handle complex entry objects
+        if (e.type === 'entries' && e.entries) {
+          const header = e.name ? `<strong>${e.name}:</strong> ` : ''
+          const entryContent = e.entries.map((subEntry: any) => 
+            typeof subEntry === 'string' ? processFormatting(subEntry) : ''
+          ).join(' ')
+          return header + entryContent
+        }
+        return '' // Skip other complex types for now
+      }
+      return ''
+    }).filter((e: string) => e).join('<br/><br/>') || 
+                       content.fluff?.[0]?.entries?.map((e: any) => {
+                         if (typeof e === 'string') {
+                           return processFormatting(e)
+                         }
+                         return ''
+                       }).filter((e: string) => e).join('<br/><br/>') || ''
     
     html += `
       <div class="class-details">
@@ -897,7 +961,22 @@ const renderModalContent = (content: any): string => {
   } else if (refType === 'race') {
     const size = getSizeName(content.size?.[0] || 'M')
     const speed = content.speed || 30
-    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    const description = content.entries?.map((e: any) => {
+      if (typeof e === 'string') {
+        return processFormatting(e)
+      } else if (e && typeof e === 'object') {
+        // Handle complex entry objects
+        if (e.type === 'entries' && e.entries) {
+          const header = e.name ? `<strong>${e.name}:</strong> ` : ''
+          const entryContent = e.entries.map((subEntry: any) => 
+            typeof subEntry === 'string' ? processFormatting(subEntry) : ''
+          ).join(' ')
+          return header + entryContent
+        }
+        return '' // Skip other complex types for now
+      }
+      return ''
+    }).filter((e: string) => e).join('<br/><br/>') || ''
     
     // Format ability score improvements
     let abilityScores = ''
@@ -922,7 +1001,22 @@ const renderModalContent = (content: any): string => {
       </div>
     `
   } else if (refType === 'background') {
-    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    const description = content.entries?.map((e: any) => {
+      if (typeof e === 'string') {
+        return processFormatting(e)
+      } else if (e && typeof e === 'object') {
+        // Handle complex entry objects
+        if (e.type === 'entries' && e.entries) {
+          const header = e.name ? `<strong>${e.name}:</strong> ` : ''
+          const entryContent = e.entries.map((subEntry: any) => 
+            typeof subEntry === 'string' ? processFormatting(subEntry) : ''
+          ).join(' ')
+          return header + entryContent
+        }
+        return '' // Skip other complex types for now
+      }
+      return ''
+    }).filter((e: string) => e).join('<br/><br/>') || ''
     
     // Format skill proficiencies
     let skills = ''
@@ -940,7 +1034,22 @@ const renderModalContent = (content: any): string => {
       </div>
     `
   } else if (refType === 'feat') {
-    const description = content.entries?.map((e: any) => processFormatting(e)).join('<br/><br/>') || ''
+    const description = content.entries?.map((e: any) => {
+      if (typeof e === 'string') {
+        return processFormatting(e)
+      } else if (e && typeof e === 'object') {
+        // Handle complex entry objects
+        if (e.type === 'entries' && e.entries) {
+          const header = e.name ? `<strong>${e.name}:</strong> ` : ''
+          const entryContent = e.entries.map((subEntry: any) => 
+            typeof subEntry === 'string' ? processFormatting(subEntry) : ''
+          ).join(' ')
+          return header + entryContent
+        }
+        return '' // Skip other complex types for now
+      }
+      return ''
+    }).filter((e: string) => e).join('<br/><br/>') || ''
     const prerequisite = content.prerequisite?.map((p: any) => {
       if (typeof p === 'string') return p
       if (p.level) return `${p.level}th level`
@@ -1120,15 +1229,11 @@ onMounted(async () => {
   
   // Add global event handlers for cross-references
   document.addEventListener('click', handleCrossRefClick)
-  document.addEventListener('mouseover', handleCrossRefHover)
-  document.addEventListener('mouseout', handleCrossRefLeave)
 })
 
 // Clean up event listeners on unmount
 onUnmounted(() => {
   document.removeEventListener('click', handleCrossRefClick)
-  document.removeEventListener('mouseover', handleCrossRefHover)
-  document.removeEventListener('mouseout', handleCrossRefLeave)
 })
 </script>
 

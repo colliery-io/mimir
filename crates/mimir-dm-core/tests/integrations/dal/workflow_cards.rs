@@ -1,14 +1,14 @@
 //! Integration tests for workflow card DAL
 
 use crate::common::TestDatabase;
-use mimir_dm_db::dal::campaigns::CampaignRepository;
-use mimir_dm_db::dal::modules::ModuleRepository;
-use mimir_dm_db::dal::sessions::SessionRepository;
-use mimir_dm_db::dal::workflow_cards::WorkflowCardRepository;
-use mimir_dm_db::models::campaigns::NewCampaign;
-use mimir_dm_db::models::modules::NewModule;
-use mimir_dm_db::models::sessions::NewSession;
-use mimir_dm_db::models::workflow_cards::NewWorkflowCard;
+use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
+use mimir_dm_core::dal::campaign::modules::ModuleRepository;
+use mimir_dm_core::dal::campaign::sessions::SessionRepository;
+use mimir_dm_core::dal::campaign::workflow_cards::WorkflowCardRepository;
+use mimir_dm_core::models::campaign::campaigns::NewCampaign;
+use mimir_dm_core::models::campaign::modules::NewModule;
+use mimir_dm_core::models::campaign::sessions::NewSession;
+use mimir_dm_core::models::campaign::workflow_cards::NewWorkflowCard;
 use tempfile::TempDir;
 
 #[test]
