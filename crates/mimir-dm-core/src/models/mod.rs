@@ -6,3 +6,4 @@
 
 pub mod campaign;
 pub mod rules;
+pub mod rules_extended;

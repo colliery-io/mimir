@@ -27,8 +27,8 @@ export interface SpellFilters {
 
 export interface ItemSummary {
   name: string
-  item_type: string
-  type_name: string
+  itemType: string
+  typeName: string
   source: string
   rarity: string
   value?: number
@@ -71,15 +71,81 @@ export interface MonsterFilters {
   environments?: string[]
 }
 
+export interface ClassSummary {
+  name: string
+  source: string
+  hit_die: string
+  primary_ability: string
+  saves: string
+  spellcaster: boolean
+  description: string
+}
+
+export interface ClassFilters {
+  query?: string
+  sources?: string[]
+  spellcaster?: boolean
+}
+
+export interface RaceSummary {
+  name: string
+  source: string
+  size: string
+  speed: number
+  ability_bonuses: string
+  traits: string[]
+  description: string
+}
+
+export interface RaceFilters {
+  query?: string
+  sources?: string[]
+  sizes?: string[]
+}
+
+export interface FeatSummary {
+  name: string
+  source: string
+  prerequisite: string
+  description: string
+}
+
+export interface FeatFilters {
+  query?: string
+  sources?: string[]
+}
+
+export interface BackgroundSummary {
+  name: string
+  source: string
+  skills: string
+  languages: string
+  tools: string
+  description: string
+}
+
+export interface BackgroundFilters {
+  query?: string
+  sources?: string[]
+}
+
 export function useCatalog() {
   const isInitialized = ref(false)
   const isItemsInitialized = ref(false)
   const isMonstersInitialized = ref(false)
+  const isClassesInitialized = ref(false)
+  const isRacesInitialized = ref(false)
+  const isFeatsInitialized = ref(false)
+  const isBackgroundsInitialized = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const spells = ref<SpellSummary[]>([])
   const items = ref<ItemSummary[]>([])
   const monsters = ref<MonsterSummary[]>([])
+  const classes = ref<ClassSummary[]>([])
+  const races = ref<RaceSummary[]>([])
+  const feats = ref<FeatSummary[]>([])
+  const backgrounds = ref<BackgroundSummary[]>([])
 
   // Initialize the spell catalog (load data from files)
   async function initializeCatalog() {
@@ -262,21 +328,215 @@ export function useCatalog() {
     }
   }
 
+  // Initialize the class catalog
+  async function initializeClassCatalog() {
+    if (isClassesInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('initialize_class_catalog')
+      isClassesInitialized.value = true
+      console.log('Class catalog initialized')
+    } catch (e) {
+      error.value = `Failed to initialize class catalog: ${e}`
+      console.error('Failed to initialize class catalog:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Search classes with filters
+  async function searchClasses(filters: ClassFilters): Promise<ClassSummary[]> {
+    if (!isClassesInitialized.value) {
+      await initializeClassCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const results = await invoke<ClassSummary[]>('search_classes', {
+        query: filters.query || null,
+        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+        spellcaster: filters.spellcaster !== undefined ? filters.spellcaster : null,
+      })
+      
+      classes.value = results
+      return results
+    } catch (e) {
+      error.value = `Search failed: ${e}`
+      console.error('Search failed:', e)
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Initialize the race catalog
+  async function initializeRaceCatalog() {
+    if (isRacesInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('initialize_race_catalog')
+      isRacesInitialized.value = true
+      console.log('Race catalog initialized')
+    } catch (e) {
+      error.value = `Failed to initialize race catalog: ${e}`
+      console.error('Failed to initialize race catalog:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Search races with filters
+  async function searchRaces(filters: RaceFilters): Promise<RaceSummary[]> {
+    if (!isRacesInitialized.value) {
+      await initializeRaceCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const results = await invoke<RaceSummary[]>('search_races', {
+        query: filters.query || null,
+        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
+      })
+      
+      races.value = results
+      return results
+    } catch (e) {
+      error.value = `Search failed: ${e}`
+      console.error('Search failed:', e)
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Initialize the feat catalog
+  async function initializeFeatCatalog() {
+    if (isFeatsInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('initialize_feat_catalog')
+      isFeatsInitialized.value = true
+      console.log('Feat catalog initialized')
+    } catch (e) {
+      error.value = `Failed to initialize feat catalog: ${e}`
+      console.error('Failed to initialize feat catalog:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Search feats with filters
+  async function searchFeats(filters: FeatFilters): Promise<FeatSummary[]> {
+    if (!isFeatsInitialized.value) {
+      await initializeFeatCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const results = await invoke<FeatSummary[]>('search_feats', {
+        query: filters.query || null,
+        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+      })
+      
+      feats.value = results
+      return results
+    } catch (e) {
+      error.value = `Search failed: ${e}`
+      console.error('Search failed:', e)
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Initialize the background catalog
+  async function initializeBackgroundCatalog() {
+    if (isBackgroundsInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('initialize_background_catalog')
+      isBackgroundsInitialized.value = true
+      console.log('Background catalog initialized')
+    } catch (e) {
+      error.value = `Failed to initialize background catalog: ${e}`
+      console.error('Failed to initialize background catalog:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Search backgrounds with filters
+  async function searchBackgrounds(filters: BackgroundFilters): Promise<BackgroundSummary[]> {
+    if (!isBackgroundsInitialized.value) {
+      await initializeBackgroundCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const results = await invoke<BackgroundSummary[]>('search_backgrounds', {
+        query: filters.query || null,
+        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+      })
+      
+      backgrounds.value = results
+      return results
+    } catch (e) {
+      error.value = `Search failed: ${e}`
+      console.error('Search failed:', e)
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     isInitialized,
     isItemsInitialized,
     isMonstersInitialized,
+    isClassesInitialized,
+    isRacesInitialized,
+    isFeatsInitialized,
+    isBackgroundsInitialized,
     isLoading,
     error,
     spells,
     items,
     monsters,
+    classes,
+    races,
+    feats,
+    backgrounds,
     initializeCatalog,
     initializeItemCatalog,
     initializeMonsterCatalog,
+    initializeClassCatalog,
+    initializeRaceCatalog,
+    initializeFeatCatalog,
+    initializeBackgroundCatalog,
     searchSpells,
     searchItems,
     searchMonsters,
+    searchClasses,
+    searchRaces,
+    searchFeats,
+    searchBackgrounds,
     getSpellDetails,
     getItemDetails,
     getMonsterDetails,

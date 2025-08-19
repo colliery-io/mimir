@@ -187,7 +187,7 @@
                 <span v-if="item.damage" class="item-damage">{{ item.damage }}</span>
                 <span v-if="item.ac" class="item-ac">AC {{ item.ac }}</span>
               </td>
-              <td class="col-type">{{ item.type_name }}</td>
+              <td class="col-type">{{ item.typeName }}</td>
               <td class="col-cost">{{ formatCost(item.value) }}</td>
               <td class="col-weight">{{ formatWeight(item.weight) }}</td>
               <td class="col-source">{{ item.source }}</td>
@@ -312,7 +312,7 @@
               <td class="col-rarity">
                 <span :class="`rarity-${item.rarity}`">{{ capitalizeRarity(item.rarity) }}</span>
               </td>
-              <td class="col-type">{{ item.type_name }}</td>
+              <td class="col-type">{{ item.typeName }}</td>
               <td class="col-attunement">{{ item.reqAttune || '—' }}</td>
               <td class="col-source">{{ item.source }}</td>
             </tr>
@@ -578,7 +578,7 @@ const filteredEquipment = computed(() => {
   
   // Apply type filter (already applied in search, but can do client-side too)
   if (equipmentFilters.value.type) {
-    results = results.filter(item => item.item_type === equipmentFilters.value.type)
+    results = results.filter(item => item.itemType === equipmentFilters.value.type)
   }
   
   // Apply sorting
@@ -1070,7 +1070,7 @@ function formatItemDetails(summary: ItemSummary, details: any): string {
   
   // Header info
   html += '<div class="item-header-info">'
-  html += `<div class="item-type">${summary.type_name}</div>`
+  html += `<div class="item-type">${summary.typeName}</div>`
   if (summary.rarity && summary.rarity !== 'none') {
     html += `<div class="item-rarity">${summary.rarity}</div>`
   }

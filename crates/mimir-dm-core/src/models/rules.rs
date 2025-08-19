@@ -223,33 +223,66 @@ impl From<&Item> for ItemSummary {
     fn from(item: &Item) -> Self {
         // Map type codes to readable names
         let item_type = item.item_type.clone().unwrap_or_else(|| "?".to_string());
-        let type_name = match item_type.as_str() {
-            // Weapons
-            "S" => "Simple Weapon",
-            "M" => "Martial Weapon",
-            "R" => "Ranged Weapon",
-            "A" => "Ammunition",
-            // Armor
-            "LA" => "Light Armor",
-            "MA" => "Medium Armor",
-            "HA" => "Heavy Armor",
-            // Equipment
-            "G" => "Adventuring Gear",
-            "AT" => "Artisan's Tools",
-            "T" => "Tools",
-            "GS" => "Gaming Set",
-            "SCF" => "Spellcasting Focus",
-            "INS" => "Instrument",
-            // Transport
-            "MNT" => "Mount",
-            "TAH" => "Tack and Harness",
-            "VEH" => "Vehicle",
-            // Other
-            "FD" => "Food & Drink",
-            "TG" => "Trade Good",
-            "$C" => "Treasure",
-            _ => "Other",
-        }.to_string();
+        
+        // For weapons, use the weapon category if available
+        let type_name = if item.weapon.unwrap_or(false) {
+            // Combine weapon category with type for clarity
+            match item.weapon_category.as_deref() {
+                Some("simple") => match item_type.as_str() {
+                    "M" => "Simple Melee Weapon",
+                    "R" => "Simple Ranged Weapon",
+                    _ => "Simple Weapon",
+                },
+                Some("martial") => match item_type.as_str() {
+                    "M" => "Martial Melee Weapon", 
+                    "R" => "Martial Ranged Weapon",
+                    _ => "Martial Weapon",
+                },
+                _ => match item_type.as_str() {
+                    "S" => "Simple Weapon",
+                    "M" => "Melee Weapon",
+                    "R" => "Ranged Weapon",
+                    "A" => "Ammunition",
+                    _ => "Weapon",
+                }
+            }.to_string()
+        } else {
+            // Non-weapon items
+            match item_type.as_str() {
+                // Armor
+                "LA" => "Light Armor",
+                "MA" => "Medium Armor",
+                "HA" => "Heavy Armor",
+                "S" => "Shield",
+                // Equipment
+                "G" => "Adventuring Gear",
+                "AT" => "Artisan's Tools",
+                "T" => "Tools",
+                "GS" => "Gaming Set",
+                "SCF" => "Spellcasting Focus",
+                "INS" => "Instrument",
+                // Transport
+                "MNT" => "Mount",
+                "TAH" => "Tack and Harness",
+                "VEH" => "Vehicle",
+                "SHP" => "Ship",
+                // Other
+                "FD" => "Food & Drink",
+                "TG" => "Trade Good",
+                "$C" => "Treasure",
+                "EXP" => "Explosive",
+                "GV" => "Generic Variant",
+                "P" => "Potion",
+                "SC" => "Scroll",
+                "W" => "Wondrous Item",
+                "RD" => "Rod",
+                "RG" => "Ring",
+                "ST" => "Staff",
+                "WD" => "Wand",
+                "OTH" => "Other",
+                _ => "Other",
+            }.to_string()
+        };
         
         // Get damage string for weapons
         let damage = if item.weapon.unwrap_or(false) {
