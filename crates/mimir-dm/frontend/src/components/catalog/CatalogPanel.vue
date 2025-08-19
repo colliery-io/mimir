@@ -320,11 +320,132 @@
         </table>
       </div>
       
-      <!-- Simplified placeholder tables for other categories -->
-      <div v-else-if="['Classes', 'Races', 'Feats', 'Backgrounds', 'Conditions'].includes(selectedCategoryLocal)" class="table-container">
+      <!-- Classes table -->
+      <div v-else-if="selectedCategoryLocal === 'Classes'" class="table-container">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th class="col-name">Class</th>
+              <th class="col-hit-die">Hit Die</th>
+              <th class="col-primary">Primary Ability</th>
+              <th class="col-saves">Saving Throws</th>
+              <th class="col-spellcaster">Spellcaster</th>
+              <th class="col-source">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="cls in classResults" 
+              :key="`${cls.name}-${cls.source}`"
+              class="class-row"
+              @click="selectClass(cls)"
+            >
+              <td class="col-name">{{ cls.name }}</td>
+              <td class="col-hit-die">{{ cls.hitDie }}</td>
+              <td class="col-primary">{{ cls.primaryAbility }}</td>
+              <td class="col-saves">{{ cls.saves }}</td>
+              <td class="col-spellcaster">{{ cls.spellcaster ? 'Yes' : 'No' }}</td>
+              <td class="col-source">{{ cls.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Races table -->
+      <div v-else-if="selectedCategoryLocal === 'Races'" class="table-container">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th class="col-name">Race</th>
+              <th class="col-size">Size</th>
+              <th class="col-speed">Speed</th>
+              <th class="col-abilities">Ability Bonuses</th>
+              <th class="col-traits">Traits</th>
+              <th class="col-source">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="race in raceResults" 
+              :key="`${race.name}-${race.source}`"
+              class="race-row"
+              @click="selectRace(race)"
+            >
+              <td class="col-name">{{ race.name }}</td>
+              <td class="col-size">{{ race.size }}</td>
+              <td class="col-speed">{{ race.speed }} ft.</td>
+              <td class="col-abilities">{{ race.abilityBonuses }}</td>
+              <td class="col-traits">
+                <span v-if="race.traits.length > 0">{{ race.traits.slice(0, 2).join(', ') }}{{ race.traits.length > 2 ? '...' : '' }}</span>
+                <span v-else>—</span>
+              </td>
+              <td class="col-source">{{ race.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Feats table -->
+      <div v-else-if="selectedCategoryLocal === 'Feats'" class="table-container">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th class="col-name">Feat</th>
+              <th class="col-prerequisite">Prerequisite</th>
+              <th class="col-description">Description</th>
+              <th class="col-source">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="feat in featResults" 
+              :key="`${feat.name}-${feat.source}`"
+              class="feat-row"
+              @click="selectFeat(feat)"
+            >
+              <td class="col-name">{{ feat.name }}</td>
+              <td class="col-prerequisite">{{ feat.prerequisite }}</td>
+              <td class="col-description">{{ feat.description }}</td>
+              <td class="col-source">{{ feat.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Backgrounds table -->
+      <div v-else-if="selectedCategoryLocal === 'Backgrounds'" class="table-container">
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th class="col-name">Background</th>
+              <th class="col-skills">Skills</th>
+              <th class="col-languages">Languages</th>
+              <th class="col-tools">Tools</th>
+              <th class="col-source">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="bg in backgroundResults" 
+              :key="`${bg.name}-${bg.source}`"
+              class="background-row"
+              @click="selectBackground(bg)"
+            >
+              <td class="col-name">{{ bg.name }}</td>
+              <td class="col-skills">{{ bg.skills }}</td>
+              <td class="col-languages">{{ bg.languages }}</td>
+              <td class="col-tools">{{ bg.tools }}</td>
+              <td class="col-source">{{ bg.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Conditions placeholder -->
+      <div v-else-if="selectedCategoryLocal === 'Conditions'" class="table-container">
         <div class="placeholder-text">
-          <p>{{ selectedCategoryLocal }} catalog implementation in progress...</p>
-          <p class="subtext">This category will display {{ selectedCategoryLocal.toLowerCase() }} from all loaded books.</p>
+          <p>Conditions catalog implementation in progress...</p>
+          <p class="subtext">This category will display conditions from all loaded books.</p>
         </div>
       </div>
       
@@ -349,7 +470,16 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
-import { useCatalog, type SpellSummary, type ItemSummary, type MonsterSummary } from '../../composables/catalog/useCatalog'
+import { 
+  useCatalog, 
+  type SpellSummary, 
+  type ItemSummary, 
+  type MonsterSummary,
+  type ClassSummary,
+  type RaceSummary,
+  type FeatSummary,
+  type BackgroundSummary
+} from '../../composables/catalog/useCatalog'
 
 interface Props {
   selectedCategory?: string
@@ -372,13 +502,25 @@ const {
   getItemDetails,
   searchMonsters,
   initializeMonsterCatalog,
-  getMonsterDetails
+  getMonsterDetails,
+  searchClasses,
+  initializeClassCatalog,
+  searchRaces,
+  initializeRaceCatalog,
+  searchFeats,
+  initializeFeatCatalog,
+  searchBackgrounds,
+  initializeBackgroundCatalog
 } = useCatalog()
 
 const searchQuery = ref('')
 const spellResults = ref<SpellSummary[]>([])
 const itemResults = ref<ItemSummary[]>([])
 const monsterResults = ref<MonsterSummary[]>([])
+const classResults = ref<ClassSummary[]>([])
+const raceResults = ref<RaceSummary[]>([])
+const featResults = ref<FeatSummary[]>([])
+const backgroundResults = ref<BackgroundSummary[]>([])
 const searchPerformed = ref(false)
 let searchTimeout: NodeJS.Timeout | null = null
 
@@ -462,6 +604,18 @@ watch(selectedCategoryLocal, async (newCategory) => {
   } else if (newCategory === 'Magic Items') {
     await initializeItemCatalog()
     await performSearch()
+  } else if (newCategory === 'Classes') {
+    await initializeClassCatalog()
+    await performSearch()
+  } else if (newCategory === 'Races') {
+    await initializeRaceCatalog()
+    await performSearch()
+  } else if (newCategory === 'Feats') {
+    await initializeFeatCatalog()
+    await performSearch()
+  } else if (newCategory === 'Backgrounds') {
+    await initializeBackgroundCatalog()
+    await performSearch()
   }
 })
 
@@ -523,6 +677,34 @@ async function performSearch() {
     
     // Filter for magic items (those with rarity other than 'none')
     itemResults.value = results.filter(item => item.rarity && item.rarity !== 'none')
+  } else if (selectedCategoryLocal.value === 'Classes') {
+    const results = await searchClasses({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+    })
+    
+    classResults.value = results
+  } else if (selectedCategoryLocal.value === 'Races') {
+    const results = await searchRaces({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+    })
+    
+    raceResults.value = results
+  } else if (selectedCategoryLocal.value === 'Feats') {
+    const results = await searchFeats({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+    })
+    
+    featResults.value = results
+  } else if (selectedCategoryLocal.value === 'Backgrounds') {
+    const results = await searchBackgrounds({
+      query: searchQuery.value || undefined,
+      sources: props.selectedSources.length > 0 ? mapBookIdsToSources(props.selectedSources) : undefined,
+    })
+    
+    backgroundResults.value = results
   }
 }
 
@@ -780,6 +962,42 @@ async function selectMonster(monster: MonsterSummary) {
       title: monster.name,
       content: formatMonsterDetails(monster, details)
     }
+  }
+}
+
+async function selectClass(cls: ClassSummary) {
+  // For now, just show the summary info
+  modalContent.value = {
+    visible: true,
+    title: cls.name,
+    content: formatClassDetails(cls)
+  }
+}
+
+async function selectRace(race: RaceSummary) {
+  // For now, just show the summary info
+  modalContent.value = {
+    visible: true,
+    title: race.name,
+    content: formatRaceDetails(race)
+  }
+}
+
+async function selectFeat(feat: FeatSummary) {
+  // For now, just show the summary info
+  modalContent.value = {
+    visible: true,
+    title: feat.name,
+    content: formatFeatDetails(feat)
+  }
+}
+
+async function selectBackground(bg: BackgroundSummary) {
+  // For now, just show the summary info
+  modalContent.value = {
+    visible: true,
+    title: bg.name,
+    content: formatBackgroundDetails(bg)
   }
 }
 
@@ -1158,6 +1376,113 @@ function formatItemDetails(summary: ItemSummary, details: any): string {
   
   // Source
   html += `<div class="item-source"><em>Source: ${summary.source}</em></div>`
+  
+  html += '</div>'
+  return html
+}
+
+function formatClassDetails(cls: ClassSummary): string {
+  let html = '<div class="class-details">'
+  
+  // Header info
+  html += '<div class="class-header-info">'
+  html += `<div class="class-type">${cls.spellcaster ? 'Spellcaster' : 'Martial'} Class</div>`
+  html += '</div>'
+  
+  // Core class info
+  html += '<div class="class-properties">'
+  html += `<div><strong>Hit Die:</strong> ${cls.hitDie}</div>`
+  html += `<div><strong>Primary Ability:</strong> ${cls.primaryAbility}</div>`
+  html += `<div><strong>Saving Throw Proficiencies:</strong> ${cls.saves}</div>`
+  if (cls.spellcaster) {
+    html += `<div><strong>Spellcasting:</strong> ${cls.description}</div>`
+  }
+  html += '</div>'
+  
+  // Source
+  html += `<div class="class-source"><em>Source: ${cls.source}</em></div>`
+  
+  html += '</div>'
+  return html
+}
+
+function formatRaceDetails(race: RaceSummary): string {
+  let html = '<div class="race-details">'
+  
+  // Header info
+  html += '<div class="race-header-info">'
+  html += `<div class="race-type">${race.size} ${race.description}</div>`
+  html += '</div>'
+  
+  // Core race info
+  html += '<div class="race-properties">'
+  html += `<div><strong>Size:</strong> ${race.size}</div>`
+  html += `<div><strong>Speed:</strong> ${race.speed} feet</div>`
+  html += `<div><strong>Ability Score Increases:</strong> ${race.abilityBonuses}</div>`
+  html += '</div>'
+  
+  // Traits
+  if (race.traits && race.traits.length > 0) {
+    html += '<div class="race-traits">'
+    html += '<h4>Racial Traits</h4>'
+    html += '<ul>'
+    for (const trait of race.traits) {
+      html += `<li>${trait}</li>`
+    }
+    html += '</ul>'
+    html += '</div>'
+  }
+  
+  // Source
+  html += `<div class="race-source"><em>Source: ${race.source}</em></div>`
+  
+  html += '</div>'
+  return html
+}
+
+function formatFeatDetails(feat: FeatSummary): string {
+  let html = '<div class="feat-details">'
+  
+  // Header info
+  if (feat.prerequisite && feat.prerequisite !== 'None') {
+    html += '<div class="feat-header-info">'
+    html += `<div class="feat-prerequisite"><strong>Prerequisite:</strong> ${feat.prerequisite}</div>`
+    html += '</div>'
+  }
+  
+  // Description
+  html += '<div class="feat-description">'
+  html += `<p>${feat.description}</p>`
+  html += '</div>'
+  
+  // Source
+  html += `<div class="feat-source"><em>Source: ${feat.source}</em></div>`
+  
+  html += '</div>'
+  return html
+}
+
+function formatBackgroundDetails(bg: BackgroundSummary): string {
+  let html = '<div class="background-details">'
+  
+  // Proficiencies
+  html += '<div class="background-properties">'
+  html += '<h4>Proficiencies</h4>'
+  html += `<div><strong>Skills:</strong> ${bg.skills}</div>`
+  html += `<div><strong>Languages:</strong> ${bg.languages}</div>`
+  html += `<div><strong>Tools:</strong> ${bg.tools}</div>`
+  html += '</div>'
+  
+  // Description
+  if (bg.description && bg.description !== 'No description available') {
+    html += '<div class="background-description">'
+    html += '<h4>Description</h4>'
+    html += `<p>${bg.description}</p>`
+    html += '</div>'
+  }
+  
+  // Source
+  html += `<div class="background-source"><em>Source: ${bg.source}</em></div>`
   
   html += '</div>'
   return html
