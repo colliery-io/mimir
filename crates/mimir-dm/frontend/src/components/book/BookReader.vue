@@ -18,8 +18,8 @@
       </div>
     </div>
     
-    <!-- Keep the three-panel layout for both modes -->
-    <ThreePanelLayout>
+    <!-- Different layouts for different modes -->
+    <ThreePanelLayout v-if="currentMode === 'reading'">
       <template #left>
         <BookLibrary
           :library-books="libraryBooks"
@@ -35,40 +35,50 @@
       </template>
       
       <template #center>
-        <!-- Reading mode: Show table of contents -->
-        <template v-if="currentMode === 'reading'">
-          <BookTableOfContents
-            v-if="selectedBook && bookContent?.data"
-            :sections="bookContent.data"
-            :selected-section="selectedSection"
-            @select="selectedSection = $event"
-            @jump="jumpToEntry"
-          />
-          <Panel v-else title="Contents" variant="default">
-            <div class="empty-toc">
-              <p>Select a book to view contents</p>
-            </div>
-          </Panel>
-        </template>
-        
-        <!-- Catalog mode: Show filters -->
-        <CatalogFilters v-else @categoryChange="selectedCatalogCategory = $event" />
+        <BookTableOfContents
+          v-if="selectedBook && bookContent?.data"
+          :sections="bookContent.data"
+          :selected-section="selectedSection"
+          @select="selectedSection = $event"
+          @jump="jumpToEntry"
+        />
+        <Panel v-else title="Contents" variant="default">
+          <div class="empty-toc">
+            <p>Select a book to view contents</p>
+          </div>
+        </Panel>
       </template>
       
       <template #right>
-        <!-- Reading mode: Show book content -->
         <BookContentViewer
-          v-if="currentMode === 'reading'"
           :selected-book="selectedBook"
           :content="currentSection"
           :is-loading="isLoading"
           :error="error"
         />
-        
-        <!-- Catalog mode: Show catalog browser -->
-        <CatalogPanel v-else :selected-category="selectedCatalogCategory" :selected-sources="selectedSources" />
       </template>
     </ThreePanelLayout>
+    
+    <!-- Two-panel layout for catalog mode -->
+    <TwoPanelLayout v-else>
+      <template #left>
+        <BookLibrary
+          :library-books="libraryBooks"
+          :selected-book="selectedBook"
+          :is-loading-library="isLoadingLibrary"
+          :is-development="isDevelopment"
+          :mode="currentMode"
+          @select="selectBook"
+          @updateSources="selectedSources = $event"
+          @add="addBook"
+          @remove="removeBook"
+        />
+      </template>
+      
+      <template #right>
+        <CatalogPanel :selected-category="selectedCatalogCategory" :selected-sources="selectedSources" />
+      </template>
+    </TwoPanelLayout>
     
     <!-- Cross-reference tooltip -->
     <div 
@@ -101,12 +111,12 @@ import { useCrossReferences } from '../../composables/references/useCrossReferen
 
 // Components
 import ThreePanelLayout from '../layout/ThreePanelLayout.vue'
+import TwoPanelLayout from '../layout/TwoPanelLayout.vue'
 import Panel from '../layout/Panel.vue'
 import BookLibrary from './BookLibrary.vue'
 import BookTableOfContents from './BookTableOfContents.vue'
 import BookContentViewer from './BookContentViewer.vue'
 import CatalogPanel from '../catalog/CatalogPanel.vue'
-import CatalogFilters from '../catalog/CatalogFilters.vue'
 
 // Theme
 const themeStore = useThemeStore()

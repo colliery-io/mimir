@@ -11,7 +11,7 @@ mod types;
 use app_init::{initialize_app, AppPaths};
 use commands::*;
 use services::database::DatabaseService;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
 use tracing::{error, info};
 
@@ -45,6 +45,11 @@ fn main() {
             // Initialize database service
             let db_service = Arc::new(DatabaseService);
             app.manage(db_service);
+            
+            // Initialize spell catalog
+            let spell_catalog = Mutex::new(commands::catalog::SpellCatalog::new());
+            app.manage(spell_catalog);
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -99,7 +104,11 @@ fn main() {
             // Dev tools
             is_dev_mode,
             install_dev_test_book,
-            remove_dev_test_book
+            remove_dev_test_book,
+            // Catalog commands
+            initialize_spell_catalog,
+            search_spells,
+            get_spell_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -9,6 +9,7 @@ pub mod modules;
 pub mod sessions;
 pub mod books;
 pub mod dev_tools;
+pub mod catalog;
 
 pub use campaigns::*;
 pub use app_info::*;
@@ -19,3 +20,4 @@ pub use modules::*;
 pub use sessions::*;
 pub use books::*;
 pub use dev_tools::*;
+pub use catalog::*;
