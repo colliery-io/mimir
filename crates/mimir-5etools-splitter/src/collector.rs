@@ -246,6 +246,12 @@ fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &s
                         if let Some(page) = &inherits.page {
                             variant_item["page"] = json!(page);
                         }
+                    }
+                    
+                    // For generic variants, use variant.entries if present, otherwise inherits.entries
+                    if let Some(entries) = &variant.entries {
+                        variant_item["entries"] = json!(entries);
+                    } else if let Some(inherits) = &variant.inherits {
                         if let Some(entries) = &inherits.entries {
                             variant_item["entries"] = json!(entries);
                         }

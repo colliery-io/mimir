@@ -272,24 +272,11 @@ pub fn create_magic_item(base_item: &Value, variant: &MagicVariant) -> Result<Va
         }
         
         // Apply entries with template variable replacement
+        // For specific variants, always use inherits.entries with template processing
         if let Some(entries) = &inherits.entries {
             let processed_entries = process_entries_templates(entries, &magic_item);
             magic_item["entries"] = json!(processed_entries);
         }
-    }
-    
-    // Add variant-specific entries if present
-    if let Some(variant_entries) = &variant.entries {
-        let existing_entries = magic_item.get("entries")
-            .and_then(|v| v.as_array())
-            .cloned()
-            .unwrap_or_default();
-        
-        let mut all_entries = existing_entries;
-        for entry in variant_entries {
-            all_entries.push(json!(entry));
-        }
-        magic_item["entries"] = json!(all_entries);
     }
     
     Ok(magic_item)
