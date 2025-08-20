@@ -349,17 +349,19 @@ async function selectItem(item: ItemSummary) {
   const fullItem = await getItemDetails(item.name, item.source)
   
   if (fullItem) {
+    const formattedContent = await formatItemDetails(fullItem)
     modalContent.value = {
       visible: true,
       title: item.name,
-      content: formatItemDetails(fullItem)
+      content: formattedContent
     }
   } else {
     // Fallback to summary if details fail
+    const formattedContent = await formatItemDetails(item)
     modalContent.value = {
       visible: true,
       title: item.name,
-      content: formatItemDetails(item)
+      content: formattedContent
     }
   }
 }

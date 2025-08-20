@@ -39,6 +39,8 @@ pub struct VariantInherits {
     pub bonus_weapon: Option<String>,
     #[serde(rename = "bonusWeaponAttack")]
     pub bonus_weapon_attack: Option<String>,
+    #[serde(rename = "bonusWeaponDamage")]
+    pub bonus_weapon_damage: Option<String>,
     #[serde(rename = "bonusAc")]
     pub bonus_ac: Option<String>,
     pub entries: Option<Vec<Value>>,
@@ -228,6 +230,10 @@ pub fn create_magic_item(base_item: &Value, variant: &MagicVariant) -> Result<Va
             magic_item["bonusWeaponAttack"] = json!(bonus_weapon_attack);
         }
         
+        if let Some(bonus_weapon_damage) = &inherits.bonus_weapon_damage {
+            magic_item["bonusWeaponDamage"] = json!(bonus_weapon_damage);
+        }
+        
         if let Some(bonus_ac) = &inherits.bonus_ac {
             magic_item["bonusAc"] = json!(bonus_ac);
         }
@@ -279,11 +285,40 @@ pub fn create_magic_item(base_item: &Value, variant: &MagicVariant) -> Result<Va
         }
     }
     
+    // Also check if the variant itself has entries that need processing
+    // This handles cases where entries are defined at the variant level
+    if variant.entries.is_some() && magic_item.get("entries").is_none() {
+        if let Some(entries) = &variant.entries {
+            let processed_entries = process_entries_templates(entries, &magic_item);
+            magic_item["entries"] = json!(processed_entries);
+        }
+    }
+    
+    // If entries already exist but might have unprocessed templates, process them
+    if let Some(existing_entries) = magic_item.get("entries").cloned() {
+        if let Some(entries_array) = existing_entries.as_array() {
+            let processed_entries = process_entries_templates(entries_array, &magic_item);
+            magic_item["entries"] = json!(processed_entries);
+        }
+    }
+    
     Ok(magic_item)
 }
 
-/// Process template variables in entry text
-fn process_entries_templates(entries: &[Value], item: &Value) -> Vec<Value> {
+/// Get the appropriate article ("a" or "an") for a word
+fn get_article(word: &str) -> &'static str {
+    let word_lower = word.to_lowercase();
+    let first_char = word_lower.chars().next().unwrap_or(' ');
+    
+    // Check for vowel sounds (simplified English rules)
+    match first_char {
+        'a' | 'e' | 'i' | 'o' | 'u' => "an",
+        _ => "a"
+    }
+}
+
+/// Process template variables in entry text  
+pub fn process_entries_templates(entries: &[Value], item: &Value) -> Vec<Value> {
     entries.iter().map(|entry| {
         match entry {
             Value::String(s) => {
@@ -297,6 +332,42 @@ fn process_entries_templates(entries: &[Value], item: &Value) -> Vec<Value> {
                 // Replace {=bonusWeaponAttack} with the actual bonus
                 if let Some(bonus) = item.get("bonusWeaponAttack").and_then(|v| v.as_str()) {
                     processed = processed.replace("{=bonusWeaponAttack}", bonus);
+                }
+                
+                // Replace {=bonusAc} with the actual bonus
+                if let Some(bonus) = item.get("bonusAc").and_then(|v| v.as_str()) {
+                    processed = processed.replace("{=bonusAc}", bonus);
+                }
+                
+                // Replace {=bonusWeaponDamage} with the actual bonus
+                if let Some(bonus) = item.get("bonusWeaponDamage").and_then(|v| v.as_str()) {
+                    processed = processed.replace("{=bonusWeaponDamage}", bonus);
+                }
+                
+                // Replace base name templates
+                if let Some(base_item) = item.get("baseItem").and_then(|v| v.as_str()) {
+                    // Extract the base name (before the pipe)
+                    let base_name = base_item.split('|').next().unwrap_or(base_item);
+                    
+                    // Clean up common suffixes like "(20)" from "arrows (20)"
+                    let clean_name = if let Some(paren_pos) = base_name.find(" (") {
+                        &base_name[..paren_pos]
+                    } else {
+                        base_name
+                    };
+                    
+                    // {=baseName/l} - lowercase base name
+                    processed = processed.replace("{=baseName/l}", clean_name);
+                    
+                    // {=baseName/a} - base name with article "a" or "an"
+                    let article = get_article(clean_name);
+                    let with_article = format!("{} {}", article, clean_name);
+                    processed = processed.replace("{=baseName/a}", &with_article);
+                    
+                    // {=baseName/at} - base name with article "A" or "An" (capitalized)
+                    let cap_article = if article == "a" { "A" } else { "An" };
+                    let with_cap_article = format!("{} {}", cap_article, clean_name);
+                    processed = processed.replace("{=baseName/at}", &with_cap_article);
                 }
                 
                 // Replace {=dmgType} with the damage type name
@@ -315,6 +386,10 @@ fn process_entries_templates(entries: &[Value], item: &Value) -> Vec<Value> {
                     };
                     processed = processed.replace("{=dmgType}", &dmg_name);
                 }
+                
+                // Note: {#itemEntry} references need to be handled at a higher level 
+                // where we have access to the full items collection
+                // For now, we'll leave them as-is and handle them separately
                 
                 Value::String(processed)
             },

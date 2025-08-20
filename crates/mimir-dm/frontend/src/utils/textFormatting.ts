@@ -35,6 +35,18 @@ export function processFormattingTags(text: string): string {
   processed = processed
     .replace(/{@item ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="item-ref">$1</span>')
     
+  // Item entry references - these reference the description of another item
+  // Special handling for known item groups
+  processed = processed
+    .replace(/{#itemEntry Armor of Resistance(?:\|[^}]*)?}/gi, 
+      '<span class="item-description">You have resistance to one type of damage while you wear this armor.</span>')
+    .replace(/{#itemEntry Potion of Resistance(?:\|[^}]*)?}/gi,
+      '<span class="item-description">When you drink this potion, you gain resistance to one type of damage for 1 hour.</span>')
+    .replace(/{#itemEntry Grenade(?:\|[^}]*)?}/gi,
+      '<span class="item-description">As an action, a character can throw a grenade at a point up to 60 feet away. Each creature within 20 feet of an exploding fragmentation grenade must make a DC 15 Dexterity saving throw, taking 5d6 piercing damage on a failed save, or half as much damage on a successful one.</span>')
+    // Generic fallback for other item entry references
+    .replace(/{#itemEntry ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="item-entry-ref">[See base item: $1]</span>')
+    
   // Creatures
   processed = processed
     .replace(/{@creature ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="creature-ref">$1</span>')

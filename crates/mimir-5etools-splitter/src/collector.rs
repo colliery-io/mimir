@@ -191,6 +191,24 @@ fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &s
     let mut all_items = Vec::new();
     let mut base_items = Vec::new();
     
+    // Load itemEntry templates from items-base.json
+    let mut item_entry_templates = HashMap::new();
+    let items_base_file = data_dir.join("items-base.json");
+    if items_base_file.exists() {
+        let data = parser::load_json_file(&items_base_file)?;
+        if let Some(item_entries) = data.get("itemEntry").and_then(|v| v.as_array()) {
+            for entry in item_entries {
+                if let (Some(name), Some(source_val)) = (
+                    entry.get("name").and_then(|v| v.as_str()),
+                    entry.get("source").and_then(|v| v.as_str())
+                ) {
+                    let key = format!("{}|{}", name, source_val);
+                    item_entry_templates.insert(key, entry.clone());
+                }
+            }
+        }
+    }
+    
     // Collect from items.json (magic items, etc.)
     let items_file = data_dir.join("items.json");
     if items_file.exists() {
@@ -246,14 +264,32 @@ fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &s
                         if let Some(page) = &inherits.page {
                             variant_item["page"] = json!(page);
                         }
+                        if let Some(source) = &inherits.source {
+                            variant_item["source"] = json!(source);
+                        }
+                        if let Some(bonus_weapon) = &inherits.bonus_weapon {
+                            variant_item["bonusWeapon"] = json!(bonus_weapon);
+                        }
+                        if let Some(bonus_weapon_attack) = &inherits.bonus_weapon_attack {
+                            variant_item["bonusWeaponAttack"] = json!(bonus_weapon_attack);
+                        }
+                        if let Some(bonus_ac) = &inherits.bonus_ac {
+                            variant_item["bonusAc"] = json!(bonus_ac);
+                        }
+                        if let Some(bonus_weapon_damage) = &inherits.bonus_weapon_damage {
+                            variant_item["bonusWeaponDamage"] = json!(bonus_weapon_damage);
+                        }
                     }
                     
                     // For generic variants, use variant.entries if present, otherwise inherits.entries
+                    // Process template variables in the entries
                     if let Some(entries) = &variant.entries {
-                        variant_item["entries"] = json!(entries);
+                        let processed = magic_variants::process_entries_templates(entries, &variant_item);
+                        variant_item["entries"] = json!(processed);
                     } else if let Some(inherits) = &variant.inherits {
                         if let Some(entries) = &inherits.entries {
-                            variant_item["entries"] = json!(entries);
+                            let processed = magic_variants::process_entries_templates(entries, &variant_item);
+                            variant_item["entries"] = json!(processed);
                         }
                     }
                     
@@ -295,7 +331,7 @@ fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &s
     
     // Deduplicate items based on name + source combination
     if !all_items.is_empty() {
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = HashSet::new();
         let mut deduped_items = Vec::new();
         
         for item in all_items {
@@ -309,7 +345,48 @@ fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &s
             }
         }
         
-        let result = json!({ "item": deduped_items });
+        // Resolve {#itemEntry} references
+        let resolved_items = resolve_item_entry_references(deduped_items, &item_entry_templates);
+        
+        // Log diagnostic info about resolved items
+        let items_with_resolved_entries = resolved_items.iter()
+            .filter(|item| {
+                if let Some(entries) = item.get("entries").and_then(|v| v.as_array()) {
+                    entries.iter().any(|e| {
+                        if let Some(s) = e.as_str() {
+                            !s.starts_with("{#itemEntry")
+                        } else {
+                            true
+                        }
+                    })
+                } else {
+                    false
+                }
+            })
+            .count();
+        
+        let items_with_unresolved_entries = resolved_items.iter()
+            .filter(|item| {
+                if let Some(entries) = item.get("entries").and_then(|v| v.as_array()) {
+                    entries.iter().any(|e| {
+                        if let Some(s) = e.as_str() {
+                            s.starts_with("{#itemEntry")
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+            })
+            .count();
+        
+        if items_with_resolved_entries > 0 || items_with_unresolved_entries > 0 {
+            println!("  📝 Item entry resolution for {}: {} resolved, {} unresolved", 
+                source, items_with_resolved_entries, items_with_unresolved_entries);
+        }
+        
+        let result = json!({ "item": resolved_items });
         content.add_json(&format!("items/{}.json", source.to_lowercase()), &result)?;
     }
     
@@ -545,4 +622,175 @@ fn collect_directory_recursive(
         }
     }
     Ok(())
+}
+
+/// Resolve {#itemEntry} references in items
+fn resolve_item_entry_references(items: Vec<Value>, item_entry_templates: &HashMap<String, Value>) -> Vec<Value> {
+    // First, build a map of item names to their entries
+    let mut item_entries_map: HashMap<String, Value> = HashMap::new();
+    
+    // Collect entries from all items and item groups
+    for item in &items {
+        if let Some(name) = item.get("name").and_then(|v| v.as_str()) {
+            if let Some(entries) = item.get("entries") {
+                item_entries_map.insert(name.to_string(), entries.clone());
+            }
+        }
+        
+        // Also check for items within item groups
+        if item.get("_isItemGroup").and_then(|v| v.as_bool()).unwrap_or(false) {
+            if let Some(group_items) = item.get("items").and_then(|v| v.as_array()) {
+                // Item groups often have entries that apply to all items in the group
+                if let Some(group_entries) = item.get("entries") {
+                    // Store entries for each item name in the group
+                    for group_item_name in group_items {
+                        if let Some(item_name) = group_item_name.as_str() {
+                            // Extract base name without damage type suffix
+                            let base_name = if item_name.contains(" (") {
+                                item_name.split(" (").next().unwrap_or(item_name)
+                            } else {
+                                item_name
+                            };
+                            
+                            // Store both full name and base name
+                            item_entries_map.insert(item_name.to_string(), group_entries.clone());
+                            if base_name != item_name {
+                                item_entries_map.insert(base_name.to_string(), group_entries.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Special handling for known base items that may not have explicit entries
+    // These are commonly referenced items that have standard descriptions
+    item_entries_map.insert(
+        "Armor of Resistance".to_string(),
+        json!(["You have resistance to one type of damage while you wear this armor."])
+    );
+    item_entries_map.insert(
+        "Potion of Resistance".to_string(),
+        json!(["When you drink this potion, you gain resistance to one type of damage for 1 hour."])
+    );
+    
+    // Now process each item and resolve references
+    items.into_iter().map(|mut item| {
+        // Clone item properties we might need for template expansion
+        let item_name = item.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let item_resist = item.get("resist").cloned();
+        let item_detail1 = item.get("detail1").and_then(|v| v.as_str()).map(|s| s.to_string());
+        
+        if let Some(entries) = item.get_mut("entries").and_then(|v| v.as_array_mut()) {
+            let mut resolved_entries = Vec::new();
+            
+            for entry in entries.iter() {
+                if let Some(entry_str) = entry.as_str() {
+                    // Check if this is an item entry reference
+                    if entry_str.starts_with("{#itemEntry ") && entry_str.ends_with("}") {
+                        // Extract the referenced item name and source
+                        let ref_content = entry_str
+                            .trim_start_matches("{#itemEntry ")
+                            .trim_end_matches("}");
+                        
+                        let parts: Vec<&str> = ref_content.split('|').collect();
+                        let ref_name = parts.get(0).unwrap_or(&"");
+                        let ref_source = parts.get(1).unwrap_or(&"DMG");
+                        
+                        // Look up the template
+                        let template_key = format!("{}|{}", ref_name, ref_source);
+                        if let Some(template) = item_entry_templates.get(&template_key) {
+                            // Get the template entries
+                            if let Some(template_entries) = template.get("entriesTemplate").and_then(|v| v.as_array()) {
+                                // Process each template entry
+                                for template_entry in template_entries {
+                                    if let Some(template_str) = template_entry.as_str() {
+                                        // Replace template variables with item properties
+                                        let mut processed = template_str.to_string();
+                                        
+                                        // Replace {{item.resist}} with the item's resist value
+                                        let resist_value = if let Some(resist) = &item_resist {
+                                            if let Some(resist_str) = resist.as_str() {
+                                                resist_str.to_string()
+                                            } else if let Some(resist_array) = resist.as_array() {
+                                                resist_array.get(0).and_then(|v| v.as_str()).unwrap_or("").to_string()
+                                            } else {
+                                                String::new()
+                                            }
+                                        } else {
+                                            // Try to extract damage type from item name
+                                            // e.g., "Armor of Acid Resistance" -> "acid"
+                                            // e.g., "Potion of Fire Resistance" -> "fire"
+                                            if let Some(name) = &item_name {
+                                                if name.contains(" of ") && name.contains(" Resistance") {
+                                                    let parts: Vec<&str> = name.split(" of ").collect();
+                                                    if parts.len() > 1 {
+                                                        let damage_part = parts[1].replace(" Resistance", "");
+                                                        damage_part.to_lowercase()
+                                                    } else {
+                                                        String::new()
+                                                    }
+                                                } else {
+                                                    String::new()
+                                                }
+                                            } else {
+                                                String::new()
+                                            }
+                                        };
+                                        
+                                        if !resist_value.is_empty() {
+                                            processed = processed.replace("{{item.resist}}", &resist_value);
+                                        }
+                                        
+                                        // Replace {{item.detail1}} with the item's detail1 value
+                                        if let Some(detail1) = &item_detail1 {
+                                            processed = processed.replace("{{item.detail1}}", detail1);
+                                        }
+                                        
+                                        resolved_entries.push(json!(processed));
+                                    } else {
+                                        // Non-string template entries (like sub-entries objects)
+                                        resolved_entries.push(template_entry.clone());
+                                    }
+                                }
+                            } else {
+                                // No template found, check our fallback map
+                                if let Some(referenced_entries) = item_entries_map.get(*ref_name) {
+                                    if let Some(ref_array) = referenced_entries.as_array() {
+                                        resolved_entries.extend(ref_array.clone());
+                                    } else {
+                                        resolved_entries.push(referenced_entries.clone());
+                                    }
+                                } else {
+                                    // Can't resolve, keep as-is
+                                    resolved_entries.push(entry.clone());
+                                }
+                            }
+                        } else {
+                            // No template found, check our fallback map
+                            if let Some(referenced_entries) = item_entries_map.get(*ref_name) {
+                                if let Some(ref_array) = referenced_entries.as_array() {
+                                    resolved_entries.extend(ref_array.clone());
+                                } else {
+                                    resolved_entries.push(referenced_entries.clone());
+                                }
+                            } else {
+                                // Can't resolve, keep as-is
+                                resolved_entries.push(entry.clone());
+                            }
+                        }
+                    } else {
+                        resolved_entries.push(entry.clone());
+                    }
+                } else {
+                    resolved_entries.push(entry.clone());
+                }
+            }
+            
+            *entries = resolved_entries;
+        }
+        
+        item
+    }).collect()
 }

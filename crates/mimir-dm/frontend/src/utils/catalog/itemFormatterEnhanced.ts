@@ -1,4 +1,5 @@
-import { processFormattingTags } from '../textFormatting'
+import { processFormattingTags, formatEntries } from '../textFormatting'
+import { invoke } from '@tauri-apps/api/core'
 
 interface ItemDetails {
   name: string
@@ -28,13 +29,16 @@ interface ItemDetails {
   conditionImmune?: string[]
   bonusSpellAttack?: string
   bonusSpellSaveDc?: string
-  bonusWeaponAttack?: number
-  bonusAc?: number
+  bonusWeapon?: string
+  bonusWeaponAttack?: string
+  bonusWeaponDamage?: string
+  bonusAc?: string
   grantsProficiency?: boolean
   // Equipment-specific fields
   weapon?: boolean
   weaponCategory?: string
   armor?: boolean
+  ammunition?: boolean
   ammoType?: string
   scfType?: string
   group?: string[]
@@ -46,20 +50,23 @@ interface ItemDetails {
   miscTags?: string[]
   tier?: string
   lootTables?: string[]
-  // Tool categories
+  // Fluff content
   hasFluffImages?: boolean
+  fluffImages?: any[]
+  fluffEntries?: any[]
   poison?: boolean
 }
 
-export function formatItemDetails(item: any): string {
+export async function formatItemDetails(item: any): Promise<string> {
   // Handle both summary and full details
-  const isFullDetails = item.entries !== undefined || item.additionalEntries !== undefined
+  const isFullDetails = item.entries !== undefined || item.additionalEntries !== undefined || 
+                        item.bonusWeapon !== undefined || item.fluffImages !== undefined
   
   if (!isFullDetails) {
     return formatItemSummary(item)
   }
   
-  return formatFullItemDetails(item as ItemDetails)
+  return await formatFullItemDetails(item as ItemDetails)
 }
 
 function formatItemSummary(item: any): string {
@@ -128,8 +135,49 @@ function formatItemSummary(item: any): string {
   return html
 }
 
-function formatFullItemDetails(item: ItemDetails): string {
+async function formatFullItemDetails(item: ItemDetails): Promise<string> {
   let html = '<div class="item-details enhanced">'
+  
+  // Images (if available)
+  if (item.fluffImages && item.fluffImages.length > 0) {
+    html += '<div class="item-images">'
+    for (const img of item.fluffImages) {
+      if (img.href?.path) {
+        const bookSource = item.source || 'DMG'
+        try {
+          const response = await invoke<any>('serve_book_image', {
+            bookId: bookSource,
+            imagePath: img.href.path
+          })
+          if (response && response.success && response.data) {
+            html += `<img src="${response.data}" alt="${item.name}" class="item-image" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto 1rem;" />`
+          }
+        } catch (e) {
+          console.error('Failed to load item image:', e)
+        }
+      }
+    }
+    html += '</div>'
+  }
+  
+  // Try to load image based on item name if no fluff images
+  if (!item.fluffImages || item.fluffImages.length === 0) {
+    const bookSource = item.source || 'DMG'
+    const imagePath = `items/${bookSource}/${item.name}.webp`
+    try {
+      const response = await invoke<any>('serve_book_image', {
+        bookId: bookSource,
+        imagePath: imagePath
+      })
+      if (response && response.success && response.data) {
+        html += '<div class="item-images">'
+        html += `<img src="${response.data}" alt="${item.name}" class="item-image" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto 1rem;" />`
+        html += '</div>'
+      }
+    } catch (e) {
+      // No image found, that's okay
+    }
+  }
   
   // Header section
   html += '<div class="item-header-section">'
@@ -160,12 +208,12 @@ function formatFullItemDetails(item: ItemDetails): string {
   }
   html += '</div>'
   
-  // Properties grid
-  html += '<div class="item-properties-grid">'
+  // Build properties grid content first
+  let propertiesContent = ''
   
   // Basic properties
   if (item.value) {
-    html += `<div class="property-item">
+    propertiesContent += `<div class="property-item">
       <span class="property-label">Cost</span>
       <span class="property-value">${formatCost(item.value)}</span>
     </div>`
@@ -173,77 +221,107 @@ function formatFullItemDetails(item: ItemDetails): string {
   
   if (item.weight) {
     const weightText = item.weightNote ? `${item.weight} lb ${item.weightNote}` : `${item.weight} lb`
-    html += `<div class="property-item">
+    propertiesContent += `<div class="property-item">
       <span class="property-label">Weight</span>
       <span class="property-value">${weightText}</span>
     </div>`
   }
   
-  // Armor properties
-  if (item.ac !== undefined) {
-    html += `<div class="property-item">
-      <span class="property-label">Armor Class</span>
-      <span class="property-value">${item.ac}</span>
-    </div>`
+  // Only show armor properties for armor items
+  if (item.armor || item.type === 'LA' || item.type === 'MA' || item.type === 'HA' || item.type === 'S') {
+    if (item.ac !== undefined) {
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Armor Class</span>
+        <span class="property-value">${item.ac}</span>
+      </div>`
+    }
+    
+    if (item.strength) {
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Strength Req.</span>
+        <span class="property-value">${item.strength}</span>
+      </div>`
+    }
+    
+    if (item.stealth === true) {
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Stealth</span>
+        <span class="property-value">Disadvantage</span>
+      </div>`
+    }
   }
   
-  if (item.strength) {
-    html += `<div class="property-item">
-      <span class="property-label">Strength Req.</span>
-      <span class="property-value">${item.strength}</span>
-    </div>`
+  // Only show weapon properties for weapons
+  if (item.weapon || item.type === 'M' || item.type === 'R' || item.dmg1) {
+    if (item.dmg1) {
+      const damageType = formatDamageType(item.dmgType)
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Damage</span>
+        <span class="property-value">
+          <span class="damage-dice">${item.dmg1}</span>
+          ${damageType ? `<span class="damage-type">${damageType}</span>` : ''}
+        </span>
+      </div>`
+    }
+    
+    if (item.dmg2) {
+      const damageType = formatDamageType(item.dmgType)
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Versatile</span>
+        <span class="property-value">
+          <span class="damage-dice">${item.dmg2}</span>
+          ${damageType ? `<span class="damage-type">${damageType}</span>` : ''}
+        </span>
+      </div>`
+    }
+    
+    if (item.range) {
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Range</span>
+        <span class="property-value">${item.range}</span>
+      </div>`
+    }
+    
+    if (item.property && item.property.length > 0) {
+      propertiesContent += `<div class="property-item full-width">
+        <span class="property-label">Properties</span>
+        <span class="property-value">${formatWeaponProperties(item.property)}</span>
+      </div>`
+    }
   }
   
-  if (item.stealth === true) {
-    html += `<div class="property-item">
-      <span class="property-label">Stealth</span>
-      <span class="property-value">Disadvantage</span>
-    </div>`
+  // Show magic bonuses for magic items
+  if (item.bonusWeapon || item.bonusWeaponAttack || item.bonusWeaponDamage) {
+    if (item.bonusWeapon) {
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Weapon Bonus</span>
+        <span class="property-value">+${item.bonusWeapon}</span>
+      </div>`
+    }
+    
+    if (item.bonusWeaponAttack) {
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Attack Bonus</span>
+        <span class="property-value">+${item.bonusWeaponAttack}</span>
+      </div>`
+    }
+    
+    if (item.bonusWeaponDamage) {
+      propertiesContent += `<div class="property-item">
+        <span class="property-label">Damage Bonus</span>
+        <span class="property-value">+${item.bonusWeaponDamage}</span>
+      </div>`
+    }
   }
   
-  // Weapon properties
-  if (item.dmg1) {
-    const damageType = formatDamageType(item.dmgType)
-    html += `<div class="property-item">
-      <span class="property-label">Damage</span>
-      <span class="property-value">
-        <span class="damage-dice">${item.dmg1}</span>
-        ${damageType ? `<span class="damage-type">${damageType}</span>` : ''}
-      </span>
-    </div>`
+  // Only add the properties grid if there's content
+  if (propertiesContent) {
+    html += '<div class="item-properties-grid">'
+    html += propertiesContent
+    html += '</div>'
   }
   
-  if (item.dmg2) {
-    const damageType = formatDamageType(item.dmgType)
-    html += `<div class="property-item">
-      <span class="property-label">Versatile</span>
-      <span class="property-value">
-        <span class="damage-dice">${item.dmg2}</span>
-        ${damageType ? `<span class="damage-type">${damageType}</span>` : ''}
-      </span>
-    </div>`
-  }
-  
-  if (item.range) {
-    html += `<div class="property-item">
-      <span class="property-label">Range</span>
-      <span class="property-value">${item.range}</span>
-    </div>`
-  }
-  
-  if (item.property && item.property.length > 0) {
-    html += `<div class="property-item full-width">
-      <span class="property-label">Properties</span>
-      <span class="property-value">${formatWeaponProperties(item.property)}</span>
-    </div>`
-  }
-  
-  html += '</div>'
-  
-  // Combat mechanics section for weapons
-  if (item.weapon || item.dmg1 || item.property) {
-    html += formatWeaponCombatSection(item)
-  }
+  // Don't show redundant combat section - properties are already displayed above
   
   // Magic item properties section
   if (item.bonusSpellAttack || item.bonusSpellSaveDc || item.bonusAc || item.lootTables) {
@@ -265,25 +343,7 @@ function formatFullItemDetails(item: ItemDetails): string {
     html += '<div class="item-description-section">'
     html += '<h4>Description</h4>'
     html += '<div class="description-text">'
-    for (const entry of item.entries) {
-      if (typeof entry === 'string') {
-        html += `<p>${processFormattingTags(entry)}</p>`
-      } else if (typeof entry === 'object' && entry !== null) {
-        const entryObj = entry as any
-        if (entryObj.type === 'list') {
-          html += formatList(entryObj)
-        } else if (entryObj.type === 'entries' && entryObj.entries) {
-          if (entryObj.name) {
-            html += `<h5>${entryObj.name}</h5>`
-          }
-          for (const subEntry of entryObj.entries) {
-            if (typeof subEntry === 'string') {
-              html += `<p>${processFormattingTags(subEntry)}</p>`
-            }
-          }
-        }
-      }
-    }
+    html += formatEntries(item.entries)
     html += '</div>'
     html += '</div>'
   }
@@ -291,12 +351,19 @@ function formatFullItemDetails(item: ItemDetails): string {
   // Additional entries
   if (item.additionalEntries && item.additionalEntries.length > 0) {
     html += '<div class="item-additional-section">'
+    html += '<h4>Additional Properties</h4>'
     html += '<div class="description-text">'
-    for (const entry of item.additionalEntries) {
-      if (typeof entry === 'string') {
-        html += `<p>${processFormattingTags(entry)}</p>`
-      }
-    }
+    html += formatEntries(item.additionalEntries)
+    html += '</div>'
+    html += '</div>'
+  }
+  
+  // Fluff entries (lore)
+  if (item.fluffEntries && item.fluffEntries.length > 0) {
+    html += '<div class="item-lore-section">'
+    html += '<h4>Lore</h4>'
+    html += '<div class="description-text">'
+    html += formatEntries(item.fluffEntries)
     html += '</div>'
     html += '</div>'
   }
@@ -313,20 +380,6 @@ function formatFullItemDetails(item: ItemDetails): string {
   return html
 }
 
-function formatList(listObj: any): string {
-  let html = '<ul class="item-list">'
-  if (listObj.items) {
-    for (const item of listObj.items) {
-      if (typeof item === 'string') {
-        html += `<li>${processFormattingTags(item)}</li>`
-      } else if (typeof item === 'object' && item.name) {
-        html += `<li><strong>${item.name}:</strong> ${processFormattingTags(item.entry || '')}</li>`
-      }
-    }
-  }
-  html += '</ul>'
-  return html
-}
 
 function formatCost(value: number): string {
   if (value >= 100) {
@@ -502,56 +555,6 @@ function formatMiscTag(tag: string): string {
   return tagMap[tag] || tag
 }
 
-function formatWeaponCombatSection(item: ItemDetails): string {
-  let html = '<div class="item-combat-section">'
-  html += '<h4>Combat Properties</h4>'
-  html += '<div class="combat-properties-grid">'
-  
-  if (item.weaponCategory) {
-    html += `<div class="combat-item">
-      <span class="combat-label">Category</span>
-      <span class="combat-value">${formatWeaponCategory(item.weaponCategory)}</span>
-    </div>`
-  }
-  
-  if (item.dmg1 && item.dmgType) {
-    html += `<div class="combat-item">
-      <span class="combat-label">Damage</span>
-      <span class="combat-value">
-        <span class="damage-dice">${item.dmg1}</span>
-        <span class="damage-type ${item.dmgType.toLowerCase()}">${formatDamageType(item.dmgType)}</span>
-      </span>
-    </div>`
-  }
-  
-  if (item.dmg2) {
-    html += `<div class="combat-item">
-      <span class="combat-label">Versatile</span>
-      <span class="combat-value">
-        <span class="damage-dice">${item.dmg2}</span>
-        <span class="damage-type ${item.dmgType?.toLowerCase() || ''}">${formatDamageType(item.dmgType)}</span>
-      </span>
-    </div>`
-  }
-  
-  if (item.range) {
-    html += `<div class="combat-item">
-      <span class="combat-label">Range</span>
-      <span class="combat-value">${item.range} ft.</span>
-    </div>`
-  }
-  
-  if (item.ammoType) {
-    html += `<div class="combat-item">
-      <span class="combat-label">Ammunition</span>
-      <span class="combat-value">${formatAmmoType(item.ammoType)}</span>
-    </div>`
-  }
-  
-  html += '</div>'
-  html += '</div>'
-  return html
-}
 
 function formatMagicItemSection(item: ItemDetails): string {
   let html = '<div class="item-magic-section">'
