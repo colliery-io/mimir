@@ -1,0 +1,211 @@
+/* Enhanced item details styles */
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.item-details.enhanced {
+  gap: 1.75rem;
+}
+
+.item-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-accent, #6bcf7f);
+}
+
+.item-type-rarity {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-accent, #6bcf7f);
+  text-transform: capitalize;
+}
+
+.item-tags {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.item-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.item-tag.attunement {
+  background: rgba(255, 159, 67, 0.2);
+  color: #ff9f43;
+  border: 1px solid rgba(255, 159, 67, 0.3);
+}
+
+.item-properties-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+.item-description-section,
+.item-additional-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.item-description-section h4,
+.item-additional-section h4 {
+  color: var(--color-text, #e0e0e0);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+.item-list {
+  margin: 0.5rem 0 0.5rem 1.5rem;
+  padding: 0;
+}
+
+.item-list li {
+  margin-bottom: 0.5rem;
+  color: var(--color-text-secondary, #ccc);
+}
+
+.item-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #222);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Enhanced damage and property styles */
+.damage-dice {
+  color: #ff6b6b;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  margin-right: 0.5rem;
+}
+
+.damage-type {
+  color: var(--color-text-secondary, #aaa);
+  font-style: italic;
+  text-transform: capitalize;
+  padding: 2px 6px;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.weapon-property {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(116, 185, 255, 0.15);
+  color: #74b9ff;
+  border: 1px solid rgba(116, 185, 255, 0.3);
+}
+
+.weapon-property.finesse {
+  background: rgba(168, 199, 255, 0.15);
+  color: #a8c7ff;
+  border-color: rgba(168, 199, 255, 0.3);
+}
+
+.weapon-property.heavy {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.weapon-property.light {
+  background: rgba(255, 218, 121, 0.15);
+  color: #ffda79;
+  border-color: rgba(255, 218, 121, 0.3);
+}
+
+.weapon-property.reach {
+  background: rgba(108, 207, 127, 0.15);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.3);
+}
+
+.weapon-property.versatile {
+  background: rgba(162, 155, 254, 0.15);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+.weapon-property.thrown {
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border-color: rgba(255, 159, 67, 0.3);
+}
+
+.weapon-property.range {
+  background: rgba(85, 239, 196, 0.15);
+  color: #55efc4;
+  border-color: rgba(85, 239, 196, 0.3);
+}
+
+.weapon-property.ammunition {
+  background: rgba(116, 185, 255, 0.15);
+  color: #74b9ff;
+  border-color: rgba(116, 185, 255, 0.3);
+}
+
+.weapon-property.burstfire {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.weapon-property.reload {
+  background: rgba(255, 218, 121, 0.15);
+  color: #ffda79;
+  border-color: rgba(255, 218, 121, 0.3);
+}
+
+.weapon-property.loading {
+  background: rgba(162, 155, 254, 0.15);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+/* Legacy item styles for backward compatibility */
+.item-header {
+  margin-bottom: 1rem;
+}
+
+.item-type {
+  color: var(--color-text-secondary, #999);
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.item-properties {
+  margin: 1rem 0;
+}
+
+.item-properties div {
+  margin: 0.5rem 0;
+}
+
+.item-source {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #222);
+  color: var(--color-text-secondary, #999);
+  font-size: 0.875rem;
+}

@@ -1,0 +1,391 @@
+/* Enhanced spell details styles */
+.spell-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.spell-details.enhanced {
+  gap: 1.75rem;
+}
+
+.spell-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-primary, #4a9eff);
+}
+
+.spell-level-school {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary, #4a9eff);
+  text-transform: capitalize;
+}
+
+.spell-tags {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.spell-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.spell-tag.ritual {
+  background: rgba(168, 199, 255, 0.2);
+  color: #a8c7ff;
+  border: 1px solid rgba(168, 199, 255, 0.3);
+}
+
+.spell-tag.concentration {
+  background: rgba(74, 158, 255, 0.2);
+  color: var(--color-primary, #4a9eff);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+.spell-tag.healing {
+  background: rgba(108, 207, 127, 0.15);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.3);
+}
+
+.spell-tag.summoning {
+  background: rgba(162, 155, 254, 0.15);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+.spell-tag.light {
+  background: rgba(255, 218, 121, 0.15);
+  color: #ffda79;
+  border-color: rgba(255, 218, 121, 0.3);
+}
+
+.spell-tag.scaling {
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border-color: rgba(255, 159, 67, 0.3);
+}
+
+.spell-tag.temp-hp {
+  background: rgba(85, 239, 196, 0.15);
+  color: #55efc4;
+  border-color: rgba(85, 239, 196, 0.3);
+}
+
+.spell-tag.bonus-action {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.spell-tag.permanent {
+  background: rgba(99, 110, 114, 0.15);
+  color: #636e72;
+  border-color: rgba(99, 110, 114, 0.3);
+}
+
+.spell-tag.objects {
+  background: rgba(139, 69, 19, 0.15);
+  color: #8b4513;
+  border-color: rgba(139, 69, 19, 0.3);
+}
+
+.spell-tag.movement {
+  background: rgba(74, 158, 255, 0.15);
+  color: #4a9eff;
+  border-color: rgba(74, 158, 255, 0.3);
+}
+
+.spell-tag.attacks {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.spell-properties-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+.property-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.property-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.property-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #999);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-value {
+  color: var(--color-text, #e0e0e0);
+  font-size: 0.95rem;
+}
+
+/* Combat Mechanics Section */
+.spell-combat-section {
+  margin: 1.5rem 0;
+}
+
+.spell-combat-section h4 {
+  color: var(--color-accent, #6bcf7f);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+.combat-mechanics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.combat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+.combat-label {
+  font-weight: 600;
+  color: var(--color-text-secondary, #aaa);
+  font-size: 0.875rem;
+  min-width: 60px;
+}
+
+.combat-value {
+  font-weight: 500;
+  color: var(--color-text, #e0e0e0);
+}
+
+/* Damage type badges */
+.damage-type {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+.damage-type.fire {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.damage-type.cold {
+  background: rgba(116, 185, 255, 0.15);
+  color: #74b9ff;
+  border-color: rgba(116, 185, 255, 0.3);
+}
+
+.damage-type.lightning {
+  background: rgba(255, 218, 121, 0.15);
+  color: #ffda79;
+  border-color: rgba(255, 218, 121, 0.3);
+}
+
+.damage-type.acid {
+  background: rgba(108, 207, 127, 0.15);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.3);
+}
+
+.damage-type.poison {
+  background: rgba(162, 155, 254, 0.15);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+.damage-type.necrotic {
+  background: rgba(99, 110, 114, 0.15);
+  color: #636e72;
+  border-color: rgba(99, 110, 114, 0.3);
+}
+
+.damage-type.radiant {
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border-color: rgba(255, 159, 67, 0.3);
+}
+
+.damage-type.thunder {
+  background: rgba(162, 155, 254, 0.15);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+.damage-type.force {
+  background: rgba(85, 239, 196, 0.15);
+  color: #55efc4;
+  border-color: rgba(85, 239, 196, 0.3);
+}
+
+.damage-type.bludgeoning,
+.damage-type.piercing,
+.damage-type.slashing {
+  background: rgba(139, 69, 19, 0.15);
+  color: #8b4513;
+  border-color: rgba(139, 69, 19, 0.3);
+}
+
+.damage-type.psychic {
+  background: rgba(218, 112, 214, 0.15);
+  color: #da70d6;
+  border-color: rgba(218, 112, 214, 0.3);
+}
+
+/* Condition badges */
+.condition-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border: 1px solid rgba(255, 159, 67, 0.3);
+}
+
+/* Cantrip scaling styles */
+.spell-scaling-section {
+  margin: 1.5rem 0;
+}
+
+.spell-scaling-section h4 {
+  color: var(--color-accent, #6bcf7f);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+.cantrip-scaling {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+.scaling-label {
+  font-weight: 600;
+  color: var(--color-text-secondary, #aaa);
+  margin-right: 0.5rem;
+}
+
+.scaling-progression {
+  font-family: 'Courier New', monospace;
+  color: var(--color-text, #e0e0e0);
+}
+
+.scaling-dice {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.scaling-level {
+  color: var(--color-text-secondary, #aaa);
+  font-size: 0.875rem;
+}
+
+/* Content sections */
+.spell-description-section,
+.spell-higher-level-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.spell-description-section h4,
+.spell-higher-level-section h4 {
+  color: var(--color-text, #e0e0e0);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+/* Enhanced higher level section */
+.spell-higher-level-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scaling-icon {
+  font-size: 1.2rem;
+}
+
+.higher-level-entry {
+  padding: 0.5rem 0;
+  border-left: 3px solid var(--color-accent, #6bcf7f);
+  padding-left: 1rem;
+  margin-left: 0.5rem;
+}
+
+.description-text {
+  color: var(--color-text-secondary, #ccc);
+  line-height: 1.6;
+}
+
+.description-text p {
+  margin: 0 0 0.75rem 0;
+}
+
+.description-text p:last-child {
+  margin-bottom: 0;
+}
+
+.spell-list {
+  margin: 0.5rem 0 0.5rem 1.5rem;
+  padding: 0;
+}
+
+.spell-list li {
+  margin-bottom: 0.5rem;
+  color: var(--color-text-secondary, #ccc);
+}
+
+.spell-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #222);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.source-info {
+  color: var(--color-text-dim, #888);
+  font-size: 0.875rem;
+  font-style: italic;
+}

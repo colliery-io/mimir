@@ -1,0 +1,89 @@
+/* Shared formatting tag styles */
+.dice-roll,
+.damage-roll {
+  color: #ff6b6b;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+.condition {
+  color: #ffd93d;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.spell-ref {
+  color: var(--color-primary, #4a9eff);
+  font-style: italic;
+}
+
+.item-ref {
+  color: #6bcf7f;
+  font-weight: 500;
+}
+
+.creature-ref {
+  color: #ff9f43;
+  font-weight: 500;
+}
+
+.dc-check {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.skill {
+  color: #a29bfe;
+  font-weight: 500;
+}
+
+.action {
+  color: #74b9ff;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Shared property styles */
+.property-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.property-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.property-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #999);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-value {
+  color: var(--color-text, #e0e0e0);
+  font-size: 0.95rem;
+}
+
+/* Shared footer styles */
+.source-info {
+  color: var(--color-text-dim, #888);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* Shared description styles */
+.description-text {
+  color: var(--color-text-secondary, #ccc);
+  line-height: 1.6;
+}
+
+.description-text p {
+  margin: 0 0 0.75rem 0;
+}
+
+.description-text p:last-child {
+  margin-bottom: 0;
+}

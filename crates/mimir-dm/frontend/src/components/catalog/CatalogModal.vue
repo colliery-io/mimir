@@ -1,0 +1,493 @@
+<template>
+  <div v-if="visible" class="modal-overlay" @click="close">
+    <div class="modal-content" @click.stop>
+      <div class="modal-header">
+        <h3>{{ title }}</h3>
+        <button class="modal-close" @click="close">×</button>
+      </div>
+      <div class="modal-body" v-html="content"></div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  visible: boolean
+  title: string
+  content: string
+}
+
+defineProps<Props>()
+
+const emit = defineEmits<{
+  close: []
+}>()
+
+function close() {
+  emit('close')
+}
+</script>
+
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: var(--color-surface, #1a1a1a);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 8px;
+  max-width: 800px;
+  max-height: 80vh;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  padding: var(--spacing-lg, 16px);
+  border-bottom: 1px solid var(--color-border, #333);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--color-text, #e0e0e0);
+  font-size: 1.25rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #999);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
+  color: var(--color-text, #e0e0e0);
+}
+
+.modal-body {
+  padding: var(--spacing-lg, 16px);
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Enhanced spell details styles */
+:deep(.spell-details) {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+:deep(.spell-details.enhanced) {
+  gap: 1.75rem;
+}
+
+:deep(.spell-header-section) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-primary, #4a9eff);
+}
+
+:deep(.spell-level-school) {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary, #4a9eff);
+  text-transform: capitalize;
+}
+
+:deep(.spell-tags) {
+  display: flex;
+  gap: 0.5rem;
+}
+
+:deep(.spell-tag) {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+:deep(.spell-tag.ritual) {
+  background: rgba(168, 199, 255, 0.2);
+  color: #a8c7ff;
+  border: 1px solid rgba(168, 199, 255, 0.3);
+}
+
+:deep(.spell-tag.concentration) {
+  background: rgba(74, 158, 255, 0.2);
+  color: var(--color-primary, #4a9eff);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+:deep(.spell-tag.healing) {
+  background: rgba(108, 207, 127, 0.15);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.3);
+}
+
+:deep(.spell-tag.summoning) {
+  background: rgba(162, 155, 254, 0.15);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+:deep(.spell-tag.light) {
+  background: rgba(255, 218, 121, 0.15);
+  color: #ffda79;
+  border-color: rgba(255, 218, 121, 0.3);
+}
+
+:deep(.spell-tag.scaling) {
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border-color: rgba(255, 159, 67, 0.3);
+}
+
+:deep(.spell-properties-grid) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+:deep(.property-item) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+:deep(.property-item.full-width) {
+  grid-column: 1 / -1;
+}
+
+:deep(.property-label) {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #999);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+:deep(.property-value) {
+  color: var(--color-text, #e0e0e0);
+  font-size: 0.95rem;
+}
+
+/* Combat Mechanics Section */
+:deep(.spell-combat-section) {
+  margin: 1.5rem 0;
+}
+
+:deep(.spell-combat-section h4) {
+  color: var(--color-accent, #6bcf7f);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.combat-mechanics-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+:deep(.combat-item) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+:deep(.combat-label) {
+  font-weight: 600;
+  color: var(--color-text-secondary, #aaa);
+  font-size: 0.875rem;
+  min-width: 60px;
+}
+
+:deep(.combat-value) {
+  font-weight: 500;
+  color: var(--color-text, #e0e0e0);
+}
+
+/* Damage type badges */
+:deep(.damage-type) {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+:deep(.damage-type.fire) {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+:deep(.damage-type.cold) {
+  background: rgba(116, 185, 255, 0.15);
+  color: #74b9ff;
+  border-color: rgba(116, 185, 255, 0.3);
+}
+
+:deep(.damage-type.acid) {
+  background: rgba(108, 207, 127, 0.15);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.3);
+}
+
+/* Condition badges */
+:deep(.condition-badge) {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border: 1px solid rgba(255, 159, 67, 0.3);
+}
+
+/* Cantrip scaling styles */
+:deep(.spell-scaling-section) {
+  margin: 1.5rem 0;
+}
+
+:deep(.spell-scaling-section h4) {
+  color: var(--color-accent, #6bcf7f);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.cantrip-scaling) {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+:deep(.scaling-label) {
+  font-weight: 600;
+  color: var(--color-text-secondary, #aaa);
+  margin-right: 0.5rem;
+}
+
+:deep(.scaling-progression) {
+  font-family: 'Courier New', monospace;
+  color: var(--color-text, #e0e0e0);
+}
+
+:deep(.scaling-dice) {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+:deep(.scaling-level) {
+  color: var(--color-text-secondary, #aaa);
+  font-size: 0.875rem;
+}
+
+:deep(.spell-description-section),
+:deep(.spell-higher-level-section) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+:deep(.spell-description-section h4),
+:deep(.spell-higher-level-section h4) {
+  color: var(--color-text, #e0e0e0);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.description-text) {
+  color: var(--color-text-secondary, #ccc);
+  line-height: 1.6;
+}
+
+:deep(.description-text p) {
+  margin: 0 0 0.75rem 0;
+}
+
+:deep(.description-text p:last-child) {
+  margin-bottom: 0;
+}
+
+:deep(.spell-footer) {
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #222);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+:deep(.source-info) {
+  color: var(--color-text-dim, #888);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* Shared formatting tag styles */
+:deep(.dice-roll),
+:deep(.damage-roll) {
+  color: #ff6b6b;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+:deep(.class-header-info) {
+  margin-bottom: 1rem;
+}
+
+:deep(.class-properties) {
+  margin: 1rem 0;
+}
+
+:deep(.parent-class-info) {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.parent-class-info h4) {
+  color: var(--color-text-secondary, #999);
+  margin-bottom: 0.5rem;
+}
+
+:deep(.subclass-section) {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border-left: 3px solid var(--color-primary-dim, #3a7fbf);
+}
+
+:deep(.subclass-section h4) {
+  color: var(--color-primary, #4a9eff);
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+:deep(.feature-list),
+:deep(.spell-list) {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+:deep(.feature-list li) {
+  color: var(--color-text, #e0e0e0);
+  margin-bottom: 0.25rem;
+}
+
+:deep(.spell-item) {
+  color: var(--color-spell, #a8c7ff);
+  font-style: italic;
+  margin-bottom: 0.25rem;
+}
+
+/* Spell specific styles */
+:deep(.spell-level) {
+  color: var(--color-primary, #4a9eff);
+  font-weight: 600;
+}
+
+:deep(.spell-school) {
+  color: var(--color-text-secondary, #999);
+  font-style: italic;
+}
+
+/* Monster specific styles */
+:deep(.creature-stats) {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+:deep(.stat) {
+  text-align: center;
+}
+
+:deep(.stat-label) {
+  color: var(--color-text-secondary, #999);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+:deep(.stat-value) {
+  color: var(--color-text, #e0e0e0);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+:deep(.stat-modifier) {
+  color: var(--color-text-dim, #666);
+  font-size: 0.875rem;
+}
+</style>

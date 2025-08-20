@@ -74,11 +74,41 @@ export interface MonsterFilters {
 export interface ClassSummary {
   name: string
   source: string
-  hit_die: string
-  primary_ability: string
+  hitDie: string
+  primaryAbility: string
   saves: string
   spellcaster: boolean
   description: string
+  // Additional subclass information
+  subclassFeatures?: string[]
+  additionalSpells?: string[]
+  spellcastingAbility?: string
+  cantripProgression?: number[]
+}
+
+export interface CharacterClass {
+  name: string
+  source: string
+  page?: number
+  className?: string  // If present, this is a subclass
+  classSource?: string
+  subclassShortName?: string
+  hd?: { faces: number, number: number }
+  proficiency?: string[]
+  startingProficiencies?: any
+  startingEquipment?: any
+  multiclassing?: any
+  casterProgression?: string
+  cantripProgression?: number[]
+  spellSlotsProgression?: any
+  spellsKnownProgression?: number[]
+  spellcastingAbility?: string
+  classFeatures?: any[]
+  subclassFeatures?: string[]
+  additionalSpells?: any[]
+  subclassTitle?: string
+  srd?: any
+  basicRules?: boolean
 }
 
 export interface ClassFilters {
@@ -92,7 +122,7 @@ export interface RaceSummary {
   source: string
   size: string
   speed: number
-  ability_bonuses: string
+  abilityBonuses: string
   traits: string[]
   description: string
 }
@@ -372,6 +402,17 @@ export function useCatalog() {
       isLoading.value = false
     }
   }
+  
+  // Get detailed class information
+  async function getClassDetails(name: string, source: string): Promise<CharacterClass | null> {
+    try {
+      const classDetails = await invoke<CharacterClass | null>('get_class_details', { name, source })
+      return classDetails
+    } catch (e) {
+      console.error('Failed to get class details:', e)
+      return null
+    }
+  }
 
   // Initialize the race catalog
   async function initializeRaceCatalog() {
@@ -537,6 +578,7 @@ export function useCatalog() {
     searchRaces,
     searchFeats,
     searchBackgrounds,
+    getClassDetails,
     getSpellDetails,
     getItemDetails,
     getMonsterDetails,
