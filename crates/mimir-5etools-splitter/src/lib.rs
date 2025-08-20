@@ -3,6 +3,7 @@ pub mod collector;
 pub mod filter;
 pub mod images;
 pub mod input;
+pub mod magic_variants;
 pub mod parallel;
 pub mod parser;
 pub mod repo;

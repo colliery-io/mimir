@@ -1,8 +1,9 @@
 use crate::filter::SourceFilter;
+use crate::magic_variants;
 use crate::parser::{self, Book};
 use anyhow::Result;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -188,6 +189,7 @@ fn collect_filtered_content(
 /// Collect filtered items (from both items.json and items-base.json)
 fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &str) -> Result<()> {
     let mut all_items = Vec::new();
+    let mut base_items = Vec::new();
     
     // Collect from items.json (magic items, etc.)
     let items_file = data_dir.join("items.json");
@@ -195,6 +197,20 @@ fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &s
         let data = parser::load_json_file(&items_file)?;
         let filtered = parser::filter_by_source(&data, source, "item");
         all_items.extend(filtered);
+        
+        // Also collect itemGroup entries
+        if let Some(item_groups) = data.get("itemGroup").and_then(|v| v.as_array()) {
+            for group in item_groups {
+                if let Some(group_source) = group.get("source").and_then(|v| v.as_str()) {
+                    if group_source == source {
+                        let mut group_item = group.clone();
+                        // Mark as item group (similar to 5etools)
+                        group_item["_isItemGroup"] = json!(true);
+                        all_items.push(group_item);
+                    }
+                }
+            }
+        }
     }
     
     // Collect from items-base.json (weapons, armor, basic gear)
@@ -202,12 +218,92 @@ fn collect_filtered_items(content: &mut BookContent, data_dir: &Path, source: &s
     if items_base_file.exists() {
         let data = parser::load_json_file(&items_base_file)?;
         let filtered = parser::filter_by_source(&data, source, "baseitem");
+        base_items.extend(filtered.clone());
         all_items.extend(filtered);
     }
     
-    // Save all items if any were found
+    // For DMG specifically, expand magic variants from ALL base items
+    if source == "DMG" {
+        match magic_variants::load_magic_variants(data_dir) {
+            Ok(variants) => {
+                // Add the generic variants themselves to the output
+                for variant in &variants {
+                    let mut variant_item = json!({
+                        "name": variant.name,
+                        "source": "DMG",
+                        "_category": "Generic Variant",
+                        "_isGenericVariant": true
+                    });
+                    
+                    // Add inherited properties to the generic variant
+                    if let Some(inherits) = &variant.inherits {
+                        if let Some(rarity) = &inherits.rarity {
+                            variant_item["rarity"] = json!(rarity);
+                        }
+                        if let Some(tier) = &inherits.tier {
+                            variant_item["tier"] = json!(tier);
+                        }
+                        if let Some(page) = &inherits.page {
+                            variant_item["page"] = json!(page);
+                        }
+                        if let Some(entries) = &inherits.entries {
+                            variant_item["entries"] = json!(entries);
+                        }
+                    }
+                    
+                    if let Some(variant_type) = &variant.variant_type {
+                        variant_item["type"] = json!(variant_type);
+                    }
+                    
+                    all_items.push(variant_item);
+                }
+                
+                // Load ALL base items from items-base.json (not just DMG source)
+                let items_base_file = data_dir.join("items-base.json");
+                if items_base_file.exists() {
+                    let data = parser::load_json_file(&items_base_file)?;
+                    if let Some(all_base_items) = data.get("baseitem").and_then(|v| v.as_array()) {
+                        let all_base_items: Vec<_> = all_base_items.iter().cloned().collect();
+                        
+                        match magic_variants::expand_magic_variants(&all_base_items, &variants) {
+                            Ok(expanded_items) => {
+                                if !expanded_items.is_empty() {
+                                    let count = expanded_items.len();
+                                    // Add expanded magic items to the main collection
+                                    all_items.extend(expanded_items);
+                                    println!("✨ Generated {} magic item variants for {}", count, source);
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Warning: Failed to expand magic variants for {}: {}", source, e);
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load magic variants for {}: {}", source, e);
+            }
+        }
+    }
+    
+    // Deduplicate items based on name + source combination
     if !all_items.is_empty() {
-        let result = json!({ "item": all_items });
+        let mut seen = std::collections::HashSet::new();
+        let mut deduped_items = Vec::new();
+        
+        for item in all_items {
+            // Create a unique key from name + source
+            let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("");
+            let item_source = item.get("source").and_then(|v| v.as_str()).unwrap_or(source);
+            let key = format!("{}|{}", name, item_source);
+            
+            if seen.insert(key) {
+                deduped_items.push(item);
+            }
+        }
+        
+        let result = json!({ "item": deduped_items });
         content.add_json(&format!("items/{}.json", source.to_lowercase()), &result)?;
     }
     

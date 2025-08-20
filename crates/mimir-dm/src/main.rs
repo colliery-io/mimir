@@ -130,6 +130,7 @@ fn main() {
             // Extended catalog commands
             initialize_class_catalog,
             search_classes,
+            get_class_details,
             initialize_race_catalog,
             search_races,
             initialize_feat_catalog,

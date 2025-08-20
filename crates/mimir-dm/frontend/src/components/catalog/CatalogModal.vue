@@ -490,4 +490,327 @@ function close() {
   color: var(--color-text-dim, #666);
   font-size: 0.875rem;
 }
+
+/* Enhanced equipment/item styles */
+:deep(.item-details) {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+:deep(.item-details.enhanced) {
+  gap: 1.75rem;
+}
+
+:deep(.item-header-section) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-primary, #4a9eff);
+}
+
+:deep(.item-type-rarity) {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary, #4a9eff);
+  text-transform: capitalize;
+}
+
+:deep(.item-tags) {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+:deep(.item-tag) {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+:deep(.item-tag.attunement) {
+  background: rgba(168, 199, 255, 0.2);
+  color: #a8c7ff;
+  border-color: rgba(168, 199, 255, 0.3);
+}
+
+:deep(.item-tag.tier) {
+  background: rgba(162, 155, 254, 0.15);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+:deep(.item-tag.misc) {
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border-color: rgba(255, 159, 67, 0.3);
+}
+
+:deep(.item-properties-grid) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+/* Combat mechanics section for items/weapons */
+:deep(.item-combat-section) {
+  margin: 1.5rem 0;
+}
+
+:deep(.item-combat-section h4) {
+  color: var(--color-accent, #6bcf7f);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.combat-properties-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+:deep(.combat-item) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+:deep(.combat-label) {
+  font-weight: 600;
+  color: var(--color-text-secondary, #aaa);
+  font-size: 0.875rem;
+  min-width: 60px;
+}
+
+:deep(.combat-value) {
+  font-weight: 500;
+  color: var(--color-text, #e0e0e0);
+}
+
+/* Magic item properties section */
+:deep(.item-magic-section) {
+  margin: 1.5rem 0;
+}
+
+:deep(.item-magic-section h4) {
+  color: var(--color-magic, #a29bfe);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.magic-properties-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+:deep(.magic-item) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(162, 155, 254, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(162, 155, 254, 0.2);
+}
+
+:deep(.magic-item.full-width) {
+  grid-column: 1 / -1;
+}
+
+:deep(.magic-label) {
+  font-weight: 600;
+  color: var(--color-magic, #a29bfe);
+  font-size: 0.875rem;
+}
+
+:deep(.magic-value) {
+  font-weight: 500;
+  color: var(--color-text, #e0e0e0);
+}
+
+/* Container and transport section */
+:deep(.item-container-section) {
+  margin: 1.5rem 0;
+}
+
+:deep(.item-container-section h4) {
+  color: var(--color-container, #fdcb6e);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.container-properties-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+:deep(.container-item) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(253, 203, 110, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(253, 203, 110, 0.2);
+}
+
+:deep(.container-item.full-width) {
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+:deep(.container-label) {
+  font-weight: 600;
+  color: var(--color-container, #fdcb6e);
+  font-size: 0.875rem;
+}
+
+:deep(.container-value) {
+  font-weight: 500;
+  color: var(--color-text, #e0e0e0);
+}
+
+:deep(.pack-contents-list) {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: var(--color-text-secondary, #ccc);
+}
+
+:deep(.pack-contents-list li) {
+  margin-bottom: 0.25rem;
+}
+
+/* Light source section */
+:deep(.item-light-section) {
+  margin: 1.5rem 0;
+}
+
+:deep(.item-light-section h4) {
+  color: var(--color-light, #ffda79);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+:deep(.light-properties-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+:deep(.light-item) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 218, 121, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 218, 121, 0.2);
+}
+
+:deep(.light-label) {
+  font-weight: 600;
+  color: var(--color-light, #ffda79);
+  font-size: 0.875rem;
+}
+
+:deep(.light-value) {
+  font-weight: 500;
+  color: var(--color-text, #e0e0e0);
+}
+
+/* Enhanced damage type badges for equipment */
+:deep(.damage-dice) {
+  color: #ff6b6b;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  margin-right: 0.5rem;
+}
+
+:deep(.damage-type.p) {
+  background: rgba(189, 195, 199, 0.15);
+  color: #bdc3c7;
+  border: 1px solid rgba(189, 195, 199, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+:deep(.damage-type.b) {
+  background: rgba(155, 89, 182, 0.15);
+  color: #9b59b6;
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+:deep(.damage-type.s) {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+/* Weapon property styling */
+:deep(.weapon-property) {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(116, 185, 255, 0.1);
+  color: #74b9ff;
+  border: 1px solid rgba(116, 185, 255, 0.2);
+}
+
+:deep(.weapon-property.finesse) {
+  background: rgba(108, 207, 127, 0.1);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.2);
+}
+
+:deep(.weapon-property.heavy) {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.2);
+}
+
+:deep(.weapon-property.light) {
+  background: rgba(255, 218, 121, 0.1);
+  color: #ffda79;
+  border-color: rgba(255, 218, 121, 0.2);
+}
 </style>

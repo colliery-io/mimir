@@ -1,0 +1,415 @@
+use anyhow::{Context, Result};
+use serde::Deserialize;
+use serde_json::{json, Value};
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MagicVariant {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub variant_type: Option<String>,
+    pub requires: Option<Vec<Value>>,
+    pub excludes: Option<Value>,
+    pub inherits: Option<VariantInherits>,
+    pub entries: Option<Vec<Value>>,
+    pub ammo: Option<bool>,
+    #[serde(rename = "hasFluffImages")]
+    pub has_fluff_images: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct VariantInherits {
+    #[serde(rename = "namePrefix")]
+    pub name_prefix: Option<String>,
+    #[serde(rename = "nameSuffix")]
+    pub name_suffix: Option<String>,
+    #[serde(rename = "nameRemove")]
+    pub name_remove: Option<String>,
+    #[serde(rename = "propertyAdd")]
+    pub property_add: Option<Vec<Value>>,
+    #[serde(rename = "propertyRemove")]
+    pub property_remove: Option<Vec<String>>,
+    pub source: Option<String>,
+    pub page: Option<u32>,
+    pub srd: Option<bool>,
+    #[serde(rename = "basicRules")]
+    pub basic_rules: Option<bool>,
+    pub tier: Option<String>,
+    pub rarity: Option<String>,
+    #[serde(rename = "bonusWeapon")]
+    pub bonus_weapon: Option<String>,
+    #[serde(rename = "bonusWeaponAttack")]
+    pub bonus_weapon_attack: Option<String>,
+    #[serde(rename = "bonusAc")]
+    pub bonus_ac: Option<String>,
+    pub entries: Option<Vec<Value>>,
+    #[serde(rename = "lootTables")]
+    pub loot_tables: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MagicVariantsJson {
+    pub magicvariant: Vec<MagicVariant>,
+    #[serde(rename = "linkedLootTables")]
+    pub linked_loot_tables: Option<Value>,
+}
+
+/// Load magic variants from magicvariants.json
+pub fn load_magic_variants(data_dir: &std::path::Path) -> Result<Vec<MagicVariant>> {
+    let variants_file = data_dir.join("magicvariants.json");
+    if !variants_file.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = std::fs::read_to_string(&variants_file)
+        .context("Failed to read magicvariants.json")?;
+    
+    let variants_json: MagicVariantsJson = serde_json::from_str(&content)
+        .context("Failed to parse magicvariants.json")?;
+    
+    Ok(variants_json.magicvariant)
+}
+
+/// Check if a base item matches the requirements of a magic variant
+pub fn item_matches_variant(item: &Value, variant: &MagicVariant) -> bool {
+    let Some(requires) = &variant.requires else {
+        return false;
+    };
+
+    // Check if item meets ANY requirement (requirements are OR'd together)
+    let meets_requirements = requires.iter().any(|requirement| {
+        check_requirement(item, requirement)
+    });
+    
+    if !meets_requirements {
+        return false;
+    }
+
+    // Check exclusions
+    if let Some(excludes) = &variant.excludes {
+        if check_requirement(item, excludes) {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Check if an item meets a specific requirement
+/// For requirements: ALL properties in the requirement object must match (AND logic)
+fn check_requirement(item: &Value, requirement: &Value) -> bool {
+    if let Some(obj) = requirement.as_object() {
+        // All properties in the requirement must match
+        for (key, value) in obj {
+            let item_value = item.get(key);
+            
+            // Handle different value types
+            match value {
+                Value::Bool(req_bool) => {
+                    let item_bool = item_value.and_then(|v| v.as_bool()).unwrap_or(false);
+                    if *req_bool != item_bool {
+                        return false;
+                    }
+                }
+                Value::String(req_str) => {
+                    let item_str = item_value.and_then(|v| v.as_str()).unwrap_or("");
+                    if req_str != item_str {
+                        return false;
+                    }
+                }
+                Value::Array(req_arr) => {
+                    // For arrays, check if item value is in the requirement array
+                    if let Some(item_val) = item_value {
+                        if item_val.is_string() {
+                            let item_str = item_val.as_str().unwrap_or("");
+                            if !req_arr.iter().any(|v| v.as_str() == Some(item_str)) {
+                                return false;
+                            }
+                        } else if item_val.is_array() {
+                            // Check if any item in the item's array matches any in the requirement array
+                            let item_arr = item_val.as_array().unwrap();
+                            let has_match = item_arr.iter().any(|iv| {
+                                req_arr.iter().any(|rv| iv == rv)
+                            });
+                            if !has_match {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                Value::Object(_) => {
+                    // Recursive check for nested objects
+                    if let Some(item_obj) = item_value {
+                        if !check_requirement(item_obj, value) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                _ => {
+                    // For other types, just check equality
+                    if item_value != Some(value) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    true
+}
+
+/// Create a magic item by combining a base item with a magic variant
+pub fn create_magic_item(base_item: &Value, variant: &MagicVariant) -> Result<Value> {
+    let mut magic_item = base_item.clone();
+    
+    // Apply name transformation
+    if let Some(inherits) = &variant.inherits {
+        let base_name = base_item.get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Unknown Item");
+        
+        let mut new_name = base_name.to_string();
+        
+        // Apply nameRemove first (as 5etools does)
+        if let Some(remove) = &inherits.name_remove {
+            new_name = new_name.replace(remove, "");
+        }
+        
+        if let Some(prefix) = &inherits.name_prefix {
+            new_name = format!("{}{}", prefix, new_name);
+        }
+        
+        if let Some(suffix) = &inherits.name_suffix {
+            new_name = format!("{}{}", new_name, suffix);
+        }
+        
+        magic_item["name"] = json!(new_name);
+        
+        // Add base item reference
+        let base_source = base_item.get("source")
+            .and_then(|v| v.as_str())
+            .unwrap_or("PHB");
+        magic_item["baseItem"] = json!(format!("{}|{}", base_name.to_lowercase(), base_source.to_lowercase()));
+        
+        // Apply inherited properties
+        if let Some(source) = &inherits.source {
+            magic_item["source"] = json!(source);
+        }
+        
+        if let Some(page) = &inherits.page {
+            magic_item["page"] = json!(page);
+        }
+        
+        if let Some(srd) = &inherits.srd {
+            magic_item["srd"] = json!(srd);
+        }
+        
+        if let Some(basic_rules) = &inherits.basic_rules {
+            magic_item["basicRules"] = json!(basic_rules);
+        }
+        
+        if let Some(tier) = &inherits.tier {
+            magic_item["tier"] = json!(tier);
+        }
+        
+        if let Some(rarity) = &inherits.rarity {
+            magic_item["rarity"] = json!(rarity);
+        }
+        
+        if let Some(bonus_weapon) = &inherits.bonus_weapon {
+            magic_item["bonusWeapon"] = json!(bonus_weapon);
+        }
+        
+        if let Some(bonus_weapon_attack) = &inherits.bonus_weapon_attack {
+            magic_item["bonusWeaponAttack"] = json!(bonus_weapon_attack);
+        }
+        
+        if let Some(bonus_ac) = &inherits.bonus_ac {
+            magic_item["bonusAc"] = json!(bonus_ac);
+        }
+        
+        if let Some(loot_tables) = &inherits.loot_tables {
+            magic_item["lootTables"] = json!(loot_tables);
+        }
+        
+        // Handle property modifications
+        if let Some(property_add) = &inherits.property_add {
+            let existing_props = magic_item.get("property")
+                .and_then(|v| v.as_array())
+                .cloned()
+                .unwrap_or_default();
+            
+            let mut new_props = existing_props;
+            for prop_to_add in property_add {
+                // Only add if not already present
+                if !new_props.iter().any(|p| p == prop_to_add) {
+                    new_props.push(prop_to_add.clone());
+                }
+            }
+            magic_item["property"] = json!(new_props);
+        }
+        
+        if let Some(property_remove) = &inherits.property_remove {
+            if let Some(existing_props) = magic_item.get("property").and_then(|v| v.as_array()) {
+                let new_props: Vec<_> = existing_props.iter()
+                    .filter(|p| {
+                        let prop_str = p.as_str().unwrap_or("");
+                        !property_remove.contains(&prop_str.to_string())
+                    })
+                    .cloned()
+                    .collect();
+                
+                if new_props.is_empty() {
+                    magic_item.as_object_mut().unwrap().remove("property");
+                } else {
+                    magic_item["property"] = json!(new_props);
+                }
+            }
+        }
+        
+        // Apply entries with template variable replacement
+        if let Some(entries) = &inherits.entries {
+            let processed_entries = process_entries_templates(entries, &magic_item);
+            magic_item["entries"] = json!(processed_entries);
+        }
+    }
+    
+    // Add variant-specific entries if present
+    if let Some(variant_entries) = &variant.entries {
+        let existing_entries = magic_item.get("entries")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        
+        let mut all_entries = existing_entries;
+        for entry in variant_entries {
+            all_entries.push(json!(entry));
+        }
+        magic_item["entries"] = json!(all_entries);
+    }
+    
+    Ok(magic_item)
+}
+
+/// Process template variables in entry text
+fn process_entries_templates(entries: &[Value], item: &Value) -> Vec<Value> {
+    entries.iter().map(|entry| {
+        match entry {
+            Value::String(s) => {
+                let mut processed = s.clone();
+                
+                // Replace {=bonusWeapon} with the actual bonus
+                if let Some(bonus) = item.get("bonusWeapon").and_then(|v| v.as_str()) {
+                    processed = processed.replace("{=bonusWeapon}", bonus);
+                }
+                
+                // Replace {=bonusWeaponAttack} with the actual bonus
+                if let Some(bonus) = item.get("bonusWeaponAttack").and_then(|v| v.as_str()) {
+                    processed = processed.replace("{=bonusWeaponAttack}", bonus);
+                }
+                
+                // Replace {=dmgType} with the damage type name
+                if let Some(dmg_type) = item.get("dmgType").and_then(|v| v.as_str()) {
+                    let dmg_name = match dmg_type {
+                        "P" => "piercing".to_string(),
+                        "B" => "bludgeoning".to_string(), 
+                        "S" => "slashing".to_string(),
+                        "A" => "acid".to_string(),
+                        "C" => "cold".to_string(),
+                        "F" => "fire".to_string(),
+                        "L" => "lightning".to_string(),
+                        "N" => "necrotic".to_string(),
+                        "T" => "thunder".to_string(),
+                        _ => dmg_type.to_lowercase(),
+                    };
+                    processed = processed.replace("{=dmgType}", &dmg_name);
+                }
+                
+                Value::String(processed)
+            },
+            // For non-string entries (objects), return as-is
+            // Could recursively process if needed
+            other => other.clone()
+        }
+    }).collect()
+}
+
+/// Expand all magic variants for a list of base items
+pub fn expand_magic_variants(
+    base_items: &[Value],
+    variants: &[MagicVariant],
+) -> Result<Vec<Value>> {
+    let mut expanded_items = Vec::new();
+    
+    for variant in variants {
+        for base_item in base_items {
+            if item_matches_variant(base_item, variant) {
+                match create_magic_item(base_item, variant) {
+                    Ok(magic_item) => expanded_items.push(magic_item),
+                    Err(e) => {
+                        eprintln!("Warning: Failed to create magic item for variant '{}': {}", 
+                                variant.name, e);
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(expanded_items)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_weapon_requirement_matching() {
+        let weapon_item = json!({
+            "name": "Longsword",
+            "weapon": true,
+            "type": "M"
+        });
+        
+        let weapon_variant = MagicVariant {
+            name: "+1 Weapon".to_string(),
+            variant_type: None,
+            requires: Some(vec![json!({"weapon": true})]),
+            excludes: None,
+            inherits: None,
+            entries: None,
+        };
+        
+        assert!(item_matches_variant(&weapon_item, &weapon_variant));
+        
+        let non_weapon = json!({
+            "name": "Rope",
+            "weapon": false
+        });
+        
+        assert!(!item_matches_variant(&non_weapon, &weapon_variant));
+    }
+    
+    #[test]
+    fn test_exclusion_matching() {
+        let net_item = json!({
+            "name": "Net",
+            "weapon": true,
+            "net": true
+        });
+        
+        let weapon_variant = MagicVariant {
+            name: "+1 Weapon".to_string(),
+            variant_type: None,
+            requires: Some(vec![json!({"weapon": true})]),
+            excludes: Some(json!({"net": true})),
+            inherits: None,
+            entries: None,
+        };
+        
+        assert!(!item_matches_variant(&net_item, &weapon_variant));
+    }
+}

@@ -64,7 +64,17 @@ impl ClassCatalog {
                                 Ok(class_data) => {
                                     debug!("Loaded {} classes from {}/{}", 
                                             class_data.class.len(), book_id, filename);
-                                    self.classes.extend(class_data.class);
+                                    // Deduplicate by name + className combination
+                                    for class in class_data.class {
+                                        let is_duplicate = self.classes.iter().any(|existing| {
+                                            existing.name == class.name && 
+                                            existing.class_name == class.class_name &&
+                                            existing.source == class.source
+                                        });
+                                        if !is_duplicate {
+                                            self.classes.push(class);
+                                        }
+                                    }
                                 }
                                 Err(e) => {
                                     warn!("Failed to parse {}/{}: {}", book_id, filename, e);
@@ -83,6 +93,13 @@ impl ClassCatalog {
         Ok(())
     }
     
+    /// Get a specific class by name and source
+    pub fn get_class(&self, name: &str, source: &str) -> Option<CharacterClass> {
+        self.classes.iter()
+            .find(|c| c.name == name && c.source == source)
+            .cloned()
+    }
+    
     /// Search classes with filters
     pub fn search(&self, 
         query: Option<String>,
@@ -91,7 +108,7 @@ impl ClassCatalog {
     ) -> Vec<ClassSummary> {
         debug!("Searching classes - query: {:?}, sources: {:?}", query, sources);
         
-        let results: Vec<ClassSummary> = self.classes.iter()
+        let mut results: Vec<ClassSummary> = self.classes.iter()
             .filter(|class| {
                 if let Some(q) = &query {
                     if !q.is_empty() && !class.name.to_lowercase().contains(&q.to_lowercase()) {
@@ -114,6 +131,47 @@ impl ClassCatalog {
             })
             .map(ClassSummary::from)
             .collect();
+        
+        // Sort so that classes come before their subclasses, and both are alphabetical
+        results.sort_by(|a, b| {
+            // Extract parent class name if it's a subclass (format is "Parent: Subclass")
+            let a_parts: Vec<&str> = a.name.split(": ").collect();
+            let b_parts: Vec<&str> = b.name.split(": ").collect();
+            
+            let a_is_subclass = a_parts.len() > 1;
+            let b_is_subclass = b_parts.len() > 1;
+            
+            if a_is_subclass && b_is_subclass {
+                // Both are subclasses - sort by parent then by subclass name
+                let parent_cmp = a_parts[0].cmp(b_parts[0]);
+                if parent_cmp == std::cmp::Ordering::Equal {
+                    a_parts[1].cmp(b_parts[1])
+                } else {
+                    parent_cmp
+                }
+            } else if a_is_subclass {
+                // a is subclass, b is class
+                // If a's parent is b, a comes after b
+                if a_parts[0] == b.name.as_str() {
+                    std::cmp::Ordering::Greater
+                } else {
+                    // Otherwise sort by parent name vs class name
+                    a_parts[0].cmp(&b.name.as_str())
+                }
+            } else if b_is_subclass {
+                // b is subclass, a is class
+                // If b's parent is a, b comes after a
+                if b_parts[0] == a.name.as_str() {
+                    std::cmp::Ordering::Less
+                } else {
+                    // Otherwise sort by class name vs parent name
+                    a.name.as_str().cmp(b_parts[0])
+                }
+            } else {
+                // Both are classes - simple alphabetical
+                a.name.cmp(&b.name)
+            }
+        });
             
         debug!("Found {} classes matching criteria", results.len());
         results
@@ -459,6 +517,16 @@ pub async fn search_classes(
     );
     
     Ok(results)
+}
+
+#[tauri::command]
+pub async fn get_class_details(
+    catalog: State<'_, std::sync::Mutex<ClassCatalog>>,
+    name: String,
+    source: String,
+) -> Result<Option<CharacterClass>, String> {
+    let catalog = catalog.lock().map_err(|e| e.to_string())?;
+    Ok(catalog.get_class(&name, &source))
 }
 
 // Tauri commands for Races
