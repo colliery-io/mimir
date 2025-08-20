@@ -359,15 +359,15 @@ pub fn process_entries_templates(entries: &[Value], item: &Value) -> Vec<Value> 
                     // {=baseName/l} - lowercase base name
                     processed = processed.replace("{=baseName/l}", clean_name);
                     
-                    // {=baseName/a} - base name with article "a" or "an"
+                    // {=baseName/a} - Just the article "a" or "an" (lowercase), without the name
+                    // This is used in patterns like "{=baseName/a} {=baseName/l}" to get "an arrow"
                     let article = get_article(clean_name);
-                    let with_article = format!("{} {}", article, clean_name);
-                    processed = processed.replace("{=baseName/a}", &with_article);
+                    processed = processed.replace("{=baseName/a}", article);
                     
-                    // {=baseName/at} - base name with article "A" or "An" (capitalized)
+                    // {=baseName/at} - Just the article "A" or "An" (capitalized), without the name
+                    // This is used in patterns like "{=baseName/at} {=baseName/l}" to get "An arrow"
                     let cap_article = if article == "a" { "A" } else { "An" };
-                    let with_cap_article = format!("{} {}", cap_article, clean_name);
-                    processed = processed.replace("{=baseName/at}", &with_cap_article);
+                    processed = processed.replace("{=baseName/at}", cap_article);
                 }
                 
                 // Replace {=dmgType} with the damage type name
