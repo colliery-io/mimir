@@ -53,6 +53,18 @@ export function processFormattingTags(text: string): string {
   processed = processed
     .replace(/{@action ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="action">$1</span>')
     
+  // Attack types
+  processed = processed
+    .replace(/{@atk mw}/gi, '<em>Melee Weapon Attack:</em>')
+    .replace(/{@atk rw}/gi, '<em>Ranged Weapon Attack:</em>')
+    .replace(/{@atk mw,rw}/gi, '<em>Melee or Ranged Weapon Attack:</em>')
+    .replace(/{@atk ms}/gi, '<em>Melee Spell Attack:</em>')
+    .replace(/{@atk rs}/gi, '<em>Ranged Spell Attack:</em>')
+    
+  // Hit bonus (the {@h} tag)
+  processed = processed
+    .replace(/{@h}/gi, '<em>Hit:</em>')
+    
   // DC checks
   processed = processed
     .replace(/{@dc (\d+)(?:\|([^}]+))?}/gi, (match, dc, ability) => {
@@ -88,4 +100,94 @@ export function processFormattingTags(text: string): string {
     .replace(/{@\w+ ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="tagged">$1</span>')
   
   return processed
+}
+
+/**
+ * Format 5etools entries (nested content structures)
+ */
+export function formatEntries(entries: any[]): string {
+  if (!entries || !Array.isArray(entries)) return ''
+  
+  let html = ''
+  for (const entry of entries) {
+    if (typeof entry === 'string') {
+      html += `<p>${processFormattingTags(entry)}</p>`
+    } else if (entry && typeof entry === 'object') {
+      if (entry.type === 'entries') {
+        if (entry.name) {
+          html += `<h5>${entry.name}</h5>`
+        }
+        if (entry.entries) {
+          html += formatEntries(entry.entries)
+        }
+      } else if (entry.type === 'list') {
+        html += '<ul>'
+        if (entry.items) {
+          for (const item of entry.items) {
+            if (typeof item === 'string') {
+              html += `<li>${processFormattingTags(item)}</li>`
+            } else {
+              html += `<li>${formatEntries([item])}</li>`
+            }
+          }
+        }
+        html += '</ul>'
+      } else if (entry.type === 'table') {
+        html += formatTable(entry)
+      } else if (entry.type === 'inset' || entry.type === 'insetReadaloud') {
+        // In modals, treat all insets as read-aloud for consistent styling
+        html += `<div class="inset-readaloud">`
+        if (entry.name) {
+          html += `<h5>${entry.name}</h5>`
+        }
+        if (entry.entries) {
+          html += formatEntries(entry.entries)
+        }
+        html += '</div>'
+      } else if (entry.entries) {
+        html += formatEntries(entry.entries)
+      } else if (entry.text) {
+        html += `<p>${processFormattingTags(entry.text)}</p>`
+      }
+    }
+  }
+  return html
+}
+
+function formatTable(table: any): string {
+  let html = '<table class="entry-table">'
+  
+  // Table caption
+  if (table.caption) {
+    html += `<caption>${table.caption}</caption>`
+  }
+  
+  // Table headers
+  if (table.colLabels) {
+    html += '<thead><tr>'
+    for (const label of table.colLabels) {
+      html += `<th>${label}</th>`
+    }
+    html += '</tr></thead>'
+  }
+  
+  // Table rows
+  if (table.rows) {
+    html += '<tbody>'
+    for (const row of table.rows) {
+      html += '<tr>'
+      if (Array.isArray(row)) {
+        for (const cell of row) {
+          html += `<td>${typeof cell === 'string' ? processFormattingTags(cell) : formatEntries([cell])}</td>`
+        }
+      } else {
+        html += `<td>${processFormattingTags(row)}</td>`
+      }
+      html += '</tr>'
+    }
+    html += '</tbody>'
+  }
+  
+  html += '</table>'
+  return html
 }

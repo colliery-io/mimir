@@ -494,6 +494,36 @@ fn collect_images(content: &mut BookContent, repo_path: &Path, source: &str) -> 
         collect_directory_recursive(content, &adventure_img_dir, &format!("img/adventure/{}", source))?;
     }
     
+    // Collect bestiary images
+    let bestiary_img_dir = img_dir.join("bestiary").join(source);
+    if bestiary_img_dir.exists() {
+        collect_directory_recursive(content, &bestiary_img_dir, &format!("img/bestiary/{}", source))?;
+    }
+    
+    // Collect item images
+    let items_img_dir = img_dir.join("items").join(source);
+    if items_img_dir.exists() {
+        collect_directory_recursive(content, &items_img_dir, &format!("img/items/{}", source))?;
+    }
+    
+    // Collect backgrounds images
+    let backgrounds_img_dir = img_dir.join("backgrounds").join(source);
+    if backgrounds_img_dir.exists() {
+        collect_directory_recursive(content, &backgrounds_img_dir, &format!("img/backgrounds/{}", source))?;
+    }
+    
+    // Collect races images
+    let races_img_dir = img_dir.join("races").join(source);
+    if races_img_dir.exists() {
+        collect_directory_recursive(content, &races_img_dir, &format!("img/races/{}", source))?;
+    }
+    
+    // Collect classes images
+    let classes_img_dir = img_dir.join("classes").join(source);
+    if classes_img_dir.exists() {
+        collect_directory_recursive(content, &classes_img_dir, &format!("img/classes/{}", source))?;
+    }
+    
     Ok(())
 }
 

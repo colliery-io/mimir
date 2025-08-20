@@ -128,7 +128,21 @@ const sortedMonsters = computed(() => {
   
   // Apply filters
   if (localFilters.value.sizes && localFilters.value.sizes.length > 0) {
-    filtered = filtered.filter(m => localFilters.value.sizes.includes(m.size))
+    filtered = filtered.filter(m => {
+      // Backend returns full names like "Tiny", but filter uses codes like "T"
+      // Create a mapping to convert filter codes to full names
+      const sizeMap: Record<string, string> = {
+        'T': 'Tiny',
+        'S': 'Small',
+        'M': 'Medium',
+        'L': 'Large',
+        'H': 'Huge',
+        'G': 'Gargantuan'
+      }
+      const filterSizeNames = localFilters.value.sizes.map(code => sizeMap[code] || code)
+      const monsterSize = Array.isArray(m.size) ? m.size[0] : m.size
+      return filterSizeNames.includes(monsterSize)
+    })
   }
   if (localFilters.value.types && localFilters.value.types.length > 0) {
     filtered = filtered.filter(m => localFilters.value.types.includes(m.creature_type))
@@ -152,7 +166,8 @@ const sortedMonsters = computed(() => {
   return filtered
 })
 
-function formatSize(size: string): string {
+function formatSize(size: string | string[]): string {
+  const sizeValue = Array.isArray(size) ? size[0] : size
   const sizeMap: Record<string, string> = {
     'T': 'Tiny',
     'S': 'Small',
@@ -161,7 +176,7 @@ function formatSize(size: string): string {
     'H': 'Huge',
     'G': 'Gargantuan'
   }
-  return sizeMap[size] || size
+  return sizeMap[sizeValue] || sizeValue
 }
 
 function updateFilters() {

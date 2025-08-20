@@ -359,6 +359,9 @@ pub struct Monster {
     pub legendary_group: Option<serde_json::Value>,
     pub environment: Option<Vec<String>>,
     pub srd: Option<serde_json::Value>,
+    // Fluff content (loaded separately from fluff files)
+    pub fluff_entries: Option<Vec<serde_json::Value>>,
+    pub fluff_images: Option<Vec<serde_json::Value>>,
     pub basic_rules: Option<bool>,
 }
 
@@ -397,6 +400,20 @@ pub struct Speed {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonsterData {
     pub monster: Vec<Monster>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonsterFluff {
+    pub name: String,
+    pub source: String,
+    pub entries: Option<Vec<serde_json::Value>>,
+    pub images: Option<Vec<serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonsterFluffData {
+    #[serde(rename = "monsterFluff")]
+    pub monster_fluff: Vec<MonsterFluff>,
 }
 
 /// Simplified monster for search results

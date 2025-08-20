@@ -8,7 +8,7 @@ use tracing::{debug, info, warn, error};
 use mimir_dm_core::models::rules::{
     Spell, SpellData, SpellSummary, 
     Item, ItemData, ItemSummary,
-    Monster, MonsterData, MonsterSummary
+    Monster, MonsterData, MonsterSummary, MonsterFluff, MonsterFluffData
 };
 
 /// Spell catalog state - holds all loaded spells in memory
@@ -466,9 +466,50 @@ impl MonsterCatalog {
                         match fs::read_to_string(&bestiary_file) {
                             Ok(content) => {
                                 match serde_json::from_str::<MonsterData>(&content) {
-                                    Ok(monster_data) => {
+                                    Ok(mut monster_data) => {
                                         debug!("Loaded {} monsters from {}/{}", 
                                                 monster_data.monster.len(), book_id, filename);
+                                        
+                                        // Try to load corresponding fluff file
+                                        let fluff_filename = filename.replace("bestiary-", "fluff-bestiary-");
+                                        let fluff_file = bestiary_dir.join(&fluff_filename);
+                                        info!("Looking for fluff file: {:?}", fluff_file);
+                                        if fluff_file.exists() {
+                                            info!("Found fluff file, attempting to load...");
+                                            match fs::read_to_string(&fluff_file) {
+                                                Ok(fluff_content) => {
+                                                    match serde_json::from_str::<MonsterFluffData>(&fluff_content) {
+                                                        Ok(fluff_data) => {
+                                                            info!("Loaded {} monster fluff entries from {}/{}", 
+                                                                    fluff_data.monster_fluff.len(), book_id, fluff_filename);
+                                                            
+                                                            // Merge fluff data with monsters
+                                                            let mut fluff_merged_count = 0;
+                                                            for monster in &mut monster_data.monster {
+                                                                if let Some(fluff) = fluff_data.monster_fluff.iter()
+                                                                    .find(|f| f.name == monster.name && f.source == monster.source) {
+                                                                    monster.fluff_entries = fluff.entries.clone();
+                                                                    monster.fluff_images = fluff.images.clone();
+                                                                    if fluff.images.is_some() {
+                                                                        fluff_merged_count += 1;
+                                                                    }
+                                                                }
+                                                            }
+                                                            info!("Merged fluff data for {} monsters with images", fluff_merged_count);
+                                                        }
+                                                        Err(e) => {
+                                                            error!("Failed to parse fluff file {}/{}: {}", book_id, fluff_filename, e);
+                                                        }
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    error!("Failed to read fluff file: {}", e);
+                                                }
+                                            }
+                                        } else {
+                                            info!("No fluff file found at: {:?}", fluff_file);
+                                        }
+                                        
                                         self.monsters.extend(monster_data.monster);
                                     }
                                     Err(e) => {

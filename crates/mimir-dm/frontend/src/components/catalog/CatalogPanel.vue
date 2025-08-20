@@ -140,7 +140,7 @@ import MonsterTable from './tables/MonsterTable.vue'
 import { formatSpellDetails } from '@/utils/catalog/spellFormatterEnhanced'
 import { formatItemDetails } from '@/utils/catalog/itemFormatterEnhanced'
 import { formatClassDetails, formatEnhancedClassDetails } from '@/utils/catalog/classFormatter'
-import { formatMonsterDetails } from '@/utils/catalog/monsterFormatter'
+import { formatMonsterDetails } from '@/utils/catalog/monsterFormatterEnhanced'
 
 interface Props {
   selectedSources: string[]
@@ -167,7 +167,8 @@ const {
   initializeBackgroundCatalog,
   getClassDetails,
   getSpellDetails,
-  getItemDetails
+  getItemDetails,
+  getMonsterDetails
 } = useCatalog()
 
 // Local state
@@ -363,11 +364,29 @@ async function selectItem(item: ItemSummary) {
   }
 }
 
-function selectMonster(monster: MonsterSummary) {
-  modalContent.value = {
-    visible: true,
-    title: monster.name,
-    content: formatMonsterDetails(monster)
+async function selectMonster(monster: MonsterSummary) {
+  // Fetch full monster details
+  const fullMonster = await getMonsterDetails(monster.name, monster.source)
+  
+  console.log('Full monster data received:', fullMonster)
+  console.log('Has fluff_images?', fullMonster?.fluff_images)
+  console.log('Has fluffImages?', fullMonster?.fluffImages)
+  
+  if (fullMonster) {
+    const formattedContent = await formatMonsterDetails(fullMonster)
+    modalContent.value = {
+      visible: true,
+      title: monster.name,
+      content: formattedContent
+    }
+  } else {
+    // Fallback to summary if details fail
+    const formattedContent = await formatMonsterDetails(monster)
+    modalContent.value = {
+      visible: true,
+      title: monster.name,
+      content: formattedContent
+    }
   }
 }
 

@@ -6,6 +6,7 @@
 /* Import shared styles */
 @import './boards.css';
 @import './components.css';
+@import './dnd-content.css';
 
 /* Tailwind directives */
 @tailwind base;

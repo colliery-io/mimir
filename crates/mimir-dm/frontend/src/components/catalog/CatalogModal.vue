@@ -5,7 +5,7 @@
         <h3>{{ title }}</h3>
         <button class="modal-close" @click="close">×</button>
       </div>
-      <div class="modal-body" v-html="content"></div>
+      <div class="modal-body dnd-content" v-html="content"></div>
     </div>
   </div>
 </template>
@@ -389,13 +389,8 @@ function close() {
   font-style: italic;
 }
 
-/* Shared formatting tag styles */
-:deep(.dice-roll),
-:deep(.damage-roll) {
-  color: #ff6b6b;
-  font-weight: 500;
-  font-family: 'Courier New', monospace;
-}
+/* All D&D content styles (insets, formatting tags, etc.) are now in dnd-content.css */
+/* Modal-specific styles only below */
 
 :deep(.class-header-info) {
   margin-bottom: 1rem;

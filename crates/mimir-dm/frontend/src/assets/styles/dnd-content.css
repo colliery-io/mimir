@@ -1,0 +1,349 @@
+/**
+ * Centralized D&D Content Styles
+ * Used across the entire application for consistent D&D content display
+ * Including: Book Reader, Catalog Modals, and any other D&D content areas
+ */
+
+/* ================================
+   INSET BOXES
+   ================================ */
+
+/* Regular inset boxes - modern card style */
+.inset {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 0.375rem);
+  padding: var(--spacing-md, 1rem);
+  margin: var(--spacing-md, 1rem) 0;
+  font-size: inherit;
+  line-height: inherit;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+  transition: all 0.3s ease;
+}
+
+.inset:hover {
+  box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+  border-color: var(--color-primary-300, rgba(74, 158, 255, 0.5));
+}
+
+.inset p {
+  margin: 5px 0;
+  color: var(--color-text);
+}
+
+/* Read-aloud boxes with gradient and shimmer effect */
+.inset-readaloud {
+  background: var(--gradient-chromatic-subtle, linear-gradient(135deg, rgba(147, 51, 234, 0.15), rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.15), rgba(16, 185, 129, 0.15)));
+  border: 2px solid var(--color-chromatic-border, rgba(147, 51, 234, 0.4));
+  border-radius: var(--radius-lg, 0.5rem);
+  padding: var(--spacing-lg, 1.5rem);
+  margin: var(--spacing-lg, 1.5rem) 0;
+  font-size: inherit;
+  line-height: 1.6;
+  position: relative;
+  overflow: hidden;
+}
+
+.inset-readaloud::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 3s infinite;
+}
+
+.inset-readaloud p {
+  text-align: left;
+  font-style: italic;
+  color: var(--color-text);
+  margin: 8px 0;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes shimmer {
+  to {
+    left: 100%;
+  }
+}
+
+/* ================================
+   HEADINGS
+   ================================ */
+
+/* Content headings */
+.dnd-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  font-size: 1.5rem;
+  color: var(--color-text, #e0e0e0);
+}
+
+.dnd-content h4 {
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  font-weight: bold;
+  font-size: 1.25rem;
+  color: var(--color-text, #e0e0e0);
+  border-bottom: 1px solid var(--color-border, #333);
+}
+
+.dnd-content h5 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-weight: bold;
+  font-size: 1.15rem;
+  color: var(--color-text, #e0e0e0);
+}
+
+/* ================================
+   FORMATTING TAGS
+   ================================ */
+
+.dice-roll,
+.damage-roll {
+  color: #ff6b6b;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+.condition {
+  color: #ffd93d;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.spell-ref {
+  color: var(--color-primary, #4a9eff);
+  font-style: italic;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.spell-ref:hover {
+  color: var(--color-primary-600, #3a8eef);
+  text-decoration-style: solid;
+}
+
+.item-ref {
+  color: #6bcf7f;
+  font-weight: 500;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.item-ref:hover {
+  color: #5bbf6f;
+  text-decoration-style: solid;
+}
+
+.creature-ref {
+  color: #ff9f43;
+  font-weight: 500;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.creature-ref:hover {
+  color: #ef8f33;
+  text-decoration-style: solid;
+}
+
+.class-ref,
+.race-ref,
+.background-ref,
+.feat-ref {
+  color: var(--color-primary-500, #4a9eff);
+  font-style: italic;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.class-ref:hover,
+.race-ref:hover,
+.background-ref:hover,
+.feat-ref:hover {
+  color: var(--color-primary-600, #3a8eef);
+  text-decoration-style: solid;
+}
+
+.dc-check {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.skill {
+  color: #a29bfe;
+  font-weight: 500;
+}
+
+.sense {
+  color: #74b9ff;
+  font-style: italic;
+}
+
+.action {
+  color: #74b9ff;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.note {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.recharge {
+  color: #ff6b6b;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.chance {
+  color: #ffd93d;
+  font-style: italic;
+}
+
+/* ================================
+   STAT BLOCKS
+   ================================ */
+
+.creature-details .creature-type {
+  font-style: italic;
+  margin-bottom: 10px;
+  color: var(--color-text-secondary);
+}
+
+.creature-details .creature-stats {
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 10px 0;
+  margin: 10px 0;
+}
+
+.creature-details .ability-scores {
+  margin: 15px 0;
+}
+
+.creature-details .ability-scores table {
+  width: 100%;
+  text-align: center;
+  border-collapse: collapse;
+}
+
+.creature-details .ability-scores th {
+  font-weight: bold;
+  padding: 5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.creature-details .ability-scores td {
+  padding: 5px;
+}
+
+.creature-details .creature-traits,
+.creature-details .creature-actions {
+  margin-top: 20px;
+  border-top: 2px solid var(--color-primary);
+  padding-top: 10px;
+}
+
+.creature-details .creature-traits h4,
+.creature-details .creature-actions h4 {
+  color: var(--color-primary);
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.creature-details .trait,
+.creature-details .action {
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+/* ================================
+   TABLES
+   ================================ */
+
+.entry-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.entry-table caption {
+  padding: 0.5rem;
+  font-weight: bold;
+  text-align: left;
+  color: var(--color-text);
+}
+
+.entry-table th {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 0.5rem;
+  text-align: left;
+  font-weight: bold;
+  color: var(--color-text);
+}
+
+.entry-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem;
+  color: var(--color-text);
+}
+
+.entry-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ================================
+   LISTS
+   ================================ */
+
+.dnd-content ul,
+.content-list {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.dnd-content li {
+  margin: 3px 0;
+  color: var(--color-text);
+}
+
+/* ================================
+   UTILITY CLASSES
+   ================================ */
+
+.description-text {
+  color: var(--color-text-secondary, #ccc);
+  line-height: 1.6;
+}
+
+.description-text p {
+  margin: 0 0 0.75rem 0;
+}
+
+.description-text p:last-child {
+  margin-bottom: 0;
+}
+
+.source-info {
+  color: var(--color-text-dim, #888);
+  font-size: 0.875rem;
+  font-style: italic;
+}

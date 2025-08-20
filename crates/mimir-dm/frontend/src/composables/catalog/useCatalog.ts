@@ -348,7 +348,7 @@ export function useCatalog() {
   }
 
   // Get detailed monster information
-  async function getMonsterDetails(name: string, source: string) {
+  async function getMonsterDetails(name: string, source: string): Promise<any | null> {
     try {
       const monster = await invoke('get_monster_details', { name, source })
       return monster
