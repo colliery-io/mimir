@@ -4,34 +4,42 @@ import type { BookSection, SubEntry } from '../../types/book'
 
 export function useBookNavigation() {
   
-  // Get sub-entries from a section for TOC display
+  // Get sub-entries from a section for TOC display (with nested structure)
   function getSubEntries(section: BookSection): SubEntry[] {
     const entries: SubEntry[] = []
     
-    function processEntries(items: any[], level: number = 0) {
-      if (!items) return
+    function processEntries(items: any[], level: number = 0): SubEntry[] {
+      const result: SubEntry[] = []
+      if (!items) return result
       
       items.forEach((entry, index) => {
         if (typeof entry === 'object' && entry !== null) {
           // Add named entries to the sub-entries list
           if (entry.name && (entry.type === 'section' || entry.type === 'entries')) {
-            entries.push({
+            const subEntry: SubEntry = {
               id: entry.id || `entry-${index}`,
               name: entry.name,
               level
-            })
-          }
-          
-          // Recursively process nested entries
-          if (entry.entries && Array.isArray(entry.entries)) {
-            processEntries(entry.entries, level + 1)
+            }
+            
+            // Recursively process nested entries as children
+            if (entry.entries && Array.isArray(entry.entries)) {
+              const children = processEntries(entry.entries, level + 1)
+              if (children.length > 0) {
+                subEntry.children = children
+              }
+            }
+            
+            result.push(subEntry)
           }
         }
       })
+      
+      return result
     }
     
     if (section.entries && Array.isArray(section.entries)) {
-      processEntries(section.entries)
+      return processEntries(section.entries)
     }
     
     return entries

@@ -55,4 +55,5 @@ export interface SubEntry {
   id: string
   name: string
   level: number
+  children?: SubEntry[]
 }
