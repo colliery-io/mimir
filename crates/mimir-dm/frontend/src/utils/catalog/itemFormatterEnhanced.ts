@@ -160,25 +160,6 @@ async function formatFullItemDetails(item: ItemDetails): Promise<string> {
     html += '</div>'
   }
   
-  // Try to load image based on item name if no fluff images
-  if (!item.fluffImages || item.fluffImages.length === 0) {
-    const bookSource = item.source || 'DMG'
-    const imagePath = `items/${bookSource}/${item.name}.webp`
-    try {
-      const response = await invoke<any>('serve_book_image', {
-        bookId: bookSource,
-        imagePath: imagePath
-      })
-      if (response && response.success && response.data) {
-        html += '<div class="item-images">'
-        html += `<img src="${response.data}" alt="${item.name}" class="item-image" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto 1rem;" />`
-        html += '</div>'
-      }
-    } catch (e) {
-      // No image found, that's okay
-    }
-  }
-  
   // Header section
   html += '<div class="item-header-section">'
   const typeInfo = formatItemTypeInfo(item)

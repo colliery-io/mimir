@@ -106,12 +106,16 @@
       </div>
     </div>
     
-    <!-- Modal -->
+    <!-- Modal Stack -->
     <CatalogModal
-      :visible="modalContent.visible"
-      :title="modalContent.title"
-      :content="modalContent.content"
-      @close="closeModal"
+      v-for="(modal, index) in modalStack"
+      :key="`modal-${index}`"
+      :visible="modal.visible"
+      :title="modal.title"
+      :content="modal.content"
+      :z-index="1000 + index * 10"
+      @close="() => closeModal(index)"
+      @reference-click="handleReferenceClick"
     />
   </div>
 </template>
@@ -188,12 +192,13 @@ const raceResults = ref<RaceSummary[]>([])
 const featResults = ref<FeatSummary[]>([])
 const backgroundResults = ref<BackgroundSummary[]>([])
 
-// Modal
-const modalContent = ref({
-  visible: false,
-  title: '',
-  content: ''
-})
+// Modal Stack
+interface Modal {
+  visible: boolean
+  title: string
+  content: string
+}
+const modalStack = ref<Modal[]>([])
 
 // Filters
 const spellFilters = ref({
@@ -329,18 +334,18 @@ async function selectSpell(spell: SpellSummary) {
   const fullSpell = await getSpellDetails(spell.name, spell.source)
   
   if (fullSpell) {
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: spell.name,
       content: formatSpellDetails(fullSpell)
-    }
+    })
   } else {
     // Fallback to summary if details fail
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: spell.name,
       content: formatSpellDetails(spell)
-    }
+    })
   }
 }
 
@@ -350,19 +355,19 @@ async function selectItem(item: ItemSummary) {
   
   if (fullItem) {
     const formattedContent = await formatItemDetails(fullItem)
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: item.name,
       content: formattedContent
-    }
+    })
   } else {
     // Fallback to summary if details fail
     const formattedContent = await formatItemDetails(item)
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: item.name,
       content: formattedContent
-    }
+    })
   }
 }
 
@@ -376,19 +381,19 @@ async function selectMonster(monster: MonsterSummary) {
   
   if (fullMonster) {
     const formattedContent = await formatMonsterDetails(fullMonster)
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: monster.name,
       content: formattedContent
-    }
+    })
   } else {
     // Fallback to summary if details fail
     const formattedContent = await formatMonsterDetails(monster)
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: monster.name,
       content: formattedContent
-    }
+    })
   }
 }
 
@@ -398,25 +403,98 @@ async function selectClass(cls: ClassSummary) {
   if (isSubclass && (cls.subclassFeatures || cls.additionalSpells)) {
     const parentClassName = cls.name.split(': ')[0]
     const parentClass = classResults.value.find(c => c.name === parentClassName)
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: cls.name,
       content: formatEnhancedClassDetails(cls, parentClass)
-    }
+    })
   } else {
     const parentClass = isSubclass 
       ? classResults.value.find(c => c.name === cls.name.split(': ')[0])
       : undefined
-    modalContent.value = {
+    modalStack.value.push({
       visible: true,
       title: cls.name,
       content: formatClassDetails(cls, parentClass)
-    }
+    })
   }
 }
 
-function closeModal() {
-  modalContent.value.visible = false
+function closeModal(index?: number) {
+  if (index !== undefined) {
+    // Close specific modal
+    modalStack.value.splice(index, 1)
+  } else {
+    // Close top modal
+    modalStack.value.pop()
+  }
+}
+
+// Handle clicks on reference links in modals
+async function handleReferenceClick(event: { type: string; name: string; source?: string }) {
+  console.log('handleReferenceClick called:', event)
+  
+  switch (event.type) {
+    case 'creature':
+    case 'monster': {
+      // Try different capitalization formats for creature names
+      const searchName = event.name
+      const titleCaseName = searchName.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+      
+      console.log('Searching for monster:', searchName, 'or', titleCaseName)
+      
+      // Try with the exact name first
+      let monster = await getMonsterDetails(searchName, event.source || 'MM')
+      
+      // If not found, try title case
+      if (!monster) {
+        monster = await getMonsterDetails(titleCaseName, event.source || 'MM')
+      }
+      
+      if (monster) {
+        const formattedContent = await formatMonsterDetails(monster)
+        modalStack.value.push({
+          visible: true,
+          title: monster.name || event.name,
+          content: formattedContent
+        })
+      } else {
+        console.warn('Monster not found:', searchName)
+      }
+      break
+    }
+    case 'item': {
+      console.log('Searching for item:', event.name)
+      const item = await getItemDetails(event.name, event.source || 'PHB')
+      if (item) {
+        const formattedContent = await formatItemDetails(item)
+        modalStack.value.push({
+          visible: true,
+          title: event.name,
+          content: formattedContent
+        })
+      } else {
+        console.warn('Item not found:', event.name)
+      }
+      break
+    }
+    case 'spell': {
+      console.log('Searching for spell:', event.name)
+      const spell = await getSpellDetails(event.name, event.source || 'PHB')
+      if (spell) {
+        modalStack.value.push({
+          visible: true,
+          title: event.name,
+          content: formatSpellDetails(spell)
+        })
+      } else {
+        console.warn('Spell not found:', event.name)
+      }
+      break
+    }
+  }
 }
 
 // Utility function to map book IDs to sources

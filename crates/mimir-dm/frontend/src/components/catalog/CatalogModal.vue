@@ -1,11 +1,11 @@
 <template>
-  <div v-if="visible" class="modal-overlay" @click="close">
+  <div v-if="visible" class="modal-overlay" @click="close" :style="{ zIndex }">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
         <h3>{{ title }}</h3>
         <button class="modal-close" @click="close">×</button>
       </div>
-      <div class="modal-body dnd-content" v-html="content"></div>
+      <div class="modal-body dnd-content" v-html="content" @click="handleContentClick"></div>
     </div>
   </div>
 </template>
@@ -15,16 +15,53 @@ interface Props {
   visible: boolean
   title: string
   content: string
+  zIndex?: number
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  zIndex: 1000
+})
 
 const emit = defineEmits<{
   close: []
+  'reference-click': [event: { type: string; name: string; source?: string }]
 }>()
 
 function close() {
   emit('close')
+}
+
+function handleContentClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  
+  // Check if clicked element is a reference span
+  if (target.classList.contains('creature-ref') || 
+      target.classList.contains('item-ref') || 
+      target.classList.contains('spell-ref')) {
+    
+    event.preventDefault()
+    event.stopPropagation()
+    
+    // Extract reference type and name
+    let type = ''
+    if (target.classList.contains('creature-ref')) type = 'creature'
+    else if (target.classList.contains('item-ref')) type = 'item'
+    else if (target.classList.contains('spell-ref')) type = 'spell'
+    
+    // Try multiple ways to get the name and source
+    const name = target.getAttribute('data-ref-name') || 
+                 target.getAttribute('data-name') || 
+                 target.textContent || ''
+    const source = target.getAttribute('data-ref-source') || 
+                   target.getAttribute('data-source') || 
+                   undefined
+    
+    console.log('Reference clicked:', { type, name, source, target })
+    
+    if (name && type) {
+      emit('reference-click', { type, name, source })
+    }
+  }
 }
 </script>
 
@@ -807,5 +844,54 @@ function close() {
   background: rgba(255, 218, 121, 0.1);
   color: #ffda79;
   border-color: rgba(255, 218, 121, 0.2);
+}
+
+/* Reference link styles */
+:deep(.creature-ref),
+:deep(.item-ref),
+:deep(.spell-ref) {
+  color: var(--color-primary, #4a9eff);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  transition: all 0.2s;
+}
+
+:deep(.creature-ref:hover),
+:deep(.item-ref:hover),
+:deep(.spell-ref:hover) {
+  color: var(--color-primary-bright, #6ab7ff);
+  text-decoration-style: solid;
+  background: rgba(74, 158, 255, 0.1);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+:deep(.creature-ref) {
+  color: #ff9f43;
+}
+
+:deep(.creature-ref:hover) {
+  color: #ffb366;
+  background: rgba(255, 159, 67, 0.1);
+}
+
+:deep(.item-ref) {
+  color: #6bcf7f;
+}
+
+:deep(.item-ref:hover) {
+  color: #8ed99f;
+  background: rgba(108, 207, 127, 0.1);
+}
+
+:deep(.spell-ref) {
+  color: #a8c7ff;
+}
+
+:deep(.spell-ref:hover) {
+  color: #c5d9ff;
+  background: rgba(168, 199, 255, 0.1);
 }
 </style>
