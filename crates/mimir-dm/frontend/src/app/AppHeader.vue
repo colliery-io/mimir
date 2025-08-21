@@ -28,7 +28,7 @@
 import { computed } from 'vue'
 import { useThemeStore } from '../stores/theme'
 import CampaignSelector from '../features/campaigns/components/CampaignSelector.vue'
-import { openRulesReference } from '../shared/utils/windows'
+import { openSourcesReference } from '../shared/utils/windows'
 // Gear icons
 import lightGear from '../assets/images/themes/light/gear.png'
 import darkGear from '../assets/images/themes/dark/gear.png'
@@ -43,7 +43,7 @@ const themeStore = useThemeStore()
 // Handle opening the rules reference window
 const handleOpenRules = async () => {
   try {
-    await openRulesReference()
+    await openSourcesReference()
   } catch (error) {
     console.error('Failed to open rules window:', error)
   }

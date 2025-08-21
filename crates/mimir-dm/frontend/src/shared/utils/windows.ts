@@ -20,10 +20,10 @@ export interface WindowConfig {
  * Predefined window configurations
  */
 export const WINDOW_CONFIGS = {
-  rulesReference: {
-    label: 'rules-reference',
-    url: 'rules.html',
-    title: 'Reference Library',
+  sourcesReference: {
+    label: 'sources-reference',
+    url: 'sources.html',
+    title: 'Source Library',
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -83,8 +83,8 @@ export async function openExternalWindow(
 }
 
 /**
- * Convenience function to open Rules Reference window
+ * Convenience function to open Sources Reference window
  */
-export async function openRulesReference() {
-  return openExternalWindow('rulesReference')
+export async function openSourcesReference() {
+  return openExternalWindow('sourcesReference')
 }
