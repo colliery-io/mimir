@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import MainLayout from '../components/layout/MainLayout.vue'
+import MainLayout from '../shared/components/layout/MainLayout.vue'
 import { useThemeStore } from '../stores/theme'
 import lightMimir from '../assets/images/themes/light/mimir.png'
 import darkMimir from '../assets/images/themes/dark/mimir.png'

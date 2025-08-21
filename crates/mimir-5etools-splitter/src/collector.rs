@@ -63,8 +63,8 @@ pub fn collect_book_content(book: &Book, repo_path: &Path) -> Result<BookContent
     // Collect spell content
     collect_spell_files(&mut content, &data_dir, source)?;
     
-    // Collect class content (filtered)
-    collect_filtered_content(&mut content, &data_dir, "class", source)?;
+    // Collect class content with features
+    collect_class_content(&mut content, &data_dir, source)?;
     
     // Collect items (filtered from both items.json and items-base.json)
     collect_filtered_items(&mut content, &data_dir, source)?;
@@ -147,6 +147,151 @@ fn collect_spell_files(content: &mut BookContent, data_dir: &Path, source: &str)
         if let Ok(data) = parser::load_json_file(&fluff_file) {
             content.add_json(&format!("spells/fluff-spells-{}.json", source.to_lowercase()), &data)?;
         }
+    }
+    
+    Ok(())
+}
+
+/// Collect class content with associated features
+fn collect_class_content(
+    content: &mut BookContent,
+    data_dir: &Path,
+    source: &str,
+) -> Result<()> {
+    let class_dir = data_dir.join("class");
+    if !class_dir.exists() {
+        return Ok(());
+    }
+    
+    let mut all_classes = Vec::new();
+    let mut all_subclasses = Vec::new();
+    let mut all_class_features = Vec::new();
+    let mut all_subclass_features = Vec::new();
+    
+    // Read all class files
+    for entry in fs::read_dir(&class_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) == Some("json") {
+            if let Ok(data) = parser::load_json_file(&path) {
+                // Extract classes matching the source
+                if let Some(classes) = data.get("class").and_then(|v| v.as_array()) {
+                    for class in classes {
+                        if let Some(class_source) = class.get("source").and_then(|v| v.as_str()) {
+                            if class_source == source {
+                                all_classes.push(class.clone());
+                            }
+                        }
+                    }
+                }
+                
+                // Extract subclasses matching the source
+                if let Some(subclasses) = data.get("subclass").and_then(|v| v.as_array()) {
+                    for subclass in subclasses {
+                        if let Some(subclass_source) = subclass.get("source").and_then(|v| v.as_str()) {
+                            if subclass_source == source {
+                                all_subclasses.push(subclass.clone());
+                            }
+                        }
+                    }
+                }
+                
+                // Extract class features for classes from this source
+                if let Some(features) = data.get("classFeature").and_then(|v| v.as_array()) {
+                    for feature in features {
+                        if let Some(feature_source) = feature.get("source").and_then(|v| v.as_str()) {
+                            if feature_source == source {
+                                all_class_features.push(feature.clone());
+                            }
+                        }
+                    }
+                }
+                
+                // Extract subclass features for subclasses from this source
+                if let Some(features) = data.get("subclassFeature").and_then(|v| v.as_array()) {
+                    for feature in features {
+                        if let Some(feature_source) = feature.get("source").and_then(|v| v.as_str()) {
+                            if feature_source == source {
+                                all_subclass_features.push(feature.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Save class data
+    if !all_classes.is_empty() || !all_subclasses.is_empty() {
+        let mut result = json!({});
+        if !all_classes.is_empty() {
+            result["class"] = json!(all_classes);
+        }
+        if !all_subclasses.is_empty() {
+            result["subclass"] = json!(all_subclasses);
+        }
+        content.add_json(&format!("class/{}.json", source.to_lowercase()), &result)?;
+    }
+    
+    // Save class features
+    if !all_class_features.is_empty() {
+        let result = json!({ "classFeature": all_class_features });
+        content.add_json(&format!("class/features-{}.json", source.to_lowercase()), &result)?;
+    }
+    
+    // Save subclass features
+    if !all_subclass_features.is_empty() {
+        let result = json!({ "subclassFeature": all_subclass_features });
+        content.add_json(&format!("class/subclass-features-{}.json", source.to_lowercase()), &result)?;
+    }
+    
+    // Collect class and subclass fluff
+    let mut all_class_fluff = Vec::new();
+    let mut all_subclass_fluff = Vec::new();
+    
+    // Check for fluff files
+    for entry in fs::read_dir(&class_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+        
+        if filename.starts_with("fluff-class-") && filename.ends_with(".json") {
+            if let Ok(data) = parser::load_json_file(&path) {
+                // Filter class fluff by source
+                if let Some(class_fluff) = data.get("classFluff").and_then(|v| v.as_array()) {
+                    for fluff in class_fluff {
+                        if let Some(fluff_source) = fluff.get("source").and_then(|v| v.as_str()) {
+                            if fluff_source == source {
+                                all_class_fluff.push(fluff.clone());
+                            }
+                        }
+                    }
+                }
+                
+                // Filter subclass fluff by source
+                if let Some(subclass_fluff) = data.get("subclassFluff").and_then(|v| v.as_array()) {
+                    for fluff in subclass_fluff {
+                        if let Some(fluff_source) = fluff.get("source").and_then(|v| v.as_str()) {
+                            if fluff_source == source {
+                                all_subclass_fluff.push(fluff.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Save class fluff
+    if !all_class_fluff.is_empty() {
+        let result = json!({ "classFluff": all_class_fluff });
+        content.add_json(&format!("class/fluff-{}.json", source.to_lowercase()), &result)?;
+    }
+    
+    // Save subclass fluff
+    if !all_subclass_fluff.is_empty() {
+        let result = json!({ "subclassFluff": all_subclass_fluff });
+        content.add_json(&format!("class/subclass-fluff-{}.json", source.to_lowercase()), &result)?;
     }
     
     Ok(())

@@ -1,0 +1,229 @@
+<template>
+  <div id="book-reader" :class="`theme-${currentTheme}`">
+    <!-- Mode Switcher -->
+    <div class="mode-switcher-bar">
+      <div class="mode-switcher">
+        <button 
+          :class="['mode-button', { active: currentMode === 'reading' }]"
+          @click="currentMode = 'reading'"
+        >
+          Reading
+        </button>
+        <button 
+          :class="['mode-button', { active: currentMode === 'catalog' }]"
+          @click="currentMode = 'catalog'"
+        >
+          Catalog
+        </button>
+      </div>
+    </div>
+    
+    <!-- Different layouts for different modes -->
+    <ThreePanelLayout v-if="currentMode === 'reading'">
+      <template #left>
+        <BookLibrary
+          :library-books="libraryBooks"
+          :selected-book="selectedBook"
+          :is-loading-library="isLoadingLibrary"
+          :is-development="isDevelopment"
+          :mode="currentMode"
+          @select="selectBook"
+          @updateSources="selectedSources = $event"
+          @add="addBook"
+          @remove="removeBook"
+        />
+      </template>
+      
+      <template #center>
+        <BookTableOfContents
+          v-if="selectedBook && bookContent?.data"
+          :sections="bookContent.data"
+          :selected-section="selectedSection"
+          @select="selectedSection = $event"
+          @jump="jumpToEntry"
+        />
+        <Panel v-else title="Contents" variant="default">
+          <div class="empty-toc">
+            <p>Select a book to view contents</p>
+          </div>
+        </Panel>
+      </template>
+      
+      <template #right>
+        <BookContentViewer
+          :selected-book="selectedBook"
+          :content="currentSection"
+          :is-loading="isLoading"
+          :error="error"
+        />
+      </template>
+    </ThreePanelLayout>
+    
+    <!-- Two-panel layout for catalog mode -->
+    <TwoPanelLayout v-else>
+      <template #left>
+        <BookLibrary
+          :library-books="libraryBooks"
+          :selected-book="selectedBook"
+          :is-loading-library="isLoadingLibrary"
+          :is-development="isDevelopment"
+          :mode="currentMode"
+          @select="selectBook"
+          @updateSources="selectedSources = $event"
+          @add="addBook"
+          @remove="removeBook"
+        />
+      </template>
+      
+      <template #right>
+        <CatalogPanel :selected-category="selectedCatalogCategory" :selected-sources="selectedSources" />
+      </template>
+    </TwoPanelLayout>
+    
+    <!-- Cross-reference tooltip -->
+    <div 
+      v-if="tooltipVisible"
+      class="cross-ref-tooltip"
+      :style="{ left: `${tooltipPosition.x}px`, top: `${tooltipPosition.y}px` }"
+      v-html="tooltipContent"
+    />
+    
+    <!-- Cross-reference modal -->
+    <div v-if="modalContent.visible" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>{{ modalContent.title }}</h2>
+          <button class="modal-close" @click="closeModal">×</button>
+        </div>
+        <div class="modal-body" v-html="modalContent.content"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useThemeStore } from '../../../../stores/theme'
+import { useBookLibrary } from '../../composables/useBookLibrary'
+import { useBookContent } from '../../composables/useBookContent'
+import { useBookNavigation } from '../../composables/useBookNavigation'
+import { useCrossReferences } from '../../composables/useCrossReferences'
+
+// Components
+import ThreePanelLayout from '../../../../shared/components/layout/ThreePanelLayout.vue'
+import TwoPanelLayout from '../../../../shared/components/layout/TwoPanelLayout.vue'
+import Panel from '../../../../shared/components/layout/Panel.vue'
+import BookLibrary from './Library.vue'
+import BookTableOfContents from './TableOfContents.vue'
+import BookContentViewer from './ContentViewer.vue'
+import CatalogPanel from '../../views/SearchView.vue'
+
+// Theme
+const themeStore = useThemeStore()
+const currentTheme = computed(() => themeStore.currentTheme)
+
+// Mode state (reading vs catalog)
+type AppMode = 'reading' | 'catalog'
+const currentMode = ref<AppMode>('reading')
+
+// Catalog state
+const selectedCatalogCategory = ref('Spells')
+const selectedSources = ref<string[]>([])
+
+// Book library management
+const {
+  libraryBooks,
+  selectedBook,
+  isLoadingLibrary,
+  isDevelopment,
+  loadLibraryBooks,
+  addBook,
+  removeBook,
+  selectBook,
+  installDevTestBook
+} = useBookLibrary()
+
+// Book content management
+const {
+  bookContent,
+  selectedSection,
+  isLoading,
+  error,
+  loadBookContent,
+  jumpToEntry: jumpToEntryBase,
+  getCurrentSection
+} = useBookContent()
+
+// Navigation
+const { scrollToElement } = useBookNavigation()
+
+// Cross-references
+const {
+  tooltipContent,
+  tooltipVisible,
+  tooltipPosition,
+  modalContent,
+  handleCrossRefHover,
+  handleCrossRefClick,
+  hideTooltip,
+  closeModal
+} = useCrossReferences()
+
+// Current section content
+const currentSection = computed(() => getCurrentSection())
+
+// Jump to entry with scroll
+function jumpToEntry(sectionIndex: number, entryId: string) {
+  jumpToEntryBase(sectionIndex, entryId)
+}
+
+// Watch for book selection changes
+watch(selectedBook, (newBook) => {
+  if (newBook) {
+    loadBookContent(newBook)
+  }
+})
+
+// Setup cross-reference event handlers
+function setupCrossRefHandlers() {
+  // Remove old listeners
+  document.removeEventListener('mouseover', handleCrossRefHover as any)
+  document.removeEventListener('mouseout', hideTooltip)
+  document.removeEventListener('click', handleCrossRefClick as any)
+  
+  // Add new listeners
+  document.addEventListener('mouseover', handleCrossRefHover as any)
+  document.addEventListener('mouseout', (e) => {
+    const target = e.target as HTMLElement
+    if (target.classList?.contains('cross-ref-link')) {
+      hideTooltip()
+    }
+  })
+  document.addEventListener('click', handleCrossRefClick as any)
+}
+
+// Load initial data
+onMounted(async () => {
+  // Initialize theme - exactly as in original BookApp.vue
+  themeStore.applyTheme()
+  await themeStore.initThemeSync()
+  
+  // Install dev test book if in dev mode
+  await installDevTestBook()
+  
+  // Load library books
+  await loadLibraryBooks()
+  
+  // Setup cross-reference handlers
+  setupCrossRefHandlers()
+})
+
+// Re-setup handlers when content changes
+watch([bookContent, selectedSection], () => {
+  nextTick(() => {
+    setupCrossRefHandlers()
+  })
+})
+</script>
+
+<!-- Component styles have been moved to centralized CSS files -->

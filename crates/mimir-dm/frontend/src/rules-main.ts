@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import BookReader from './components/book/BookReader.vue'
+import BookReader from './features/sources/components/reader/ReaderView.vue'
 
 // Import all the same styles as the main app
 import './assets/styles/main.css'

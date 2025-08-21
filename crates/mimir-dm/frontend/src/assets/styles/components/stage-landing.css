@@ -1,0 +1,314 @@
+/* Stage Landing Component Styles */
+
+/* Base Stage Landing */
+.stage-landing {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Stage Header */
+.stage-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.stage-header h2 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 2rem;
+  color: var(--color-text);
+}
+
+.stage-subtitle {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--color-text-secondary);
+}
+
+/* Stage Content Section */
+.stage-content-section {
+  margin-top: var(--spacing-xl);
+}
+
+/* Stage Transition Card - with chromatic gradient like inset-readaloud */
+.stage-transition-card {
+  background: linear-gradient(135deg, 
+    rgba(16, 185, 129, 0.15),  /* success green */
+    rgba(59, 130, 246, 0.15),   /* blue */
+    rgba(6, 182, 212, 0.15),    /* cyan */
+    rgba(147, 51, 234, 0.15));  /* purple */
+  border: 2px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  margin: var(--spacing-xl) 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer animation effect */
+.stage-transition-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 3s infinite;
+}
+
+.stage-transition-card h3 {
+  color: var(--color-success);
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.stage-transition-card p {
+  color: var(--color-text);
+  margin-bottom: var(--spacing-lg);
+  position: relative;
+  z-index: 1;
+  font-style: italic;
+}
+
+.stage-transition-card .btn-large {
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: 1.125rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Use the shimmer animation defined in dnd-content.css or define it here if needed */
+@keyframes shimmer {
+  to {
+    left: 100%;
+  }
+}
+
+/* Activity Section */
+.activity-section {
+  margin: var(--spacing-xl) 0;
+}
+
+/* Tip Card */
+.tip-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  margin: var(--spacing-lg) 0;
+}
+
+.tip-card h4 {
+  color: var(--color-primary-600);
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 1.25rem;
+}
+
+.tip-card ol,
+.tip-card ul {
+  margin: 0;
+  padding-left: var(--spacing-xl);
+}
+
+.tip-card li {
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.6;
+}
+
+.tip-card li strong {
+  color: var(--color-text);
+  display: inline-block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.tip-card li em {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  margin-top: var(--spacing-xs);
+  padding-left: var(--spacing-lg);
+}
+
+/* Stage Concept Specific */
+.stage-concept {
+  padding: var(--spacing-lg);
+}
+
+/* Campaign Dashboard */
+.campaign-dashboard {
+  text-align: center;
+}
+
+/* Campaign Stats Card */
+.campaign-stats-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  margin: var(--spacing-xl) 0;
+}
+
+.campaign-stat {
+  text-align: center;
+  min-width: 120px;
+}
+
+.campaign-stat .stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary-600);
+  margin-bottom: var(--spacing-xs);
+}
+
+.campaign-stat .stat-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Integration Tasks */
+.integration-tasks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-xl);
+}
+
+/* Module Section */
+.modules-section {
+  margin-top: var(--spacing-2xl);
+  text-align: left;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.section-header h3 {
+  margin: 0;
+}
+
+/* Module Table Styles */
+.modules-table {
+  width: 100%;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.modules-table thead {
+  background-color: var(--color-surface-variant);
+}
+
+.modules-table th {
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.modules-table tbody tr {
+  transition: background-color var(--transition-base);
+}
+
+.modules-table tbody tr:hover {
+  background-color: var(--color-surface-variant);
+}
+
+.modules-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modules-table td {
+  padding: var(--spacing-md) var(--spacing-lg);
+  vertical-align: middle;
+}
+
+.module-name {
+  font-size: 1rem;
+}
+
+.module-name strong {
+  color: var(--color-text);
+}
+
+.sessions-info {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.progress-cell {
+  min-width: 150px;
+}
+
+.no-progress {
+  color: var(--color-text-secondary);
+  font-size: 1.25rem;
+}
+
+.actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.planning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.status-badge.development {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.status-badge.ready {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-badge.active {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.status-badge.completed {
+  background-color: var(--color-gray-200);
+  color: var(--color-text);
+}

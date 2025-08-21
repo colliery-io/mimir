@@ -288,12 +288,16 @@
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-surface-variant);
+  flex-shrink: 0;
 }
 
 .sidebar-header h3 {
   margin: 0;
   font-size: 1.125rem;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-content {

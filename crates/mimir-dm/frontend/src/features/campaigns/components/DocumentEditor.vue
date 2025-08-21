@@ -1,0 +1,356 @@
+<template>
+  <div class="document-editor">
+    <!-- Editor Header -->
+    <div class="editor-header">
+      <div class="header-left">
+        <button class="btn-icon" @click="$emit('close')" title="Back to overview">
+          ← Back
+        </button>
+        <h2>{{ document?.title || 'Untitled Document' }}</h2>
+      </div>
+      <div class="header-right">
+        <span v-if="saveStatus" class="save-status" :class="saveStatus">
+          {{ saveStatusText }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Editor Content -->
+    <div class="editor-content">
+      <!-- Editor -->
+      <div class="editor-wrapper">
+        <!-- Toolbar -->
+        <div v-if="editor" class="editor-toolbar">
+          <button
+            @click="editor?.chain().focus().toggleHeading({ level: 1 }).run()"
+            :class="{ 'is-active': editor?.isActive('heading', { level: 1 }) }"
+            class="toolbar-btn"
+          >
+            H1
+          </button>
+          <button
+            @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()"
+            :class="{ 'is-active': editor?.isActive('heading', { level: 2 }) }"
+            class="toolbar-btn"
+          >
+            H2
+          </button>
+          <button
+            @click="editor?.chain().focus().toggleHeading({ level: 3 }).run()"
+            :class="{ 'is-active': editor?.isActive('heading', { level: 3 }) }"
+            class="toolbar-btn"
+          >
+            H3
+          </button>
+          <div class="toolbar-divider"></div>
+          <button
+            @click="editor?.chain().focus().toggleBold().run()"
+            :class="{ 'is-active': editor?.isActive('bold') }"
+            class="toolbar-btn"
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            @click="editor?.chain().focus().toggleItalic().run()"
+            :class="{ 'is-active': editor?.isActive('italic') }"
+            class="toolbar-btn"
+          >
+            <em>I</em>
+          </button>
+          <button
+            @click="editor?.chain().focus().toggleStrike().run()"
+            :class="{ 'is-active': editor?.isActive('strike') }"
+            class="toolbar-btn"
+          >
+            <strike>S</strike>
+          </button>
+          <div class="toolbar-divider"></div>
+          <button
+            @click="editor?.chain().focus().toggleBulletList().run()"
+            :class="{ 'is-active': editor?.isActive('bulletList') }"
+            class="toolbar-btn"
+          >
+            • List
+          </button>
+          <button
+            @click="editor?.chain().focus().toggleOrderedList().run()"
+            :class="{ 'is-active': editor?.isActive('orderedList') }"
+            class="toolbar-btn"
+          >
+            1. List
+          </button>
+          <button
+            @click="editor?.chain().focus().toggleBlockquote().run()"
+            :class="{ 'is-active': editor?.isActive('blockquote') }"
+            class="toolbar-btn"
+          >
+            " Quote
+          </button>
+          <div class="toolbar-divider"></div>
+          <button
+            @click="editor?.chain().focus().setHorizontalRule().run()"
+            class="toolbar-btn"
+          >
+            — Rule
+          </button>
+          <button
+            @click="editor?.chain().focus().undo().run()"
+            :disabled="!editor?.can().undo()"
+            class="toolbar-btn"
+          >
+            ↶ Undo
+          </button>
+          <button
+            @click="editor?.chain().focus().redo().run()"
+            :disabled="!editor?.can().redo()"
+            class="toolbar-btn"
+          >
+            ↷ Redo
+          </button>
+        </div>
+        <EditorContent :editor="editor" class="editor-area" />
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
+import { useEditor, EditorContent } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
+import { Markdown } from 'tiptap-markdown-3'
+import { invoke } from '@tauri-apps/api/core'
+import { debounce } from '../../../shared/utils/debounce'
+
+const props = defineProps<{
+  document: any
+  campaignId: number
+}>()
+
+const emit = defineEmits<{
+  close: []
+  updated: [document: any]
+  'stage-transitioned': [campaign: any]
+}>()
+
+// State
+const showPreview = ref(false)
+const saveStatus = ref<'saving' | 'saved' | 'error' | null>(null)
+const pendingContent = ref<string | null>(null)
+
+// Initialize Tiptap editor with markdown support
+const editor = useEditor({
+  content: '',
+  extensions: [
+    StarterKit.configure({
+      heading: {
+        levels: [1, 2, 3, 4, 5, 6]
+      }
+    }),
+    Placeholder.configure({
+      placeholder: 'Start writing your document...'
+    }),
+    Markdown.configure({
+      html: true,
+      tightLists: true,
+      tightListClass: 'tight',
+      bulletListMarker: '-',
+      linkify: false,
+      breaks: false
+    })
+  ],
+  onCreate: ({ editor: e }) => {
+    // Load document when editor is ready
+    if (props.document) {
+      // Use a small delay to ensure editor is fully ready
+      setTimeout(() => loadDocument(), 50)
+    } else if (pendingContent.value) {
+      // If we have pending content from before editor was ready, set it now
+      e.commands.setContent(pendingContent.value)
+      pendingContent.value = null
+    }
+  },
+  onUpdate: ({ editor }) => {
+    debouncedSave()
+  }
+})
+
+// Computed
+const saveStatusText = computed(() => {
+  switch (saveStatus.value) {
+    case 'saving': return 'Saving...'
+    case 'saved': return 'Saved'
+    case 'error': return 'Error saving'
+    default: return ''
+  }
+})
+
+// Load document content
+const loadDocument = async () => {
+  if (!props.document?.file_path) return
+  
+  try {
+    const response = await invoke<{ data: string }>('read_document_file', {
+      filePath: props.document.file_path
+    })
+    
+    if (response.data) {
+      // Set markdown content - Tiptap will parse it
+      if (editor.value) {
+        editor.value.commands.setContent(response.data)
+      } else {
+        // Store content to set later
+        pendingContent.value = response.data
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load document:', e)
+  }
+}
+
+// Get content as markdown
+const getMarkdown = (): string => {
+  if (!editor.value) return ''
+  
+  // Use the markdown extension to get markdown content
+  // TypeScript workaround for the storage type
+  const storage = editor.value.storage as any
+  return storage.markdown?.getMarkdown() || ''
+}
+
+// Save document content
+const saveDocument = async () => {
+  if (!props.document?.file_path) return
+  
+  saveStatus.value = 'saving'
+  
+  try {
+    // Get content as markdown
+    const markdown = getMarkdown()
+    
+    // Just save the file - no need to update database for every save
+    await invoke('save_document_file', {
+      filePath: props.document.file_path,
+      content: markdown
+    })
+    
+    saveStatus.value = 'saved'
+    setTimeout(() => {
+      saveStatus.value = null
+    }, 2000)
+  } catch (e) {
+    console.error('Failed to save document:', e)
+    saveStatus.value = 'error'
+    setTimeout(() => {
+      saveStatus.value = null
+    }, 3000)
+  }
+}
+
+// Debounced save function
+const debouncedSave = debounce(saveDocument, 1000)
+
+
+
+// Toggle preview mode
+const togglePreview = () => {
+  showPreview.value = !showPreview.value
+  if (editor.value) {
+    // Toggle editor's editable state
+    editor.value.setEditable(!showPreview.value)
+  }
+}
+
+// Mark document as complete
+const markComplete = async () => {
+  try {
+    // Save any pending changes first
+    await saveDocument()
+    
+    const response = await invoke<{ data: any }>('complete_document', {
+      documentId: props.document.id
+    })
+    
+    if (response.data) {
+      emit('updated', response.data)
+      
+      // Check if stage is complete after marking this document
+      const stageStatus = await invoke<{ success: boolean; data: any }>('check_campaign_stage_completion', {
+        campaignId: props.campaignId
+      })
+      
+      if (stageStatus.success && stageStatus.data.can_progress) {
+        // Show transition prompt
+        showTransitionPrompt(stageStatus.data)
+      }
+    }
+  } catch (e) {
+    console.error('Failed to mark document complete:', e)
+  }
+}
+
+// Show stage transition prompt
+const showTransitionPrompt = (status: any) => {
+  const metadata = status.stage_metadata
+  
+  // For now, just show an alert. In a real app, you'd use a modal
+  const message = metadata.transition_prompt || 
+    `You can always edit this document later, but make sure your party has a chance to look at this and provide feedback before progressing.`
+  
+  if (confirm(message + '\n\nWould you like to progress to the next stage?')) {
+    transitionToNextStage(status.next_stage)
+  }
+}
+
+// Transition to next stage
+const transitionToNextStage = async (nextStage: string) => {
+  try {
+    const response = await invoke<{ success: boolean; data: any }>('transition_campaign_stage', {
+      campaignId: props.campaignId,
+      newStage: nextStage
+    })
+    
+    if (response.success) {
+      // Emit event to refresh the campaign view
+      emit('stage-transitioned', response.data)
+    }
+  } catch (e) {
+    console.error('Failed to transition stage:', e)
+  }
+}
+
+// Watch for document changes
+watch(() => props.document, (newDoc, oldDoc) => {
+  // Load if document changed - check multiple fields since temporary docs have id = -1
+  if (newDoc && (
+    newDoc?.id !== oldDoc?.id || 
+    newDoc?.file_path !== oldDoc?.file_path ||
+    newDoc?.template_id !== oldDoc?.template_id
+  )) {
+    if (editor.value) {
+      // Clear the editor first to avoid mixing content
+      editor.value.commands.clearContent()
+      loadDocument()
+    } else {
+      // Editor not ready yet, store for later
+      pendingContent.value = null
+    }
+  }
+}, { deep: true })
+
+// Load content when component mounts
+onMounted(() => {
+  // Load document content if available
+  if (props.document) {
+    loadDocument()
+  }
+})
+
+// Cleanup
+onBeforeUnmount(() => {
+  editor.value?.destroy()
+})
+</script>
+
+<!-- Component styles have been moved to centralized CSS files -->

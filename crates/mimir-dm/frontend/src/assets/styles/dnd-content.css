@@ -347,3 +347,683 @@
   font-size: 0.875rem;
   font-style: italic;
 }
+
+/* ================================
+   CATALOG CONTENT - SPELLS
+   ================================ */
+
+.spell-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.spell-details.enhanced {
+  gap: 1.75rem;
+}
+
+.spell-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-primary, #4a9eff);
+}
+
+.spell-level-school {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary, #4a9eff);
+  text-transform: capitalize;
+}
+
+.spell-tags {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.spell-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.spell-tag.ritual {
+  background: rgba(168, 199, 255, 0.2);
+  color: #a8c7ff;
+  border: 1px solid rgba(168, 199, 255, 0.3);
+}
+
+.spell-tag.concentration {
+  background: rgba(74, 158, 255, 0.2);
+  color: var(--color-primary, #4a9eff);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+.spell-properties-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+.property-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.property-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.property-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #999);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-value {
+  color: var(--color-text, #e0e0e0);
+  font-size: 0.95rem;
+}
+
+/* ================================
+   CATALOG CONTENT - ITEMS
+   ================================ */
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.item-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-primary, #4a9eff);
+}
+
+.item-type-rarity {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary, #4a9eff);
+  text-transform: capitalize;
+}
+
+.item-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.item-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+.item-tag.attunement {
+  background: rgba(168, 199, 255, 0.2);
+  color: #a8c7ff;
+  border-color: rgba(168, 199, 255, 0.3);
+}
+
+.item-properties-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+/* ================================
+   CATALOG CONTENT - CLASSES
+   ================================ */
+
+.class-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.class-details.enhanced {
+  gap: 1.75rem;
+}
+
+/* Enhanced class header styles */
+.class-header-section {
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--color-primary, #4a9eff);
+}
+
+.class-header-section h2 {
+  margin: 0.5rem 0;
+  color: var(--color-text, #e0e0e0);
+  font-size: 1.75rem;
+}
+
+.class-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(74, 158, 255, 0.2);
+  color: var(--color-primary, #4a9eff);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+.class-type-badge.spellcaster {
+  background: rgba(162, 155, 254, 0.2);
+  color: #a29bfe;
+  border-color: rgba(162, 155, 254, 0.3);
+}
+
+.class-type-badge.martial {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.class-type-badge.subclass {
+  background: rgba(108, 207, 127, 0.2);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.3);
+}
+
+.class-subtitle {
+  color: var(--color-text-secondary, #999);
+  font-size: 1.1rem;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+/* Class description section */
+.class-description-section {
+  margin: 1rem 0;
+}
+
+.class-description-section h4 {
+  color: var(--color-text, #e0e0e0);
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+}
+
+.description-text {
+  color: var(--color-text-secondary, #ccc);
+  line-height: 1.6;
+}
+
+/* Fluff content styles */
+.fluff-content {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.fluff-content p {
+  margin: 0 0 1rem 0;
+  line-height: 1.7;
+}
+
+.fluff-content p:last-child {
+  margin-bottom: 0;
+}
+
+.fluff-content h5 {
+  color: var(--color-primary, #4a9eff);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+.fluff-content ul {
+  margin: 0.5rem 0 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.fluff-content li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.fluff-quote {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(74, 158, 255, 0.05);
+  border-left: 3px solid var(--color-primary, #4a9eff);
+  font-style: italic;
+  color: var(--color-text-secondary, #ccc);
+}
+
+.fluff-quote footer {
+  margin-top: 0.5rem;
+  font-style: normal;
+  font-size: 0.9rem;
+  color: var(--color-primary, #4a9eff);
+}
+
+/* Class core attributes section */
+.class-core-section,
+.base-class-section {
+  margin: 1rem 0;
+}
+
+.class-core-section h4,
+.base-class-section h4 {
+  color: var(--color-text, #e0e0e0);
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+/* Properties grid for attributes */
+.properties-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.property-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+.property-item.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Class features section */
+.class-features-section {
+  margin: 1.5rem 0;
+}
+
+.class-features-section h4 {
+  color: var(--color-accent, #6bcf7f);
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.feature-level-group {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  padding: 1rem;
+  border: 1px solid var(--color-border-light, #222);
+}
+
+.level-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--color-primary, #4a9eff);
+  color: var(--color-background, #1a1a1a);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.feature-icon {
+  font-style: normal;
+  margin-right: 0.25rem;
+}
+
+/* Spells section for subclasses */
+.spells-section {
+  margin: 1.5rem 0;
+}
+
+.spells-section h4 {
+  color: var(--color-magic, #a29bfe);
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+.spells-description {
+  color: var(--color-text-secondary, #999);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.spell-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.spell-level-group {
+  background: rgba(162, 155, 254, 0.05);
+  border-radius: 6px;
+  padding: 0.75rem;
+  border: 1px solid rgba(162, 155, 254, 0.2);
+}
+
+.spell-level-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--color-magic, #a29bfe);
+  color: var(--color-background, #1a1a1a);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* Spellcasting section */
+.spellcasting-section {
+  margin: 1.5rem 0;
+}
+
+.spellcasting-section h4 {
+  color: var(--color-magic, #a29bfe);
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border-light, #333);
+}
+
+.cantrip-level {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  margin: 0 2px;
+}
+
+.cantrip-level strong {
+  color: var(--color-accent, #6bcf7f);
+}
+
+/* Footer styles */
+.class-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #222);
+}
+
+/* Legacy styles for backward compatibility */
+.class-header-info {
+  margin-bottom: 1rem;
+}
+
+.class-type {
+  color: var(--color-text-secondary, #999);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.class-properties {
+  margin: 1rem 0;
+}
+
+.subclass-section {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border-left: 3px solid var(--color-primary-dim, #3a7fbf);
+}
+
+.subclass-section h4 {
+  color: var(--color-primary, #4a9eff);
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.subclass-description {
+  font-style: italic;
+  color: var(--color-text-secondary, #ccc);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.feature-list,
+.spell-list {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.feature-list li {
+  color: var(--color-text, #e0e0e0);
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border-left: 3px solid var(--color-primary-dim, #3a7fbf);
+  transition: background 0.2s;
+}
+
+.feature-list li:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.feature-name {
+  color: var(--color-text, #e0e0e0);
+  font-weight: 500;
+}
+
+.feature-level {
+  color: var(--color-text-dim, #888);
+  font-size: 0.875rem;
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
+.parent-class-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #333);
+}
+
+.parent-class-info h4 {
+  color: var(--color-text-secondary, #999);
+  margin-bottom: 0.5rem;
+}
+
+/* ================================
+   CATALOG CONTENT - FEATURES
+   ================================ */
+
+.feature-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.feature-header {
+  border-bottom: 2px solid var(--color-primary, #4a9eff);
+  padding-bottom: 0.75rem;
+}
+
+.feature-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-text, #e0e0e0);
+}
+
+.feature-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.feature-class {
+  color: var(--color-primary, #4a9eff);
+  font-weight: 500;
+}
+
+.feature-subclass {
+  color: var(--color-text-secondary, #aaa);
+  font-style: italic;
+}
+
+.feature-content {
+  color: var(--color-text-secondary, #ccc);
+  line-height: 1.6;
+}
+
+.feature-content p {
+  margin: 0 0 1rem 0;
+}
+
+.feature-content p:last-child {
+  margin-bottom: 0;
+}
+
+.feature-content ul {
+  margin: 0.5rem 0 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.feature-content h4 {
+  color: var(--color-text, #e0e0e0);
+  margin: 1rem 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.feature-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #222);
+}
+
+/* ================================
+   REFERENCE LINKS
+   ================================ */
+
+.creature-ref,
+.item-ref,
+.spell-ref,
+.feature-ref {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  transition: all 0.2s;
+}
+
+.creature-ref {
+  color: #ff9f43;
+}
+
+.creature-ref:hover {
+  color: #ffb366;
+  background: rgba(255, 159, 67, 0.1);
+  text-decoration-style: solid;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.item-ref {
+  color: #6bcf7f;
+}
+
+.item-ref:hover {
+  color: #8ed99f;
+  background: rgba(108, 207, 127, 0.1);
+  text-decoration-style: solid;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.spell-ref {
+  color: #a8c7ff;
+}
+
+.spell-ref:hover {
+  color: #c5d9ff;
+  background: rgba(168, 199, 255, 0.1);
+  text-decoration-style: solid;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.feature-ref {
+  color: var(--color-primary, #4a9eff);
+}
+
+.feature-ref:hover {
+  color: var(--color-primary-bright, #6ab7ff);
+  background: rgba(74, 158, 255, 0.1);
+  text-decoration-style: solid;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* ================================
+   DAMAGE TYPES & CONDITIONS
+   ================================ */
+
+.damage-type {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid;
+  text-transform: capitalize;
+}
+
+.damage-type.fire {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.damage-type.cold {
+  background: rgba(116, 185, 255, 0.15);
+  color: #74b9ff;
+  border-color: rgba(116, 185, 255, 0.3);
+}
+
+.damage-type.acid {
+  background: rgba(108, 207, 127, 0.15);
+  color: #6bcf7f;
+  border-color: rgba(108, 207, 127, 0.3);
+}
+
+.condition-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 0 3px 3px 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+  border: 1px solid rgba(255, 159, 67, 0.3);
+}

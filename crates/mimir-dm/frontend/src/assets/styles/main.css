@@ -3,10 +3,25 @@
 @import './themes/dark.css';
 @import './themes/hyper.css';
 
-/* Import shared styles */
-@import './boards.css';
+/* Import base styles */
 @import './components.css';
 @import './dnd-content.css';
+
+/* Import centralized component styles */
+@import './components/modals.css';
+@import './components/tables.css';
+@import './components/buttons.css';
+@import './components/forms.css';
+@import './components/toc.css';
+@import './components/editor.css';
+@import './components/sidebar.css';
+@import './components/catalog.css';
+@import './components/book-content.css';
+@import './components/stage-landing.css';
+
+/* Import layout styles */
+@import './layouts/reader-layout.css';
+@import './layouts/board-layout.css';
 
 /* Tailwind directives */
 @tailwind base;

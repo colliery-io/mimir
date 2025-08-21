@@ -81,8 +81,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { open } from '@tauri-apps/plugin-dialog'
-import MainLayout from '../components/layout/MainLayout.vue'
-import ThemeSelector from '../components/common/ThemeSelector.vue'
+import MainLayout from '../shared/components/layout/MainLayout.vue'
+import ThemeSelector from '../shared/components/ui/ThemeSelector.vue'
 
 const router = useRouter()
 const defaultCampaignDir = ref('')
