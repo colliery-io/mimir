@@ -26,7 +26,7 @@ Thumbs.db
 .temp/
 
 # Data processing outputs
-data/SRD-*/
+data/
 5etools-*/
 5e-bits-enriched/
 5e-core-data/
