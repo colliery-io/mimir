@@ -4,6 +4,7 @@
 //! like spells, items, monsters, classes, and more.
 
 pub mod class;
+pub mod feat;
 pub mod item;
 pub mod monster;
 pub mod spell;
@@ -27,3 +28,5 @@ pub use spell::{
     DurationValue, MaterialComponent, ScalingLevelDice, Spell, SpellData, SpellMeta,
     SpellRange, SpellSchool, SpellSummary, SubclassReference, SubclassReference2,
 };
+
+pub use feat::{Feat, FeatData, FeatSummary};

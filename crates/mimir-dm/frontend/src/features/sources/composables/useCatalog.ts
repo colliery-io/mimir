@@ -159,6 +159,37 @@ export interface ClassWithDetails {
   subclass_fluff: SubclassFluff[]
 }
 
+// Feat interfaces
+export interface FeatSummary {
+  name: string
+  source: string
+  page?: number
+  prerequisites?: string
+  brief?: string
+}
+
+export interface Feat {
+  name: string
+  source: string
+  page?: number
+  srd?: boolean
+  entries: any[]
+  prerequisite?: any[]
+  ability?: any[]
+  skill_proficiencies?: any[]
+  language_proficiencies?: any[]
+  tool_proficiencies?: any[]
+  weapon_proficiencies?: any[]
+  armor_proficiencies?: any[]
+  saving_throw_proficiencies?: any[]
+  expertise?: any[]
+  resist?: any[]
+  immune?: any[]
+  senses?: any[]
+  additional_spells?: any[]
+  other_sources?: any[]
+}
+
 export interface Class {
   name: string
   source: string
@@ -511,6 +542,36 @@ export function useCatalog() {
     }
   }
 
+  // Feat catalog functions
+  async function initializeFeatCatalog() {
+    try {
+      await invoke('initialize_feat_catalog')
+    } catch (e) {
+      console.error('Failed to initialize feat catalog:', e)
+      throw e
+    }
+  }
+
+  async function searchFeats(params: { query?: string; source?: string } = {}) {
+    try {
+      const results = await invoke<FeatSummary[]>('search_feats', params)
+      return results || []
+    } catch (e) {
+      console.error('Failed to search feats:', e)
+      return []
+    }
+  }
+
+  async function getFeatDetails(name: string, source: string) {
+    try {
+      const feat = await invoke<Feat>('get_feat_details', { name, source })
+      return feat
+    } catch (e) {
+      console.error('Failed to get feat details:', e)
+      return null
+    }
+  }
+
   return {
     // State
     isInitialized,
@@ -537,5 +598,8 @@ export function useCatalog() {
     getMonsterDetails,
     getClassDetails,
     getClassSubclasses,
+    initializeFeatCatalog,
+    searchFeats,
+    getFeatDetails,
   }
 }

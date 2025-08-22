@@ -15,6 +15,7 @@
             <option value="Monsters">Monsters/Bestiary</option>
             <option value="Magic Items">Magic Items</option>
             <option value="Classes">Classes</option>
+            <option value="Feats">Feats</option>
           </select>
         </div>
         
@@ -96,6 +97,13 @@
           @sort="handleSort"
         />
         
+        <!-- Feat Table -->
+        <FeatTable
+          v-else-if="selectedCategory === 'Feats'"
+          :feats="featResults"
+          @select="selectFeat"
+        />
+        
         <!-- Placeholder for other categories -->
         <div v-else class="placeholder-message">
           {{ selectedCategory }} catalog coming soon...
@@ -124,7 +132,8 @@ import type {
   SpellSummary, 
   ItemSummary, 
   MonsterSummary,
-  ClassSummary
+  ClassSummary,
+  FeatSummary
 } from '../composables/useCatalog'
 
 // Import components
@@ -133,12 +142,14 @@ import SpellTable from '../components/search/SpellTable.vue'
 import ItemTable from '../components/search/ItemTable.vue'
 import MonsterTable from '../components/search/MonsterTable.vue'
 import ClassTable from '../components/search/ClassTable.vue'
+import FeatTable from '../components/search/FeatTable.vue'
 
 // Import formatters
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
 import { formatMonsterDetails } from '../formatters/monsterFormatterEnhanced'
 import { formatClassDetails } from '../formatters/classFormatterEnhanced'
+import { formatFeatDetails } from '../formatters/featFormatter'
 
 interface Props {
   selectedSources: string[]
@@ -153,14 +164,17 @@ const {
   searchItems,
   searchMonsters,
   searchClasses,
+  searchFeats,
   initializeCatalog,
   initializeItemCatalog,
   initializeMonsterCatalog,
   initializeClassCatalog,
+  initializeFeatCatalog,
   getSpellDetails,
   getItemDetails,
   getMonsterDetails,
   getClassDetails,
+  getFeatDetails,
   classSources
 } = useCatalog()
 
@@ -177,6 +191,7 @@ const itemResults = ref<ItemSummary[]>([])
 const magicItemResults = ref<ItemSummary[]>([])
 const monsterResults = ref<MonsterSummary[]>([])
 const classResults = ref<ClassSummary[]>([])
+const featResults = ref<FeatSummary[]>([])
 
 // Modal Stack
 interface Modal {
@@ -218,6 +233,7 @@ const resultCount = computed(() => {
     case 'Magic Items': return magicItemResults.value.length
     case 'Monsters': return monsterResults.value.length
     case 'Classes': return classResults.value.length
+    case 'Feats': return featResults.value.length
     default: return 0
   }
 })
@@ -281,6 +297,13 @@ async function performSearch() {
       classResults.value = await searchClasses({
         query: searchQuery.value || undefined
         // Don't filter by source - backend already searches all loaded classes
+      })
+      break
+      
+    case 'Feats':
+      featResults.value = await searchFeats({
+        query: searchQuery.value || undefined
+        // Don't filter by source - backend already searches all loaded feats
       })
       break
       
@@ -402,6 +425,27 @@ async function selectClass(classItem: ClassSummary) {
   }
 }
 
+async function selectFeat(feat: FeatSummary) {
+  // Fetch full feat details
+  const fullFeat = await getFeatDetails(feat.name, feat.source)
+  
+  if (fullFeat) {
+    const formattedContent = await formatFeatDetails(fullFeat)
+    modalStack.value.push({
+      visible: true,
+      title: feat.name,
+      content: formattedContent
+    })
+  } else {
+    // Fallback to summary if details fail
+    const formattedContent = await formatFeatDetails(feat)
+    modalStack.value.push({
+      visible: true,
+      title: feat.name,
+      content: formattedContent
+    })
+  }
+}
 
 function closeModal(index?: number) {
   if (index !== undefined) {
@@ -492,6 +536,21 @@ async function handleReferenceClick(event: { type: string; name: string; source?
       }
       break
     }
+    case 'feat': {
+      console.log('Searching for feat:', event.name)
+      const feat = await getFeatDetails(event.name, event.source || 'PHB')
+      if (feat) {
+        const formattedContent = await formatFeatDetails(feat)
+        modalStack.value.push({
+          visible: true,
+          title: event.name,
+          content: formattedContent
+        })
+      } else {
+        console.warn('Feat not found:', event.name)
+      }
+      break
+    }
     case 'feature': {
       console.log('Searching for feature:', event.name)
       
@@ -509,56 +568,6 @@ async function handleReferenceClick(event: { type: string; name: string; source?
   }
 }
 
-// Helper function to format feature details
-function formatFeatureDetails(feature: any): string {
-  let html = '<div class="feature-details">'
-  
-  // Header
-  html += '<div class="feature-header">'
-  html += `<h3>${feature.name}</h3>`
-  html += `<div class="feature-meta">`
-  html += `<span class="feature-class">${feature.className}</span>`
-  if (feature.subclassShortName) {
-    html += ` <span class="feature-subclass">(${feature.subclassShortName})</span>`
-  }
-  html += ` <span class="feature-level">Level ${feature.level}</span>`
-  html += `</div>`
-  html += '</div>'
-  
-  // Content
-  html += '<div class="feature-content">'
-  if (feature.entries && Array.isArray(feature.entries)) {
-    for (const entry of feature.entries) {
-      if (typeof entry === 'string') {
-        html += `<p>${entry}</p>`
-      } else if (entry.type === 'list' && entry.items) {
-        html += '<ul>'
-        for (const item of entry.items) {
-          html += `<li>${item}</li>`
-        }
-        html += '</ul>'
-      } else if (entry.type === 'entries' && entry.entries) {
-        html += `<h4>${entry.name || ''}</h4>`
-        for (const subEntry of entry.entries) {
-          if (typeof subEntry === 'string') {
-            html += `<p>${subEntry}</p>`
-          }
-        }
-      }
-    }
-  }
-  html += '</div>'
-  
-  // Source
-  html += '<div class="feature-footer">'
-  html += `<span class="source-info">Source: ${feature.source}`
-  if (feature.page) html += `, p. ${feature.page}`
-  html += '</span>'
-  html += '</div>'
-  
-  html += '</div>'
-  return html
-}
 
 // Utility function to map book IDs to sources
 function mapBookIdsToSources(bookIds: string[]): string[] {
@@ -585,6 +594,9 @@ onMounted(async () => {
     case 'Classes':
       await initializeClassCatalog()
       break
+    case 'Feats':
+      await initializeFeatCatalog()
+      break
   }
   await performSearch()
 })
@@ -605,6 +617,9 @@ watch(selectedCategory, async (newCategory) => {
       break
     case 'Classes':
       await initializeClassCatalog()
+      break
+    case 'Feats':
+      await initializeFeatCatalog()
       break
     // Add other initializations as needed
   }
