@@ -5,10 +5,10 @@ use std::fs;
 use tauri::State;
 use serde_json;
 use tracing::{debug, info, warn, error};
-use mimir_dm_core::models::rules::{
+use mimir_dm_core::models::catalog::{
     Spell, SpellData, SpellSummary, 
     Item, ItemData, ItemSummary,
-    Monster, MonsterData, MonsterSummary, MonsterFluff, MonsterFluffData
+    Monster, MonsterData, MonsterSummary, MonsterFluffData
 };
 
 /// Spell catalog state - holds all loaded spells in memory
@@ -483,19 +483,11 @@ impl MonsterCatalog {
                                                             info!("Loaded {} monster fluff entries from {}/{}", 
                                                                     fluff_data.monster_fluff.len(), book_id, fluff_filename);
                                                             
-                                                            // Merge fluff data with monsters
-                                                            let mut fluff_merged_count = 0;
-                                                            for monster in &mut monster_data.monster {
-                                                                if let Some(fluff) = fluff_data.monster_fluff.iter()
-                                                                    .find(|f| f.name == monster.name && f.source == monster.source) {
-                                                                    monster.fluff_entries = fluff.entries.clone();
-                                                                    monster.fluff_images = fluff.images.clone();
-                                                                    if fluff.images.is_some() {
-                                                                        fluff_merged_count += 1;
-                                                                    }
-                                                                }
-                                                            }
-                                                            info!("Merged fluff data for {} monsters with images", fluff_merged_count);
+                                                            // Fluff data loaded separately, not merged into monsters
+                                                            let fluff_with_images = fluff_data.monster_fluff.iter()
+                                                                .filter(|f| f.images.is_some())
+                                                                .count();
+                                                            info!("Loaded fluff data for {} monsters with images", fluff_with_images);
                                                         }
                                                         Err(e) => {
                                                             error!("Failed to parse fluff file {}/{}: {}", book_id, fluff_filename, e);

@@ -1,9 +1,9 @@
 //! Database Models
 //! 
-//! Split into two distinct domains:
-//! - `rules`: Static D&D reference data (races, classes, spells, etc.)
+//! Split into distinct domains:
+//! - `catalog`: Static D&D reference data (races, classes, spells, items, monsters, etc.)
 //! - `campaign`: Campaign management and story organization
 
 pub mod campaign;
-pub mod rules;
+pub mod catalog;
 pub mod rules_extended;

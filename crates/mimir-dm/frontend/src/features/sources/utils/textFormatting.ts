@@ -1,10 +1,11 @@
 /**
  * Process D&D 5e tools formatting tags and convert them to HTML
  */
-export function processFormattingTags(text: string): string {
+export function processFormattingTags(text: string | any): string {
   if (!text) return ''
   
-  let processed = text
+  // Convert to string if not already
+  let processed = typeof text === 'string' ? text : String(text)
   
   // Basic formatting
   processed = processed
@@ -15,11 +16,23 @@ export function processFormattingTags(text: string): string {
     // Bold-Italic
     .replace(/{@bi ([^}]+)}/g, '<strong><em>$1</em></strong>')
     
-  // Dice rolls
+  // Dice rolls - format them nicely
   processed = processed
-    .replace(/{@dice ([^}]+)}/g, '<span class="dice-roll">$1</span>')
-    .replace(/{@damage ([^}]+)}/g, '<span class="damage-roll">$1</span>')
-    .replace(/{@d20 ([^}]+)}/g, '<span class="d20-roll">d20$1</span>')
+    .replace(/{@dice ([^}]+)}/g, (match, diceContent) => {
+      // Handle both simple {@dice 1d6} and complex {@dice 1d6|display text} formats
+      const parts = diceContent.split('|')
+      const dice = parts[0].trim()
+      const display = parts[1]?.trim() || dice
+      return `<span class="dice-roll">${display}</span>`
+    })
+    .replace(/{@damage ([^|}]+)(?:\|([^}]*))?}/g, (match, damage, display) => {
+      const text = display || damage
+      return `<span class="damage-roll">${text}</span>`
+    })
+    .replace(/{@d20 ([^|}]+)(?:\|([^}]*))?}/g, (match, modifier, display) => {
+      const text = display || `d20${modifier}`
+      return `<span class="d20-roll">${text}</span>`
+    })
     .replace(/{@hit ([^}]+)}/g, '<span class="hit-bonus">$1</span>')
     
   // Conditions and status
@@ -27,13 +40,21 @@ export function processFormattingTags(text: string): string {
     .replace(/{@condition ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="condition">$1</span>')
     .replace(/{@status ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="status">$1</span>')
     
-  // Spells
+  // Spells - make them clickable
   processed = processed
-    .replace(/{@spell ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="spell-ref">$1</span>')
+    .replace(/{@spell ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
+      const displayName = name
+      const actualSource = source || 'PHB'
+      return `<span class="spell-ref clickable" data-ref-type="spell" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+    })
     
-  // Items
+  // Items - make them clickable
   processed = processed
-    .replace(/{@item ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="item-ref">$1</span>')
+    .replace(/{@item ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
+      const displayName = name
+      const actualSource = source || 'PHB'
+      return `<span class="item-ref clickable" data-ref-type="item" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+    })
     
   // Item entry references - these reference the description of another item
   // Special handling for known item groups
@@ -47,14 +68,26 @@ export function processFormattingTags(text: string): string {
     // Generic fallback for other item entry references
     .replace(/{#itemEntry ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="item-entry-ref">[See base item: $1]</span>')
     
-  // Creatures
+  // Creatures - make them clickable
   processed = processed
-    .replace(/{@creature ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="creature-ref">$1</span>')
+    .replace(/{@creature ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
+      const displayName = name
+      const actualSource = source || 'MM'
+      return `<span class="creature-ref clickable" data-ref-type="creature" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+    })
     
-  // Classes and features
+  // Classes and features - make them clickable
   processed = processed
-    .replace(/{@class ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="class-ref">$1</span>')
-    .replace(/{@classFeature ([^|}]+)(?:\|[^}]*)?}/gi, '<span class="feature-ref">$1</span>')
+    .replace(/{@class ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
+      const displayName = name
+      const actualSource = source || 'PHB'
+      return `<span class="class-ref clickable" data-ref-type="class" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+    })
+    .replace(/{@classFeature ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
+      const displayName = name
+      const actualSource = source || 'PHB'
+      return `<span class="feature-ref clickable" data-ref-type="feature" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+    })
     
   // Skills and abilities
   processed = processed
@@ -178,7 +211,7 @@ function formatTable(table: any): string {
   if (table.colLabels) {
     html += '<thead><tr>'
     for (const label of table.colLabels) {
-      html += `<th>${label}</th>`
+      html += `<th>${processFormattingTags(label)}</th>`
     }
     html += '</tr></thead>'
   }
@@ -186,11 +219,39 @@ function formatTable(table: any): string {
   // Table rows
   if (table.rows) {
     html += '<tbody>'
-    for (const row of table.rows) {
+    // Check if first column is a dice roll column
+    const isDiceColumn = table.colLabels && table.colLabels[0]?.includes('{@dice')
+    
+    for (let i = 0; i < table.rows.length; i++) {
+      const row = table.rows[i]
       html += '<tr>'
       if (Array.isArray(row)) {
-        for (const cell of row) {
-          html += `<td>${typeof cell === 'string' ? processFormattingTags(cell) : formatEntries([cell])}</td>`
+        for (let j = 0; j < row.length; j++) {
+          const cell = row[j]
+          let cellContent = ''
+          
+          // If this is the first column and it's a dice column, and the cell is empty/undefined,
+          // fill it with the row number
+          if (j === 0 && isDiceColumn && (!cell || cell === '')) {
+            cellContent = String(i + 1)
+          } else if (typeof cell === 'string') {
+            cellContent = processFormattingTags(cell)
+          } else if (cell && typeof cell === 'object') {
+            // Handle cell objects with roll property {"roll": {"exact": 1}, "type": "cell"}
+            if (cell.type === 'cell' && cell.roll) {
+              if (cell.roll.exact !== undefined) {
+                cellContent = String(cell.roll.exact)
+              } else if (cell.roll.min !== undefined && cell.roll.max !== undefined) {
+                cellContent = `${cell.roll.min}-${cell.roll.max}`
+              } else {
+                cellContent = JSON.stringify(cell.roll)
+              }
+            } else {
+              cellContent = formatEntries([cell])
+            }
+          }
+          
+          html += `<td>${cellContent}</td>`
         }
       } else {
         html += `<td>${processFormattingTags(row)}</td>`

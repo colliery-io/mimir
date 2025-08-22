@@ -278,37 +278,78 @@
    TABLES
    ================================ */
 
+/* Universal table styling for all D&D content tables */
 .entry-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0;
+  margin: 1.5rem 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .entry-table caption {
-  padding: 0.5rem;
-  font-weight: bold;
+  padding: 0.75rem;
+  font-weight: 600;
   text-align: left;
   color: var(--color-text);
+  background: var(--color-surface-variant);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.entry-table thead {
+  background: var(--color-surface-variant);
 }
 
 .entry-table th {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  padding: 0.5rem;
+  padding: 0.75rem;
   text-align: left;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--color-text);
+  border-bottom: 2px solid var(--color-border);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
-.entry-table td {
-  border: 1px solid var(--color-border);
-  padding: 0.5rem;
-  color: var(--color-text);
+.entry-table tbody tr {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.entry-table tbody tr:last-child {
+  border-bottom: none;
 }
 
 .entry-table tbody tr:hover {
+  background: var(--color-surface-hover);
+}
+
+.entry-table td {
+  padding: 0.75rem;
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+/* Alternate row coloring for better readability */
+.entry-table tbody tr:nth-child(even) {
   background: rgba(255, 255, 255, 0.02);
 }
+
+/* First column styling for level/dice tables */
+.entry-table th:first-child {
+  text-align: center;
+  min-width: 3rem;
+}
+
+/* Center and highlight first column if it's numeric (level/dice rolls) */
+.entry-table td:first-child {
+  text-align: center;
+  font-weight: 600;
+  color: var(--color-primary-500);
+  min-width: 3rem;
+}
+
 
 /* ================================
    LISTS
@@ -927,6 +968,7 @@
 .creature-ref,
 .item-ref,
 .spell-ref,
+.class-ref,
 .feature-ref {
   cursor: pointer;
   text-decoration: underline;
@@ -966,6 +1008,18 @@
 .spell-ref:hover {
   color: #c5d9ff;
   background: rgba(168, 199, 255, 0.1);
+  text-decoration-style: solid;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.class-ref {
+  color: #f59e0b;
+}
+
+.class-ref:hover {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
   text-decoration-style: solid;
   padding: 0 2px;
   border-radius: 2px;

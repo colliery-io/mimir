@@ -14,6 +14,7 @@
             <option value="Equipment">Equipment</option>
             <option value="Monsters">Monsters/Bestiary</option>
             <option value="Magic Items">Magic Items</option>
+            <option value="Classes">Classes</option>
           </select>
         </div>
         
@@ -83,6 +84,18 @@
           @filter-update="updateMonsterFilters"
         />
         
+        <!-- Class Table -->
+        <ClassTable
+          v-else-if="selectedCategory === 'Classes'"
+          :classes="classResults"
+          :search-performed="searchPerformed"
+          :sort-column="sortColumn"
+          :sort-direction="sortDirection"
+          :available-sources="classSources"
+          @select="selectClass"
+          @sort="handleSort"
+        />
+        
         <!-- Placeholder for other categories -->
         <div v-else class="placeholder-message">
           {{ selectedCategory }} catalog coming soon...
@@ -110,7 +123,8 @@ import { useCatalog } from '../composables/useCatalog'
 import type { 
   SpellSummary, 
   ItemSummary, 
-  MonsterSummary
+  MonsterSummary,
+  ClassSummary
 } from '../composables/useCatalog'
 
 // Import components
@@ -118,11 +132,13 @@ import ContentModal from '../components/content/ContentModal.vue'
 import SpellTable from '../components/search/SpellTable.vue'
 import ItemTable from '../components/search/ItemTable.vue'
 import MonsterTable from '../components/search/MonsterTable.vue'
+import ClassTable from '../components/search/ClassTable.vue'
 
 // Import formatters
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
 import { formatMonsterDetails } from '../formatters/monsterFormatterEnhanced'
+import { formatClassDetails } from '../formatters/classFormatterEnhanced'
 
 interface Props {
   selectedSources: string[]
@@ -136,12 +152,16 @@ const {
   searchSpells,
   searchItems,
   searchMonsters,
+  searchClasses,
   initializeCatalog,
   initializeItemCatalog,
   initializeMonsterCatalog,
+  initializeClassCatalog,
   getSpellDetails,
   getItemDetails,
-  getMonsterDetails
+  getMonsterDetails,
+  getClassDetails,
+  classSources
 } = useCatalog()
 
 // Local state
@@ -156,6 +176,7 @@ const spellResults = ref<SpellSummary[]>([])
 const itemResults = ref<ItemSummary[]>([])
 const magicItemResults = ref<ItemSummary[]>([])
 const monsterResults = ref<MonsterSummary[]>([])
+const classResults = ref<ClassSummary[]>([])
 
 // Modal Stack
 interface Modal {
@@ -196,6 +217,7 @@ const resultCount = computed(() => {
     case 'Equipment': return itemResults.value.length
     case 'Magic Items': return magicItemResults.value.length
     case 'Monsters': return monsterResults.value.length
+    case 'Classes': return classResults.value.length
     default: return 0
   }
 })
@@ -252,6 +274,13 @@ async function performSearch() {
         types: monsterFilters.value.types.length > 0 ? monsterFilters.value.types : undefined,
         min_cr: monsterFilters.value.minCr,
         max_cr: monsterFilters.value.maxCr
+      })
+      break
+      
+    case 'Classes':
+      classResults.value = await searchClasses({
+        query: searchQuery.value || undefined
+        // Don't filter by source - backend already searches all loaded classes
       })
       break
       
@@ -351,6 +380,28 @@ async function selectMonster(monster: MonsterSummary) {
   }
 }
 
+async function selectClass(classItem: ClassSummary) {
+  // Fetch full class details
+  const fullClass = await getClassDetails(classItem.name, classItem.source)
+  
+  if (fullClass) {
+    const formattedContent = await formatClassDetails(fullClass)
+    modalStack.value.push({
+      visible: true,
+      title: classItem.name,
+      content: formattedContent
+    })
+  } else {
+    // Fallback to summary if details fail
+    const formattedContent = await formatClassDetails(classItem)
+    modalStack.value.push({
+      visible: true,
+      title: classItem.name,
+      content: formattedContent
+    })
+  }
+}
+
 
 function closeModal(index?: number) {
   if (index !== undefined) {
@@ -423,6 +474,21 @@ async function handleReferenceClick(event: { type: string; name: string; source?
         })
       } else {
         console.warn('Spell not found:', event.name)
+      }
+      break
+    }
+    case 'class': {
+      console.log('Searching for class:', event.name)
+      const classDetails = await getClassDetails(event.name, event.source || 'PHB')
+      if (classDetails) {
+        const formattedContent = await formatClassDetails(classDetails)
+        modalStack.value.push({
+          visible: true,
+          title: event.name,
+          content: formattedContent
+        })
+      } else {
+        console.warn('Class not found:', event.name)
       }
       break
     }
@@ -516,6 +582,9 @@ onMounted(async () => {
     case 'Monsters':
       await initializeMonsterCatalog()
       break
+    case 'Classes':
+      await initializeClassCatalog()
+      break
   }
   await performSearch()
 })
@@ -530,6 +599,12 @@ watch(selectedCategory, async (newCategory) => {
     case 'Equipment':
     case 'Magic Items':
       await initializeItemCatalog()
+      break
+    case 'Monsters':
+      await initializeMonsterCatalog()
+      break
+    case 'Classes':
+      await initializeClassCatalog()
       break
     // Add other initializations as needed
   }

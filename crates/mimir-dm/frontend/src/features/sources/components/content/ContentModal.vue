@@ -34,29 +34,15 @@ function close() {
 function handleContentClick(event: MouseEvent) {
   const target = event.target as HTMLElement
   
-  // Check if clicked element is a reference span
-  if (target.classList.contains('creature-ref') || 
-      target.classList.contains('item-ref') || 
-      target.classList.contains('spell-ref') ||
-      target.classList.contains('feature-ref')) {
-    
+  // Check if clicked element is a clickable reference
+  if (target.classList.contains('clickable')) {
     event.preventDefault()
     event.stopPropagation()
     
-    // Extract reference type and name
-    let type = ''
-    if (target.classList.contains('creature-ref')) type = 'creature'
-    else if (target.classList.contains('item-ref')) type = 'item'
-    else if (target.classList.contains('spell-ref')) type = 'spell'
-    else if (target.classList.contains('feature-ref')) type = 'feature'
-    
-    // Try multiple ways to get the name and source
-    const name = target.getAttribute('data-ref-name') || 
-                 target.getAttribute('data-name') || 
-                 target.textContent || ''
-    const source = target.getAttribute('data-ref-source') || 
-                   target.getAttribute('data-source') || 
-                   undefined
+    // Get reference info from data attributes
+    const type = target.getAttribute('data-ref-type') || ''
+    const name = target.getAttribute('data-ref-name') || target.textContent || ''
+    const source = target.getAttribute('data-ref-source') || undefined
     
     console.log('Reference clicked:', { type, name, source, target })
     

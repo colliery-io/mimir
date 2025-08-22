@@ -80,6 +80,101 @@ export interface MonsterFilters {
   max_cr?: number
 }
 
+export interface ClassSummary {
+  name: string
+  source: string
+  page?: number
+  hitDice: string
+  proficiency: string
+  primaryAbility: string
+  spellcastingAbility?: string
+  tableGroups?: any[]
+  subclassTitle?: string
+  description: string
+}
+
+export interface ClassFilters {
+  query?: string
+  source?: string
+}
+
+export interface Subclass {
+  name: string
+  source: string
+  class_name: string
+  class_source: string
+  short_name?: string
+  page?: number
+  spellcasting_ability?: string
+  caster_progression?: string
+  subclass_features?: any
+  subclass_table_groups?: any[]
+}
+
+export interface ClassFeature {
+  name: string
+  source: string
+  class_name: string
+  class_source: string
+  level: number
+  page?: number
+  entries?: any[]
+}
+
+export interface SubclassFeature {
+  name: string
+  source: string
+  class_name: string
+  class_source: string
+  subclass_short_name?: string
+  subclass_source: string
+  level: number
+  page?: number
+  entries?: any[]
+}
+
+export interface ClassFluff {
+  name: string
+  source: string
+  entries: any[]
+  images?: any[]
+}
+
+export interface SubclassFluff {
+  name: string
+  short_name?: string
+  source: string
+  class_name: string
+  class_source: string
+  entries: any[]
+  images?: any[]
+}
+
+export interface ClassWithDetails {
+  class: Class
+  subclasses: Subclass[]
+  features: ClassFeature[]
+  subclass_features: SubclassFeature[]
+  fluff?: ClassFluff
+  subclass_fluff: SubclassFluff[]
+}
+
+export interface Class {
+  name: string
+  source: string
+  page?: number
+  hd?: any // Hit dice object
+  proficiency?: any
+  startingProficiencies?: any
+  spellcastingAbility?: string
+  classTableGroups?: any[]
+  subclassTitle?: string
+  entries?: any[]
+  classFeatures?: any[]
+  multiclassing?: any
+  casterProgression?: string
+}
+
 // Type definitions for full details
 export interface Spell {
   name: string
@@ -151,6 +246,7 @@ export function useCatalog() {
   const isInitialized = ref(false)
   const isItemsInitialized = ref(false)
   const isMonstersInitialized = ref(false)
+  const isClassesInitialized = ref(false)
   const isLoading = ref(false)
   const error: Ref<string | null> = ref(null)
   
@@ -158,6 +254,8 @@ export function useCatalog() {
   const spells = ref<SpellSummary[]>([])
   const items = ref<ItemSummary[]>([])
   const monsters = ref<MonsterSummary[]>([])
+  const classes = ref<ClassSummary[]>([])
+  const classSources = ref<string[]>([])
 
   // Initialize the spell catalog
   async function initializeCatalog() {
@@ -336,24 +434,108 @@ export function useCatalog() {
     }
   }
 
+  // Initialize the class catalog
+  async function initializeClassCatalog() {
+    if (isClassesInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('initialize_class_catalog')
+      isClassesInitialized.value = true
+      console.log('Class catalog initialized')
+      
+      // Load class sources
+      try {
+        const sources = await invoke<string[]>('get_class_sources')
+        classSources.value = sources
+      } catch (e) {
+        console.error('Failed to load class sources:', e)
+      }
+    } catch (e) {
+      error.value = `Failed to initialize class catalog: ${e}`
+      console.error('Failed to initialize class catalog:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Search classes with filters
+  async function searchClasses(filters: ClassFilters): Promise<ClassSummary[]> {
+    if (!isClassesInitialized.value) {
+      await initializeClassCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const results = await invoke<ClassSummary[]>('search_classes', {
+        query: filters.query || null,
+        source: filters.source || null,
+      })
+      
+      classes.value = results
+      return results
+    } catch (e) {
+      error.value = `Search failed: ${e}`
+      console.error('Search failed:', e)
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Get detailed class information
+  async function getClassDetails(name: string, source: string): Promise<ClassWithDetails | null> {
+    try {
+      const classDetails = await invoke<ClassWithDetails>('get_class_details', { name, source })
+      return classDetails
+    } catch (e) {
+      console.error('Failed to get class details:', e)
+      return null
+    }
+  }
+
+  // Get all subclasses for a class
+  async function getClassSubclasses(className: string, classSource: string): Promise<Subclass[]> {
+    try {
+      const subclasses = await invoke<Subclass[]>('get_class_subclasses', { 
+        className, 
+        classSource 
+      })
+      return subclasses
+    } catch (e) {
+      console.error('Failed to get class subclasses:', e)
+      return []
+    }
+  }
+
   return {
     // State
     isInitialized,
     isItemsInitialized,
     isMonstersInitialized,
+    isClassesInitialized,
     isLoading,
     error,
     spells,
     items,
     monsters,
+    classes,
+    classSources,
     initializeCatalog,
     initializeItemCatalog,
     initializeMonsterCatalog,
+    initializeClassCatalog,
     searchSpells,
     searchItems,
     searchMonsters,
+    searchClasses,
     getSpellDetails,
     getItemDetails,
     getMonsterDetails,
+    getClassDetails,
+    getClassSubclasses,
   }
 }

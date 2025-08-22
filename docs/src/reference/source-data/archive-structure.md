@@ -19,7 +19,7 @@ This document defines the complete directory and file structure for Mimir source
 ├── backgrounds/                 # Character backgrounds
 ├── feats/                       # Character feats
 ├── optionalfeatures/            # Optional class features
-├── variantrules/               # Optional and variant rules
+├── variantrules/                # Optional and variant rules
 ├── rewards/                     # Rewards and treasures
 ├── objects/                     # Environmental objects
 ├── traps/                       # Traps

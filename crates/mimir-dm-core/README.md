@@ -26,7 +26,7 @@ The `mimir-dm-core` crate is the heart of the Mimir D&D Campaign Assistant. It p
 
 The crate is organized into two distinct domains:
 
-### 1. Rules Domain (`models::rules`, `dal::rules`)
+### 1. Catalog Domain (`models::catalog`, `dal::catalog`)
 Static D&D reference data that doesn't change during gameplay:
 - Rule systems (D&D 5e, etc.)
 - Source books and supplements
@@ -52,13 +52,12 @@ src/
 ├── error.rs               # Error types and Result type alias
 │
 ├── models/                # Domain models (split by domain)
-│   ├── rules/            # D&D reference data models
-│   │   ├── races.rs      # Player races with traits
-│   │   ├── classes.rs    # Character classes and features
-│   │   ├── items.rs      # Equipment and magic items
-│   │   ├── creatures.rs  # Monsters and NPCs
-│   │   ├── spells.rs     # Spell definitions
-│   │   └── ...
+│   ├── catalog/          # D&D reference data models
+│   │   ├── spell.rs      # Spell definitions
+│   │   ├── item.rs       # Equipment and magic items
+│   │   ├── monster.rs    # Monsters and NPCs
+│   │   ├── class.rs      # Character classes and features
+│   │   └── mod.rs        # Module exports
 │   └── campaign/         # Campaign management models
 │       ├── campaigns.rs  # Campaign lifecycle
 │       ├── modules.rs    # Story arc management
@@ -68,7 +67,7 @@ src/
 │
 ├── dal/                   # Data Access Layer (Repository pattern)
 │   ├── traits.rs         # Repository trait definitions
-│   ├── rules/           # Repositories for rules data
+│   ├── catalog/         # Repositories for catalog data
 │   └── campaign/        # Repositories for campaign data
 │
 ├── domain/               # Domain logic and business rules
@@ -91,7 +90,7 @@ src/
 ## Key Features
 
 ### Domain-Driven Design
-- Clear separation between rules reference and campaign management
+- Clear separation between catalog reference and campaign management
 - Rich domain models with business logic
 - Repository pattern for data access
 - Service layer for complex operations
@@ -145,7 +144,7 @@ let campaign = campaign_service.create_campaign(
 
 // Access domain models directly
 use mimir_dm_core::models::campaign::Campaign;
-use mimir_dm_core::models::rules::Race;
+use mimir_dm_core::models::catalog::Class;
 
 // Use DAL for data access
 use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;

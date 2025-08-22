@@ -1,7 +1,7 @@
 //! Development tools and commands
 
 use crate::{
-    embedded_test_book::{extract_test_book, extract_test_book_two, is_dev_build},
+    embedded_test_book::{extract_all_test_books, get_embedded_test_books, is_dev_build},
     types::ApiResponse,
     APP_PATHS,
 };
@@ -29,22 +29,21 @@ pub async fn install_dev_test_book() -> Result<ApiResponse<String>, String> {
     
     // Get books directory
     let books_dir = app_paths.data_dir.join("books");
-    let test_book_dir = books_dir.join("test-book");
-    let test_book_two_dir = books_dir.join("test-book-two");
+    
+    // Get list of embedded test books
+    let test_books = get_embedded_test_books();
+    info!("Found {} embedded test books to install", test_books.len());
     
     // ALWAYS remove and reinstall in dev to ensure latest version
-    if test_book_dir.exists() {
-        info!("Removing existing dev test book at: {:?}", test_book_dir);
-        fs::remove_dir_all(&test_book_dir)
-            .map_err(|e| format!("Failed to remove old test book: {}", e))?;
-        info!("Successfully removed old test book");
-    }
-    
-    if test_book_two_dir.exists() {
-        info!("Removing existing test book two at: {:?}", test_book_two_dir);
-        fs::remove_dir_all(&test_book_two_dir)
-            .map_err(|e| format!("Failed to remove old test book two: {}", e))?;
-        info!("Successfully removed old test book two");
+    // Remove all existing test book directories
+    for book in &test_books {
+        let book_dir = books_dir.join(&book.name);
+        if book_dir.exists() {
+            info!("Removing existing test book at: {:?}", book_dir);
+            fs::remove_dir_all(&book_dir)
+                .map_err(|e| format!("Failed to remove old test book {}: {}", book.name, e))?;
+            info!("Successfully removed old test book: {}", book.name);
+        }
     }
     
     // Create books directory if needed
@@ -53,61 +52,53 @@ pub async fn install_dev_test_book() -> Result<ApiResponse<String>, String> {
             .map_err(|e| format!("Failed to create books directory: {}", e))?;
     }
     
-    // Extract the embedded test book archives
-    info!("Extracting test book archive to: {:?}", books_dir);
-    extract_test_book(&books_dir)
-        .map_err(|e| format!("Failed to extract test book: {}", e))?;
-    info!("Test book one extraction completed");
+    // Extract all embedded test book archives
+    info!("Extracting all test book archives to: {:?}", books_dir);
+    extract_all_test_books(&books_dir)
+        .map_err(|e| format!("Failed to extract test books: {}", e))?;
+    info!("All test book extractions completed");
     
-    info!("Extracting test book two archive to: {:?}", books_dir);
-    extract_test_book_two(&books_dir)
-        .map_err(|e| format!("Failed to extract test book two: {}", e))?;
-    info!("Test book two extraction completed");
-    
-    // Verify extraction
-    if test_book_dir.exists() {
-        info!("Test book directory confirmed at: {:?}", test_book_dir);
+    // Verify extraction of all test books
+    for book in &test_books {
+        let book_dir = books_dir.join(&book.name);
+        if book_dir.exists() {
+            info!("Test book '{}' directory confirmed at: {:?}", book.name, book_dir);
         
-        // List contents
-        if let Ok(entries) = fs::read_dir(&test_book_dir) {
-            info!("Test book contents:");
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    info!("  - {:?} ({})", 
-                        entry.file_name(),
-                        if path.is_dir() { "dir" } else { "file" }
-                    );
-                    
-                    // If it's the book dir, list its contents too
-                    if path.is_dir() && entry.file_name() == "book" {
-                        if let Ok(book_entries) = fs::read_dir(&path) {
-                            info!("    Book subdirectory contents:");
-                            for book_entry in book_entries {
-                                if let Ok(book_entry) = book_entry {
-                                    info!("      - {:?}", book_entry.file_name());
+            // List contents
+            if let Ok(entries) = fs::read_dir(&book_dir) {
+                info!("Test book '{}' contents:", book.name);
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        let path = entry.path();
+                        info!("  - {:?} ({})", 
+                            entry.file_name(),
+                            if path.is_dir() { "dir" } else { "file" }
+                        );
+                        
+                        // If it's the data dir, list its contents too
+                        if path.is_dir() && entry.file_name() == "data" {
+                            if let Ok(data_entries) = fs::read_dir(&path) {
+                                info!("    Data subdirectory contents:");
+                                for data_entry in data_entries {
+                                    if let Ok(data_entry) = data_entry {
+                                        info!("      - {:?}", data_entry.file_name());
+                                    }
                                 }
                             }
                         }
-                    }
-                    
-                    // Check metadata.json
-                    if entry.file_name() == "metadata.json" {
-                        if let Ok(content) = fs::read_to_string(&path) {
-                            info!("    Metadata content: {}", content);
+                        
+                        // Check metadata.json
+                        if entry.file_name() == "metadata.json" {
+                            if let Ok(content) = fs::read_to_string(&path) {
+                                info!("    Metadata content: {}", content);
+                            }
                         }
                     }
                 }
             }
+        } else {
+            error!("Test book '{}' directory was not created!", book.name);
         }
-    } else {
-        error!("Test book directory was not created!");
-    }
-    
-    if test_book_two_dir.exists() {
-        info!("Test book two directory confirmed at: {:?}", test_book_two_dir);
-    } else {
-        error!("Test book two directory was not created!");
     }
     
     info!("Successfully installed dev test books");
@@ -124,12 +115,17 @@ pub async fn remove_dev_test_book() -> Result<ApiResponse<()>, String> {
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
-    let test_book_dir = app_paths.data_dir.join("books").join("test-book");
+    let books_dir = app_paths.data_dir.join("books");
+    let test_books = get_embedded_test_books();
     
-    if test_book_dir.exists() {
-        fs::remove_dir_all(&test_book_dir)
-            .map_err(|e| format!("Failed to remove test book: {}", e))?;
-        info!("Removed dev test book");
+    // Remove all test book directories
+    for book in &test_books {
+        let book_dir = books_dir.join(&book.name);
+        if book_dir.exists() {
+            fs::remove_dir_all(&book_dir)
+                .map_err(|e| format!("Failed to remove test book {}: {}", book.name, e))?;
+            info!("Removed dev test book: {}", book.name);
+        }
     }
     
     Ok(ApiResponse::success(()))
