@@ -112,7 +112,7 @@
     </div>
     
     <!-- Modal Stack -->
-    <ContentModal
+    <BaseModal
       v-for="(modal, index) in modalStack"
       :key="`modal-${index}`"
       :visible="modal.visible"
@@ -137,7 +137,7 @@ import type {
 } from '../composables/useCatalog'
 
 // Import components
-import ContentModal from '../components/content/ContentModal.vue'
+import BaseModal from '@/components/shared/BaseModal.vue'
 import SpellTable from '../components/search/SpellTable.vue'
 import ItemTable from '../components/search/ItemTable.vue'
 import MonsterTable from '../components/search/MonsterTable.vue'

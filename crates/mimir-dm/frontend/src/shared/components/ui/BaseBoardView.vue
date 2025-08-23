@@ -51,10 +51,10 @@ const props = defineProps<Props>()
 
 // Dynamic stages from board configuration
 const stages = computed(() => {
-  if (!props.boardConfig) return []
+  if (!props.boardConfig || !props.boardConfig.stages) return []
   return props.boardConfig.stages.map((stage) => ({
     key: stage.key,
-    name: stage.display_name.toUpperCase()
+    name: (stage.display_name || stage.displayName || stage.key).toUpperCase()
   }))
 })
 

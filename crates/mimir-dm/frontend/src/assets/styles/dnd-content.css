@@ -64,11 +64,6 @@
   z-index: 1;
 }
 
-@keyframes shimmer {
-  to {
-    left: 100%;
-  }
-}
 
 /* ================================
    HEADINGS

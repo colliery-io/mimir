@@ -80,12 +80,6 @@
   z-index: 1;
 }
 
-/* Use the shimmer animation defined in dnd-content.css or define it here if needed */
-@keyframes shimmer {
-  to {
-    left: 100%;
-  }
-}
 
 /* Activity Section */
 .activity-section {

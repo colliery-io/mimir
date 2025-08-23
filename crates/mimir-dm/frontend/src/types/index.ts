@@ -1,33 +1,23 @@
 // Re-export all existing types from their current locations
 export * from './api'
-// Campaign is already exported from api.ts, so we skip campaign.ts to avoid conflicts
+// Selectively export from domain to avoid conflicts with api.ts
+export type { 
+  Document,
+  ExitCriterion,
+  BoardConfig,
+  BoardColumn,
+  BoardTransition,
+  BoardDocumentType,
+  Stage,
+  StageInfo,
+  DocumentTemplate
+} from './domain'
+// Campaign, Module, and Session are already exported from api.ts
 
-// Additional shared types that are currently duplicated across components
+// Additional shared types specific to this app
+import type { DocumentTemplate } from './domain'
 
-// Document types (currently duplicated in DocumentSidebar components)
-export interface Document {
-  id: number
-  campaign_id: number
-  module_id: number | null
-  session_id: number | null
-  template_id: string
-  document_type: string
-  title: string
-  file_path: string
-  created_at: string
-  updated_at: string
-  completed_at: string | null
-}
-
-export interface DocumentTemplate {
-  templateId: string
-  title: string
-  required: boolean
-  stage: string
-  instance?: Document
-}
-
-// Board configuration types (used across board views)
+// Board stage type (extends the base board config)
 export interface BoardStage {
   key: string
   display_name: string
@@ -35,12 +25,6 @@ export interface BoardStage {
   required_documents?: string[]
   optional_documents?: string[]
   no_completion_required_documents?: string[]
-}
-
-export interface BoardConfig {
-  stages: BoardStage[]
-  documents: DocumentTemplate[]
-  transitions?: Record<string, string[]>
 }
 
 // Theme constants (these are actually static in the app)

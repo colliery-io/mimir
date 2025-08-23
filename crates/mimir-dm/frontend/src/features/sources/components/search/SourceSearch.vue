@@ -86,7 +86,7 @@
     </div>
     
     <!-- Content Modal (temporary, will be replaced) -->
-    <CatalogModal
+    <BaseModal
       v-for="(modal, index) in modalStack"
       :key="`modal-${index}`"
       :visible="modal.visible"
@@ -106,7 +106,7 @@ import { useSourceSearch } from '../../composables/useSourceSearch'
 import SpellTable from './SpellTable.vue'
 import ItemTable from './ItemTable.vue'
 import MonsterTable from './MonsterTable.vue'
-import CatalogModal from './CatalogModal.vue'
+import BaseModal from '@/components/shared/BaseModal.vue'
 
 // Props
 interface Props {

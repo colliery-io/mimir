@@ -16,10 +16,10 @@ export function useStageProgress(
 ) {
   // Dynamic stages from board configuration
   const stages = computed(() => {
-    if (!boardConfig.value) return []
+    if (!boardConfig.value || !boardConfig.value.stages) return []
     return boardConfig.value.stages.map((stage) => ({
       key: stage.key,
-      name: stage.display_name.toUpperCase()
+      name: (stage.display_name || stage.displayName || stage.key).toUpperCase()
     }))
   })
 
@@ -37,7 +37,7 @@ export function useStageProgress(
 
   // Get index of a stage in the progression
   const getStageIndex = (stageKey: string): number => {
-    if (!boardConfig.value) return -1
+    if (!boardConfig.value || !boardConfig.value.stages) return -1
     return boardConfig.value.stages.findIndex(s => s.key === stageKey)
   }
 
@@ -57,11 +57,11 @@ export function useStageProgress(
 
   // Get detailed information about all stages
   const stagesInfo = computed((): StageInfo[] => {
-    if (!boardConfig.value) return []
+    if (!boardConfig.value || !boardConfig.value.stages) return []
     
     return boardConfig.value.stages.map((stage) => ({
       key: stage.key,
-      name: stage.display_name.toUpperCase(),
+      name: (stage.display_name || stage.displayName || stage.key).toUpperCase(),
       isActive: stage.key === currentStage.value,
       isCompleted: isStageCompleted(stage.key),
       isAccessible: isStageAccessible(stage.key)
@@ -70,7 +70,7 @@ export function useStageProgress(
 
   // Get completion percentage across all stages
   const overallProgress = computed(() => {
-    if (!boardConfig.value || !currentStage.value) return 0
+    if (!boardConfig.value || !boardConfig.value.stages || !currentStage.value) return 0
     
     const totalStages = boardConfig.value.stages.length
     const currentIndex = getStageIndex(currentStage.value)
@@ -94,7 +94,7 @@ export function useStageProgress(
 
   // Get next stage in progression
   const nextStage = computed(() => {
-    if (!boardConfig.value || !currentStage.value) return null
+    if (!boardConfig.value || !boardConfig.value.stages || !currentStage.value) return null
     
     const currentIndex = getStageIndex(currentStage.value)
     if (currentIndex === -1 || currentIndex >= boardConfig.value.stages.length - 1) {
@@ -106,7 +106,7 @@ export function useStageProgress(
 
   // Get previous stage in progression
   const previousStage = computed(() => {
-    if (!boardConfig.value || !currentStage.value) return null
+    if (!boardConfig.value || !boardConfig.value.stages || !currentStage.value) return null
     
     const currentIndex = getStageIndex(currentStage.value)
     if (currentIndex <= 0) return null

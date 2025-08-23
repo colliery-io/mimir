@@ -91,7 +91,7 @@ const {
 
 // Completed stages for visual indication
 const completedStages = computed(() => {
-  if (!boardConfig.value) return []
+  if (!boardConfig.value || !boardConfig.value.stages) return []
   return boardConfig.value.stages
     .filter(stage => isStageCompleted(stage.key))
     .map(stage => stage.key)
@@ -106,7 +106,7 @@ const canProgressToNext = computed(() => {
   if (module.value.status === 'completed') return false
   
   // Get current stage metadata
-  const currentStageConfig = boardConfig.value.stages.find((s: any) => s.key === currentStage.value)
+  const currentStageConfig = boardConfig.value.stages?.find((s: any) => s.key === currentStage.value)
   if (!currentStageConfig) return false
   
   // Get required documents for current stage
@@ -122,7 +122,7 @@ const canProgressToNext = computed(() => {
   
   // Check if all required documents that need completion are complete
   const completedDocs = documents.value.filter(doc => 
-    completionRequiredDocs.includes(doc.template_id) && doc.completed_at
+    doc.template_id && completionRequiredDocs.includes(doc.template_id) && doc.completed_at
   )
   
   return completedDocs.length === completionRequiredDocs.length && completionRequiredDocs.length > 0

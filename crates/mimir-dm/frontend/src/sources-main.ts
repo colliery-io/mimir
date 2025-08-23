@@ -8,6 +8,7 @@ import './assets/styles/themes/light.css'
 import './assets/styles/themes/dark.css'
 import './assets/styles/themes/hyper.css'
 import './assets/styles/components.css'
+import './assets/styles/utilities/animations.css'
 
 const app = createApp(BookReader)
 const pinia = createPinia()

@@ -79,7 +79,7 @@ const { currentStage, isStageCompleted, getStageIndex } = useStageProgress(
 
 // Completed stages for visual indication
 const completedStages = computed(() => {
-  if (!boardConfig.value) return []
+  if (!boardConfig.value || !boardConfig.value.stages) return []
   return boardConfig.value.stages
     .filter(stage => isStageCompleted(stage.key))
     .map(stage => stage.key)

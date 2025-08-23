@@ -134,20 +134,7 @@ import darkEditIcon from '../../../assets/images/dark-edit.png'
 import darkLockedIcon from '../../../assets/images/dark-locked.png'
 import hyperEditIcon from '../../../assets/images/hyper-edit.png'
 import hyperLockedIcon from '../../../assets/images/hyper-locked.png'
-
-interface Document {
-  id: number
-  campaign_id: number
-  module_id: number | null
-  session_id: number | null
-  template_id: string
-  document_type: string
-  title: string
-  file_path: string
-  created_at: string
-  updated_at: string
-  completed_at: string | null
-}
+import type { Document } from '@/types/domain'
 
 const props = defineProps<{
   moduleId: number

@@ -34,15 +34,33 @@ function close() {
 function handleContentClick(event: MouseEvent) {
   const target = event.target as HTMLElement
   
-  // Check if clicked element is a clickable reference
-  if (target.classList.contains('clickable')) {
+  // Check both patterns: specific ref classes and generic clickable class
+  if (target.classList.contains('creature-ref') || 
+      target.classList.contains('item-ref') || 
+      target.classList.contains('spell-ref') ||
+      target.classList.contains('clickable')) {
+    
     event.preventDefault()
     event.stopPropagation()
     
-    // Get reference info from data attributes
-    const type = target.getAttribute('data-ref-type') || ''
-    const name = target.getAttribute('data-ref-name') || target.textContent || ''
-    const source = target.getAttribute('data-ref-source') || undefined
+    // Extract reference type and name
+    let type = target.getAttribute('data-ref-type') || ''
+    
+    // Fallback to class-based type detection if no data-ref-type
+    if (!type) {
+      if (target.classList.contains('creature-ref')) type = 'creature'
+      else if (target.classList.contains('item-ref')) type = 'item'
+      else if (target.classList.contains('spell-ref')) type = 'spell'
+    }
+    
+    // Try multiple ways to get the name and source
+    const name = target.getAttribute('data-ref-name') || 
+                 target.getAttribute('data-name') || 
+                 target.textContent || ''
+    const source = target.getAttribute('data-ref-source') || 
+                   target.getAttribute('data-source') || 
+                   undefined
+                   
     if (name && type) {
       emit('reference-click', { type, name, source })
     }
