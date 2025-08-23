@@ -53,6 +53,7 @@ export interface BoardStage {
   optional_documents?: string[]
   no_completion_required_documents?: string[]
   templates?: DocumentTemplate[]
+  transition_prompt?: string
 }
 
 export interface BoardColumn {
@@ -108,16 +109,19 @@ export interface Campaign {
 
 // Session types
 export interface Session {
-  id: string
+  id: number | string
   module_id?: number
   campaign_id?: number
+  session_number?: number
   name: string
-  date: string
-  players: string[]
+  date?: string
+  scheduled_date?: string
+  actual_date?: string
+  players?: string[]
   notes?: string
-  status: 'planned' | 'active' | 'completed'
+  status: 'planned' | 'active' | 'completed' | string
   created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
 // Stage types for module/campaign progression
