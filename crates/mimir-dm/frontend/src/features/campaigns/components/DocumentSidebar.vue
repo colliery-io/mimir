@@ -218,12 +218,6 @@ const getStageDocuments = (stage: string) => {
     const instance = documents.value.find(doc => 
       doc.template_id === template.templateId
     )
-    console.log('Document mapping:', {
-      templateId: template.templateId,
-      instance: instance,
-      hasInstance: !!instance,
-      documents: documents.value
-    })
     return {
       ...template,
       instance
@@ -312,7 +306,6 @@ const loadDocuments = async () => {
     })
     documents.value = response.data || []
   } catch (e) {
-    console.error('Failed to load documents:', e)
     error.value = 'Failed to load documents'
   } finally {
     loading.value = false
@@ -322,13 +315,11 @@ const loadDocuments = async () => {
 // Handle document click
 const handleDocumentClick = async (doc: any) => {
   debugDocument('click', { doc, stage: getDocumentStage(doc.templateId) })
-  console.log('Document clicked:', doc)
   const stage = getDocumentStage(doc.templateId)
   
   // Check if stage is accessible
   if (!isStageAccessible(stage)) {
     debugDocument('stage-locked', { stage })
-    console.log('Stage is locked:', stage)
     return
   }
   
@@ -357,9 +348,6 @@ const handleDocumentClick = async (doc: any) => {
         module_id: null,
         session_id: null
       } as Document
-      
-      console.log('Opening existing file:', simpleDoc.file_path)
-      
       // Add to documents array so it shows as existing
       const existingIndex = documents.value.findIndex(d => d.template_id === doc.templateId)
       if (existingIndex === -1) {
@@ -373,7 +361,6 @@ const handleDocumentClick = async (doc: any) => {
     }
   } else {
     debugDocument('selecting-existing', { instance: doc.instance })
-    console.log('Selecting existing document:', doc.instance)
     selectDocument(doc.instance)
   }
 }
@@ -381,30 +368,19 @@ const handleDocumentClick = async (doc: any) => {
 // Create a new document from template
 const createDocument = async (templateId: string, title: string) => {
   try {
-    console.log('Creating document with params:', {
-      campaignId: props.campaignId,
-      templateId: templateId,
-      propsType: typeof props.campaignId
-    })
-    
     // Use create_document_from_template which creates both file and DB record
     const response = await invoke<{ success: boolean; data: Document }>('create_document_from_template', {
       campaignId: props.campaignId,
       templateId: templateId
     })
-    
-    console.log('Document creation response:', response)
-    
     if (response.success && response.data) {
       // Add the new document to our list
       documents.value.push(response.data)
       // Select it immediately
       selectDocument(response.data)
     } else {
-      console.error('Document creation failed:', response)
     }
   } catch (e) {
-    console.error('Failed to create document:', e)
   }
 }
 
@@ -447,7 +423,6 @@ const toggleDocumentCompletion = async (doc: any) => {
       emit('documentCompletionChanged', response.data)
     }
   } catch (e) {
-    console.error('Failed to toggle document completion:', e)
   }
 }
 

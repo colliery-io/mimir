@@ -381,9 +381,6 @@ async function selectMonster(monster: MonsterSummary) {
   // Fetch full monster details
   const fullMonster = await getMonsterDetails(monster.name, monster.source)
   
-  console.log('Full monster data received:', fullMonster)
-  console.log('Has fluff_images?', fullMonster?.fluff_images)
-  console.log('Has fluffImages?', fullMonster?.fluffImages)
   
   if (fullMonster) {
     const formattedContent = await formatMonsterDetails(fullMonster)
@@ -459,7 +456,6 @@ function closeModal(index?: number) {
 
 // Handle clicks on reference links in modals
 async function handleReferenceClick(event: { type: string; name: string; source?: string }) {
-  console.log('handleReferenceClick called:', event)
   
   switch (event.type) {
     case 'creature':
@@ -470,7 +466,6 @@ async function handleReferenceClick(event: { type: string; name: string; source?
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ')
       
-      console.log('Searching for monster:', searchName, 'or', titleCaseName)
       
       // Try with the exact name first
       let monster = await getMonsterDetails(searchName, event.source || 'MM')
@@ -488,12 +483,10 @@ async function handleReferenceClick(event: { type: string; name: string; source?
           content: formattedContent
         })
       } else {
-        console.warn('Monster not found:', searchName)
       }
       break
     }
     case 'item': {
-      console.log('Searching for item:', event.name)
       const item = await getItemDetails(event.name, event.source || 'PHB')
       if (item) {
         const formattedContent = await formatItemDetails(item)
@@ -503,12 +496,10 @@ async function handleReferenceClick(event: { type: string; name: string; source?
           content: formattedContent
         })
       } else {
-        console.warn('Item not found:', event.name)
       }
       break
     }
     case 'spell': {
-      console.log('Searching for spell:', event.name)
       const spell = await getSpellDetails(event.name, event.source || 'PHB')
       if (spell) {
         modalStack.value.push({
@@ -517,12 +508,10 @@ async function handleReferenceClick(event: { type: string; name: string; source?
           content: formatSpellDetails(spell)
         })
       } else {
-        console.warn('Spell not found:', event.name)
       }
       break
     }
     case 'class': {
-      console.log('Searching for class:', event.name)
       const classDetails = await getClassDetails(event.name, event.source || 'PHB')
       if (classDetails) {
         const formattedContent = await formatClassDetails(classDetails)
@@ -532,12 +521,10 @@ async function handleReferenceClick(event: { type: string; name: string; source?
           content: formattedContent
         })
       } else {
-        console.warn('Class not found:', event.name)
       }
       break
     }
     case 'feat': {
-      console.log('Searching for feat:', event.name)
       const feat = await getFeatDetails(event.name, event.source || 'PHB')
       if (feat) {
         const formattedContent = await formatFeatDetails(feat)
@@ -547,21 +534,17 @@ async function handleReferenceClick(event: { type: string; name: string; source?
           content: formattedContent
         })
       } else {
-        console.warn('Feat not found:', event.name)
       }
       break
     }
     case 'feature': {
-      console.log('Searching for feature:', event.name)
       
       // Feature lookup not implemented yet
       let feature = null
       
       if (feature) {
         // Feature display not implemented yet
-        console.warn('Feature display not implemented')
       } else {
-        console.warn('Feature not found:', event.name)
       }
       break
     }

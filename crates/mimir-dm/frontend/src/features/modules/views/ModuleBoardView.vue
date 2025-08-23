@@ -96,8 +96,6 @@ const completedStages = computed(() => {
     .filter(stage => isStageCompleted(stage.key))
     .map(stage => stage.key)
 })
-
-
 const nextStageName = computed(() => {
   return nextStage.value?.display_name || 'Next Stage'
 })
@@ -138,7 +136,6 @@ const loadBoardConfiguration = async () => {
   })
   if (data) {
     boardConfig.value = data
-    console.log('Loaded module board configuration:', boardConfig.value)
   }
 }
 
@@ -152,7 +149,6 @@ const loadModule = async () => {
       id: moduleId.value 
     })
     module.value = response.data
-    console.log('Loaded module:', module.value)
     
     // Load campaign info
     await loadCampaign()
@@ -163,7 +159,6 @@ const loadModule = async () => {
     // Load existing documents
     await loadDocuments()
   } catch (e) {
-    console.error('Failed to load module:', e)
   }
 }
 
@@ -177,7 +172,6 @@ const loadCampaign = async () => {
     })
     campaign.value = response.data
   } catch (e) {
-    console.error('Failed to load campaign:', e)
   }
 }
 
@@ -194,7 +188,6 @@ const initializeStageDocuments = async () => {
     })
     
     if (response.data && response.data.length > 0) {
-      console.log('Initialized module documents:', response.data)
       // Reload documents after initialization
       await loadDocuments()
       
@@ -204,7 +197,6 @@ const initializeStageDocuments = async () => {
       }
     }
   } catch (e) {
-    console.error('Failed to initialize module documents:', e)
   }
 }
 
@@ -218,7 +210,6 @@ const loadDocuments = async () => {
     })
     documents.value = response.data || []
   } catch (e) {
-    console.error('Failed to load documents:', e)
   }
 }
 
@@ -229,7 +220,6 @@ const handleSelectDocument = (document: Document) => {
 
 // Handle create document from sidebar
 const handleCreateDocument = () => {
-  console.log('Create new document')
   // TODO: Open document creation dialog
 }
 
@@ -249,7 +239,6 @@ const handleCreateDocumentFromTemplate = async (templateId: string) => {
       selectedDocument.value = response.data
     }
   } catch (e) {
-    console.error('Failed to create document:', e)
   }
 }
 
@@ -278,7 +267,6 @@ const handleTransitionStage = async (newStage: string) => {
       await loadDocuments()
     }
   } catch (e) {
-    console.error('Failed to transition stage:', e)
   }
 }
 

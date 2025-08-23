@@ -55,9 +55,6 @@ function handleContentClick(event: MouseEvent) {
     const source = target.getAttribute('data-ref-source') || 
                    target.getAttribute('data-source') || 
                    undefined
-    
-    console.log('Reference clicked:', { type, name, source, target })
-    
     if (name && type) {
       emit('reference-click', { type, name, source })
     }

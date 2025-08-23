@@ -14,15 +14,11 @@
         Advance to {{ nextStageName }} →
       </button>
     </div>
-
-
     <!-- Stage-Specific Content -->
     <div class="stage-content-section">
       <!-- Concept Stage -->
       <div v-if="stage === 'concept'" class="stage-concept">
         <div class="activity-section">
-          
-          
           <div class="tip-card">
             <h4>Focus on Three Elements</h4>
             <ol>
@@ -349,7 +345,6 @@ const loadModules = async () => {
     })
     modules.value = response.data || []
   } catch (e) {
-    console.error('Failed to load modules:', e)
   } finally {
     modulesLoading.value = false
   }
@@ -390,7 +385,6 @@ const confirmCreateModule = async () => {
       router.push(`/modules/${response.data.id}/board`)
     }
   } catch (e) {
-    console.error('Failed to create module:', e)
   }
 }
 

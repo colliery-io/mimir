@@ -45,7 +45,6 @@ export function useCrossReferences() {
         return response.data
       }
     } catch (error) {
-      console.error('Failed to lookup reference:', error)
     }
     
     return null

@@ -219,7 +219,6 @@ class BoardConfigurationService {
       
       return boardConfig
     } catch (error) {
-      console.error(`Failed to fetch board config for ${boardType}:`, error)
       throw error
     }
   }

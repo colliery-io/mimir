@@ -153,7 +153,6 @@ async function formatFullItemDetails(item: ItemDetails): Promise<string> {
             html += `<img src="${response.data}" alt="${item.name}" class="item-image" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto 1rem;" />`
           }
         } catch (e) {
-          console.error('Failed to load item image:', e)
         }
       }
     }
@@ -360,8 +359,6 @@ async function formatFullItemDetails(item: ItemDetails): Promise<string> {
   
   return html
 }
-
-
 function formatCost(value: number): string {
   if (value >= 100) {
     return `${value / 100} gp`
@@ -535,8 +532,6 @@ function formatMiscTag(tag: string): string {
   }
   return tagMap[tag] || tag
 }
-
-
 function formatMagicItemSection(item: ItemDetails): string {
   let html = '<div class="item-magic-section">'
   html += '<h4>Magical Properties</h4>'

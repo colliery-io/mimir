@@ -301,9 +301,7 @@ const loadDocuments = async () => {
       }
     })
     documents.value = response.data || []
-    console.log('Loaded documents for module', props.moduleId, ':', documents.value)
   } catch (e) {
-    console.error('Failed to load documents:', e)
     error.value = 'Failed to load documents'
   } finally {
     loading.value = false
@@ -312,12 +310,10 @@ const loadDocuments = async () => {
 
 // Handle document click
 const handleDocumentClick = async (doc: any) => {
-  console.log('Document clicked:', doc)
   const stage = getDocumentStage(doc.templateId)
   
   // Check if stage is accessible
   if (!isStageAccessible(stage)) {
-    console.log('Stage is locked:', stage)
     return
   }
   
@@ -330,7 +326,6 @@ const handleDocumentClick = async (doc: any) => {
       })
       
       if (!moduleResponse.success || !moduleResponse.data) {
-        console.error('Failed to get module info')
         return
       }
       
@@ -362,10 +357,8 @@ const handleDocumentClick = async (doc: any) => {
         selectDocument(response.data)
       }
     } catch (e) {
-      console.error('Failed to create document from template:', e)
     }
   } else {
-    console.log('Selecting existing document:', doc.instance)
     selectDocument(doc.instance)
   }
 }
@@ -418,7 +411,6 @@ const toggleDocumentCompletion = async (doc: any) => {
       emit('documentCompletionChanged', response.data)
     }
   } catch (e) {
-    console.error('Failed to toggle document completion:', e)
   }
 }
 

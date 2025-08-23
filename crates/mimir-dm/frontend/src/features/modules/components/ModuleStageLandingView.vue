@@ -429,7 +429,6 @@ const loadSessionBoardConfig = async () => {
     const response = await invoke<{ data: any }>('get_session_board_config')
     sessionBoardConfig.value = response.data
   } catch (e) {
-    console.error('Failed to load session board config:', e)
   }
 }
 
@@ -445,7 +444,6 @@ const loadSessions = async () => {
     })
     sessions.value = response.data || []
   } catch (e) {
-    console.error('Failed to load sessions:', e)
   }
 }
 
@@ -470,7 +468,6 @@ const createNewSession = async () => {
       emit('documentsUpdated')
     }
   } catch (e) {
-    console.error('Failed to create session:', e)
   }
 }
 
@@ -531,12 +528,10 @@ const handleSessionStatusChange = async (session: any) => {
             Object.assign(props.module, moduleResponse.data)
           }
         } catch (e) {
-          console.error('Failed to update module session count:', e)
         }
       }
     }
   } catch (e) {
-    console.error('Failed to transition session:', e)
   }
 }
 

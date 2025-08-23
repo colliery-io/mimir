@@ -55,7 +55,6 @@ export async function openExternalWindow(
     if (existingWindow) {
       // Window exists, bring it to focus
       await existingWindow.setFocus()
-      console.log(`${windowConfig.title} window focused`)
     } else {
       // Create new window with provided config
       const windowOptions: any = {
@@ -74,10 +73,8 @@ export async function openExternalWindow(
       
       const newWindow = new WebviewWindow(windowConfig.label, windowOptions)
       
-      console.log(`${windowConfig.title} window created`)
     }
   } catch (error) {
-    console.error(`Failed to open window:`, error)
     throw error
   }
 }

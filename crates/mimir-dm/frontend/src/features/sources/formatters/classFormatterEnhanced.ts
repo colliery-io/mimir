@@ -135,7 +135,6 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
               html += `<img src="${response.data}" alt="${classData.name}" class="class-image" style="max-width: 400px; max-height: 400px; width: auto; height: auto; object-fit: contain; display: block; margin: 1rem auto;" />`
             }
           } catch (e) {
-            console.error('Failed to load class image:', e, { source: classData.source, imagePath: image.href.path })
           }
         }
       }
@@ -166,18 +165,6 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
     html += '<div class="subclasses-section">'
     html += `<h3>${classData.subclassTitle || 'Subclasses'}</h3>`
     
-    // Debug logging
-    console.log('Subclass features available:', classDetails.subclass_features?.length || 0)
-    if (classDetails.subclass_features && classDetails.subclass_features.length > 0) {
-      console.log('Sample subclass feature full object:', classDetails.subclass_features[0])
-      console.log('All subclass features for this class:', classDetails.subclass_features.map(f => ({
-        name: f.name,
-        subclass_short_name: f.subclass_short_name,
-        subclassShortName: (f as any).subclassShortName,
-        level: f.level
-      })))
-    }
-    
     for (const subclass of classDetails.subclasses) {
       // Find matching fluff for this subclass
       const subclassFluff = classDetails.subclass_fluff?.find(f => 
@@ -201,26 +188,10 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
         const levelMatch = f.level === 3 || f.level === 1 || f.level === 2
         
         if (nameMatch && sourceMatch && levelMatch) {
-          console.log(`Found intro feature for ${subclass.name}:`, f.name)
           return true
         }
         return false
       })
-      
-      if (!subclassIntroFeature && classDetails.subclass_features) {
-        console.log(`No intro feature found for ${subclass.name}. Looking for:`, {
-          short_name: subclass.short_name,
-          name: subclass.name,
-          source: subclass.source,
-          availableFeatures: classDetails.subclass_features.filter(f => 
-            f.subclass_source === subclass.source
-          ).map(f => ({
-            name: f.name,
-            subclass_short_name: f.subclass_short_name,
-            level: f.level
-          }))
-        })
-      }
       
       // Get all features for this subclass
       const subclassFeatures = classDetails.subclass_features?.filter(f => {
@@ -348,7 +319,6 @@ async function formatSubclass(subclass: Subclass, fluff?: SubclassFluff, introFe
               html += `<img src="${response.data}" alt="${subclass.name}" class="subclass-image" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain; display: block; margin: 0.5rem auto;" />`
             }
           } catch (e) {
-            console.error('Failed to load subclass image:', e, { source: subclass.source, imagePath: image.href.path })
           }
         }
       }
@@ -448,8 +418,6 @@ function formatFeaturesTable(features: ClassFeature[]): string {
   html += '</tbody></table>'
   return html
 }
-
-
 function formatTable(table: any): string {
   let html = '<table class="entry-table">'
   

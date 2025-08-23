@@ -30,13 +30,11 @@ const renderedContent = computed(() => {
 // Function to load all images in content
 function loadImages() {
   if (!currentBook.value) {
-    console.log('No book selected, skipping image loading')
     return
   }
   
   // Find all image placeholders and load them
   const imageWrappers = document.querySelectorAll('.image-wrapper[data-image-path]')
-  console.log(`Found ${imageWrappers.length} images to load`)
   
   imageWrappers.forEach((wrapper) => {
     const imagePath = wrapper.getAttribute('data-image-path')

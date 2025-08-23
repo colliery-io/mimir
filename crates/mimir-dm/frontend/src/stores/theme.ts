@@ -18,7 +18,6 @@ export const useThemeStore = defineStore('theme', () => {
         themes.value = response.data
       }
     } catch (error) {
-      console.error('Failed to load themes:', error)
     }
   }
   
@@ -40,32 +39,25 @@ export const useThemeStore = defineStore('theme', () => {
   
   // Change theme and broadcast to other windows
   const setTheme = async (theme: string, broadcast = true) => {
-    console.log(`[ThemeStore] Setting theme to: ${theme}, broadcast: ${broadcast}`)
     currentTheme.value = theme
     saveTheme(theme)
     
     // Broadcast theme change to all windows
     if (broadcast) {
       try {
-        console.log(`[ThemeStore] Broadcasting theme change: ${theme}`)
         await emit('theme-changed', { theme })
-        console.log(`[ThemeStore] Theme change broadcast successful`)
       } catch (error) {
-        console.error('Failed to broadcast theme change:', error)
       }
     }
   }
   
   // Initialize cross-window theme synchronization
   const initThemeSync = async () => {
-    console.log('[ThemeStore] Initializing theme sync...')
     // Listen for theme changes from other windows
     unlistenThemeChange = await listen<{ theme: string }>('theme-changed', (event) => {
-      console.log(`[ThemeStore] Received theme change event:`, event.payload)
       // Update theme without broadcasting to avoid infinite loop
       setTheme(event.payload.theme, false)
     })
-    console.log('[ThemeStore] Theme sync initialized')
   }
   
   // Clean up event listener

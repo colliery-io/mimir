@@ -92,7 +92,6 @@ const loadBoardConfiguration = async () => {
   })
   if (data) {
     boardConfig.value = data
-    console.log('Loaded board configuration:', boardConfig.value)
   }
 }
 
@@ -107,7 +106,6 @@ const loadCampaign = async () => {
   
   if (data) {
     campaign.value = data
-    console.log('Loaded campaign:', campaign.value)
     
     // Initialize stage documents if this is the first time
     await initializeStageDocuments()
@@ -125,12 +123,10 @@ const initializeStageDocuments = async () => {
     })
     
     if (response.data && response.data.length > 0) {
-      console.log('Initialized documents:', response.data)
       // Reload documents after initialization
       await loadDocuments()
     }
   } catch (e) {
-    console.error('Failed to initialize stage documents:', e)
   }
 }
 
@@ -142,7 +138,6 @@ const loadDocuments = async () => {
     })
     documents.value = response.data || []
   } catch (e) {
-    console.error('Failed to load documents:', e)
   }
 }
 
@@ -153,7 +148,6 @@ const handleSelectDocument = (document: any) => {
 
 // Handle create document from sidebar
 const handleCreateDocument = () => {
-  console.log('Create new document')
   // TODO: Open document creation dialog
 }
 
@@ -170,7 +164,6 @@ const handleCreateDocumentFromTemplate = async (templateId: string) => {
       selectedDocument.value = response.data
     }
   } catch (e) {
-    console.error('Failed to create document:', e)
   }
 }
 
@@ -197,7 +190,6 @@ const handleTransitionStage = async (newStage: string) => {
       await loadDocuments()
     }
   } catch (e) {
-    console.error('Failed to transition stage:', e)
   }
 }
 

@@ -18,21 +18,15 @@ export function useBookLibrary() {
   async function installDevTestBook() {
     try {
       const isDevMode = await invoke<boolean>('is_dev_mode')
-      console.log('Dev mode check:', isDevMode)
       
       if (isDevMode) {
-        console.log('Dev mode detected, installing test book...')
         const response = await invoke<{ success: boolean; data?: string; message?: string }>('install_dev_test_book')
-        console.log('Install test book response:', response)
         
         if (response.success) {
-          console.log('Dev test book installed:', response.data)
         } else {
-          console.error('Failed to install test book:', response.message)
         }
       }
     } catch (error) {
-      console.error('Failed to check dev mode:', error)
     }
   }
 
@@ -50,11 +44,9 @@ export function useBookLibrary() {
           selectedBook.value = response.data[0]
         }
       } else {
-        console.error('Failed to load library books:', response.message)
         libraryBooks.value = []
       }
     } catch (error) {
-      console.error('Failed to load library books:', error)
       libraryBooks.value = []
     } finally {
       isLoadingLibrary.value = false
@@ -63,9 +55,7 @@ export function useBookLibrary() {
 
   // Add a new book to the library
   async function addBook(): Promise<boolean> {
-    console.log('Add Book button clicked')
     try {
-      console.log('Opening file dialog...')
       // Open file dialog first
       const selected = await open({
         multiple: false,
@@ -75,37 +65,26 @@ export function useBookLibrary() {
         }],
         title: 'Select a book archive to add to your library'
       })
-      
-      console.log('File selected:', selected)
-      
       if (selected) {
         // Handle both string and array returns
         const filePath = Array.isArray(selected) ? selected[0] : selected
         
-        console.log('Calling backend to upload archive:', filePath)
         // Call backend to upload and extract the archive
         const response = await invoke<{ success: boolean; data?: BookInfo; message?: string }>('upload_book_archive', {
           archivePath: filePath
         })
-        
-        console.log('Backend response:', response)
-        
         if (response.success && response.data) {
-          console.log('Book added successfully:', response.data)
           // Reload books list
           await loadLibraryBooks()
           return true
         } else {
-          console.error('Failed to add book:', response.message)
           alert(`Failed to add book: ${response.message}`)
           return false
         }
       } else {
-        console.log('No file selected')
         return false
       }
     } catch (error) {
-      console.error('Failed to add book:', error)
       alert('Failed to add book. Please try again.')
       return false
     }
@@ -133,12 +112,10 @@ export function useBookLibrary() {
         
         return true
       } else {
-        console.error('Failed to remove book:', response.message)
         alert(`Failed to remove book: ${response.message}`)
         return false
       }
     } catch (error) {
-      console.error('Failed to remove book:', error)
       alert('Failed to remove book. Please try again.')
       return false
     }

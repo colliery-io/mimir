@@ -45,7 +45,6 @@ const handleOpenRules = async () => {
   try {
     await openSourcesReference()
   } catch (error) {
-    console.error('Failed to open rules window:', error)
   }
 }
 

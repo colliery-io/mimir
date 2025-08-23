@@ -117,7 +117,6 @@ const route = useRoute()
 const campaignId = parseInt(route.params.id as string)
 
 // Log for debugging
-console.log('ModuleListView - Campaign ID from route:', route.params.id, 'Parsed:', campaignId)
 
 interface Module {
   id: number
@@ -141,55 +140,34 @@ const newModuleSessions = ref(4)
 
 const loadModules = async () => {
   loading.value = true
-  console.log('Loading modules for campaign:', campaignId)
   try {
     const response = await invoke<{ data: Module[] }>('list_campaign_modules', {
       request: {
         campaign_id: campaignId
       }
     })
-    console.log('Modules loaded:', response)
     modules.value = response.data || []
-    console.log('Modules state updated:', modules.value)
   } catch (error) {
-    console.error('Failed to load modules:', error)
   } finally {
     loading.value = false
   }
 }
 
 const confirmCreateModule = async () => {
-  console.log('confirmCreateModule called')
-  console.log('Module name:', newModuleName.value)
-  console.log('Module sessions:', newModuleSessions.value)
-  console.log('Campaign ID:', campaignId)
   
   if (!newModuleName.value.trim()) {
-    console.log('No module name provided')
-    console.warn('Please enter a module name')
     return
   }
   
   if (newModuleSessions.value < 1) {
-    console.log('Invalid session count:', newModuleSessions.value)
-    console.warn('Expected sessions must be at least 1')
     return
   }
   
   if (isNaN(campaignId)) {
-    console.log('Invalid campaign ID:', campaignId)
-    console.warn('Invalid campaign ID. Please navigate from a campaign.')
     return
   }
   
   try {
-    console.log('Invoking create_module with:', { 
-      campaign_id: campaignId, 
-      name: newModuleName.value, 
-      expected_sessions: newModuleSessions.value,
-      module_type: newModuleType.value
-    })
-    
     const response = await invoke('create_module', {
       request: {
         campaign_id: campaignId,
@@ -198,9 +176,6 @@ const confirmCreateModule = async () => {
         module_type: newModuleType.value
       }
     })
-    
-    console.log('Module created successfully:', response)
-    
     // Reset form and close modal
     newModuleName.value = ''
     newModuleType.value = 'standard'
@@ -208,11 +183,8 @@ const confirmCreateModule = async () => {
     showCreateModal.value = false
     
     // Reload modules
-    console.log('Reloading modules after creation...')
     await loadModules()
-    console.log('Modules after reload:', modules.value)
   } catch (error) {
-    console.error('Failed to create module - Full error:', error)
     alert(`Failed to create module: ${error}`)
   }
 }
@@ -224,7 +196,6 @@ const deleteModule = async (id: number) => {
     await invoke('delete_module', { id })
     await loadModules()
   } catch (error) {
-    console.error('Failed to delete module:', error)
     alert('Failed to delete module')
   }
 }

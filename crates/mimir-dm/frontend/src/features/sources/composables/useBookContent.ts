@@ -14,27 +14,20 @@ export function useBookContent() {
   // Load book content from backend
   async function loadBookContent(book: BookInfo) {
     try {
-      console.log('Loading book content for:', book.id, book)
       isLoading.value = true
       error.value = null
       
       const response = await invoke<BookContent>('get_book_content', {
         bookId: book.id
       })
-      
-      console.log('Book content response:', response)
-      
       if (response.success && response.data) {
-        console.log('Book content loaded successfully:', response.data)
         bookContent.value = response.data
         selectedSection.value = 0
       } else {
-        console.error('Failed to load book content:', response.message)
         bookContent.value = null
         error.value = response.message || 'Failed to load book content'
       }
     } catch (err) {
-      console.error('Error loading book content:', err)
       bookContent.value = null
       error.value = 'An error occurred while loading the book'
     } finally {

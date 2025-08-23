@@ -125,7 +125,6 @@ const sortedSpells = computed(() => {
   if (localFilters.value.ritual) {
     // Debug: Check if we have any ritual spells
     const ritualSpells = props.spells.filter(s => s.ritual)
-    console.log('Ritual spells found:', ritualSpells.length, ritualSpells.slice(0, 3))
     filtered = filtered.filter(s => s.ritual)
   }
   

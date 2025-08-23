@@ -60,33 +60,27 @@ export async function formatMonsterDetails(monster: Monster | MonsterSummary): P
   
   // Images (if available)
   if (fullMonster.fluffImages && fullMonster.fluffImages.length > 0) {
-    console.log('Monster has fluffImages:', fullMonster.fluffImages)
     html += '<div class="monster-images">'
     for (const img of fullMonster.fluffImages) {
       if (img.href?.path) {
         // Image path format: "bestiary/MM/Aarakocra.webp"
         const bookSource = fullMonster.source || 'MM'
-        console.log('Loading image:', { bookSource, imagePath: img.href.path })
         try {
           const response = await invoke<any>('serve_book_image', {
             bookId: bookSource,
             imagePath: img.href.path
           })
-          console.log('Image response:', response)
           // Response is ApiResponse<string> with success/data/error fields
           if (response && response.success && response.data) {
             html += `<img src="${response.data}" alt="${fullMonster.name}" class="monster-image" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto 1rem;" />`
           } else if (response && !response.success) {
-            console.error('Image load failed:', response.error)
           }
         } catch (e) {
-          console.error('Failed to load monster image:', e, { bookSource, imagePath: img.href.path })
         }
       }
     }
     html += '</div>'
   } else {
-    console.log('No fluffImages for monster:', fullMonster.name)
   }
   
   // Header with type and CR

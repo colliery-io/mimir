@@ -297,10 +297,8 @@ export function useCatalog() {
       error.value = null
       await invoke('initialize_spell_catalog')
       isInitialized.value = true
-      console.log('Spell catalog initialized')
     } catch (e) {
       error.value = `Failed to initialize catalog: ${e}`
-      console.error('Failed to initialize catalog:', e)
     } finally {
       isLoading.value = false
     }
@@ -315,10 +313,8 @@ export function useCatalog() {
       error.value = null
       await invoke('initialize_item_catalog')
       isItemsInitialized.value = true
-      console.log('Item catalog initialized')
     } catch (e) {
       error.value = `Failed to initialize item catalog: ${e}`
-      console.error('Failed to initialize item catalog:', e)
     } finally {
       isLoading.value = false
     }
@@ -333,10 +329,8 @@ export function useCatalog() {
       error.value = null
       await invoke('initialize_monster_catalog')
       isMonstersInitialized.value = true
-      console.log('Monster catalog initialized')
     } catch (e) {
       error.value = `Failed to initialize monster catalog: ${e}`
-      console.error('Failed to initialize monster catalog:', e)
     } finally {
       isLoading.value = false
     }
@@ -365,7 +359,6 @@ export function useCatalog() {
       return results
     } catch (e) {
       error.value = `Search failed: ${e}`
-      console.error('Search failed:', e)
       return []
     } finally {
       isLoading.value = false
@@ -395,7 +388,6 @@ export function useCatalog() {
       return results
     } catch (e) {
       error.value = `Search failed: ${e}`
-      console.error('Search failed:', e)
       return []
     } finally {
       isLoading.value = false
@@ -425,7 +417,6 @@ export function useCatalog() {
       return results
     } catch (e) {
       error.value = `Search failed: ${e}`
-      console.error('Search failed:', e)
       return []
     } finally {
       isLoading.value = false
@@ -438,7 +429,6 @@ export function useCatalog() {
       const spell = await invoke<Spell>('get_spell_details', { name, source })
       return spell
     } catch (e) {
-      console.error('Failed to get spell details:', e)
       return null
     }
   }
@@ -449,7 +439,6 @@ export function useCatalog() {
       const item = await invoke<Item>('get_item_details', { name, source })
       return item
     } catch (e) {
-      console.error('Failed to get item details:', e)
       return null
     }
   }
@@ -460,7 +449,6 @@ export function useCatalog() {
       const monster = await invoke<Monster>('get_monster_details', { name, source })
       return monster
     } catch (e) {
-      console.error('Failed to get monster details:', e)
       return null
     }
   }
@@ -474,18 +462,15 @@ export function useCatalog() {
       error.value = null
       await invoke('initialize_class_catalog')
       isClassesInitialized.value = true
-      console.log('Class catalog initialized')
       
       // Load class sources
       try {
         const sources = await invoke<string[]>('get_class_sources')
         classSources.value = sources
       } catch (e) {
-        console.error('Failed to load class sources:', e)
       }
     } catch (e) {
       error.value = `Failed to initialize class catalog: ${e}`
-      console.error('Failed to initialize class catalog:', e)
     } finally {
       isLoading.value = false
     }
@@ -510,7 +495,6 @@ export function useCatalog() {
       return results
     } catch (e) {
       error.value = `Search failed: ${e}`
-      console.error('Search failed:', e)
       return []
     } finally {
       isLoading.value = false
@@ -523,7 +507,6 @@ export function useCatalog() {
       const classDetails = await invoke<ClassWithDetails>('get_class_details', { name, source })
       return classDetails
     } catch (e) {
-      console.error('Failed to get class details:', e)
       return null
     }
   }
@@ -537,7 +520,6 @@ export function useCatalog() {
       })
       return subclasses
     } catch (e) {
-      console.error('Failed to get class subclasses:', e)
       return []
     }
   }
@@ -547,7 +529,6 @@ export function useCatalog() {
     try {
       await invoke('initialize_feat_catalog')
     } catch (e) {
-      console.error('Failed to initialize feat catalog:', e)
       throw e
     }
   }
@@ -557,7 +538,6 @@ export function useCatalog() {
       const results = await invoke<FeatSummary[]>('search_feats', params)
       return results || []
     } catch (e) {
-      console.error('Failed to search feats:', e)
       return []
     }
   }
@@ -567,7 +547,6 @@ export function useCatalog() {
       const feat = await invoke<Feat>('get_feat_details', { name, source })
       return feat
     } catch (e) {
-      console.error('Failed to get feat details:', e)
       return null
     }
   }

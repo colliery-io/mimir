@@ -205,7 +205,6 @@ const loadDocument = async () => {
       }
     }
   } catch (e) {
-    console.error('Failed to load document:', e)
   }
 }
 
@@ -240,7 +239,6 @@ const saveDocument = async () => {
       saveStatus.value = null
     }, 2000)
   } catch (e) {
-    console.error('Failed to save document:', e)
     saveStatus.value = 'error'
     setTimeout(() => {
       saveStatus.value = null
@@ -250,8 +248,6 @@ const saveDocument = async () => {
 
 // Debounced save function
 const debouncedSave = debounce(saveDocument, 1000)
-
-
 
 // Toggle preview mode
 const togglePreview = () => {
@@ -286,7 +282,6 @@ const markComplete = async () => {
       }
     }
   } catch (e) {
-    console.error('Failed to mark document complete:', e)
   }
 }
 
@@ -316,7 +311,6 @@ const transitionToNextStage = async (nextStage: string) => {
       emit('stage-transitioned', response.data)
     }
   } catch (e) {
-    console.error('Failed to transition stage:', e)
   }
 }
 

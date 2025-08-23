@@ -103,7 +103,6 @@ onMounted(async () => {
       form.directoryLocation = response.data
     }
   } catch (e) {
-    console.error('Failed to get default directory:', e)
   }
 })
 
@@ -123,7 +122,6 @@ const selectDirectory = async () => {
       form.directoryLocation = selected
     }
   } catch (e) {
-    console.error('Failed to select directory:', e)
   }
 }
 
