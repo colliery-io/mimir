@@ -119,7 +119,6 @@ async function loadStageContent() {
       stageContent.value = response.content
     }
   } catch (error) {
-    // Remove console.error per our cleanup
     stageContent.value = ''
   }
 }
