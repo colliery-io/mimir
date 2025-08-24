@@ -54,6 +54,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useRoute } from 'vue-router'
+import { ModuleService } from '@/services/ModuleService'
 import BaseBoardView from '../../../shared/components/ui/BaseBoardView.vue'
 import ModuleDocumentSidebar from '../components/ModuleDocumentSidebar.vue'
 import ModuleStageLandingView from '../components/ModuleStageLandingView.vue'
@@ -250,15 +251,10 @@ const handleEditDocument = (document: Document) => {
 // Handle stage transition
 const handleTransitionStage = async (newStage: string) => {
   try {
-    const response = await invoke<{ data: Module }>('transition_module_stage', {
-      request: {
-        module_id: moduleId.value,
-        new_stage: newStage
-      }
-    })
+    const updatedModule = await ModuleService.transitionStage(moduleId.value, newStage)
     
-    if (response.data) {
-      module.value = response.data
+    if (updatedModule) {
+      module.value = updatedModule
       
       // Initialize documents for the new stage
       await initializeStageDocuments()

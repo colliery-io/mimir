@@ -111,6 +111,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
+import { ModuleService } from '@/services/ModuleService'
 import MainLayout from '../../../shared/components/layout/MainLayout.vue'
 
 const route = useRoute()
@@ -141,12 +142,7 @@ const newModuleSessions = ref(4)
 const loadModules = async () => {
   loading.value = true
   try {
-    const response = await invoke<{ data: Module[] }>('list_campaign_modules', {
-      request: {
-        campaign_id: campaignId
-      }
-    })
-    modules.value = response.data || []
+    modules.value = await ModuleService.list(campaignId)
   } catch (error) {
   } finally {
     loading.value = false
@@ -168,13 +164,10 @@ const confirmCreateModule = async () => {
   }
   
   try {
-    const response = await invoke('create_module', {
-      request: {
-        campaign_id: campaignId,
-        name: newModuleName.value,
-        expected_sessions: newModuleSessions.value,
-        module_type: newModuleType.value
-      }
+    const newModule = await ModuleService.create({
+      campaign_id: campaignId,
+      name: newModuleName.value,
+      module_type: newModuleType.value
     })
     // Reset form and close modal
     newModuleName.value = ''
@@ -193,7 +186,7 @@ const deleteModule = async (id: number) => {
   if (!confirm('Are you sure you want to delete this module?')) return
   
   try {
-    await invoke('delete_module', { id })
+    await ModuleService.delete(id)
     await loadModules()
   } catch (error) {
     alert('Failed to delete module')

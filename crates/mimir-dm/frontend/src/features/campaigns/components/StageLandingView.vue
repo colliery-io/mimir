@@ -218,6 +218,7 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useRouter } from 'vue-router'
+import { ModuleService } from '@/services/ModuleService'
 import { boardConfigService } from '../../../services/boardConfigService'
 
 const props = defineProps<{
@@ -338,12 +339,7 @@ const loadModules = async () => {
   
   modulesLoading.value = true
   try {
-    const response = await invoke<{ data: any[] }>('list_campaign_modules', {
-      request: {
-        campaign_id: props.campaign.id
-      }
-    })
-    modules.value = response.data || []
+    modules.value = await ModuleService.list(props.campaign.id)
   } catch (e) {
   } finally {
     modulesLoading.value = false
@@ -365,16 +361,14 @@ const confirmCreateModule = async () => {
   if (!newModuleName.value.trim() || !props.campaign?.id) return
   
   try {
-    const response = await invoke<{ data: any }>('create_module', {
-      request: {
-        campaign_id: props.campaign.id,
-        name: newModuleName.value.trim(),
-        module_type: newModuleType.value,
-        expected_sessions: newModuleSessions.value
-      }
+    const newModule = await ModuleService.create({
+      campaign_id: props.campaign.id,
+      name: newModuleName.value.trim(),
+      module_type: newModuleType.value
+      // expected_sessions not supported by ModuleService yet
     })
     
-    if (response.data) {
+    if (newModule) {
       // Reset form and close modal first
       showCreateModal.value = false
       newModuleName.value = ''
@@ -382,7 +376,7 @@ const confirmCreateModule = async () => {
       newModuleSessions.value = 4
       
       // Navigate to the new module's board
-      router.push(`/modules/${response.data.id}/board`)
+      router.push(`/modules/${newModule.id}/board`)
     }
   } catch (e) {
   }

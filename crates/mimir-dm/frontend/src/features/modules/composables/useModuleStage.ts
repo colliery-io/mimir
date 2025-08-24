@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { ModuleService } from '@/services/ModuleService'
 import type { Module, BoardConfig, Document } from '@/types'
 
 interface StageInfo {
@@ -132,10 +132,7 @@ export function useModuleStage(
       const currentIndex = stageOrder.indexOf(stage.value)
       const nextStageKey = stageOrder[currentIndex + 1]
       
-      await invoke('update_module_status', {
-        moduleId: module.value.id,
-        status: nextStageKey
-      })
+      await ModuleService.updateStatus(module.value.id, nextStageKey)
       
       // Reload or emit event to refresh
       window.location.reload()

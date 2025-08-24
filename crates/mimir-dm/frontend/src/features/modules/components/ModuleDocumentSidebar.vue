@@ -127,6 +127,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useThemeStore } from '../../../stores/theme'
 import { DocumentService, type Document } from '@/services/DocumentService'
+import { ModuleService } from '@/services/ModuleService'
 
 // Import icon images
 import lightEditIcon from '../../../assets/images/light-edit.png'
@@ -303,15 +304,11 @@ const handleDocumentClick = async (doc: any) => {
   if (!doc.instance) {
     try {
       // First get the module to get the campaign ID
-      const moduleResponse = await invoke<{ success: boolean; data: any }>('get_module', {
-        id: props.moduleId
-      })
+      const module = await ModuleService.get(props.moduleId)
       
-      if (!moduleResponse.success || !moduleResponse.data) {
+      if (!module) {
         return
       }
-      
-      const module = moduleResponse.data
       
       // Create the document in the database AND on disk
       const response = await invoke<{ data: Document }>('create_document_from_template', {
