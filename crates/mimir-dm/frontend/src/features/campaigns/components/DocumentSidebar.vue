@@ -118,6 +118,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { DocumentService, type Document } from '@/services/DocumentService'
 import { useThemeStore } from '../../../stores/theme'
 import { debugDocument } from '../../../shared/utils/debug'
 
@@ -128,20 +129,6 @@ import darkEditIcon from '../../../assets/images/dark-edit.png'
 import darkLockedIcon from '../../../assets/images/dark-locked.png'
 import hyperEditIcon from '../../../assets/images/hyper-edit.png'
 import hyperLockedIcon from '../../../assets/images/hyper-locked.png'
-
-interface Document {
-  id: number
-  campaign_id: number
-  module_id: number | null
-  session_id: number | null
-  template_id: string
-  document_type: string
-  title: string
-  file_path: string
-  created_at: string
-  updated_at: string
-  completed_at: string | null
-}
 
 const props = defineProps<{
   campaignId: number
@@ -301,10 +288,7 @@ const loadDocuments = async () => {
   error.value = null
 
   try {
-    const response = await invoke<{ data: Document[] }>('get_campaign_documents', {
-      campaignId: props.campaignId
-    })
-    documents.value = response.data || []
+    documents.value = await DocumentService.list(undefined, props.campaignId)
   } catch (e) {
     error.value = 'Failed to load documents'
   } finally {
@@ -398,30 +382,24 @@ const toggleDocumentCompletion = async (doc: any) => {
     const newCompletedAt = doc.instance.completed_at ? null : new Date().toISOString()
     
     // All documents should be in the database now, so always update via backend
-    const response = await invoke<{ success: boolean; data: Document }>('update_document', {
-      documentId: doc.instance.id,
-      update: {
-        completed_at: newCompletedAt,
-        updated_at: new Date().toISOString()
-      }
-    })
+    const updatedDoc = doc.instance.completed_at 
+      ? await DocumentService.uncomplete(doc.instance.id)
+      : await DocumentService.complete(doc.instance.id)
     
-    if (response.success && response.data) {
-      // Update the document in our local list
-      const index = documents.value.findIndex(d => d.id === doc.instance.id)
-      if (index !== -1) {
-        documents.value[index] = response.data
-      }
-      
-      // Also update the instance reference
-      doc.instance = response.data
-      
-      // Force reactivity update
-      documents.value = [...documents.value]
-      
-      // Emit completion status change
-      emit('documentCompletionChanged', response.data)
+    // Update the document in our local list
+    const index = documents.value.findIndex(d => d.id === doc.instance.id)
+    if (index !== -1) {
+      documents.value[index] = updatedDoc
     }
+    
+    // Also update the instance reference
+    doc.instance = updatedDoc
+      
+    // Force reactivity update
+    documents.value = [...documents.value]
+    
+    // Emit completion status change
+    emit('documentCompletionChanged', updatedDoc)
   } catch (e) {
   }
 }

@@ -126,6 +126,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useThemeStore } from '../../../stores/theme'
+import { DocumentService, type Document } from '@/services/DocumentService'
 
 // Import icon images
 import lightEditIcon from '../../../assets/images/light-edit.png'
@@ -134,7 +135,6 @@ import darkEditIcon from '../../../assets/images/dark-edit.png'
 import darkLockedIcon from '../../../assets/images/dark-locked.png'
 import hyperEditIcon from '../../../assets/images/hyper-edit.png'
 import hyperLockedIcon from '../../../assets/images/hyper-locked.png'
-import type { Document } from '@/types/domain'
 
 const props = defineProps<{
   moduleId: number
@@ -282,12 +282,7 @@ const loadDocuments = async () => {
   error.value = null
 
   try {
-    const response = await invoke<{ data: Document[] }>('get_module_documents', {
-      request: {
-        module_id: props.moduleId
-      }
-    })
-    documents.value = response.data || []
+    documents.value = await DocumentService.list(props.moduleId)
   } catch (e) {
     error.value = 'Failed to load documents'
   } finally {
@@ -371,32 +366,24 @@ const toggleDocumentCompletion = async (doc: any) => {
   if (!doc.instance) return
   
   try {
-    const newCompletedAt = doc.instance.completed_at ? null : new Date().toISOString()
+    const updatedDoc = doc.instance.completed_at 
+      ? await DocumentService.uncomplete(doc.instance.id)
+      : await DocumentService.complete(doc.instance.id)
     
-    const response = await invoke<{ success: boolean; data: Document }>('update_document', {
-      documentId: doc.instance.id,
-      update: {
-        completed_at: newCompletedAt,
-        updated_at: new Date().toISOString()
-      }
-    })
-    
-    if (response.success && response.data) {
-      // Update the document in our local list
-      const index = documents.value.findIndex(d => d.id === doc.instance.id)
-      if (index !== -1) {
-        documents.value[index] = response.data
-      }
-      
-      // Also update the instance reference
-      doc.instance = response.data
-      
-      // Force reactivity update
-      documents.value = [...documents.value]
-      
-      // Emit completion status change
-      emit('documentCompletionChanged', response.data)
+    // Update the document in our local list
+    const index = documents.value.findIndex(d => d.id === doc.instance.id)
+    if (index !== -1) {
+      documents.value[index] = updatedDoc
     }
+    
+    // Also update the instance reference
+    doc.instance = updatedDoc
+    
+    // Force reactivity update
+    documents.value = [...documents.value]
+    
+    // Emit completion status change
+    emit('documentCompletionChanged', updatedDoc)
   } catch (e) {
   }
 }

@@ -48,6 +48,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { DocumentService } from '@/services/DocumentService'
 import BaseBoardView from '../../../shared/components/ui/BaseBoardView.vue'
 import DocumentSidebar from '../components/DocumentSidebar.vue'
 import StageLandingView from '../components/StageLandingView.vue'
@@ -133,10 +134,7 @@ const initializeStageDocuments = async () => {
 // Load all documents for the campaign
 const loadDocuments = async () => {
   try {
-    const response = await invoke<{ data: any[] }>('get_campaign_documents', {
-      campaignId: parseInt(props.id)
-    })
-    documents.value = response.data || []
+    documents.value = await DocumentService.list(undefined, parseInt(props.id))
   } catch (e) {
   }
 }
@@ -154,14 +152,17 @@ const handleCreateDocument = () => {
 // Handle create document from template (from StageLandingView)
 const handleCreateDocumentFromTemplate = async (templateId: string) => {
   try {
-    const response = await invoke<{ data: any }>('create_document_from_template', {
-      campaignId: parseInt(props.id),
-      templateId: templateId
+    const newDoc = await DocumentService.create({
+      title: templateId.replace(/[-_]/g, ' '),
+      content: '',
+      documentType: 'task',
+      templateId: templateId,
+      campaignId: parseInt(props.id)
     })
     
-    if (response.data) {
-      documents.value.push(response.data)
-      selectedDocument.value = response.data
+    if (newDoc) {
+      documents.value.push(newDoc)
+      selectedDocument.value = newDoc
     }
   } catch (e) {
   }
