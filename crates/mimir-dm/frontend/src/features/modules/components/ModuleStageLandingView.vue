@@ -21,14 +21,14 @@
       </div>
     </div>
 
-    <!-- Sessions Management (for active stage) -->
-    <div v-if="stage === 'active' && showSessions" class="mt-8">
+    <!-- Sessions Management (for active and completed stages) -->
+    <div v-if="showSessions" class="mt-8">
       <SessionTable
         :sessions="sessions"
+        :readonly="stage === 'completed'"
         @create="handleCreateSession"
-        @edit="handleEditSession"
-        @start="handleStartSession"
-        @complete="handleCompleteSession"
+        @open-document="handleOpenSessionDocument"
+        @transition="handleSessionTransition"
         @delete="handleDeleteSession"
       />
     </div>
@@ -66,6 +66,10 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const emit = defineEmits<{
+  'open-session-document': [document: any]
+}>()
+
 // Convert props to refs for composables
 const moduleRef = computed(() => props.module)
 const stageRef = computed(() => props.stage)
@@ -93,7 +97,7 @@ const {
 
 // Stage content from backend configuration
 const stageContent = ref<string>('')
-const showSessions = computed(() => props.stage === 'active' || props.stage === 'ready')
+const showSessions = computed(() => props.stage === 'active' || props.stage === 'ready' || props.stage === 'completed')
 
 // Load stage-specific content from backend
 async function loadStageContent() {
@@ -125,28 +129,43 @@ async function loadStageContent() {
 
 // Session handlers
 async function handleCreateSession() {
-  const sessionName = prompt('Enter session name:')
-  if (sessionName) {
-    await createSession({
-      name: sessionName,
-      status: 'planned'
-    })
+  // Sessions are auto-numbered, no need for user input
+  await createSession({
+    status: 'planned'
+  })
+}
+
+async function handleOpenSessionDocument(session: any, docType: 'outline' | 'notes') {
+  // Build the file path for the session document
+  const fileName = docType === 'outline' ? 'session-outline.md' : 'session-notes.md'
+  const moduleNumber = (props.module as any).module_number || 1
+  const relativePath = `modules/module_${String(moduleNumber).padStart(2, '0')}/session_${String(session.session_number).padStart(3, '0')}/${fileName}`
+  
+  // Get campaign directory path
+  const campaignResponse = await invoke<{ data: any }>('get_campaign', { 
+    id: props.module.campaign_id 
+  })
+  
+  const fullPath = `${campaignResponse.data.directory_path}/${relativePath}`
+  
+  // Create a document object that matches what the editor expects
+  const sessionDocument = {
+    id: `session-${session.id}-${docType}`,
+    campaign_id: props.module.campaign_id,
+    module_id: props.module.id,
+    session_id: session.id,
+    template_id: `session_${docType === 'outline' ? 'outline' : 'notes'}`,
+    document_type: `session_${docType}`,
+    title: `Session ${session.session_number} ${docType === 'outline' ? 'Outline' : 'Notes'}`,
+    file_path: fullPath,
+    completed_at: null
   }
+  
+  emit('open-session-document', sessionDocument)
 }
 
-async function handleEditSession(session: any) {
-  const newName = prompt('Edit session name:', session.name)
-  if (newName && newName !== session.name) {
-    await updateSession(session.id, { name: newName })
-  }
-}
-
-async function handleStartSession(sessionId: number | string) {
-  await transitionSession(sessionId, 'active')
-}
-
-async function handleCompleteSession(sessionId: number | string) {
-  await transitionSession(sessionId, 'completed')
+async function handleSessionTransition(sessionId: number | string, newStatus: string) {
+  await transitionSession(sessionId, newStatus)
 }
 
 async function handleDeleteSession(sessionId: number | string) {

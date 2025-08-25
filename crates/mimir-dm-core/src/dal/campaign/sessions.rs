@@ -47,15 +47,11 @@ impl<'a> SessionRepository<'a> {
     
     /// Transition a session to a new status
     pub fn transition_status(&mut self, id: i32, new_status: &str) -> Result<Session> {
-        // First, get the session to check if transition is valid
+        // Get the session to check current state
         let session = self.find_by_id(id)?
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-            
-        if !session.can_transition_to(new_status) {
-            return Err(diesel::result::Error::QueryBuilderError(
-                format!("Cannot transition from {} to {}", session.status, new_status).into()
-            ).into());
-        }
+        
+        // Transition validation is handled by BoardDefinition in the service layer
         
         let mut update = UpdateSession {
             status: Some(new_status.to_string()),

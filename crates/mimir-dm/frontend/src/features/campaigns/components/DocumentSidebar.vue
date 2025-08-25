@@ -38,6 +38,17 @@
             >
               {{ doc.title }}
             </span>
+            
+            <!-- Checkmark on the right for completion -->
+            <button 
+              v-if="doc.instance"
+              class="completion-checkbox"
+              :class="{ checked: doc.instance?.completed_at }"
+              @click.stop="toggleDocumentCompletion(doc)"
+              :title="doc.instance?.completed_at ? 'Mark as incomplete' : 'Mark as complete'"
+            >
+              <span v-if="doc.instance?.completed_at">✓</span>
+            </button>
           </div>
         </div>
       </div>
@@ -401,6 +412,7 @@ const toggleDocumentCompletion = async (doc: any) => {
     // Emit completion status change
     emit('documentCompletionChanged', updatedDoc)
   } catch (e) {
+    console.error('Failed to toggle document completion:', e)
   }
 }
 

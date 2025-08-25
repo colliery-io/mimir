@@ -52,16 +52,7 @@ impl<'a> WorkflowCardRepository<'a> {
     
     /// Move a card to a new workflow state
     pub fn move_to_state(&mut self, id: &str, new_state: &str) -> Result<WorkflowCard> {
-        // First, get the card to check if transition is valid
-        let card = self.find_by_id(id)?
-            .ok_or_else(|| diesel::result::Error::NotFound)?;
-            
-        if !card.can_transition_to(new_state) {
-            return Err(diesel::result::Error::QueryBuilderError(
-                format!("Cannot transition from {} to {} for {} board", 
-                    card.workflow_state, new_state, card.board_type).into()
-            ).into());
-        }
+        // Transition validation is handled by BoardDefinition in the service layer
         
         let update = UpdateWorkflowCard {
             workflow_state: Some(new_state.to_string()),

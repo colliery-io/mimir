@@ -47,15 +47,11 @@ impl<'a> ModuleRepository<'a> {
     
     /// Transition a module to a new status
     pub fn transition_status(&mut self, id: i32, new_status: &str) -> Result<Module> {
-        // First, get the module to check if transition is valid
+        // Get the module to check current state
         let module = self.find_by_id(id)?
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-            
-        if !module.can_transition_to(new_status) {
-            return Err(diesel::result::Error::QueryBuilderError(
-                format!("Cannot transition from {} to {}", module.status, new_status).into()
-            ).into());
-        }
+        
+        // Transition validation is handled by BoardDefinition in the service layer
         
         let mut update = UpdateModule {
             status: Some(new_status.to_string()),

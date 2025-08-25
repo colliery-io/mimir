@@ -119,20 +119,25 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-onMounted(() => {
-  // Initialize from localStorage
+onMounted(async () => {
+  // Load campaigns first
+  await campaignStore.fetchCampaigns()
+  
+  // Then initialize from localStorage
   const storedId = localStorage.getItem('selectedCampaignId')
   if (storedId) {
     const id = parseInt(storedId, 10)
     if (!isNaN(id)) {
       selectedCampaignId.value = id
-      // Load the current campaign
-      campaignStore.getCampaign(id)
+      // Load the current campaign to ensure it's in the store
+      await campaignStore.getCampaign(id)
     }
+  } else if (campaigns.value.length > 0) {
+    // If no stored selection but we have campaigns, select the first one
+    selectedCampaignId.value = campaigns.value[0].id
+    localStorage.setItem('selectedCampaignId', campaigns.value[0].id.toString())
+    await campaignStore.getCampaign(campaigns.value[0].id)
   }
-  
-  // Load campaigns
-  campaignStore.fetchCampaigns()
   
   // Add click outside listener
   document.addEventListener('click', handleClickOutside)
@@ -143,10 +148,10 @@ onUnmounted(() => {
 })
 
 // Watch for route changes to update campaign context
-// Note: Use 'id' not 'campaignId' since the route param is ':id'
-watch(() => router.currentRoute.value.params.id, (newId) => {
-  if (newId && typeof newId === 'string') {
-    const id = parseInt(newId, 10)
+watch(() => router.currentRoute.value, (route) => {
+  // Only update if we're on a campaign route
+  if (route.path.startsWith('/campaigns/') && route.params.id) {
+    const id = parseInt(route.params.id as string, 10)
     if (!isNaN(id) && id !== selectedCampaignId.value) {
       // Just update the selection, don't navigate again
       selectedCampaignId.value = id
@@ -154,6 +159,8 @@ watch(() => router.currentRoute.value.params.id, (newId) => {
       localStorage.setItem('selectedCampaignId', id.toString())
     }
   }
+  // If we're on a module route, don't change the selection
+  // The selection should persist from localStorage
 }, { immediate: true })
 </script>
 

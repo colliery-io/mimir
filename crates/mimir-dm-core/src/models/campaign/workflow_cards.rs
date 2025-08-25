@@ -69,54 +69,5 @@ pub struct NewWorkflowCardTag {
 }
 
 impl WorkflowCard {
-    /// Check if card can transition to the given state based on board type
-    pub fn can_transition_to(&self, new_state: &str) -> bool {
-        match self.board_type.as_str() {
-            "campaign" => self.can_transition_campaign_state(new_state),
-            "module" => self.can_transition_module_state(new_state),
-            "session" => self.can_transition_session_state(new_state),
-            _ => false,
-        }
-    }
-    
-    fn can_transition_campaign_state(&self, new_state: &str) -> bool {
-        match (self.workflow_state.as_str(), new_state) {
-            ("concept", "session_zero") => true,
-            ("concept", "archived") => true, // Can abandon concepts
-            ("session_zero", "integration") => true,
-            ("session_zero", "concept") => true, // Can move back
-            ("integration", "active") => true,
-            ("integration", "session_zero") => true, // Can move back
-            ("active", "concluding") => true,
-            ("concluding", "completed") => true,
-            _ => false,
-        }
-    }
-    
-    fn can_transition_module_state(&self, new_state: &str) -> bool {
-        match (self.workflow_state.as_str(), new_state) {
-            ("backlog", "planning") => true,
-            ("planning", "development") => true,
-            ("planning", "backlog") => true, // Can move back
-            ("development", "ready") => true,
-            ("development", "planning") => true, // Can move back
-            ("ready", "active") => true,
-            ("ready", "development") => true, // Can move back
-            ("active", "completed") => true,
-            _ => false,
-        }
-    }
-    
-    fn can_transition_session_state(&self, new_state: &str) -> bool {
-        match (self.workflow_state.as_str(), new_state) {
-            ("next_week", "prep_needed") => true,
-            ("prep_needed", "in_prep") => true,
-            ("prep_needed", "next_week") => true, // Can defer
-            ("in_prep", "ready") => true,
-            ("in_prep", "prep_needed") => true, // Can move back
-            ("ready", "complete") => true,
-            ("ready", "in_prep") => true, // Can move back for more prep
-            _ => false,
-        }
-    }
+    // Transition validation is handled by BoardDefinition in the service layer
 }

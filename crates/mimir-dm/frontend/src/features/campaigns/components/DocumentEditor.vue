@@ -265,7 +265,7 @@ const markComplete = async () => {
     await saveDocument()
     
     const response = await invoke<{ data: any }>('complete_document', {
-      documentId: props.document.id
+      document_id: props.document.id
     })
     
     if (response.data) {

@@ -58,18 +58,5 @@ impl Module {
         self.completion_percentage() >= 60.0
     }
     
-    /// Check if module can transition to the given status
-    pub fn can_transition_to(&self, new_status: &str) -> bool {
-        match (self.status.as_str(), new_status) {
-            ("backlog", "planning") => true,
-            ("planning", "development") => true,
-            ("planning", "backlog") => true, // Can move back
-            ("development", "ready") => true,
-            ("development", "planning") => true, // Can move back
-            ("ready", "active") => true,
-            ("ready", "development") => true, // Can move back
-            ("active", "completed") => true,
-            _ => false,
-        }
-    }
+    // Transition validation is handled by BoardDefinition in the service layer
 }

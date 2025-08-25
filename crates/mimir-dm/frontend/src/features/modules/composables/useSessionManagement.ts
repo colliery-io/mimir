@@ -46,10 +46,32 @@ export function useSessionManagement(moduleId: number | null) {
     if (!moduleId) return null
     
     try {
+      // First get the module to get campaign info
+      const moduleResponse = await invoke<{ data: any }>('get_module', { 
+        id: moduleId 
+      })
+      
+      if (!moduleResponse.data) {
+        throw new Error('Module not found')
+      }
+      
+      const module = moduleResponse.data
+      
+      // Get campaign to get directory
+      const campaignResponse = await invoke<{ data: any }>('get_campaign', { 
+        id: module.campaign_id 
+      })
+      
+      if (!campaignResponse.data) {
+        throw new Error('Campaign not found')
+      }
+      
       const response = await invoke<{ data: Session }>('create_session', {
         request: {
           module_id: moduleId,
-          ...sessionData
+          campaign_id: module.campaign_id,
+          campaign_directory: campaignResponse.data.directory_path || campaignResponse.data.name,
+          module_number: module.module_number || 1
         }
       })
       
@@ -65,6 +87,7 @@ export function useSessionManagement(moduleId: number | null) {
       }
       return null
     } catch (e) {
+      console.error('Failed to create session:', e)
       error.value = `Failed to create session: ${e}`
       throw e
     }
@@ -111,9 +134,11 @@ export function useSessionManagement(moduleId: number | null) {
   // Transition session to next phase
   async function transitionSession(sessionId: string | number, targetPhase: string) {
     try {
-      const response = await invoke<{ data: Session }>('transition_session', {
-        sessionId,
-        targetPhase
+      const response = await invoke<{ data: Session }>('transition_session_status', {
+        request: {
+          session_id: Number(sessionId),
+          new_status: targetPhase
+        }
       })
       
       if (response.data) {

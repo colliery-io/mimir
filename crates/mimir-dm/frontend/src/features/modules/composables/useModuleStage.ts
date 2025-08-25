@@ -103,7 +103,13 @@ export function useModuleStage(
       doc.template_id && completionRequiredDocs.includes(doc.template_id) && doc.completed_at
     )
     
-    return completedDocs.length === completionRequiredDocs.length && completionRequiredDocs.length > 0
+    // If there are no documents requiring completion (like in active stage), allow progression
+    // Otherwise, check if all required documents are completed
+    if (completionRequiredDocs.length === 0) {
+      return true
+    }
+    
+    return completedDocs.length === completionRequiredDocs.length
   })
 
   const nextStageName = computed(() => {

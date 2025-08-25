@@ -127,10 +127,42 @@ impl BoardDefinition for CampaignBoard {
             "active" => StageMetadata {
                 display_name: "Active".to_string(),
                 description: "Campaign is actively being played".to_string(),
+                completion_message: Some(
+                    "Your campaign has been an amazing journey! Time to bring it to a conclusion."
+                        .to_string()
+                ),
+                transition_prompt: Some(
+                    "Is your campaign approaching its finale? Move to concluding when you're ready to wrap up the story."
+                        .to_string()
+                ),
+                help_text: Some(
+                    "Your campaign is now active! Use the module boards to manage your adventures."
+                        .to_string()
+                ),
+            },
+            "concluding" => StageMetadata {
+                display_name: "Concluding".to_string(),
+                description: "Campaign is wrapping up its final story arcs".to_string(),
+                completion_message: Some(
+                    "Congratulations! Your campaign has reached its epic conclusion."
+                        .to_string()
+                ),
+                transition_prompt: Some(
+                    "Have all story arcs been resolved? Mark the campaign as completed to archive it."
+                        .to_string()
+                ),
+                help_text: Some(
+                    "Time to bring your campaign to a satisfying conclusion. Resolve final story arcs and give your players closure."
+                        .to_string()
+                ),
+            },
+            "completed" => StageMetadata {
+                display_name: "Completed".to_string(),
+                description: "Campaign has been completed and archived".to_string(),
                 completion_message: None,
                 transition_prompt: None,
                 help_text: Some(
-                    "Your campaign is now active! Use the session boards to manage individual game sessions."
+                    "Your campaign has been completed! All documents and notes are preserved for future reference."
                         .to_string()
                 ),
             },

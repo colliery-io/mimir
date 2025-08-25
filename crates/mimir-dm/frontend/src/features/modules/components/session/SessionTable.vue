@@ -2,7 +2,7 @@
   <div class="session-table-container">
     <div class="session-header flex justify-between items-center mb-4">
       <h3 class="text-xl font-bold">Sessions</h3>
-      <button @click="$emit('create')" class="btn btn-primary btn-sm">
+      <button v-if="!props.readonly" @click="$emit('create')" class="btn btn-primary btn-sm">
         Add Session
       </button>
     </div>
@@ -24,41 +24,39 @@
         </thead>
         <tbody>
           <tr v-for="session in sessions" :key="session.id">
-            <td>{{ session.name }}</td>
+            <td>Session #{{ session.session_number || session.id }}</td>
             <td>{{ formatDate(session.scheduled_date || session.actual_date || '') }}</td>
             <td>{{ session.session_number || '-' }}</td>
             <td>
-              <span class="badge" :class="getStatusClass(session.status)">
-                {{ session.status }}
-              </span>
+              <select 
+                :value="session.status"
+                @change="$emit('transition', session.id, ($event.target as HTMLSelectElement).value)"
+                class="select select-sm"
+                :class="getStatusClass(session.status)"
+                :disabled="props.readonly"
+              >
+                <option value="next_week">Next Week</option>
+                <option value="prep_needed">Prep Needed</option>
+                <option value="in_prep">In Prep</option>
+                <option value="ready">Ready</option>
+                <option value="complete">Complete</option>
+              </select>
             </td>
             <td>
               <div class="flex gap-2">
                 <button 
-                  @click="$emit('edit', session)"
+                  @click="$emit('open-document', session, 'outline')"
                   class="btn btn-ghost btn-xs"
+                  title="Session Outline"
                 >
-                  Edit
+                  📝 Outline
                 </button>
                 <button 
-                  v-if="session.status === 'planned'"
-                  @click="$emit('start', session.id)"
-                  class="btn btn-success btn-xs"
+                  @click="$emit('open-document', session, 'notes')"
+                  class="btn btn-ghost btn-xs"
+                  title="Session Notes"
                 >
-                  Start
-                </button>
-                <button 
-                  v-if="session.status === 'active'"
-                  @click="$emit('complete', session.id)"
-                  class="btn btn-info btn-xs"
-                >
-                  Complete
-                </button>
-                <button 
-                  @click="$emit('delete', session.id)"
-                  class="btn btn-error btn-xs"
-                >
-                  Delete
+                  📔 Notes
                 </button>
               </div>
             </td>
@@ -74,15 +72,15 @@ import type { Session } from '@/types'
 
 interface Props {
   sessions: Session[]
+  readonly?: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 defineEmits<{
   create: []
-  edit: [session: Session]
-  start: [id: number | string]
-  complete: [id: number | string]
+  'open-document': [session: Session, docType: 'outline' | 'notes']
+  transition: [id: number | string, status: string]
   delete: [id: number | string]
 }>()
 

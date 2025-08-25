@@ -45,6 +45,17 @@
             >
               {{ doc.title }}
             </span>
+            
+            <!-- Checkmark on the right for completion -->
+            <button 
+              v-if="doc.instance"
+              class="completion-checkbox"
+              :class="{ checked: doc.instance?.completed_at }"
+              @click.stop="toggleDocumentCompletion(doc)"
+              :title="doc.instance?.completed_at ? 'Mark as incomplete' : 'Mark as complete'"
+            >
+              <span v-if="doc.instance?.completed_at">✓</span>
+            </button>
           </div>
         </div>
       </div>
@@ -207,8 +218,10 @@ const iconMap = {
 const getStageDocuments = (stage: string) => {
   const templates = stageDocuments.value[stage] || []
   const stageDocumentList = templates.map((template: any) => {
+    // Find matching document by template_id only
+    // The module_id filtering is already done when loading documents
     const instance = documents.value.find(doc => 
-      doc.template_id === template.templateId && doc.module_id === props.moduleId
+      doc.template_id === template.templateId
     )
     return {
       ...template,
@@ -260,9 +273,15 @@ const getAllDocumentsForActive = () => {
     for (const stage of props.boardConfig.stages) {
       const templates = stageDocuments.value[stage.key] || []
       for (const template of templates) {
+        // Try to find matching document - check both with and without module_id filter
+        // since some documents might not have module_id set properly
         const instance = documents.value.find(doc => 
-          doc.template_id === template.templateId && doc.module_id === props.moduleId
+          doc.template_id === template.templateId
         )
+        
+        if (!instance && documents.value.length > 0) {
+          console.log('No instance found for template:', template.templateId, 'in documents:', documents.value)
+        }
         
         // Include all documents (with or without instance)
         allDocs.push({
@@ -283,8 +302,34 @@ const loadDocuments = async () => {
   error.value = null
 
   try {
-    documents.value = await DocumentService.list(props.moduleId)
+    // Need to get campaignId if not provided as prop
+    let campaignId = props.campaignId
+    if (!campaignId) {
+      // Get campaign ID from the module
+      const module = await ModuleService.get(props.moduleId)
+      campaignId = module.campaign_id
+    }
+    
+    // First, ensure documents are initialized for this stage
+    // This creates any missing documents from templates
+    try {
+      const initializedDocs = await ModuleService.initializeDocuments(props.moduleId)
+      console.log('Initialized module documents:', initializedDocs)
+      
+      // If documents were initialized, wait a moment for the backend to complete
+      if (initializedDocs && initializedDocs.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    } catch (e) {
+      console.log('Document initialization error:', e)
+      // Continue even if initialization fails - documents might already exist
+    }
+    
+    console.log('Loading documents for module:', props.moduleId, 'campaign:', campaignId)
+    documents.value = await DocumentService.list(props.moduleId, campaignId)
+    console.log('Loaded documents:', documents.value)
   } catch (e) {
+    console.error('Failed to load documents:', e)
     error.value = 'Failed to load documents'
   } finally {
     loading.value = false
@@ -382,6 +427,7 @@ const toggleDocumentCompletion = async (doc: any) => {
     // Emit completion status change
     emit('documentCompletionChanged', updatedDoc)
   } catch (e) {
+    console.error('Failed to toggle document completion:', e)
   }
 }
 

@@ -161,52 +161,141 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
 
-          <!-- Create Module Modal -->
-          <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
-            <div class="modal-content">
-              <h2>Create New Module</h2>
-              <div class="form-group">
-                <label for="module-name">Module Name:</label>
-                <input 
-                  id="module-name"
-                  v-model="newModuleName" 
-                  type="text" 
-                  placeholder="Enter module name"
-                  @keyup.enter="confirmCreateModule"
-                />
-              </div>
-              <div class="form-group">
-                <label for="module-type">Module Type:</label>
-                <select id="module-type" v-model="newModuleType">
-                  <option value="standard">Standard Adventure</option>
-                  <option value="mystery">Mystery</option>
-                  <option value="dungeon">Dungeon Crawl</option>
-                  <option value="heist">Heist</option>
-                  <option value="horror">Horror</option>
-                  <option value="political">Political Intrigue</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="module-sessions">Expected Sessions:</label>
-                <input 
-                  id="module-sessions"
-                  v-model.number="newModuleSessions" 
-                  type="number" 
-                  min="1"
-                  placeholder="4"
-                  @keyup.enter="confirmCreateModule"
-                />
-              </div>
-              <div class="modal-actions">
-                <button @click="showCreateModal = false" class="btn btn-secondary">
-                  Cancel
-                </button>
-                <button @click="confirmCreateModule" class="btn btn-primary">
-                  Create Module
-                </button>
-              </div>
+      <!-- Concluding Stage -->
+      <div v-else-if="stage === 'concluding'" class="stage-concluding">
+        <div class="activity-section">
+          <h3>Wrapping Up Your Campaign</h3>
+          <p>Time to bring your epic story to a satisfying conclusion.</p>
+          
+          <div class="tip-card">
+            <h4>Final Story Arcs</h4>
+            <ul>
+              <li>Resolve all major plot threads</li>
+              <li>Give each character a meaningful ending</li>
+              <li>Address unfinished business</li>
+              <li>Provide closure for your players</li>
+            </ul>
+          </div>
+
+          <!-- Module Management Section -->
+          <div class="modules-section mt-4">
+            <div class="section-header">
+              <h3>Campaign Modules</h3>
+              <button @click="showCreateModal = true" class="btn btn-primary">
+                New Module
+              </button>
             </div>
+            <div v-if="modules.length === 0 && !modulesLoading" class="empty-state">
+              <p>No modules created during this campaign.</p>
+            </div>
+            <div v-else-if="modulesLoading" class="loading-state">
+              <p>Loading modules...</p>
+            </div>
+            <div v-else>
+              <table class="modules-table">
+                <thead>
+                  <tr>
+                    <th>Module</th>
+                    <th>Status</th>
+                    <th>Sessions</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="module in modules" :key="module.id">
+                    <td>
+                      <strong>Module {{ module.module_number }}: {{ module.name }}</strong>
+                    </td>
+                    <td>
+                      <span class="badge" :class="`badge-${getModuleStatusColor(module.status)}`">
+                        {{ module.status }}
+                      </span>
+                    </td>
+                    <td>{{ module.actual_sessions || 0 }} / {{ module.expected_sessions }}</td>
+                    <td>
+                      <router-link :to="`/modules/${module.id}/board`" class="btn btn-primary btn-small">
+                        View Module
+                      </router-link>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Completed Stage -->
+      <div v-else-if="stage === 'completed'" class="stage-completed">
+        <div class="activity-section">
+          <div class="completion-card">
+            <h3>🎉 Campaign Complete!</h3>
+            <p>Congratulations on completing your campaign!</p>
+            
+            <div class="stats-summary mt-4">
+              <h4>Campaign Archive</h4>
+              <p>All your campaign materials are preserved:</p>
+              <ul>
+                <li>{{ modules.length || 0 }} Modules completed</li>
+                <li>All session notes and documents</li>
+                <li>Player characters and NPCs</li>
+                <li>World building materials</li>
+              </ul>
+            </div>
+
+            <div class="info-card mt-4">
+              <p>Your campaign documents and notes will remain available for reference. You can review them anytime or use them as inspiration for future campaigns.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create Module Modal (shared between active and concluding stages) -->
+      <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+        <div class="modal-content">
+          <h2>Create New Module</h2>
+          <div class="form-group">
+            <label for="module-name">Module Name:</label>
+            <input 
+              id="module-name"
+              v-model="newModuleName" 
+              type="text" 
+              placeholder="Enter module name"
+              @keyup.enter="confirmCreateModule"
+            />
+          </div>
+          <div class="form-group">
+            <label for="module-type">Module Type:</label>
+            <select id="module-type" v-model="newModuleType">
+              <option value="standard">Standard Adventure</option>
+              <option value="mystery">Mystery</option>
+              <option value="dungeon">Dungeon Crawl</option>
+              <option value="heist">Heist</option>
+              <option value="horror">Horror</option>
+              <option value="political">Political Intrigue</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="module-sessions">Expected Sessions:</label>
+            <input 
+              id="module-sessions"
+              v-model.number="newModuleSessions" 
+              type="number" 
+              min="1"
+              placeholder="4"
+              @keyup.enter="confirmCreateModule"
+            />
+          </div>
+          <div class="modal-actions">
+            <button @click="showCreateModal = false" class="btn btn-secondary">
+              Cancel
+            </button>
+            <button @click="confirmCreateModule" class="btn btn-primary">
+              Create Module
+            </button>
           </div>
         </div>
       </div>
@@ -298,12 +387,18 @@ const nextStageAvailable = computed(() => {
   if (currentIndex >= stageOrder.length - 1) return false
   
   // Check if required documents are complete
-  const requiredDocs = currentStageInfo.required_documents
+  const requiredDocs = currentStageInfo.required_documents || []
+  
+  // If there are no required documents (like active stage), allow progression
+  if (requiredDocs.length === 0) {
+    return true
+  }
+  
   const completedDocs = props.documents.filter(doc => 
     requiredDocs.includes(doc.template_id) && doc.completed_at
   )
   
-  return completedDocs.length === requiredDocs.length && requiredDocs.length > 0
+  return completedDocs.length === requiredDocs.length
 })
 
 const nextStageName = computed(() => {
@@ -335,12 +430,18 @@ const transitionToNextStage = () => {
 
 // Module methods
 const loadModules = async () => {
-  if (!props.campaign?.id) return
+  if (!props.campaign?.id) {
+    console.log('No campaign ID available')
+    return
+  }
   
+  console.log('Loading modules for campaign:', props.campaign.id)
   modulesLoading.value = true
   try {
     modules.value = await ModuleService.list(props.campaign.id)
+    console.log('Loaded modules:', modules.value)
   } catch (e) {
+    console.error('Failed to load modules:', e)
   } finally {
     modulesLoading.value = false
   }
@@ -357,9 +458,24 @@ const getModuleProgress = (module: any): number => {
   return Math.round((module.actual_sessions / module.expected_sessions) * 100)
 }
 
+const getModuleStatusColor = (status: string): string => {
+  const colors: Record<string, string> = {
+    planning: 'info',
+    development: 'warning',
+    ready: 'success',
+    active: 'primary',
+    completed: 'neutral'
+  }
+  return colors[status] || 'ghost'
+}
+
 const confirmCreateModule = async () => {
-  if (!newModuleName.value.trim() || !props.campaign?.id) return
+  if (!newModuleName.value.trim() || !props.campaign?.id) {
+    console.log('Missing module name or campaign ID')
+    return
+  }
   
+  console.log('Creating module for campaign:', props.campaign.id)
   try {
     const newModule = await ModuleService.create({
       campaign_id: props.campaign.id,
@@ -367,6 +483,7 @@ const confirmCreateModule = async () => {
       module_type: newModuleType.value
       // expected_sessions not supported by ModuleService yet
     })
+    console.log('Created module:', newModule)
     
     if (newModule) {
       // Reset form and close modal first
@@ -379,26 +496,27 @@ const confirmCreateModule = async () => {
       router.push(`/modules/${newModule.id}/board`)
     }
   } catch (e) {
+    console.error('Failed to create module:', e)
   }
 }
 
-// Watch for stage changes to load modules when entering active stage
+// Watch for stage changes to load modules when entering active, concluding, or completed stages
 watch(() => props.stage, (newStage) => {
-  if (newStage === 'active') {
+  if (['active', 'concluding', 'completed'].includes(newStage)) {
     loadModules()
   }
 })
 
-// Load modules if already in active stage
+// Load modules if already in active, concluding, or completed stage
 onMounted(() => {
-  if (props.stage === 'active') {
+  if (['active', 'concluding', 'completed'].includes(props.stage)) {
     loadModules()
   }
 })
 
 // Reload modules when component is reactivated (e.g., returning from module view)
 onActivated(() => {
-  if (props.stage === 'active') {
+  if (['active', 'concluding', 'completed'].includes(props.stage)) {
     loadModules()
   }
 })

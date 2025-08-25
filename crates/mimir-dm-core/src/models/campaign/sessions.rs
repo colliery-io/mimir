@@ -45,19 +45,7 @@ pub struct UpdateSession {
 }
 
 impl Session {
-    /// Check if session can transition to the given status
-    pub fn can_transition_to(&self, new_status: &str) -> bool {
-        match (self.status.as_str(), new_status) {
-            ("next_week", "prep_needed") => true,
-            ("prep_needed", "in_prep") => true,
-            ("prep_needed", "next_week") => true, // Can defer
-            ("in_prep", "ready") => true,
-            ("in_prep", "prep_needed") => true, // Can move back
-            ("ready", "complete") => true,
-            ("ready", "in_prep") => true, // Can move back for more prep
-            _ => false,
-        }
-    }
+    // Transition validation is handled by BoardDefinition in the service layer
     
     /// Get prep duration in minutes
     pub fn prep_duration_minutes(&self) -> Option<i64> {

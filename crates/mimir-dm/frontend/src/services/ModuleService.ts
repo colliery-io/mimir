@@ -90,7 +90,7 @@ class ModuleServiceClass {
     
     try {
       const response = await invoke<{ data: Module[] }>('list_campaign_modules', {
-        campaignId
+        request: { campaign_id: campaignId }
       })
       
       const modules = (response.data || []).map((module, index) => ({
@@ -113,7 +113,12 @@ class ModuleServiceClass {
   async create(data: ModuleData): Promise<Module> {
     try {
       const response = await invoke<{ data: Module } | Module>('create_module', {
-        ...data
+        request: {
+          campaign_id: data.campaign_id,
+          name: data.name,
+          module_type: data.module_type,
+          expected_sessions: 4 // Default value, can be made configurable
+        }
       })
       
       // Clear campaign cache since we added a new module
@@ -139,8 +144,12 @@ class ModuleServiceClass {
   async update(id: number, data: Partial<ModuleData>): Promise<Module> {
     try {
       const response = await invoke<{ data: Module }>('update_module', {
-        id,
-        ...data
+        id: id,
+        request: {
+          name: data.name,
+          expected_sessions: undefined,
+          actual_sessions: undefined
+        }
       })
       
       // Clear caches
@@ -178,36 +187,17 @@ class ModuleServiceClass {
   
   // Status/Stage management
   async updateStatus(id: number, status: string): Promise<Module> {
-    try {
-      const response = await invoke<{ data: Module }>('update_module_status', {
-        moduleId: id,
-        status
-      })
-      
-      // Clear module cache
-      this.cache.delete(`module-${id}`)
-      
-      // Ensure required fields have defaults
-      return {
-        ...response.data,
-        module_number: response.data.module_number ?? 1,
-        expected_sessions: response.data.expected_sessions ?? 0,
-        actual_sessions: response.data.actual_sessions ?? 0,
-        sessions_planned: response.data.sessions_planned ?? 0,
-        sessions_completed: response.data.sessions_completed ?? 0,
-        started_at: response.data.started_at ?? null,
-        completed_at: response.data.completed_at ?? null
-      }
-    } catch (error) {
-      throw new Error(`Failed to update module status: ${error}`)
-    }
+    // Use transition_module_stage for status changes
+    return this.transitionStage(id, status)
   }
   
   async transitionStage(id: number, newStage: string): Promise<Module> {
     try {
       const response = await invoke<{ data: Module }>('transition_module_stage', {
-        moduleId: id,
-        newStage
+        request: {
+          module_id: id,
+          new_stage: newStage
+        }
       })
       
       // Clear module cache
@@ -230,10 +220,23 @@ class ModuleServiceClass {
   }
   
   // Document management
-  async initializeDocuments(id: number): Promise<string[]> {
+  async initializeDocuments(id: number, campaignDirectory?: string): Promise<string[]> {
     try {
+      // If campaign directory not provided, get it from the module's campaign
+      let directory = campaignDirectory
+      if (!directory) {
+        const module = await this.get(id)
+        const campaignResponse = await invoke<{ data: any }>('get_campaign', { 
+          id: module.campaign_id 
+        })
+        directory = campaignResponse.data?.directory_path || campaignResponse.data?.name
+      }
+      
       const response = await invoke<{ data: string[] }>('initialize_module_documents', {
-        moduleId: id
+        request: {
+          module_id: id,
+          campaign_directory: directory
+        }
       })
       
       return response.data || []
@@ -279,7 +282,7 @@ class ModuleServiceClass {
   async incrementSessionCount(id: number): Promise<void> {
     try {
       await invoke('increment_module_sessions', {
-        moduleId: id
+        module_id: id
       })
       
       // Clear module cache to get updated count

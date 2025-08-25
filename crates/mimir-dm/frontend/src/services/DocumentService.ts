@@ -43,7 +43,7 @@ class DocumentServiceClass {
   
   async create(data: DocumentData): Promise<Document> {
     const response = await invoke<{ data: Document }>('create_document', {
-      request: data
+      newDocument: data
     })
     
     this.clearCache()
@@ -52,8 +52,8 @@ class DocumentServiceClass {
   
   async update(id: string | number, content: string): Promise<Document> {
     const response = await invoke<{ data: Document }>('update_document', {
-      request: {
-        document_id: id,
+      documentId: Number(id),
+      update: {
         content
       }
     })
@@ -64,10 +64,8 @@ class DocumentServiceClass {
   
   async updateMetadata(id: string | number, metadata: Partial<Document>): Promise<Document> {
     const response = await invoke<{ data: Document }>('update_document_metadata', {
-      request: {
-        document_id: id,
-        ...metadata
-      }
+      documentId: Number(id),
+      ...metadata
     })
     
     this.clearCache()
@@ -76,7 +74,7 @@ class DocumentServiceClass {
   
   async delete(id: string | number): Promise<void> {
     await invoke('delete_document', {
-      request: { document_id: id }
+      documentId: Number(id)
     })
     
     this.clearCache()
@@ -84,10 +82,8 @@ class DocumentServiceClass {
   
   async transition(id: string | number, phase: string): Promise<Document> {
     const response = await invoke<{ data: Document }>('transition_document_phase', {
-      request: {
-        document_id: id,
-        phase
-      }
+      documentId: Number(id),
+      phase: phase
     })
     
     this.clearCache()
@@ -96,7 +92,7 @@ class DocumentServiceClass {
   
   async complete(id: string | number): Promise<Document> {
     const response = await invoke<{ data: Document }>('complete_document', {
-      request: { document_id: id }
+      documentId: Number(id)
     })
     
     this.clearCache()
@@ -104,8 +100,13 @@ class DocumentServiceClass {
   }
   
   async uncomplete(id: string | number): Promise<Document> {
-    const response = await invoke<{ data: Document }>('uncomplete_document', {
-      request: { document_id: id }
+    // There's no uncomplete_document command, so we use update_document
+    // to set completed_at to null
+    const response = await invoke<{ data: Document }>('update_document', {
+      documentId: Number(id),
+      update: {
+        completed_at: null
+      }
     })
     
     this.clearCache()
@@ -114,7 +115,7 @@ class DocumentServiceClass {
   
   async validateExitCriteria(id: string | number): Promise<boolean> {
     const response = await invoke<{ data: boolean }>('validate_exit_criteria', {
-      request: { document_id: id }
+      documentId: Number(id)
     })
     
     return response.data
@@ -127,12 +128,25 @@ class DocumentServiceClass {
       return this.cache.get(cacheKey)!
     }
     
-    const response = await invoke<{ data: Document[] }>('list_documents', {
-      request: {
-        module_id: moduleId,
-        campaign_id: campaignId
-      }
-    })
+    let response: { data: Document[] }
+    
+    if (campaignId && !moduleId) {
+      // Use get_campaign_documents for campaign-level documents
+      response = await invoke<{ data: Document[] }>('get_campaign_documents', {
+        campaignId: campaignId
+      })
+    } else if (moduleId) {
+      // Use get_documents_by_level for module documents
+      response = await invoke<{ data: Document[] }>('get_documents_by_level', {
+        campaignId: campaignId,
+        level: 'module',
+        moduleId: moduleId,
+        sessionId: null
+      })
+    } else {
+      // No campaignId or moduleId - return empty array
+      response = { data: [] }
+    }
     
     const documents = response.data || []
     this.cache.set(cacheKey, documents)

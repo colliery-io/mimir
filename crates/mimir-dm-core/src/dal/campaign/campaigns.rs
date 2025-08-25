@@ -51,16 +51,6 @@ impl<'a> CampaignRepository<'a> {
     
     /// Transition a campaign to a new status
     pub fn transition_status(&mut self, id: i32, new_status: &str) -> Result<Campaign> {
-        // First, get the campaign to check if transition is valid
-        let campaign = self.find_by_id(id)?
-            .ok_or_else(|| diesel::result::Error::NotFound)?;
-            
-        if !campaign.can_transition_to(new_status) {
-            return Err(diesel::result::Error::QueryBuilderError(
-                format!("Cannot transition from {} to {}", campaign.status, new_status).into()
-            ).into());
-        }
-        
         let update = UpdateCampaign {
             status: Some(new_status.to_string()),
             last_activity_at: Some(Utc::now().to_rfc3339()),
