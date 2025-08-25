@@ -2,17 +2,23 @@
 
 /* Shimmer animation for loading states */
 @keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
+  0% {
+    left: -100%;
+    top: -100%;
+  }
+  100% {
+    left: 100%;
+    top: 100%;
+  }
 }
 
 .shimmer {
   animation: shimmer 2s infinite;
   background: linear-gradient(
     90deg,
-    rgb(var(--color-base-300)) 25%,
-    rgb(var(--color-base-200)) 50%,
-    rgb(var(--color-base-300)) 75%
+    var(--color-gray-300) 25%,
+    var(--color-gray-200) 50%,
+    var(--color-gray-300) 75%
   );
   background-size: 1000px 100%;
 }

@@ -3,6 +3,9 @@
 @import './themes/dark.css';
 @import './themes/hyper.css';
 
+/* Import utility styles (needed by other components) */
+@import './utilities/animations.css';
+
 /* Import base styles */
 @import './components.css';
 @import './dnd-content.css';
