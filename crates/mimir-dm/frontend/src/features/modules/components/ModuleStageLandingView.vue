@@ -107,10 +107,8 @@ async function loadStageContent() {
     // Get stage content from board config or fetch from backend
     const currentStageConfig = props.boardConfig.stages?.find((s: any) => s.key === props.stage)
     
-    // Check for content in various possible fields
-    const content = (currentStageConfig as any)?.content || 
-                   (currentStageConfig as any)?.description ||
-                   (currentStageConfig as any)?.help_text
+    // Get content from stage configuration
+    const content = (currentStageConfig as any)?.content
     
     if (content) {
       stageContent.value = content

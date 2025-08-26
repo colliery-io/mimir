@@ -47,6 +47,7 @@ pub struct StageMetadata {
     pub completion_message: Option<String>,
     pub transition_prompt: Option<String>,
     pub help_text: Option<String>,
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

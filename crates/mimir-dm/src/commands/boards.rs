@@ -23,6 +23,7 @@ pub struct StageInfo {
     pub completion_message: Option<String>,
     pub transition_prompt: Option<String>,
     pub help_text: Option<String>,
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -70,6 +71,7 @@ pub async fn get_board_configuration(board_type: String) -> Result<ApiResponse<B
                 completion_message: metadata.completion_message,
                 transition_prompt: metadata.transition_prompt,
                 help_text: metadata.help_text,
+                content: metadata.content,
             }
         })
         .collect();

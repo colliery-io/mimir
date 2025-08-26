@@ -31,3 +31,6 @@ data/
 5e-bits-enriched/
 5e-core-data/
 5e-database/
+
+# Development assets
+crates/mimir-dm/assets/dev/

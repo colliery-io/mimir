@@ -73,6 +73,7 @@ impl BoardDefinition for SessionBoard {
             completion_message: None,
             transition_prompt: None,
             help_text: None,
+            content: None,
         }
     }
 }

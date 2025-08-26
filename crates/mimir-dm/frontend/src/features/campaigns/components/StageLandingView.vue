@@ -236,19 +236,71 @@
             <p>Congratulations on completing your campaign!</p>
             
             <div class="stats-summary mt-4">
-              <h4>Campaign Archive</h4>
-              <p>All your campaign materials are preserved:</p>
-              <ul>
-                <li>{{ modules.length || 0 }} Modules completed</li>
-                <li>All session notes and documents</li>
-                <li>Player characters and NPCs</li>
-                <li>World building materials</li>
-              </ul>
+              <h4>Campaign Statistics</h4>
+              <div class="campaign-stats-card">
+                <div class="campaign-stat">
+                  <span class="stat-value">{{ modules.length || 0 }}</span>
+                  <span class="stat-label">Modules</span>
+                </div>
+                <div class="campaign-stat">
+                  <span class="stat-value">{{ getTotalSessions() }}</span>
+                  <span class="stat-label">Sessions</span>
+                </div>
+                <div class="campaign-stat">
+                  <span class="stat-value">{{ getTotalDocuments() }}</span>
+                  <span class="stat-label">Documents</span>
+                </div>
+              </div>
             </div>
+          </div>
 
-            <div class="info-card mt-4">
-              <p>Your campaign documents and notes will remain available for reference. You can review them anytime or use them as inspiration for future campaigns.</p>
+          <!-- Module Archive Section -->
+          <div class="modules-archive-section mt-4">
+            <h3>Campaign Modules</h3>
+            <p class="archive-description">Review your completed adventures and their session notes.</p>
+            
+            <div v-if="modulesLoading" class="loading-state">
+              Loading modules...
             </div>
+            
+            <div v-else-if="modules.length === 0" class="empty-state">
+              <p>No modules were created during this campaign.</p>
+            </div>
+            
+            <table v-else class="modules-table archive-table">
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Sessions</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="module in modules" :key="module.id">
+                  <td class="module-name">
+                    <strong>Module #{{ module.module_number }}:</strong> {{ module.name }}
+                  </td>
+                  <td class="sessions-info">
+                    {{ module.actual_sessions }} sessions
+                  </td>
+                  <td>
+                    <span class="status-badge completed">
+                      Completed
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <router-link :to="`/modules/${module.id}/board`" class="btn btn-ghost btn-small">
+                      📚 View Archive
+                    </router-link>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="info-card mt-4">
+            <p>All campaign materials remain available for reference. You can review session notes, documents, and campaign materials anytime.</p>
           </div>
         </div>
       </div>
@@ -456,6 +508,19 @@ const formatModuleStatus = (status: string): string => {
 const getModuleProgress = (module: any): number => {
   if (!module || module.expected_sessions === 0) return 0
   return Math.round((module.actual_sessions / module.expected_sessions) * 100)
+}
+
+const getTotalSessions = (): number => {
+  return modules.value.reduce((total, module) => 
+    total + (module.actual_sessions || 0), 0
+  )
+}
+
+const getTotalDocuments = (): number => {
+  // Count campaign docs + estimated module/session docs
+  return (props.documents?.length || 0) + 
+         (modules.value.length * 3) + // Estimate 3 docs per module
+         (getTotalSessions() * 2) // Estimate 2 docs per session
 }
 
 const getModuleStatusColor = (status: string): string => {

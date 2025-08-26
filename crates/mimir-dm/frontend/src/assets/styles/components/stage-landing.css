@@ -310,3 +310,223 @@
   background-color: var(--color-gray-200);
   color: var(--color-text);
 }
+
+/* ================================
+   BASE TYPOGRAPHY FOR ACTIVITY SECTIONS
+   ================================ */
+
+/* Base typography for all activity sections */
+.activity-section h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 1rem 0;
+  line-height: 1.3;
+}
+
+.activity-section h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 1.5rem 0 0.75rem 0;
+}
+
+.activity-section p {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+/* Nested paragraphs in lists get smaller text */
+.activity-section li p {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ================================
+   STAGE-SPECIFIC CONTAINER STYLES
+   ================================ */
+
+/* Session Zero - Planning focus (subtle blue tint) */
+.stage-session-zero .activity-section {
+  background: linear-gradient(135deg, 
+    var(--color-surface) 0%, 
+    rgba(59, 130, 246, 0.03) 100%);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--color-info);
+}
+
+/* Integration - Transformation focus (subtle purple tint) */
+.stage-integration .activity-section {
+  background: linear-gradient(135deg,
+    var(--color-surface) 0%,
+    rgba(147, 51, 234, 0.03) 100%);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--color-primary-500);
+}
+
+/* Completed - Archived state (muted) */
+.stage-completed .activity-section {
+  opacity: 0.9;
+  background: var(--color-surface);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+}
+
+/* ================================
+   ENHANCED LIST STYLING
+   ================================ */
+
+/* Styled numbered lists with badges */
+.activity-section ol {
+  counter-reset: section-list;
+  padding-left: 0;
+  list-style: none;
+}
+
+.activity-section ol > li {
+  counter-increment: section-list;
+  margin-bottom: 1.5rem;
+  padding-left: 2.5rem;
+  position: relative;
+}
+
+.activity-section ol > li::before {
+  content: counter(section-list);
+  position: absolute;
+  left: 0;
+  top: 0.125rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  background: var(--color-primary-500);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Unordered lists get subtle bullets */
+.activity-section ul {
+  padding-left: 1.5rem;
+}
+
+.activity-section ul li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+/* ================================
+   SPECIAL CONTENT CLASSES
+   ================================ */
+
+/* Integration note - callout style */
+.integration-note {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg,
+    rgba(147, 51, 234, 0.08),
+    rgba(59, 130, 246, 0.08));
+  border-left: 3px solid var(--color-primary-500);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+/* Empty state styling enhancement */
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--color-border);
+}
+
+.empty-state h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-text);
+}
+
+.empty-state p {
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+/* Loading state */
+.loading-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* ================================
+   MODULE ARCHIVE SECTION
+   ================================ */
+
+/* Module Archive Section */
+.modules-archive-section {
+  margin-top: 2rem;
+}
+
+.modules-archive-section h3 {
+  color: var(--color-text);
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.archive-description {
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+/* Archive table - more subdued than active table */
+.modules-table.archive-table {
+  opacity: 0.95;
+}
+
+.modules-table.archive-table tbody tr:hover {
+  background-color: var(--color-surface-variant);
+}
+
+/* Completion card styling */
+.completion-card {
+  text-align: center;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.completion-card h3 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.completion-card .stats-summary {
+  margin-top: 2rem;
+}
+
+.completion-card .stats-summary h4 {
+  color: var(--color-text);
+  margin-bottom: 1rem;
+}
+
+/* Info card */
+.info-card {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary-500);
+}
+
+.info-card p {
+  margin: 0;
+  color: var(--color-text);
+  font-style: italic;
+}
