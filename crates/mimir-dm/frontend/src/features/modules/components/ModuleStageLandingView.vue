@@ -6,22 +6,16 @@
       :stage-info="stageInfo" 
     />
 
-    <!-- Next Steps (shown at top when ready) -->
+    <!-- Next Steps (shown at top when ready, except for ready/active stages) -->
     <StageTransitionCard
+      v-if="stage !== 'ready' && stage !== 'active'"
       :available="nextStageAvailable"
       :prompt="nextStagePrompt"
       :next-stage-name="nextStageName"
       @transition="transitionToNextStage"
     />
 
-    <!-- Stage-Specific Content from Backend -->
-    <div class="stage-content-section" v-if="stageContent">
-      <div :class="`stage-${stage}`">
-        <div class="activity-section" v-html="stageContent"></div>
-      </div>
-    </div>
-
-    <!-- Sessions Management (for active and completed stages) -->
+    <!-- Sessions Management (for ready, active and completed stages - shown first) -->
     <div v-if="showSessions" class="mt-8">
       <SessionTable
         :sessions="sessions"
@@ -32,6 +26,22 @@
         @delete="handleDeleteSession"
       />
     </div>
+
+    <!-- Stage-Specific Content from Backend -->
+    <div class="stage-content-section" v-if="stageContent">
+      <div :class="`stage-${stage}`">
+        <div class="activity-section" v-html="stageContent"></div>
+      </div>
+    </div>
+
+    <!-- Next Steps at bottom for ready/active stages -->
+    <StageTransitionCard
+      v-if="stage === 'ready' || stage === 'active'"
+      :available="nextStageAvailable"
+      :prompt="nextStagePrompt"
+      :next-stage-name="nextStageName"
+      @transition="transitionToNextStage"
+    />
 
     <!-- Document Progress Indicator -->
     <div v-if="documentProgress.total > 0" class="progress-section mt-6">

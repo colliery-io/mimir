@@ -210,88 +210,33 @@ impl BoardDefinition for ModuleBoard {
                 ),
                 help_text: None,
                 content: Some(
-                    r#"<h3>Module Active: Session-by-Session Execution</h3>
-<p>Your module is now in play. Each session requires focused preparation and skilled execution. Remember: one hour of targeted prep creates four hours of engaging play.</p>
+                    r#"<h3>Module Active: Running Your Sessions</h3>
+<p>Your module is in play. Use the session tracker above to manage your progress.</p>
 
-<h4>The Session Prep Timeline</h4>
-<p>Between sessions, follow this proven workflow:</p>
+<h4>Quick Session Prep Timeline</h4>
+<ul>
+  <li><strong>T+0</strong>: Capture raw notes immediately (20 min)</li>
+  <li><strong>T-6 days</strong>: Sort into Must/Nice/Skip prep tasks (30 min)</li>
+  <li><strong>T-4 days</strong>: Core prep work - see checklist below (60-90 min)</li>
+  <li><strong>T-3 days</strong>: Create one-page reference (30 min)</li>
+</ul>
 
+<h4>The 8-Step Prep Checklist</h4>
 <ol>
-  <li><strong>T+0 (20 min): Capture Raw Notes</strong>
-    <p>Immediately after the session: what happened, player theories, dangling threads, what surprised you, what you forgot. Don't organize yet, just capture everything while it's fresh.</p>
-  </li>
-  <li><strong>T-6 days (30 min): Create Prep Plan</strong>
-    <p>Transform notes into actionable tasks. Sort into: Must Prep (critical for next session), Nice to Have (if time allows), Skip (save for later).</p>
-  </li>
-  <li><strong>T-4 days (60-90 min): The 8-Step Session Prep Process</strong>
-    <p>Your core prep work. This systematic approach ensures nothing crucial is missed.</p>
-  </li>
-  <li><strong>T-3 days (30 min): One-Page Session Plan</strong>
-    <p>Distill your prep into a single reference sheet for game day.</p>
-  </li>
+  <li>Review character status and who needs spotlight</li>
+  <li>Create strong opening scene with immediate hook</li>
+  <li>Outline 3-5 potential scenes with timing</li>
+  <li>Ensure critical info has multiple discovery paths</li>
+  <li>Prep key locations with interactive elements</li>
+  <li>Define NPC appearances, voices, and wants</li>
+  <li>Select encounters with tactics in mind</li>
+  <li>Plan rewards that advance character arcs</li>
 </ol>
 
-<h4>The 8-Step Session Prep Process</h4>
-<p>Complete these in order for comprehensive preparation:</p>
+<h4>Session Endings That Work</h4>
+<p><strong>Cliffhanger</strong> (door opens) • <strong>Revelation</strong> (everything changes) • <strong>Decision</strong> (what do you do?) • <strong>Victory Cost</strong> (but at what price?)</p>
 
-<ol>
-  <li><strong>Review Characters</strong>: Check HP, resources, spell slots, personal goals. Who needs spotlight time?</li>
-  <li><strong>Create a Strong Start</strong>: Design an opening scene with immediate decision or action. No slow starts.</li>
-  <li><strong>Outline Potential Scenes</strong>: Plan 3-5 scenes sized for your session length. Include timing estimates.</li>
-  <li><strong>Define Secrets and Clues</strong>: Ensure critical information has multiple discovery paths. Never single-point failure.</li>
-  <li><strong>Develop Fantastic Locations</strong>: Create memorable spaces with interactive elements. What makes this place unique?</li>
-  <li><strong>Outline Important NPCs</strong>: Define appearance, voice, wants, and what they know. Keep it brief but distinctive.</li>
-  <li><strong>Choose Relevant Monsters</strong>: Select appropriate challenges. Consider tactics, not just stats.</li>
-  <li><strong>Select Magic Item Rewards</strong>: Plan treasure and story rewards that advance character arcs.</li>
-</ol>
-
-<h4>Running the Session: Key Techniques</h4>
-
-<ul>
-  <li><strong>The Opening (First 15 Minutes)</strong>
-    <p>Start with a recap question to players, then launch into immediate action or decision. Set energy high early.</p>
-  </li>
-  <li><strong>Reading the Room</strong>
-    <p>Watch body language. Who's leaning forward? Who's checking their phone? Adjust pacing and spotlight accordingly.</p>
-  </li>
-  <li><strong>Managing Different Player Types</strong>
-    <p>The investigator needs clues, the combat enthusiast needs action, the roleplayer needs NPC interaction. Rotate focus.</p>
-  </li>
-  <li><strong>The Three-Path Principle</strong>
-    <p>When players approach any obstacle, be ready for combat, social, or stealth solutions. Not every path needs to work, but consider all three.</p>
-  </li>
-</ul>
-
-<h4>Common Session Challenges</h4>
-
-<ul>
-  <li><strong>Analysis Paralysis</strong>: Add time pressure or have NPCs act to force decisions</li>
-  <li><strong>Split Party</strong>: Use cinematic cuts between groups, keep scenes short and tense</li>
-  <li><strong>Unexpected NPC Death</strong>: Transfer their information to documents, other NPCs, or environmental clues</li>
-  <li><strong>Players Skip Content</strong>: Save it for later or weave elements into their chosen path</li>
-  <li><strong>Session Running Long</strong>: Find a cliffhanger moment and end there rather than rushing</li>
-</ul>
-
-<h4>Ending Strong</h4>
-<p>Every session needs a memorable ending. Options include:</p>
-<ul>
-  <li><strong>Cliffhanger</strong>: Door opens revealing unexpected threat</li>
-  <li><strong>Revelation</strong>: Major piece of information changes everything</li>
-  <li><strong>Decision Point</strong>: Present a choice, end before they decide</li>
-  <li><strong>Victory Cost</strong>: They win, but something unexpected happens</li>
-</ul>
-
-<h4>Post-Session (30 Minutes)</h4>
-<p>Immediately after players leave:</p>
-<ul>
-  <li>Update initiative order while you remember</li>
-  <li>Note NPCs' new attitudes toward party</li>
-  <li>Track world changes from player actions</li>
-  <li>Write three things that went well, one to improve</li>
-  <li>Identify threads for next session's strong start</li>
-</ul>
-
-<p class="integration-note">Remember: Your module provides the structure, but sessions bring it to life. Stay flexible within your framework. When players do something unexpected, ask yourself "How does this make the story better?" rather than "How do I get back on track?"</p>"#
+<p class="integration-note">Remember: When players surprise you, ask "How does this make the story better?" not "How do I get back on track?"</p>"#
                         .to_string()
                 ),
             },

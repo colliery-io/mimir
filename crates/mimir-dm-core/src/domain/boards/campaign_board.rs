@@ -355,85 +355,29 @@ impl BoardDefinition for CampaignBoard {
                 ),
                 help_text: None,
                 content: Some(
-                    r#"<h3>Campaign Active: Sustainable Long-Term Play</h3>
-<p>Your campaign is now active! This is where preparation becomes play, where your world comes alive through modules and sessions. The active phase can last months or years, sustained by good habits and systematic approaches.</p>
+                    r#"<h3>Campaign Active: Managing Your Living World</h3>
+<p>Your campaign is now active! Create modules below to structure your adventures while maintaining narrative momentum.</p>
 
-<h4>The Module Rhythm</h4>
-<p>Campaigns thrive on a sustainable cycle:</p>
+<h4>Quick Reference: Module Rhythm</h4>
 <ul>
-  <li><strong>Module Planning</strong>: 8-12 hours creates 12-20 hours of play</li>
-  <li><strong>Session Preparation</strong>: 1 hour creates 4 hours of play</li>
-  <li><strong>Between Modules</strong>: Take a week to assess and plan</li>
-  <li><strong>Campaign Breaks</strong>: Schedule them before you need them</li>
-</ul>
-
-<h4>Managing Multiple Story Threads</h4>
-<p>Active campaigns juggle various narrative elements:</p>
-<ul>
-  <li><strong>A-Plot</strong>: The main campaign arc (develops slowly)</li>
-  <li><strong>B-Plots</strong>: Module-specific stories (2-6 sessions each)</li>
-  <li><strong>C-Plots</strong>: Character personal arcs (weave throughout)</li>
-  <li><strong>D-Plots</strong>: World events and consequences (background motion)</li>
+  <li><strong>Planning Time</strong>: 8-12 hours creates 12-20 hours of play</li>
+  <li><strong>Session Prep</strong>: 1 hour creates 4 hours of play</li>
+  <li><strong>Between Modules</strong>: Take a week to assess and plan next arc</li>
 </ul>
 
 <h4>When to Create New Modules</h4>
-<p>Natural triggers for module creation:</p>
 <ul>
-  <li><strong>Current Module Completing</strong>: Start planning when 1-2 sessions remain</li>
-  <li><strong>Narrative Momentum</strong>: Story demands new direction or location</li>
-  <li><strong>Player Goals</strong>: Character objectives require dedicated content</li>
-  <li><strong>Campaign Phase Shift</strong>: Moving between major acts or themes</li>
+  <li>Current module has 1-2 sessions remaining</li>
+  <li>Story reaches a natural transition point</li>
+  <li>Players achieve major goal requiring new direction</li>
+  <li>Campaign shifts between major acts or themes</li>
 </ul>
 
-<h4>Living World Management</h4>
-<p>The world continues moving between sessions:</p>
-<ul>
-  <li><strong>NPC Actions</strong>: Major NPCs pursue goals regardless of PC involvement</li>
-  <li><strong>Faction Progress</strong>: Organizations advance their agendas</li>
-  <li><strong>Consequence Ripples</strong>: PC actions have ongoing effects</li>
-  <li><strong>Timeline Events</strong>: Scheduled events occur unless prevented</li>
-</ul>
+<h4>Health Check</h4>
+<p><strong>Green Flags:</strong> Players discuss game between sessions, reference past events, make long-term plans</p>
+<p><strong>Warning Signs:</strong> Aimless sessions, DM burnout, scattered focus, attendance issues</p>
 
-<h4>Campaign Health Indicators</h4>
-<p>Signs your campaign is thriving:</p>
-<ul>
-  <li>Players discuss the game between sessions</li>
-  <li>Character goals drive story direction</li>
-  <li>Past events get referenced naturally</li>
-  <li>Players make long-term plans</li>
-  <li>You're excited to prep each week</li>
-</ul>
-
-<h4>Warning Signs to Address</h4>
-<p>Issues to catch early:</p>
-<ul>
-  <li><strong>Aimless Sessions</strong>: Players unsure of objectives → Create clearer module goals</li>
-  <li><strong>DM Burnout</strong>: Prep feels like work → Take a break or run a one-shot</li>
-  <li><strong>Scattered Focus</strong>: Too many unrelated threads → Consolidate or resolve some</li>
-  <li><strong>Player Disengagement</strong>: Interest waning → Check in privately, adjust focus</li>
-  <li><strong>Attendance Issues</strong>: Regular cancellations → Address scheduling honestly</li>
-</ul>
-
-<h4>Sustainable Practices</h4>
-<ul>
-  <li><strong>Prep Limits</strong>: Never prep more than 2 sessions ahead</li>
-  <li><strong>Player Notes</strong>: Rotate who takes session notes</li>
-  <li><strong>Regular Check-ins</strong>: Monthly "how's the game?" discussions</li>
-  <li><strong>Flexible Scheduling</strong>: Build in skip weeks for holidays/life</li>
-  <li><strong>Document Everything</strong>: Future you will thank present you</li>
-</ul>
-
-<h4>Using the Module System</h4>
-<p>Each module follows the same lifecycle:</p>
-<ol>
-  <li><strong>Planning</strong>: Define concept, stakes, and scope</li>
-  <li><strong>Development</strong>: Create NPCs, locations, encounters</li>
-  <li><strong>Ready</strong>: Pressure test and finalize</li>
-  <li><strong>Active</strong>: Run sessions with weekly prep cycle</li>
-  <li><strong>Completed</strong>: Archive and mine for future content</li>
-</ol>
-
-<p class="integration-note">The best campaigns balance structure with flexibility. Use modules to maintain momentum while leaving room for player-driven stories. Remember: the campaign that reaches a satisfying conclusion is better than the perfect campaign that burns out.</p>"#
+<p class="integration-note">Remember: Sustainable pacing beats perfect preparation. Use the module system below to maintain structure while leaving room for emergent storytelling.</p>"#
                         .to_string()
                 ),
             },

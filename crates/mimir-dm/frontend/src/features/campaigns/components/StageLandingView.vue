@@ -6,16 +6,149 @@
       <p class="stage-subtitle"> Crystallize your campaign idea into a compelling one-page pitch that excites players.</p>
     </div>
 
-    <!-- Next Steps (shown at top when ready) -->
-    <div class="stage-transition-card" v-if="nextStageAvailable">
+    <!-- Next Steps (shown at top when ready, except for active/concluding stages) -->
+    <div class="stage-transition-card" v-if="nextStageAvailable && stage !== 'active' && stage !== 'concluding'">
       <h3>Ready for Next Stage!</h3>
       <p>{{ nextStagePrompt }}</p>
       <button class="btn btn-primary btn-large" @click="transitionToNextStage">
         Advance to {{ nextStageName }} →
       </button>
     </div>
-    <!-- Stage-Specific Content -->
-    <div class="stage-content-section">
+    <!-- Stage-Specific Content from Backend -->
+    <div class="stage-content-section" v-if="stageContent && stage !== 'active' && stage !== 'concluding'">
+      <div :class="`stage-${stage}`">
+        <div class="activity-section" v-html="stageContent"></div>
+      </div>
+    </div>
+    
+    <!-- Module Management for Active and Concluding stages -->
+    <div class="stage-content-section" v-else-if="stage === 'active' || stage === 'concluding'">
+      <!-- Always show module management UI first -->
+      <div v-if="stage === 'active'" class="campaign-dashboard">
+        <div class="modules-section">
+          <div class="section-header">
+            <h3>Modules</h3>
+            <button @click="showCreateModal = true" class="btn btn-primary">
+              New Module
+            </button>
+          </div>
+
+          <div v-if="modulesLoading" class="loading-state">
+            Loading modules...
+          </div>
+
+          <div v-else-if="modules.length === 0" class="empty-state">
+            <p>No modules yet. Create your first module to get started!</p>
+          </div>
+
+          <table v-else class="modules-table">
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Status</th>
+                <th>Sessions</th>
+                <th>Progress</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="module in modules" :key="module.id" class="module-row">
+                <td class="module-name">
+                  <strong>Module #{{ module.module_number }}:</strong> {{ module.name }}
+                </td>
+                <td>
+                  <span class="status-badge" :class="module.status">
+                    {{ module.status }}
+                  </span>
+                </td>
+                <td class="sessions-info">
+                  {{ module.actual_sessions || 0 }} / {{ module.planned_sessions }}
+                </td>
+                <td class="progress-cell">
+                  <span v-if="module.progress_percentage > 0" class="progress-percentage">
+                    {{ module.progress_percentage }}%
+                  </span>
+                  <span v-else class="no-progress">—</span>
+                </td>
+                <td class="actions-cell">
+                  <router-link :to="`/modules/${module.id}/board`" class="btn btn-ghost btn-small">
+                    View →
+                  </router-link>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Concluding stage module list -->
+      <div v-else-if="stage === 'concluding'" class="campaign-dashboard">
+        <div class="modules-section">
+          <div class="section-header">
+            <h3>Active Modules</h3>
+            <button @click="showCreateModal = true" class="btn btn-primary">
+              New Module
+            </button>
+          </div>
+
+          <div v-if="modulesLoading" class="loading-state">
+            Loading modules...
+          </div>
+
+          <div v-else-if="modules.length === 0" class="empty-state">
+            <p>No active modules.</p>
+          </div>
+
+          <table v-else class="modules-table">
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Status</th>
+                <th>Sessions</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="module in modules" :key="module.id">
+                <td class="module-name">
+                  <strong>Module #{{ module.module_number }}:</strong> {{ module.name }}
+                </td>
+                <td>
+                  <span class="status-badge" :class="module.status">
+                    {{ module.status }}
+                  </span>
+                </td>
+                <td class="sessions-info">
+                  {{ module.actual_sessions || 0 }} sessions
+                </td>
+                <td class="actions-cell">
+                  <router-link :to="`/modules/${module.id}/board`" class="btn btn-ghost btn-small">
+                    View →
+                  </router-link>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Show backend content after modules -->
+      <div v-if="stageContent" :class="`stage-${stage}`" class="mt-4">
+        <div class="activity-section" v-html="stageContent"></div>
+      </div>
+      
+      <!-- Stage transition at bottom for active/concluding stages -->
+      <div class="stage-transition-card mt-4" v-if="nextStageAvailable">
+        <h3>Ready for Next Stage!</h3>
+        <p>{{ nextStagePrompt }}</p>
+        <button class="btn btn-primary btn-large" @click="transitionToNextStage">
+          Advance to {{ nextStageName }} →
+        </button>
+      </div>
+    </div>
+    
+    <!-- Legacy Hard-coded Content (fallback for other stages) -->
+    <div class="stage-content-section" v-else>
       <!-- Concept Stage -->
       <div v-if="stage === 'concept'" class="stage-concept">
         <div class="activity-section">
@@ -304,9 +437,10 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Create Module Modal (shared between active and concluding stages) -->
-      <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+    <!-- Create Module Modal (shared between active and concluding stages) -->
+    <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
         <div class="modal-content">
           <h2>Create New Module</h2>
           <div class="form-group">
@@ -351,7 +485,6 @@
           </div>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
@@ -374,6 +507,9 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+
+// Stage content from backend
+const stageContent = ref<string>('')
 
 // Module state
 const modules = ref<any[]>([])
@@ -398,8 +534,35 @@ const stageInfo = computed(() => {
   }
 })
 
+// Load stage-specific content from backend
+async function loadStageContent() {
+  if (!props.boardConfig || !props.stage) return
+  
+  try {
+    // Get stage content from board config
+    const currentStageConfig = props.boardConfig.stages?.find((s: any) => s.key === props.stage)
+    
+    // Get content field
+    const content = (currentStageConfig as any)?.content
+    
+    if (content) {
+      stageContent.value = content
+    } else {
+      stageContent.value = ''
+    }
+  } catch (error) {
+    stageContent.value = ''
+  }
+}
+
+// Watch for stage changes
+watch(() => props.stage, async () => {
+  await loadStageContent()
+})
+
 // Initialize board configuration service on mount
 onMounted(async () => {
+  await loadStageContent()
   if (props.boardConfig && !boardConfigService.getBoardConfig('campaign')) {
     // Transform and cache the board config in the service
     const config = {
