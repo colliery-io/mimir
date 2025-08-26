@@ -394,90 +394,44 @@ impl BoardDefinition for CampaignBoard {
                 ),
                 help_text: None,
                 content: Some(
-                    r#"<h3>Campaign Concluding: Crafting the Finale</h3>
-<p>Your campaign is approaching its end. This is a special time—the culmination of months or years of shared storytelling. A well-crafted conclusion transforms a good campaign into an unforgettable legend.</p>
+                    r#"<h3>Phase 5: Campaign Conclusion</h3>
+<p>Your campaign is approaching its natural end. Following the Campaign Genesis framework, Phase 5 guides you through crafting a memorable finale.</p>
 
-<h4>Recognizing When to Conclude</h4>
-<p>Natural ending points include:</p>
+<h4>The 8-Session Countdown</h4>
+<p>Work backwards from your intended conclusion:</p>
 <ul>
-  <li><strong>Narrative Completion</strong>: Main antagonist defeated, quest fulfilled</li>
-  <li><strong>Character Arcs Resolved</strong>: PCs achieved or failed personal goals</li>
-  <li><strong>Natural Breaking Point</strong>: Players graduating, moving, life changes</li>
-  <li><strong>Energy Depletion</strong>: Better to end strong than fade away</li>
-  <li><strong>Story Escalation</strong>: Stakes can't meaningfully go higher</li>
+  <li><strong>8 sessions before</strong>: Announce the campaign is entering its final arc</li>
+  <li><strong>6 sessions before</strong>: Begin resolving secondary storylines</li>
+  <li><strong>4 sessions before</strong>: Focus entirely on the primary story arc</li>
+  <li><strong>2 sessions before</strong>: Set up the climactic confrontation</li>
+  <li><strong>Final session</strong>: The climax (consider extending to 5-6 hours)</li>
+  <li><strong>Epilogue session</strong>: Optional but recommended - jump forward in time</li>
 </ul>
 
-<h4>The Conclusion Timeline</h4>
-<p>Plan your ending 4-8 sessions in advance:</p>
+<h4>What Needs Resolution</h4>
+<p>From the documentation on campaign conclusions:</p>
 <ul>
-  <li><strong>T-8 sessions</strong>: Announce the campaign is concluding</li>
-  <li><strong>T-6 sessions</strong>: Begin resolving B and C plots</li>
-  <li><strong>T-4 sessions</strong>: Focus entirely on main arc</li>
-  <li><strong>T-2 sessions</strong>: Set up the finale</li>
-  <li><strong>T-0</strong>: The climactic session</li>
-  <li><strong>T+1</strong>: Epilogue session (optional but recommended)</li>
+  <li><strong>Must Resolve</strong>: Primary conflict, PC personal arcs, major NPCs, world changes</li>
+  <li><strong>Can Leave Open</strong>: Minor mysteries, secondary NPCs, sequel hooks</li>
 </ul>
 
-<h4>Resolving Story Threads</h4>
-<p>Not every thread needs resolution, but be intentional:</p>
+<h4>Designing Your Final Module</h4>
 <ul>
-  <li><strong>A-Plot</strong>: Must reach satisfying conclusion</li>
-  <li><strong>Character Arcs</strong>: Each PC gets personal resolution</li>
-  <li><strong>Major NPCs</strong>: Show their fates or final positions</li>
-  <li><strong>Minor Threads</strong>: Can remain open for sequel campaigns</li>
-  <li><strong>World Events</strong>: Show how PC actions changed things</li>
+  <li>Callback to earlier events and Session 1</li>
+  <li>Showcase how PCs have grown</li>
+  <li>Make it personal to the characters</li>
+  <li>Let player choices shape the ending</li>
 </ul>
 
-<h4>Designing the Final Module</h4>
-<p>Your last module should:</p>
+<h4>Common Pitfalls</h4>
 <ul>
-  <li><strong>Callback Earlier Events</strong>: NPCs return, old decisions matter</li>
-  <li><strong>Showcase Growth</strong>: Challenges that once threatened now manageable</li>
-  <li><strong>Personal Stakes</strong>: Make it about characters, not just the world</li>
-  <li><strong>Multiple Climaxes</strong>: Action climax, emotional climax, revelation climax</li>
-  <li><strong>Player Agency</strong>: Their choices determine the ending</li>
+  <li>Don't introduce new plot elements</li>
+  <li>Avoid deus ex machina - let PCs be the heroes</li>
+  <li>Don't rush - take the sessions you need</li>
+  <li>Remember: plot serves characters, not vice versa</li>
 </ul>
 
-<h4>The Climactic Session</h4>
-<p>Make the finale memorable:</p>
-<ul>
-  <li><strong>Extended Time</strong>: Consider running 5-6 hours instead of usual 4</li>
-  <li><strong>No Held Punches</strong>: Use everything—all resources, all stakes</li>
-  <li><strong>Callback Moments</strong>: Reference Session 1, early adventures</li>
-  <li><strong>Spotlight Rotation</strong>: Everyone gets hero moments</li>
-  <li><strong>Meaningful Consequences</strong>: Victory might require sacrifice</li>
-</ul>
-
-<h4>The Epilogue Session</h4>
-<p>Often the most memorable session:</p>
-<ul>
-  <li><strong>Time Skip</strong>: Jump forward months or years</li>
-  <li><strong>Character Futures</strong>: Each player describes their PC's fate</li>
-  <li><strong>World Changes</strong>: Show how their actions reshaped things</li>
-  <li><strong>Open Questions</strong>: Leave some mystery for imagination</li>
-  <li><strong>Emotional Closure</strong>: Celebrate the journey together</li>
-</ul>
-
-<h4>Common Finale Pitfalls</h4>
-<ul>
-  <li><strong>Introducing New Elements</strong>: Stick with established story</li>
-  <li><strong>Deus Ex Machina</strong>: Let PCs be the heroes</li>
-  <li><strong>Anticlimax</strong>: Don't overthink—trust your preparation</li>
-  <li><strong>Rushing</strong>: Take time needed for satisfying conclusion</li>
-  <li><strong>Ignoring Characters</strong>: Plot serves characters, not vice versa</li>
-</ul>
-
-<h4>Preserving the Campaign</h4>
-<p>While concluding, capture the campaign for posterity:</p>
-<ul>
-  <li><strong>Campaign Summary</strong>: Write 2-3 pages of highlights</li>
-  <li><strong>Character Epilogues</strong>: Document each PC's ending</li>
-  <li><strong>Memorable Quotes</strong>: That table joke that became canon</li>
-  <li><strong>Key Decisions</strong>: Major choices and consequences</li>
-  <li><strong>Photo Gallery</strong>: Screenshots, character art, maps</li>
-</ul>
-
-<p class="integration-note">A campaign conclusion is not just an ending—it's a transformation. Your players will carry these memories for years. Take time to craft an ending worthy of the journey you've shared. Some groups frame character sheets, others create photo books, many simply share one last meal together. Honor what you've built.</p>"#
+<p class="integration-note">See the full Phase 5 documentation for detailed guidance on preserving your campaign, running epilogue sessions, and transitioning to your next campaign.</p>"#
                         .to_string()
                 ),
             },
@@ -488,80 +442,37 @@ impl BoardDefinition for CampaignBoard {
                 transition_prompt: None,
                 help_text: None,
                 content: Some(
-                    r#"<h3>Campaign Complete: The Archive of Legends</h3>
-<p>Your campaign has reached its conclusion. The stories have been told, the dragons slain (or befriended), and the world forever changed by your players' actions. This archive preserves the memories and materials of your shared journey.</p>
+                    r#"<h3>Campaign Complete</h3>
+<p>Your campaign has reached its conclusion. This archive preserves all your campaign materials for future reference.</p>
 
 <h4>What's Preserved</h4>
-<p>Your complete campaign archive contains:</p>
 <ul>
-  <li><strong>All Modules</strong>: Every adventure from first to last</li>
-  <li><strong>Session Records</strong>: Notes and outcomes from actual play</li>
-  <li><strong>Character Documents</strong>: PC progression and story arcs</li>
-  <li><strong>World Materials</strong>: Maps, NPCs, factions, lore</li>
-  <li><strong>Campaign Bible</strong>: Your master reference document</li>
+  <li>All modules and adventures</li>
+  <li>Session notes and records</li>
+  <li>Character progression documents</li>
+  <li>World building materials</li>
+  <li>Campaign reference documents</li>
 </ul>
 
-<h4>Mining for Future Campaigns</h4>
-<p>This archive is a goldmine for future games:</p>
+<h4>Using This Archive</h4>
+<p>Your completed campaign materials can be:</p>
 <ul>
-  <li><strong>Successful Modules</strong>: Can be reskinned for new campaigns</li>
-  <li><strong>Beloved NPCs</strong>: Might appear in other worlds</li>
-  <li><strong>World Building</strong>: Locations and lore for sequel campaigns</li>
-  <li><strong>Lessons Learned</strong>: What worked, what didn't, what surprised you</li>
-  <li><strong>Player Preferences</strong>: Now you know what your group loves</li>
+  <li>Referenced for sequel campaigns in the same world</li>
+  <li>Mined for successful modules to reuse</li>
+  <li>Reviewed to understand what worked well</li>
+  <li>Shared with other DMs as examples</li>
 </ul>
 
-<h4>The Campaign Summary</h4>
-<p>Consider creating a brief campaign summary including:</p>
+<h4>Starting Your Next Campaign</h4>
+<p>When you're ready for a new campaign:</p>
 <ul>
-  <li><strong>The Premise</strong>: What was the campaign about?</li>
-  <li><strong>The Heroes</strong>: Who were the PCs and what did they achieve?</li>
-  <li><strong>Key Events</strong>: 5-10 major story moments</li>
-  <li><strong>The Ending</strong>: How did it all conclude?</li>
-  <li><strong>Campaign Stats</strong>: Sessions played, real-world duration, levels gained</li>
-</ul>
-
-<h4>Sequel Campaign Seeds</h4>
-<p>Elements that could spawn new campaigns:</p>
-<ul>
-  <li><strong>Unresolved Mysteries</strong>: Questions left deliberately open</li>
-  <li><strong>Next Generation</strong>: Children or students of the PCs</li>
-  <li><strong>Consequences</strong>: What happened because of PC actions?</li>
-  <li><strong>Different Perspective</strong>: Same events, different viewpoint</li>
-  <li><strong>The New Threat</strong>: What fills the power vacuum?</li>
-</ul>
-
-<h4>Sharing Your Campaign</h4>
-<p>Ways to share your completed campaign:</p>
-<ul>
-  <li><strong>Campaign Journal</strong>: Blog or document for players to revisit</li>
-  <li><strong>Module Library</strong>: Share successful adventures with other DMs</li>
-  <li><strong>Actual Play</strong>: If recorded, edit highlights for posterity</li>
-  <li><strong>Campaign Reunion</strong>: Annual one-shot returning to the world</li>
-  <li><strong>New Player Resource</strong>: "Previously, in our last campaign..."</li>
-</ul>
-
-<h4>Personal Reflection</h4>
-<p>Questions for your DM journey:</p>
-<ul>
-  <li>What moments made you proudest as a DM?</li>
-  <li>Which player actions surprised you most?</li>
-  <li>What would you do differently?</li>
-  <li>What will you carry forward to future campaigns?</li>
-  <li>Which memories will you treasure?</li>
-</ul>
-
-<h4>The Next Campaign</h4>
-<p>When you're ready to begin again:</p>
-<ul>
-  <li>Take a break first—let this campaign settle into memory</li>
+  <li>Take a break to let this campaign settle</li>
   <li>Discuss with players what they want next</li>
-  <li>Consider a different genre or system for variety</li>
-  <li>Apply lessons learned from this campaign</li>
-  <li>Start fresh with Phase 1: The Spark</li>
+  <li>Apply lessons learned from this experience</li>
+  <li>Begin fresh with a new Campaign Genesis process</li>
 </ul>
 
-<p class="integration-note">Completing a campaign is a rare achievement in tabletop gaming. Many campaigns start, but few reach meaningful conclusions. You've given your players something precious: a complete story with beginning, middle, and end. That shared narrative will bond your group forever, referenced in years to come with "Remember when..." Take a moment to appreciate what you've accomplished together.</p>"#
+<p class="integration-note">Completing a campaign is a significant achievement. Your shared story will be remembered and referenced for years to come.</p>"#
                         .to_string()
                 ),
             },

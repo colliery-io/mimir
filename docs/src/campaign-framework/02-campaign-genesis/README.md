@@ -12,9 +12,9 @@ Throughout these chapters, we'll build a complete campaign from scratch. You'll 
 
 **Our Example Campaign**: *The Ironhold Insurrection* - A dwarven city-state faces civil war as ancient clan rivalries explode into violence, while something stirs in the abandoned deeps below.
 
-## The Four Phases
+## The Five Phases
 
-The Campaign Genesis Process breaks down into four manageable phases:
+The Campaign Genesis Process breaks down into five manageable phases:
 
 ### [Phase 1: The Spark](./phase-1-spark.md) (Week 1)
 Transform your initial idea into a clear campaign concept:
@@ -48,13 +48,23 @@ Transform Session Zero results into your first adventure:
 - **Time**: 6-9 hours across a week
 - **Output**: Ready-to-run first session
 
+### [Phase 5: Campaign Conclusion](./phase-5-conclusion.md) (When Ready)
+Bring your campaign to a satisfying close:
+- Recognizing when to conclude
+- Planning the finale arc
+- Resolving story threads
+- **Time**: Planning happens across final 8 sessions
+- **Output**: Memorable ending and preserved campaign materials
+
 ## Total Investment
 
-The complete Campaign Genesis Process requires:
-- **Calendar Time**: 2-3 weeks
-- **Total Hours**: 20-30 hours
+The complete Campaign Genesis Process (Phases 1-4) requires:
+- **Calendar Time**: 2-3 weeks to launch
+- **Total Hours**: 20-30 hours for initial setup
 - **Daily Average**: 1-2 hours
 - **Peak Time**: Session Zero day (3-4 hours)
+
+Phase 5 (Conclusion) happens organically when your campaign reaches its natural end point.
 
 This investment creates:
 - Clear campaign vision and themes
