@@ -13,7 +13,9 @@ import type {
   OptionalFeatureSummary,
   DeitySummary,
   ObjectSummary,
-  DndObject
+  DndObject,
+  TrapSummary,
+  TrapOrHazard
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -286,6 +288,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectTrap(trap: TrapSummary) {
+    const fullTrap = await SearchService.getDetails({
+      name: trap.name,
+      source: trap.source,
+      type: 'trap'
+    }) as TrapOrHazard
+    
+    const { formatTrapDetails } = await import('../formatters/trapFormatter')
+    const formattedContent = await formatTrapDetails(fullTrap || trap)
+    modalStack.value.push({
+      visible: true,
+      title: trap.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -458,8 +476,19 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectOption,
     selectDeity,
     selectObject,
+    selectTrap,
     closeModal,
     handleReferenceClick,
-    initialize
+    initialize,
+    // Direct trap catalog functions
+    searchTraps: async (params: {
+      query?: string
+      sources?: string[]
+      categories?: string[]
+      trap_types?: string[]
+    }) => SearchService.searchTraps(params),
+    getTrapDetails: async (name: string, source: string) => 
+      SearchService.getTrapDetails(name, source),
+    getTrapTypes: async () => SearchService.getTrapTypes()
   }
 }

@@ -16,6 +16,7 @@ use commands::catalog_condition::{init_condition_catalog, search_conditions, get
 use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
 use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
 use commands::catalog_object::{init_object_catalog, search_objects, get_object_details, get_object_types};
+use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, get_trap_types};
 use services::database::DatabaseService;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
@@ -65,6 +66,7 @@ fn main() {
             let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
             let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
             let object_catalog = Mutex::new(commands::catalog_object::ObjectCatalog::new());
+            let trap_catalog = Mutex::new(commands::catalog_trap::TrapCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
@@ -77,6 +79,7 @@ fn main() {
             app.manage(optional_feature_catalog);
             app.manage(deity_catalog);
             app.manage(object_catalog);
+            app.manage(trap_catalog);
             
             Ok(())
         })
@@ -185,7 +188,12 @@ fn main() {
             init_object_catalog,
             search_objects,
             get_object_details,
-            get_object_types
+            get_object_types,
+            // Trap catalog commands
+            init_trap_catalog,
+            search_traps,
+            get_trap_details,
+            get_trap_types
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

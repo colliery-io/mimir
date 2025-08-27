@@ -20,6 +20,7 @@
       <option value="Options">Other Options & Features</option>
       <option value="Deities">Deities</option>
       <option value="Objects">Objects</option>
+      <option value="Traps & Hazards">Traps & Hazards</option>
     </select>
   </div>
 </template>

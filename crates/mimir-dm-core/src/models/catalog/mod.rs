@@ -15,6 +15,7 @@ pub mod object;
 pub mod optionalfeature;
 pub mod race;
 pub mod spell;
+pub mod trap;
 
 // Re-export commonly used types
 pub use class::{
@@ -51,3 +52,5 @@ pub use optionalfeature::{OptionalFeature, OptionalFeatureData, OptionalFeatureS
 pub use deity::{Deity, DeityData, DeitySummary};
 
 pub use object::{DndObject, ObjectData, ObjectSummary};
+
+pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary};

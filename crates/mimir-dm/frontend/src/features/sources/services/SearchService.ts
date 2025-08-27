@@ -12,7 +12,9 @@ import type {
   ConditionWithDetails,
   OptionalFeatureSummary,
   DeitySummary,
-  ObjectSummary
+  ObjectSummary,
+  TrapSummary,
+  TrapOrHazard
 } from '../composables/useCatalog'
 
 export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails, OptionalFeatureSummary }
@@ -49,7 +51,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap'
 }
 
 class SearchServiceClass {
@@ -93,6 +95,9 @@ class SearchServiceClass {
       case 'Objects':
         await this.catalog.initializeObjectCatalog()
         break
+      case 'Traps & Hazards':
+        await this.catalog.initializeTrapCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -127,6 +132,8 @@ class SearchServiceClass {
         return await this.searchDeities(query, sources)
       case 'Objects':
         return await this.searchObjects(query, sources)
+      case 'Traps & Hazards':
+        return await this.searchTraps({ query, sources })
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -262,6 +269,24 @@ class SearchServiceClass {
     return results
   }
   
+  async searchTraps(params: {
+    query?: string
+    sources?: string[]
+    categories?: string[]
+    trap_types?: string[]
+  }): Promise<TrapSummary[]> {
+    const results = await this.catalog.searchTraps(params)
+    return results
+  }
+  
+  async getTrapDetails(name: string, source: string): Promise<TrapOrHazard | null> {
+    return await this.catalog.getTrapDetails(name, source)
+  }
+  
+  async getTrapTypes(): Promise<string[]> {
+    return await this.catalog.getTrapTypes()
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -290,6 +315,8 @@ class SearchServiceClass {
         return await this.catalog.getDeityDetails(name, source)
       case 'object':
         return await this.catalog.getObjectDetails(name, source)
+      case 'trap':
+        return await this.catalog.getTrapDetails(name, source)
       default:
         return null
     }

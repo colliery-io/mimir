@@ -1,0 +1,128 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Trap {
+    pub name: String,
+    pub source: String,
+    pub page: Option<i32>,
+    
+    #[serde(rename = "trapHazType")]
+    pub trap_haz_type: Option<String>, // MECH, MAG, WLD, WTH, ENV
+    
+    pub entries: Option<Vec<serde_json::Value>>,
+    
+    pub srd: Option<bool>,
+    
+    #[serde(rename = "hasFluff")]
+    pub has_fluff: Option<bool>,
+    
+    #[serde(rename = "hasFluffImages")]
+    pub has_fluff_images: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hazard {
+    pub name: String,
+    pub source: String,
+    pub page: Option<i32>,
+    
+    #[serde(rename = "trapHazType")]
+    pub trap_haz_type: Option<String>, // MECH, MAG, WLD, WTH, ENV
+    
+    pub entries: Option<Vec<serde_json::Value>>,
+    
+    pub srd: Option<bool>,
+    
+    #[serde(rename = "hasFluff")]
+    pub has_fluff: Option<bool>,
+    
+    #[serde(rename = "hasFluffImages")]
+    pub has_fluff_images: Option<bool>,
+}
+
+// Combined type for unified handling
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TrapOrHazard {
+    Trap(Trap),
+    Hazard(Hazard),
+}
+
+impl TrapOrHazard {
+    pub fn name(&self) -> &str {
+        match self {
+            TrapOrHazard::Trap(t) => &t.name,
+            TrapOrHazard::Hazard(h) => &h.name,
+        }
+    }
+    
+    pub fn source(&self) -> &str {
+        match self {
+            TrapOrHazard::Trap(t) => &t.source,
+            TrapOrHazard::Hazard(h) => &h.source,
+        }
+    }
+    
+    pub fn trap_haz_type(&self) -> Option<&String> {
+        match self {
+            TrapOrHazard::Trap(t) => t.trap_haz_type.as_ref(),
+            TrapOrHazard::Hazard(h) => h.trap_haz_type.as_ref(),
+        }
+    }
+    
+    pub fn is_trap(&self) -> bool {
+        matches!(self, TrapOrHazard::Trap(_))
+    }
+    
+    pub fn is_srd(&self) -> bool {
+        match self {
+            TrapOrHazard::Trap(t) => t.srd.unwrap_or(false),
+            TrapOrHazard::Hazard(h) => h.srd.unwrap_or(false),
+        }
+    }
+}
+
+// Summary for list views
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrapSummary {
+    pub name: String,
+    pub source: String,
+    pub trap_type: String,
+    pub category: String,
+    pub is_srd: bool,
+}
+
+impl From<&TrapOrHazard> for TrapSummary {
+    fn from(item: &TrapOrHazard) -> Self {
+        Self {
+            name: item.name().to_string(),
+            source: item.source().to_string(),
+            trap_type: format_trap_type(item.trap_haz_type()),
+            category: if item.is_trap() { "Trap".to_string() } else { "Hazard".to_string() },
+            is_srd: item.is_srd(),
+        }
+    }
+}
+
+fn format_trap_type(trap_type: Option<&String>) -> String {
+    match trap_type.map(|s| s.as_str()) {
+        Some("MECH") => "Mechanical".to_string(),
+        Some("MAG") => "Magical".to_string(),
+        Some("WLD") => "Wilderness".to_string(),
+        Some("WTH") => "Weather".to_string(),
+        Some("ENV") => "Environmental".to_string(),
+        Some(other) => other.to_string(),
+        None => "Unknown".to_string(),
+    }
+}
+
+// Container for JSON parsing
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TrapData {
+    pub trap: Option<Vec<Trap>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HazardData {
+    pub hazard: Option<Vec<Hazard>>,
+}

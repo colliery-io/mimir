@@ -114,6 +114,16 @@
       @sort="$emit('sort', $event)"
     />
     
+    <TrapTable
+      v-else-if="category === 'Traps & Hazards'"
+      :traps="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
+      @select="$emit('select-trap', $event)"
+      @sort="$emit('sort', $event)"
+    />
+    
     <div v-else class="placeholder-message">
       {{ category }} catalog coming soon...
     </div>
@@ -133,6 +143,7 @@ import ConditionTable from './ConditionTable.vue'
 import OptionsTable from './OptionsTable.vue'
 import DeityTable from './DeityTable.vue'
 import ObjectTable from './ObjectTable.vue'
+import TrapTable from './TrapTable.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -145,7 +156,8 @@ import type {
   ConditionSummary,
   OptionalFeatureSummary,
   DeitySummary,
-  ObjectSummary
+  ObjectSummary,
+  TrapSummary
 } from '../../composables/useCatalog'
 
 interface Props {
@@ -178,6 +190,7 @@ defineEmits<{
   'select-option': [option: OptionalFeatureSummary]
   'select-deity': [deity: DeitySummary]
   'select-object': [obj: ObjectSummary]
+  'select-trap': [trap: TrapSummary]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()
