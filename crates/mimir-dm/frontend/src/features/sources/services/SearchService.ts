@@ -57,7 +57,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule' | 'vehicle'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule' | 'vehicle' | 'cult' | 'boon'
 }
 
 class SearchServiceClass {
@@ -119,6 +119,9 @@ class SearchServiceClass {
       case 'Vehicles':
         await this.catalog.initializeVehicleCatalog()
         break
+      case 'Cults & Boons':
+        await this.catalog.initializeCultCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -165,6 +168,8 @@ class SearchServiceClass {
         return await this.searchVariantRules({ query, sources })
       case 'Vehicles':
         return await this.searchVehicles({ query, sources })
+      case 'Cults & Boons':
+        return await this.searchCults({ query, sources })
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -433,6 +438,32 @@ class SearchServiceClass {
     return await this.catalog.getVehicleSources()
   }
   
+  async searchCults(params: {
+    query?: string
+    item_types?: string[]
+    subtypes?: string[]
+    sources?: string[]
+  }): Promise<any[]> {
+    const results = await this.catalog.searchCults(params)
+    return results
+  }
+  
+  async getCultDetails(name: string, source: string): Promise<any> {
+    return await this.catalog.getCultDetails(name, source)
+  }
+  
+  async getBoonDetails(name: string, source: string): Promise<any> {
+    return await this.catalog.getBoonDetails(name, source)
+  }
+  
+  async getCultTypes(): Promise<string[]> {
+    return await this.catalog.getCultTypes()
+  }
+  
+  async getCultSources(): Promise<string[]> {
+    return await this.catalog.getCultSources()
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -473,6 +504,10 @@ class SearchServiceClass {
         return await this.catalog.getVariantRuleDetails(name, source)
       case 'vehicle':
         return await this.catalog.getVehicleDetails(name, source)
+      case 'cult':
+        return await this.catalog.getCultDetails(name, source)
+      case 'boon':
+        return await this.catalog.getBoonDetails(name, source)
       default:
         return null
     }

@@ -439,6 +439,35 @@ export interface VariantRuleSummary {
   page?: number
 }
 
+export interface CultBoonSummary {
+  name: string
+  source: string
+  item_type: string // "cult" or "boon"
+  subtype?: string
+  page?: number
+}
+
+export interface Cult {
+  name: string
+  source: string
+  cult_type?: string
+  page?: number
+  entries?: any[]
+  cultists?: { entry: string }
+  goal?: { entry: string }
+  signature_spells?: { entry: string }
+}
+
+export interface Boon {
+  name: string
+  source: string
+  boon_type?: string
+  page?: number
+  entries?: any[]
+  ability?: { entry: string }
+  signature_spells?: { entry: string }
+}
+
 export interface Vehicle {
   name: string
   source: string
@@ -1665,6 +1694,69 @@ export function useCatalog() {
         return sources || []
       } catch (e) {
         console.error(`Failed to get vehicle sources: ${e}`)
+        return []
+      }
+    },
+    // Cult & Boon catalog methods
+    initializeCultCatalog: async () => {
+      try {
+        await invoke('init_cult_catalog')
+      } catch (e) {
+        console.error(`Failed to initialize cult catalog: ${e}`)
+      }
+    },
+    searchCults: async (filters: {
+      query?: string
+      item_types?: string[]
+      subtypes?: string[]
+      sources?: string[]
+    }): Promise<CultBoonSummary[]> => {
+      try {
+        const results = await invoke<CultBoonSummary[]>('search_cults', {
+          query: filters.query || null,
+          item_types: filters.item_types || null,
+          subtypes: filters.subtypes || null,
+          sources: filters.sources || null
+        })
+        return results || []
+      } catch (e) {
+        console.error(`Failed to search cults: ${e}`)
+        return []
+      }
+    },
+    getCultDetails: async (name: string, source: string): Promise<Cult | null> => {
+      try {
+        const details = await invoke<Cult>('get_cult_details', { name, source })
+        return details
+      } catch (e) {
+        console.error(`Failed to get cult details: ${e}`)
+        return null
+      }
+    },
+    getBoonDetails: async (name: string, source: string): Promise<Boon | null> => {
+      try {
+        const details = await invoke<Boon>('get_boon_details', { name, source })
+        return details
+      } catch (e) {
+        console.error(`Failed to get boon details: ${e}`)
+        return null
+      }
+    },
+    getCultTypes: async (): Promise<string[]> => {
+      try {
+        const types = await invoke<string[]>('get_cult_types')
+        return types || []
+      } catch (e) {
+        console.error(`Failed to get cult types: ${e}`)
+        return []
+      }
+    },
+    getCultSources: async (): Promise<string[]> => {
+      try {
+        const sources = await invoke<string[]>('get_cult_sources')
+        return sources || []
+      } catch (e) {
+        console.error(`Failed to get cult sources: ${e}`)
         return []
       }
     }

@@ -21,6 +21,7 @@ pub mod reward;
 pub mod table;
 pub mod variant_rule;
 pub mod vehicle;
+pub mod cult;
 
 // Re-export commonly used types
 pub use class::{
@@ -69,3 +70,5 @@ pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData};
 pub use variant_rule::{VariantRule, VariantRuleData, VariantRuleSummary};
 
 pub use vehicle::{Vehicle, VehicleData, VehicleSummary, VehicleWeapon, Speed as VehicleSpeed};
+
+pub use cult::{Cult, CultData, Boon, BoonData, CultBoonSummary};

@@ -25,6 +25,7 @@ pub mod catalog_reward;
 pub mod catalog_table;
 pub mod catalog_variant_rule;
 pub mod catalog_vehicle;
+pub mod catalog_cult;
 
 pub use campaigns::*;
 pub use app_info::*;

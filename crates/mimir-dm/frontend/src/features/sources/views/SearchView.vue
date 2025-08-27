@@ -57,6 +57,7 @@
           @select-table="selectTable"
           @select-variant-rule="selectVariantRule"
           @select-vehicle="selectVehicle"
+          @select-cult="selectCult"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -125,6 +126,7 @@ const {
   selectTable,
   selectVariantRule,
   selectVehicle,
+  selectCult,
   closeModal,
   handleReferenceClick,
   initialize

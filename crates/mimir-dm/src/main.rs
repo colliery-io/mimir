@@ -96,6 +96,9 @@ fn main() {
             let vehicle_catalog = std::sync::Mutex::new(commands::catalog_vehicle::VehicleCatalog::new());
             app.manage(vehicle_catalog);
             
+            let cult_catalog = std::sync::Mutex::new(commands::catalog_cult::CultCatalog::new());
+            app.manage(cult_catalog);
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -239,7 +242,14 @@ fn main() {
             commands::catalog_vehicle::get_vehicle_details,
             commands::catalog_vehicle::get_vehicle_types,
             commands::catalog_vehicle::get_vehicle_terrains,
-            commands::catalog_vehicle::get_vehicle_sources
+            commands::catalog_vehicle::get_vehicle_sources,
+            // Cult catalog commands
+            commands::catalog_cult::init_cult_catalog,
+            commands::catalog_cult::search_cults,
+            commands::catalog_cult::get_cult_details,
+            commands::catalog_cult::get_boon_details,
+            commands::catalog_cult::get_cult_types,
+            commands::catalog_cult::get_cult_sources
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

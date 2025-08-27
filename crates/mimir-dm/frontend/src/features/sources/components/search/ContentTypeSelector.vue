@@ -26,6 +26,7 @@
       <option value="Tables">Tables</option>
       <option value="Variant Rules">Variant Rules</option>
       <option value="Vehicles">Vehicles</option>
+      <option value="Cults & Boons">Cults & Boons</option>
     </select>
   </div>
 </template>

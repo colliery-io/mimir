@@ -390,6 +390,35 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectCult(item: any) {
+    let details: any
+    let formattedContent: string
+    
+    if (item.item_type === 'cult') {
+      details = await SearchService.getDetails({
+        name: item.name,
+        source: item.source,
+        type: 'cult'
+      })
+      const { formatCultDetails } = await import('../formatters/cultFormatter')
+      formattedContent = formatCultDetails(details || item)
+    } else {
+      details = await SearchService.getDetails({
+        name: item.name,
+        source: item.source,
+        type: 'boon'
+      })
+      const { formatBoonDetails } = await import('../formatters/cultFormatter')
+      formattedContent = formatBoonDetails(details || item)
+    }
+    
+    modalStack.value.push({
+      visible: true,
+      title: item.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -569,6 +598,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectTable,
     selectVariantRule,
     selectVehicle,
+    selectCult,
     closeModal,
     handleReferenceClick,
     initialize,
