@@ -10,6 +10,7 @@ mod types;
 
 use app_init::{initialize_app, AppPaths};
 use commands::*;
+use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details};
 use services::database::DatabaseService;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
@@ -53,12 +54,14 @@ fn main() {
             let class_catalog = Mutex::new(commands::catalog_class::ClassCatalog::new());
             let feat_catalog = Mutex::new(commands::catalog_feat::FeatCatalog::new());
             let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
+            let background_catalog = Mutex::new(commands::catalog_background::BackgroundCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
             app.manage(class_catalog);
             app.manage(feat_catalog);
             app.manage(race_catalog);
+            app.manage(background_catalog);
             
             Ok(())
         })
@@ -137,9 +140,13 @@ fn main() {
             get_feat_details,
             get_feat_sources,
             // Race catalog commands
-            initialize_race_catalog,
+            init_race_catalog,
             search_races,
-            get_race_details
+            get_race_details,
+            // Background catalog commands
+            init_background_catalog,
+            search_backgrounds,
+            get_background_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

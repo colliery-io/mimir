@@ -6,7 +6,8 @@ import type {
   MonsterSummary,
   ClassSummary,
   FeatSummary,
-  RaceSummary
+  RaceSummary,
+  BackgroundSummary
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -14,6 +15,7 @@ import { formatMonsterDetails } from '../formatters/monsterFormatterEnhanced'
 import { formatClassDetails } from '../formatters/classFormatterEnhanced'
 import { formatFeatDetails } from '../formatters/featFormatter'
 import { formatRaceDetails } from '../formatters/raceFormatter'
+import { formatBackgroundDetails } from '../formatters/backgroundFormatter'
 
 export function useSearch(initialCategory: string, selectedSources: string[]) {
   const selectedCategory = ref(initialCategory)
@@ -179,6 +181,21 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     modalStack.value.push({
       visible: true,
       title: race.name,
+      content: formattedContent
+    })
+  }
+  
+  async function selectBackground(background: BackgroundSummary) {
+    const fullBackground = await SearchService.getDetails({
+      name: background.name,
+      source: background.source,
+      type: 'background'
+    })
+    
+    const formattedContent = await formatBackgroundDetails(fullBackground || background)
+    modalStack.value.push({
+      visible: true,
+      title: background.name,
       content: formattedContent
     })
   }
@@ -349,6 +366,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectClass,
     selectFeat,
     selectRace,
+    selectBackground,
     closeModal,
     handleReferenceClick,
     initialize

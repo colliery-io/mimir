@@ -66,6 +66,12 @@
       @select="$emit('select-race', $event)"
     />
     
+    <BackgroundTable
+      v-else-if="category === 'Backgrounds'"
+      :backgrounds="results"
+      @select="$emit('select-background', $event)"
+    />
+    
     <div v-else class="placeholder-message">
       {{ category }} catalog coming soon...
     </div>
@@ -79,13 +85,15 @@ import MonsterTable from './MonsterTable.vue'
 import ClassTable from './ClassTable.vue'
 import FeatTable from './FeatTable.vue'
 import RaceTable from './RaceTable.vue'
+import BackgroundTable from './BackgroundTable.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
   MonsterSummary,
   ClassSummary,
   FeatSummary,
-  RaceSummary
+  RaceSummary,
+  BackgroundSummary
 } from '../../composables/useCatalog'
 
 interface Props {
@@ -112,6 +120,7 @@ defineEmits<{
   'select-class': [classItem: ClassSummary]
   'select-feat': [feat: FeatSummary]
   'select-race': [race: RaceSummary]
+  'select-background': [background: BackgroundSummary]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()

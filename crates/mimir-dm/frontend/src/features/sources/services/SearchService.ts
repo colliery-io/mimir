@@ -5,8 +5,11 @@ import type {
   MonsterSummary,
   ClassSummary,
   FeatSummary,
-  RaceSummary
+  RaceSummary,
+  BackgroundSummary
 } from '../composables/useCatalog'
+
+export type { BackgroundSummary }
 
 export interface SearchFilters {
   spells: {
@@ -40,7 +43,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background'
 }
 
 class SearchServiceClass {
@@ -66,6 +69,9 @@ class SearchServiceClass {
         await this.catalog.initializeRaceCatalog()
         console.log('Race catalog initialized')
         break
+      case 'Backgrounds':
+        await this.catalog.initializeBackgroundCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -88,6 +94,8 @@ class SearchServiceClass {
         return await this.searchClasses(query)
       case 'Races':
         return await this.searchRaces(query, sources)
+      case 'Backgrounds':
+        return await this.searchBackgrounds(query, sources)
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -175,6 +183,14 @@ class SearchServiceClass {
     return results
   }
   
+  private async searchBackgrounds(query?: string, sources?: string[]): Promise<BackgroundSummary[]> {
+    const results = await this.catalog.searchBackgrounds({
+      query: query || undefined,
+      sources: sources || undefined
+    })
+    return results
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -191,6 +207,8 @@ class SearchServiceClass {
         return await this.catalog.getFeatDetails(name, source)
       case 'race':
         return await this.catalog.getRaceDetails(name, source)
+      case 'background':
+        return await this.catalog.getBackgroundDetails(name, source)
       default:
         return null
     }

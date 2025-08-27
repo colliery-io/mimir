@@ -361,7 +361,7 @@ pub struct RaceWithDetails {
 
 /// Initialize the race catalog by loading data from the books directory
 #[tauri::command]
-pub async fn initialize_race_catalog(
+pub async fn init_race_catalog(
     catalog: State<'_, std::sync::Mutex<RaceCatalog>>
 ) -> Result<(), String> {
     use crate::APP_PATHS;
