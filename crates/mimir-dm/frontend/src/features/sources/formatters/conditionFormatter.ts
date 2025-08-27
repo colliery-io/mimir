@@ -30,16 +30,47 @@ function formatConditionSummary(summary: ConditionSummary): string {
 }
 
 export function formatConditionDetails(details: ConditionWithDetails | ConditionSummary): string {
+  
   // Check if this is summary data (has item_type field)
   if ('item_type' in details) {
     return formatConditionSummary(details as ConditionSummary)
   }
   
-  // With flatten, the structure is { type: "Condition", Condition: {...} } or { type: "Disease", Disease: {...} }
-  const itemType = (details as any).type
-  const item = itemType === 'Condition' 
-    ? (details as any).Condition 
-    : (details as any).Disease
+  // Check the actual structure - maybe it's wrapped differently
+  let item = null
+  let itemType = null
+  
+  // Try the expected structure first
+  if ('type' in details) {
+    itemType = (details as any).type
+    if (itemType === 'Condition' && 'Condition' in details) {
+      item = (details as any).Condition
+    } else if (itemType === 'Disease' && 'Disease' in details) {
+      item = (details as any).Disease
+    }
+  }
+  
+  // If that didn't work, check if item is nested under 'item'
+  if (!item && 'item' in details) {
+    const wrapper = (details as any).item
+    if (wrapper && typeof wrapper === 'object') {
+      if ('type' in wrapper) {
+        itemType = wrapper.type
+        item = wrapper[itemType] // Try wrapper.Condition or wrapper.Disease
+      }
+      // Or maybe the whole wrapper is the item
+      if (!item && 'name' in wrapper && 'entries' in wrapper) {
+        item = wrapper
+        itemType = wrapper.type || 'Condition'
+      }
+    }
+  }
+  
+  // Last resort - maybe details itself is the item
+  if (!item && 'name' in details && 'entries' in details) {
+    item = details
+    itemType = (details as any).type || 'Condition'
+  }
 
   if (!item || !itemType) {
     // Fallback for unexpected structure
@@ -69,8 +100,8 @@ export function formatConditionDetails(details: ConditionWithDetails | Condition
   html += '</div>'
   
   // Main description/entries
-  if (item.entries && item.entries.length > 0) {
-    html += '<div class="condition-description">'
+  html += '<div class="condition-description">'
+  if (item && item.entries && item.entries.length > 0) {
     for (const entry of item.entries) {
       if (typeof entry === 'string') {
         html += `<p>${processFormattingTags(entry)}</p>`
@@ -148,8 +179,15 @@ export function formatConditionDetails(details: ConditionWithDetails | Condition
         }
       }
     }
-    html += '</div>'
+  } else {
+    // No entries found - show what we have
+    if ((details as any).description) {
+      html += `<p>${processFormattingTags((details as any).description)}</p>`
+    } else {
+      html += '<p><em>No description available</em></p>'
+    }
   }
+  html += '</div>'
   
   // Fluff/lore if available
   const fluff = (details as any).fluff
