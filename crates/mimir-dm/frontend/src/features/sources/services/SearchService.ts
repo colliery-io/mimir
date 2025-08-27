@@ -11,7 +11,8 @@ import type {
   ConditionSummary,
   ConditionWithDetails,
   OptionalFeatureSummary,
-  DeitySummary
+  DeitySummary,
+  ObjectSummary
 } from '../composables/useCatalog'
 
 export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails, OptionalFeatureSummary }
@@ -48,7 +49,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object'
 }
 
 class SearchServiceClass {
@@ -89,6 +90,9 @@ class SearchServiceClass {
       case 'Deities':
         await this.catalog.initializeDeityCatalog()
         break
+      case 'Objects':
+        await this.catalog.initializeObjectCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -121,6 +125,8 @@ class SearchServiceClass {
         return await this.searchOptionalFeatures(query, sources)
       case 'Deities':
         return await this.searchDeities(query, sources)
+      case 'Objects':
+        return await this.searchObjects(query, sources)
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -248,6 +254,14 @@ class SearchServiceClass {
     return results
   }
   
+  private async searchObjects(query?: string, sources?: string[]): Promise<ObjectSummary[]> {
+    const results = await this.catalog.searchObjects({
+      query: query || undefined,
+      sources: sources || undefined
+    })
+    return results
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -274,6 +288,8 @@ class SearchServiceClass {
         return await this.catalog.getOptionalFeatureDetails(name, source)
       case 'deity':
         return await this.catalog.getDeityDetails(name, source)
+      case 'object':
+        return await this.catalog.getObjectDetails(name, source)
       default:
         return null
     }

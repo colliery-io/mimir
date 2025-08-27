@@ -11,6 +11,7 @@ pub mod deity;
 pub mod feat;
 pub mod item;
 pub mod monster;
+pub mod object;
 pub mod optionalfeature;
 pub mod race;
 pub mod spell;
@@ -48,3 +49,5 @@ pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSum
 pub use optionalfeature::{OptionalFeature, OptionalFeatureData, OptionalFeatureSummary};
 
 pub use deity::{Deity, DeityData, DeitySummary};
+
+pub use object::{DndObject, ObjectData, ObjectSummary};

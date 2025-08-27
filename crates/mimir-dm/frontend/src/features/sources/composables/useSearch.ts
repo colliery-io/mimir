@@ -11,7 +11,9 @@ import type {
   ActionSummary,
   ConditionSummary,
   OptionalFeatureSummary,
-  DeitySummary
+  DeitySummary,
+  ObjectSummary,
+  DndObject
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -268,6 +270,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectObject(obj: ObjectSummary) {
+    const fullObject = await SearchService.getDetails({
+      name: obj.name,
+      source: obj.source,
+      type: 'object'
+    }) as DndObject
+    
+    const { formatObjectDetails } = await import('../formatters/objectFormatter')
+    const formattedContent = await formatObjectDetails(fullObject || obj)
+    modalStack.value.push({
+      visible: true,
+      title: obj.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -439,6 +457,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectCondition,
     selectOption,
     selectDeity,
+    selectObject,
     closeModal,
     handleReferenceClick,
     initialize

@@ -19,6 +19,7 @@
       <option value="Feats">Feats</option>
       <option value="Options">Other Options & Features</option>
       <option value="Deities">Deities</option>
+      <option value="Objects">Objects</option>
     </select>
   </div>
 </template>
