@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::fs;
 use tauri::State;
 use serde_json;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, info, warn};
 use mimir_dm_core::models::catalog::{
     Class, ClassData, ClassSummary,
     Subclass, ClassFeature, SubclassFeature,

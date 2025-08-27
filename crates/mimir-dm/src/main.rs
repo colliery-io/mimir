@@ -10,6 +10,7 @@ mod types;
 
 use app_init::{initialize_app, AppPaths};
 use commands::*;
+use commands::catalog_action::{init_action_catalog, search_actions, get_action_details};
 use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details};
 use services::database::DatabaseService;
 use std::sync::{Arc, OnceLock, Mutex};
@@ -55,6 +56,7 @@ fn main() {
             let feat_catalog = Mutex::new(commands::catalog_feat::FeatCatalog::new());
             let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
             let background_catalog = Mutex::new(commands::catalog_background::BackgroundCatalog::new());
+            let action_catalog = Mutex::new(commands::catalog_action::ActionCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
@@ -62,6 +64,7 @@ fn main() {
             app.manage(feat_catalog);
             app.manage(race_catalog);
             app.manage(background_catalog);
+            app.manage(action_catalog);
             
             Ok(())
         })
@@ -146,7 +149,11 @@ fn main() {
             // Background catalog commands
             init_background_catalog,
             search_backgrounds,
-            get_background_details
+            get_background_details,
+            // Action catalog commands
+            init_action_catalog,
+            search_actions,
+            get_action_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

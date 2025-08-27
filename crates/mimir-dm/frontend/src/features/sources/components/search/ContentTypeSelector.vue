@@ -14,6 +14,7 @@
       <option value="Classes">Classes</option>
       <option value="Races">Races</option>
       <option value="Backgrounds">Backgrounds</option>
+      <option value="Actions">Actions</option>
       <option value="Feats">Feats</option>
     </select>
   </div>

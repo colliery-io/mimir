@@ -466,7 +466,7 @@ impl MonsterCatalog {
                         match fs::read_to_string(&bestiary_file) {
                             Ok(content) => {
                                 match serde_json::from_str::<MonsterData>(&content) {
-                                    Ok(mut monster_data) => {
+                                    Ok(monster_data) => {
                                         debug!("Loaded {} monsters from {}/{}", 
                                                 monster_data.monster.len(), book_id, filename);
                                         

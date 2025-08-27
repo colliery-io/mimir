@@ -3,6 +3,7 @@
 //! This module contains all the data structures for static game content
 //! like spells, items, monsters, classes, and more.
 
+pub mod action;
 pub mod background;
 pub mod class;
 pub mod feat;
@@ -36,3 +37,5 @@ pub use feat::{Feat, FeatData, FeatSummary};
 pub use race::{Race, RaceData, RaceSummary, Subrace, RaceFluff, RaceFluffData};
 
 pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFluff, BackgroundFluffData, BackgroundWithDetails};
+
+pub use action::{Action, ActionData, ActionSummary};

@@ -6,10 +6,11 @@ import type {
   ClassSummary,
   FeatSummary,
   RaceSummary,
-  BackgroundSummary
+  BackgroundSummary,
+  ActionSummary
 } from '../composables/useCatalog'
 
-export type { BackgroundSummary }
+export type { BackgroundSummary, ActionSummary }
 
 export interface SearchFilters {
   spells: {
@@ -43,7 +44,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action'
 }
 
 class SearchServiceClass {
@@ -72,6 +73,9 @@ class SearchServiceClass {
       case 'Backgrounds':
         await this.catalog.initializeBackgroundCatalog()
         break
+      case 'Actions':
+        await this.catalog.initializeActionCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -96,6 +100,8 @@ class SearchServiceClass {
         return await this.searchRaces(query, sources)
       case 'Backgrounds':
         return await this.searchBackgrounds(query, sources)
+      case 'Actions':
+        return await this.searchActions(query, sources)
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -191,6 +197,14 @@ class SearchServiceClass {
     return results
   }
   
+  private async searchActions(query?: string, sources?: string[]): Promise<ActionSummary[]> {
+    const results = await this.catalog.searchActions({
+      query: query || undefined,
+      sources: sources || undefined
+    })
+    return results
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -209,6 +223,8 @@ class SearchServiceClass {
         return await this.catalog.getRaceDetails(name, source)
       case 'background':
         return await this.catalog.getBackgroundDetails(name, source)
+      case 'action':
+        return await this.catalog.getActionDetails(name, source)
       default:
         return null
     }

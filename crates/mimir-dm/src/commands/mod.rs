@@ -12,6 +12,7 @@ pub mod dev_tools;
 pub mod catalog;
 pub mod catalog_class;
 pub mod catalog_feat;
+pub mod catalog_action;
 pub mod catalog_background;
 pub mod catalog_race;
 

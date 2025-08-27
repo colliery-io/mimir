@@ -7,7 +7,8 @@ import type {
   ClassSummary,
   FeatSummary,
   RaceSummary,
-  BackgroundSummary
+  BackgroundSummary,
+  ActionSummary
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -16,6 +17,7 @@ import { formatClassDetails } from '../formatters/classFormatterEnhanced'
 import { formatFeatDetails } from '../formatters/featFormatter'
 import { formatRaceDetails } from '../formatters/raceFormatter'
 import { formatBackgroundDetails } from '../formatters/backgroundFormatter'
+import { formatActionDetails } from '../formatters/actionFormatter'
 
 export function useSearch(initialCategory: string, selectedSources: string[]) {
   const selectedCategory = ref(initialCategory)
@@ -200,6 +202,21 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectAction(action: ActionSummary) {
+    const fullAction = await SearchService.getDetails({
+      name: action.name,
+      source: action.source,
+      type: 'action'
+    })
+    
+    const formattedContent = await formatActionDetails(fullAction || action)
+    modalStack.value.push({
+      visible: true,
+      title: action.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -367,6 +384,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectFeat,
     selectRace,
     selectBackground,
+    selectAction,
     closeModal,
     handleReferenceClick,
     initialize
