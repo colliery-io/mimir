@@ -45,15 +45,15 @@ export function processFormattingTags(text: string | any): string {
     .replace(/{@spell ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
       const displayName = name
       const actualSource = source || 'PHB'
-      return `<span class="spell-ref clickable" data-ref-type="spell" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+      return `<a href="#" class="reference-link" data-ref-type="spell" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</a>`
     })
     
   // Items - make them clickable
   processed = processed
-    .replace(/{@item ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
-      const displayName = name
+    .replace(/{@item ([^|}]+)(?:\|([^|}]+))?(?:\|([^}]*))?}/gi, (match, name, source, displayText) => {
+      const displayName = displayText || name
       const actualSource = source || 'PHB'
-      return `<span class="item-ref clickable" data-ref-type="item" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+      return `<a href="#" class="reference-link" data-ref-type="item" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</a>`
     })
     
   // Item entry references - these reference the description of another item
@@ -70,18 +70,26 @@ export function processFormattingTags(text: string | any): string {
     
   // Creatures - make them clickable
   processed = processed
-    .replace(/{@creature ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
-      const displayName = name
+    .replace(/{@creature ([^|}]+)(?:\|([^|}]+))?(?:\|([^}]*))?}/gi, (match, name, source, displayText) => {
+      const displayName = displayText || name
       const actualSource = source || 'MM'
-      return `<span class="creature-ref clickable" data-ref-type="creature" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+      return `<a href="#" class="reference-link" data-ref-type="creature" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</a>`
+    })
+    
+  // Races - make them clickable
+  processed = processed
+    .replace(/{@race ([^|}]+)(?:\|([^|}]+))?(?:\|([^}]*))?}/gi, (match, name, source, displayText) => {
+      const displayName = displayText || name
+      const actualSource = source || 'PHB'
+      return `<a href="#" class="reference-link" data-ref-type="race" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</a>`
     })
     
   // Classes and features - make them clickable
   processed = processed
-    .replace(/{@class ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
-      const displayName = name
+    .replace(/{@class ([^|}]+)(?:\|([^|}]+))?(?:\|([^}]*))?}/gi, (match, name, source, displayText) => {
+      const displayName = displayText || name
       const actualSource = source || 'PHB'
-      return `<span class="class-ref clickable" data-ref-type="class" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</span>`
+      return `<a href="#" class="reference-link" data-ref-type="class" data-ref-name="${name}" data-ref-source="${actualSource}">${displayName}</a>`
     })
     .replace(/{@classFeature ([^|}]+)(?:\|([^}]*))?}/gi, (match, name, source) => {
       const displayName = name

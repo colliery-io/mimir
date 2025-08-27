@@ -20,6 +20,8 @@ pub mod catalog_optionalfeature;
 pub mod catalog_deity;
 pub mod catalog_object;
 pub mod catalog_trap;
+pub mod catalog_language;
+pub mod catalog_reward;
 
 pub use campaigns::*;
 pub use app_info::*;

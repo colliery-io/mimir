@@ -21,6 +21,8 @@
       <option value="Deities">Deities</option>
       <option value="Objects">Objects</option>
       <option value="Traps & Hazards">Traps & Hazards</option>
+      <option value="Languages">Languages</option>
+      <option value="Rewards">Rewards</option>
     </select>
   </div>
 </template>

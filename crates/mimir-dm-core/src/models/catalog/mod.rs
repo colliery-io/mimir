@@ -16,6 +16,8 @@ pub mod optionalfeature;
 pub mod race;
 pub mod spell;
 pub mod trap;
+pub mod language;
+pub mod reward;
 
 // Re-export commonly used types
 pub use class::{
@@ -54,3 +56,7 @@ pub use deity::{Deity, DeityData, DeitySummary};
 pub use object::{DndObject, ObjectData, ObjectSummary};
 
 pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary};
+
+pub use language::{Language, LanguageData, LanguageSummary, LanguageFluff, LanguageFluffData};
+
+pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData};

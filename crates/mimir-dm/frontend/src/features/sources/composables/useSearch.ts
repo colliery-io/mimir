@@ -15,7 +15,11 @@ import type {
   ObjectSummary,
   DndObject,
   TrapSummary,
-  TrapOrHazard
+  TrapOrHazard,
+  LanguageSummary,
+  Language,
+  RewardSummary,
+  Reward
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -304,6 +308,38 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectLanguage(lang: LanguageSummary) {
+    const fullLang = await SearchService.getDetails({
+      name: lang.name,
+      source: lang.source,
+      type: 'language'
+    }) as Language
+    
+    const { formatLanguageDetails } = await import('../formatters/languageFormatter')
+    const formattedContent = await formatLanguageDetails(fullLang || lang)
+    modalStack.value.push({
+      visible: true,
+      title: lang.name,
+      content: formattedContent
+    })
+  }
+  
+  async function selectReward(reward: RewardSummary) {
+    const fullReward = await SearchService.getDetails({
+      name: reward.name,
+      source: reward.source,
+      type: 'reward'
+    })
+    
+    const { formatRewardDetails } = await import('../formatters/rewardFormatter')
+    const formattedContent = await formatRewardDetails(fullReward || reward)
+    modalStack.value.push({
+      visible: true,
+      title: reward.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -313,6 +349,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
   }
   
   async function handleReferenceClick(event: { type: string; name: string; source?: string }) {
+    console.log('Reference clicked:', event)
     let details: any = null
     let formattedContent: string = ''
     
@@ -477,6 +514,8 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectDeity,
     selectObject,
     selectTrap,
+    selectLanguage,
+    selectReward,
     closeModal,
     handleReferenceClick,
     initialize,
@@ -489,6 +528,17 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     }) => SearchService.searchTraps(params),
     getTrapDetails: async (name: string, source: string) => 
       SearchService.getTrapDetails(name, source),
-    getTrapTypes: async () => SearchService.getTrapTypes()
+    getTrapTypes: async () => SearchService.getTrapTypes(),
+    // Direct language catalog functions
+    searchLanguages: async (params: {
+      query?: string
+      sources?: string[]
+      types?: string[]
+      scripts?: string[]
+    }) => SearchService.searchLanguages(params),
+    getLanguageDetails: async (name: string, source: string) => 
+      SearchService.getLanguageDetails(name, source),
+    getLanguageTypes: async () => SearchService.getLanguageTypes(),
+    getLanguageScripts: async () => SearchService.getLanguageScripts()
   }
 }

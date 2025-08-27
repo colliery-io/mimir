@@ -363,6 +363,55 @@ export interface TrapOrHazard {
   has_fluff_images?: boolean
 }
 
+export interface LanguageSummary {
+  name: string
+  source: string
+  language_type: string
+  script: string
+  typical_speakers: string
+  is_srd: boolean
+}
+
+// Reward types
+export interface Reward {
+  name: string
+  source: string
+  page?: number
+  reward_type?: string
+  entries?: any[]
+  prerequisite?: any[]
+  additional_spells?: any[]
+  duration?: string
+  srd?: boolean
+  basic_rules?: boolean
+  has_fluff?: boolean
+  has_fluff_images?: boolean
+}
+
+export interface RewardSummary {
+  name: string
+  source: string
+  reward_type: string
+  description: string
+  has_prerequisites: boolean
+}
+
+export interface Language {
+  name: string
+  source: string
+  page?: number
+  language_type?: string
+  script?: string
+  typical_speakers?: string[]
+  entries?: any[]
+  basic_rules?: boolean
+  srd?: boolean
+  has_fluff?: boolean
+  has_fluff_images?: boolean
+  fonts?: string[]
+  dialects?: string[]
+}
+
 export interface DndObject {
   name: string
   source: string
@@ -1258,6 +1307,114 @@ export function useCatalog() {
         return types || []
       } catch (e) {
         console.error(`Failed to get trap types: ${e}`)
+        return []
+      }
+    },
+    // Language catalog methods
+    initializeLanguageCatalog: async () => {
+      try {
+        await invoke('init_language_catalog')
+      } catch (e) {
+        console.error(`Failed to initialize language catalog: ${e}`)
+      }
+    },
+    searchLanguages: async (filters: { 
+      query?: string, 
+      sources?: string[], 
+      types?: string[],
+      scripts?: string[] 
+    }) => {
+      try {
+        const results = await invoke<LanguageSummary[]>('search_languages', {
+          query: filters.query || null,
+          sources: filters.sources || null,
+          types: filters.types || null,
+          scripts: filters.scripts || null
+        })
+        return results || []
+      } catch (e) {
+        console.error(`Failed to search languages: ${e}`)
+        return []
+      }
+    },
+    getLanguageDetails: async (name: string, source: string): Promise<Language | null> => {
+      try {
+        const details = await invoke<Language>('get_language_details', { name, source })
+        return details
+      } catch (e) {
+        console.error(`Failed to get language details: ${e}`)
+        return null
+      }
+    },
+    getLanguageTypes: async (): Promise<string[]> => {
+      try {
+        const types = await invoke<string[]>('get_language_types')
+        return types || []
+      } catch (e) {
+        console.error(`Failed to get language types: ${e}`)
+        return []
+      }
+    },
+    getLanguageScripts: async (): Promise<string[]> => {
+      try {
+        const scripts = await invoke<string[]>('get_language_scripts')
+        return scripts || []
+      } catch (e) {
+        console.error(`Failed to get language scripts: ${e}`)
+        return []
+      }
+    },
+    // Reward catalog functions
+    initializeRewardCatalog: async () => {
+      try {
+        await invoke('initialize_reward_catalog')
+      } catch (e) {
+        console.error(`Failed to initialize reward catalog: ${e}`)
+      }
+    },
+    searchRewards: async (filters: {
+      query?: string
+      sources?: string[]
+      reward_types?: string[]
+      has_prerequisites?: boolean
+    }): Promise<RewardSummary[]> => {
+      try {
+        const results = await invoke<RewardSummary[]>('search_rewards', {
+          query: filters.query || null,
+          sources: filters.sources || null,
+          reward_types: filters.reward_types || null,
+          has_prerequisites: filters.has_prerequisites
+        })
+        return results || []
+      } catch (e) {
+        console.error(`Failed to search rewards: ${e}`)
+        return []
+      }
+    },
+    getRewardDetails: async (name: string, source: string): Promise<Reward | null> => {
+      try {
+        const details = await invoke<Reward>('get_reward_details', { name, source })
+        return details
+      } catch (e) {
+        console.error(`Failed to get reward details: ${e}`)
+        return null
+      }
+    },
+    getRewardTypes: async (): Promise<string[]> => {
+      try {
+        const types = await invoke<string[]>('get_reward_types')
+        return types || []
+      } catch (e) {
+        console.error(`Failed to get reward types: ${e}`)
+        return []
+      }
+    },
+    getRewardSources: async (): Promise<string[]> => {
+      try {
+        const sources = await invoke<string[]>('get_reward_sources')
+        return sources || []
+      } catch (e) {
+        console.error(`Failed to get reward sources: ${e}`)
         return []
       }
     }

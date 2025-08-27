@@ -17,6 +17,7 @@ use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_op
 use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
 use commands::catalog_object::{init_object_catalog, search_objects, get_object_details, get_object_types};
 use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, get_trap_types};
+use commands::catalog_language::{init_language_catalog, search_languages, get_language_details, get_language_types, get_language_scripts};
 use services::database::DatabaseService;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
@@ -67,6 +68,7 @@ fn main() {
             let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
             let object_catalog = Mutex::new(commands::catalog_object::ObjectCatalog::new());
             let trap_catalog = Mutex::new(commands::catalog_trap::TrapCatalog::new());
+            let language_catalog = Mutex::new(commands::catalog_language::LanguageCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
@@ -80,6 +82,10 @@ fn main() {
             app.manage(deity_catalog);
             app.manage(object_catalog);
             app.manage(trap_catalog);
+            app.manage(language_catalog);
+            
+            let reward_catalog = std::sync::Mutex::new(commands::catalog_reward::RewardCatalog::new());
+            app.manage(reward_catalog);
             
             Ok(())
         })
@@ -193,7 +199,19 @@ fn main() {
             init_trap_catalog,
             search_traps,
             get_trap_details,
-            get_trap_types
+            get_trap_types,
+            // Language catalog commands
+            init_language_catalog,
+            search_languages,
+            get_language_details,
+            get_language_types,
+            get_language_scripts,
+            // Reward catalog commands
+            commands::catalog_reward::initialize_reward_catalog,
+            commands::catalog_reward::search_rewards,
+            commands::catalog_reward::get_reward_details,
+            commands::catalog_reward::get_reward_types,
+            commands::catalog_reward::get_reward_sources
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

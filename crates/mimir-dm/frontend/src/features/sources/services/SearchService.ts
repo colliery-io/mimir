@@ -14,7 +14,11 @@ import type {
   DeitySummary,
   ObjectSummary,
   TrapSummary,
-  TrapOrHazard
+  TrapOrHazard,
+  LanguageSummary,
+  Language,
+  RewardSummary,
+  Reward
 } from '../composables/useCatalog'
 
 export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails, OptionalFeatureSummary }
@@ -51,7 +55,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward'
 }
 
 class SearchServiceClass {
@@ -98,6 +102,12 @@ class SearchServiceClass {
       case 'Traps & Hazards':
         await this.catalog.initializeTrapCatalog()
         break
+      case 'Languages':
+        await this.catalog.initializeLanguageCatalog()
+        break
+      case 'Rewards':
+        await this.catalog.initializeRewardCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -134,6 +144,10 @@ class SearchServiceClass {
         return await this.searchObjects(query, sources)
       case 'Traps & Hazards':
         return await this.searchTraps({ query, sources })
+      case 'Languages':
+        return await this.searchLanguages({ query, sources })
+      case 'Rewards':
+        return await this.searchRewards({ query, sources })
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -287,6 +301,50 @@ class SearchServiceClass {
     return await this.catalog.getTrapTypes()
   }
   
+  async searchLanguages(params: {
+    query?: string
+    sources?: string[]
+    types?: string[]
+    scripts?: string[]
+  }): Promise<LanguageSummary[]> {
+    const results = await this.catalog.searchLanguages(params)
+    return results
+  }
+  
+  async getLanguageDetails(name: string, source: string): Promise<Language | null> {
+    return await this.catalog.getLanguageDetails(name, source)
+  }
+  
+  async getLanguageTypes(): Promise<string[]> {
+    return await this.catalog.getLanguageTypes()
+  }
+  
+  async getLanguageScripts(): Promise<string[]> {
+    return await this.catalog.getLanguageScripts()
+  }
+  
+  async searchRewards(params: {
+    query?: string
+    sources?: string[]
+    reward_types?: string[]
+    has_prerequisites?: boolean
+  }): Promise<RewardSummary[]> {
+    const results = await this.catalog.searchRewards(params)
+    return results
+  }
+  
+  async getRewardDetails(name: string, source: string): Promise<Reward | null> {
+    return await this.catalog.getRewardDetails(name, source)
+  }
+  
+  async getRewardTypes(): Promise<string[]> {
+    return await this.catalog.getRewardTypes()
+  }
+  
+  async getRewardSources(): Promise<string[]> {
+    return await this.catalog.getRewardSources()
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -317,6 +375,10 @@ class SearchServiceClass {
         return await this.catalog.getObjectDetails(name, source)
       case 'trap':
         return await this.catalog.getTrapDetails(name, source)
+      case 'language':
+        return await this.catalog.getLanguageDetails(name, source)
+      case 'reward':
+        return await this.catalog.getRewardDetails(name, source)
       default:
         return null
     }

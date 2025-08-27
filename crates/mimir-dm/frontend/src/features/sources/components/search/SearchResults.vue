@@ -124,6 +124,25 @@
       @sort="$emit('sort', $event)"
     />
     
+    <LanguageTable
+      v-else-if="category === 'Languages'"
+      :languages="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
+      @select="$emit('select-language', $event)"
+      @sort="$emit('sort', $event)"
+    />
+    
+    <RewardTable
+      v-else-if="category === 'Rewards'"
+      :rewards="results"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
+      @select="$emit('select-reward', $event)"
+      @sort="$emit('sort', $event)"
+    />
+    
     <div v-else class="placeholder-message">
       {{ category }} catalog coming soon...
     </div>
@@ -144,6 +163,8 @@ import OptionsTable from './OptionsTable.vue'
 import DeityTable from './DeityTable.vue'
 import ObjectTable from './ObjectTable.vue'
 import TrapTable from './TrapTable.vue'
+import LanguageTable from './LanguageTable.vue'
+import RewardTable from './RewardTable.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -157,7 +178,9 @@ import type {
   OptionalFeatureSummary,
   DeitySummary,
   ObjectSummary,
-  TrapSummary
+  TrapSummary,
+  LanguageSummary,
+  RewardSummary
 } from '../../composables/useCatalog'
 
 interface Props {
@@ -191,6 +214,8 @@ defineEmits<{
   'select-deity': [deity: DeitySummary]
   'select-object': [obj: ObjectSummary]
   'select-trap': [trap: TrapSummary]
+  'select-language': [lang: LanguageSummary]
+  'select-reward': [reward: RewardSummary]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()

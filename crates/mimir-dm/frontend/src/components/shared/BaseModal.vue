@@ -35,10 +35,13 @@ function handleContentClick(event: MouseEvent) {
   const target = event.target as HTMLElement
   
   // Check both patterns: specific ref classes and generic clickable class
-  if (target.classList.contains('creature-ref') || 
+  // Also check if it's a link with data-ref-type
+  if (target.classList.contains('reference-link') ||
+      target.classList.contains('creature-ref') || 
       target.classList.contains('item-ref') || 
       target.classList.contains('spell-ref') ||
-      target.classList.contains('clickable')) {
+      target.classList.contains('clickable') ||
+      (target.tagName === 'A' && target.hasAttribute('data-ref-type'))) {
     
     event.preventDefault()
     event.stopPropagation()

@@ -52,6 +52,8 @@
           @select-deity="selectDeity"
           @select-object="selectObject"
           @select-trap="selectTrap"
+          @select-language="selectLanguage"
+          @select-reward="selectReward"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -115,6 +117,8 @@ const {
   selectDeity,
   selectObject,
   selectTrap,
+  selectLanguage,
+  selectReward,
   closeModal,
   handleReferenceClick,
   initialize
