@@ -4,7 +4,8 @@ import type {
   ItemSummary, 
   MonsterSummary,
   ClassSummary,
-  FeatSummary
+  FeatSummary,
+  RaceSummary
 } from '../composables/useCatalog'
 
 export interface SearchFilters {
@@ -39,7 +40,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race'
 }
 
 class SearchServiceClass {
@@ -59,6 +60,11 @@ class SearchServiceClass {
         break
       case 'Classes':
         await this.catalog.initializeClassCatalog()
+        break
+      case 'Races':
+        console.log('Initializing race catalog...')
+        await this.catalog.initializeRaceCatalog()
+        console.log('Race catalog initialized')
         break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
@@ -80,6 +86,8 @@ class SearchServiceClass {
         return await this.searchMonsters(query, sources, filters.monsters)
       case 'Classes':
         return await this.searchClasses(query)
+      case 'Races':
+        return await this.searchRaces(query, sources)
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -157,6 +165,16 @@ class SearchServiceClass {
     })
   }
   
+  private async searchRaces(query?: string, sources?: string[]): Promise<RaceSummary[]> {
+    console.log('SearchService.searchRaces called with:', { query, sources })
+    const results = await this.catalog.searchRaces({
+      query: query || undefined,
+      sources: sources || undefined
+    })
+    console.log('SearchService.searchRaces results:', results)
+    return results
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -171,6 +189,8 @@ class SearchServiceClass {
         return await this.catalog.getClassDetails(name, source)
       case 'feat':
         return await this.catalog.getFeatDetails(name, source)
+      case 'race':
+        return await this.catalog.getRaceDetails(name, source)
       default:
         return null
     }

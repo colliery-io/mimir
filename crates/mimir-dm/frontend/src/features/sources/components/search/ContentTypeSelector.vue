@@ -12,6 +12,7 @@
       <option value="Monsters">Monsters/Bestiary</option>
       <option value="Magic Items">Magic Items</option>
       <option value="Classes">Classes</option>
+      <option value="Races">Races</option>
       <option value="Feats">Feats</option>
     </select>
   </div>

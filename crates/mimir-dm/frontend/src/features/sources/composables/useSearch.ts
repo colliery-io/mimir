@@ -5,13 +5,15 @@ import type {
   ItemSummary, 
   MonsterSummary,
   ClassSummary,
-  FeatSummary
+  FeatSummary,
+  RaceSummary
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
 import { formatMonsterDetails } from '../formatters/monsterFormatterEnhanced'
 import { formatClassDetails } from '../formatters/classFormatterEnhanced'
 import { formatFeatDetails } from '../formatters/featFormatter'
+import { formatRaceDetails } from '../formatters/raceFormatter'
 
 export function useSearch(initialCategory: string, selectedSources: string[]) {
   const selectedCategory = ref(initialCategory)
@@ -166,6 +168,21 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectRace(race: RaceSummary) {
+    const fullRace = await SearchService.getDetails({
+      name: race.name,
+      source: race.source,
+      type: 'race'
+    })
+    
+    const formattedContent = await formatRaceDetails(fullRace || race)
+    modalStack.value.push({
+      visible: true,
+      title: race.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -277,6 +294,23 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
         }
         break
       }
+      case 'race': {
+        details = await SearchService.getDetails({
+          name: event.name,
+          source: event.source || 'PHB',
+          type: 'race'
+        })
+        
+        if (details) {
+          formattedContent = await formatRaceDetails(details)
+          modalStack.value.push({
+            visible: true,
+            title: event.name,
+            content: formattedContent
+          })
+        }
+        break
+      }
     }
   }
   
@@ -314,6 +348,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectMonster,
     selectClass,
     selectFeat,
+    selectRace,
     closeModal,
     handleReferenceClick,
     initialize

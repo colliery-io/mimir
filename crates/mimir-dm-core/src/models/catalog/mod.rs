@@ -7,6 +7,7 @@ pub mod class;
 pub mod feat;
 pub mod item;
 pub mod monster;
+pub mod race;
 pub mod spell;
 
 // Re-export commonly used types
@@ -30,3 +31,5 @@ pub use spell::{
 };
 
 pub use feat::{Feat, FeatData, FeatSummary};
+
+pub use race::{Race, RaceData, RaceSummary, Subrace, RaceFluff, RaceFluffData};

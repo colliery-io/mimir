@@ -52,11 +52,13 @@ fn main() {
             let monster_catalog = Mutex::new(commands::catalog::MonsterCatalog::new());
             let class_catalog = Mutex::new(commands::catalog_class::ClassCatalog::new());
             let feat_catalog = Mutex::new(commands::catalog_feat::FeatCatalog::new());
+            let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
             app.manage(class_catalog);
             app.manage(feat_catalog);
+            app.manage(race_catalog);
             
             Ok(())
         })
@@ -133,7 +135,11 @@ fn main() {
             initialize_feat_catalog,
             search_feats,
             get_feat_details,
-            get_feat_sources
+            get_feat_sources,
+            // Race catalog commands
+            initialize_race_catalog,
+            search_races,
+            get_race_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

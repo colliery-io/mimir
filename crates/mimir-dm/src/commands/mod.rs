@@ -12,6 +12,7 @@ pub mod dev_tools;
 pub mod catalog;
 pub mod catalog_class;
 pub mod catalog_feat;
+pub mod catalog_race;
 
 pub use campaigns::*;
 pub use app_info::*;
@@ -25,3 +26,4 @@ pub use dev_tools::*;
 pub use catalog::*;
 pub use catalog_class::*;
 pub use catalog_feat::*;
+pub use catalog_race::*;

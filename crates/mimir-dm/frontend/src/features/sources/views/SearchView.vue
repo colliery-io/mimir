@@ -44,6 +44,7 @@
           @select-monster="selectMonster"
           @select-class="selectClass"
           @select-feat="selectFeat"
+          @select-race="selectRace"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -99,6 +100,7 @@ const {
   selectMonster,
   selectClass,
   selectFeat,
+  selectRace,
   closeModal,
   handleReferenceClick,
   initialize
