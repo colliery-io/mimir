@@ -7,10 +7,12 @@ import type {
   FeatSummary,
   RaceSummary,
   BackgroundSummary,
-  ActionSummary
+  ActionSummary,
+  ConditionSummary,
+  ConditionWithDetails
 } from '../composables/useCatalog'
 
-export type { BackgroundSummary, ActionSummary }
+export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails }
 
 export interface SearchFilters {
   spells: {
@@ -44,7 +46,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition'
 }
 
 class SearchServiceClass {
@@ -76,6 +78,9 @@ class SearchServiceClass {
       case 'Actions':
         await this.catalog.initializeActionCatalog()
         break
+      case 'Conditions':
+        await this.catalog.initializeConditionCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -102,6 +107,8 @@ class SearchServiceClass {
         return await this.searchBackgrounds(query, sources)
       case 'Actions':
         return await this.searchActions(query, sources)
+      case 'Conditions':
+        return await this.searchConditions(query, sources)
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -205,6 +212,14 @@ class SearchServiceClass {
     return results
   }
   
+  private async searchConditions(query?: string, sources?: string[]): Promise<ConditionSummary[]> {
+    const results = await this.catalog.searchConditions({
+      query: query || undefined,
+      sources: sources || undefined
+    })
+    return results
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -225,6 +240,8 @@ class SearchServiceClass {
         return await this.catalog.getBackgroundDetails(name, source)
       case 'action':
         return await this.catalog.getActionDetails(name, source)
+      case 'condition':
+        return await this.catalog.getConditionDetails(name, source)
       default:
         return null
     }

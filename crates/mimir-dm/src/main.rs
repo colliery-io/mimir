@@ -12,6 +12,7 @@ use app_init::{initialize_app, AppPaths};
 use commands::*;
 use commands::catalog_action::{init_action_catalog, search_actions, get_action_details};
 use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details};
+use commands::catalog_condition::{init_condition_catalog, search_conditions, get_condition_details};
 use services::database::DatabaseService;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
@@ -57,6 +58,7 @@ fn main() {
             let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
             let background_catalog = Mutex::new(commands::catalog_background::BackgroundCatalog::new());
             let action_catalog = Mutex::new(commands::catalog_action::ActionCatalog::new());
+            let condition_catalog = Mutex::new(commands::catalog_condition::ConditionCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
@@ -65,6 +67,7 @@ fn main() {
             app.manage(race_catalog);
             app.manage(background_catalog);
             app.manage(action_catalog);
+            app.manage(condition_catalog);
             
             Ok(())
         })
@@ -153,7 +156,11 @@ fn main() {
             // Action catalog commands
             init_action_catalog,
             search_actions,
-            get_action_details
+            get_action_details,
+            // Condition catalog commands
+            init_condition_catalog,
+            search_conditions,
+            get_condition_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

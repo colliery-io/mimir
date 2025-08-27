@@ -8,7 +8,8 @@ import type {
   FeatSummary,
   RaceSummary,
   BackgroundSummary,
-  ActionSummary
+  ActionSummary,
+  ConditionSummary
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -217,6 +218,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectCondition(condition: ConditionSummary) {
+    const fullCondition = await SearchService.getDetails({
+      name: condition.name,
+      source: condition.source,
+      type: 'condition'
+    })
+    
+    const { formatConditionDetails } = await import('../formatters/conditionFormatter')
+    const formattedContent = formatConditionDetails(fullCondition || condition)
+    modalStack.value.push({
+      visible: true,
+      title: condition.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -385,6 +402,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectRace,
     selectBackground,
     selectAction,
+    selectCondition,
     closeModal,
     handleReferenceClick,
     initialize

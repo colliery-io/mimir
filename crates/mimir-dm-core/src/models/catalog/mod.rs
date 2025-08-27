@@ -6,6 +6,7 @@
 pub mod action;
 pub mod background;
 pub mod class;
+pub mod condition;
 pub mod feat;
 pub mod item;
 pub mod monster;
@@ -39,3 +40,5 @@ pub use race::{Race, RaceData, RaceSummary, Subrace, RaceFluff, RaceFluffData};
 pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFluff, BackgroundFluffData, BackgroundWithDetails};
 
 pub use action::{Action, ActionData, ActionSummary};
+
+pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSummary, ConditionOrDisease, ConditionWithDetails, ConditionFluff, ConditionFluffData};

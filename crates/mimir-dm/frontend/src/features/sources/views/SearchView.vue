@@ -47,6 +47,7 @@
           @select-race="selectRace"
           @select-background="selectBackground"
           @select-action="selectAction"
+          @select-condition="selectCondition"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -105,6 +106,7 @@ const {
   selectRace,
   selectBackground,
   selectAction,
+  selectCondition,
   closeModal,
   handleReferenceClick,
   initialize

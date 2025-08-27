@@ -272,6 +272,30 @@ export interface ActionFilters {
   time_filter?: string
 }
 
+// Condition interfaces
+export interface ConditionSummary {
+  name: string
+  source: string
+  item_type: 'Condition' | 'Disease'
+  description: string
+  is_srd: boolean
+}
+
+export interface ConditionWithDetails {
+  item: {
+    type: 'Condition' | 'Disease'
+    Condition?: any
+    Disease?: any
+  }
+  fluff?: any
+}
+
+export interface ConditionFilters {
+  query?: string
+  sources?: string[]
+  type_filter?: string
+}
+
 export interface Feat {
   name: string
   source: string
@@ -816,6 +840,57 @@ export function useCatalog() {
     }
   }
 
+  // Condition catalog functions
+  const isConditionsInitialized = ref(false)
+  const conditions = ref<ConditionSummary[]>([])
+
+  async function initializeConditionCatalog() {
+    if (isConditionsInitialized.value) return
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      await invoke('init_condition_catalog')
+      isConditionsInitialized.value = true
+    } catch (e) {
+      error.value = `Failed to initialize condition catalog: ${e}`
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function searchConditions(filters: ConditionFilters = {}): Promise<ConditionSummary[]> {
+    if (!isConditionsInitialized.value) {
+      await initializeConditionCatalog()
+    }
+    
+    try {
+      isLoading.value = true
+      error.value = null
+      const results = await invoke<ConditionSummary[]>('search_conditions', {
+        query: filters.query,
+        sources: filters.sources,
+        typeFilter: filters.type_filter
+      })
+      conditions.value = results
+      return results
+    } catch (e) {
+      error.value = `Failed to search conditions: ${e}`
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function getConditionDetails(name: string, source: string): Promise<ConditionWithDetails | null> {
+    try {
+      const details = await invoke<ConditionWithDetails>('get_condition_details', { name, source })
+      return details
+    } catch (e) {
+      return null
+    }
+  }
+
   return {
     // State
     isInitialized,
@@ -825,6 +900,7 @@ export function useCatalog() {
     isRacesInitialized,
     isBackgroundsInitialized,
     isActionsInitialized,
+    isConditionsInitialized,
     isLoading,
     error,
     spells,
@@ -834,6 +910,7 @@ export function useCatalog() {
     races,
     backgrounds,
     actions,
+    conditions,
     classSources,
     initializeCatalog,
     initializeItemCatalog,
@@ -860,5 +937,8 @@ export function useCatalog() {
     initializeActionCatalog,
     searchActions,
     getActionDetails,
+    initializeConditionCatalog,
+    searchConditions,
+    getConditionDetails,
   }
 }

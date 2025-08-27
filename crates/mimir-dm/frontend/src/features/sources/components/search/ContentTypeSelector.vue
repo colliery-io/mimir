@@ -15,6 +15,7 @@
       <option value="Races">Races</option>
       <option value="Backgrounds">Backgrounds</option>
       <option value="Actions">Actions</option>
+      <option value="Conditions">Conditions & Diseases</option>
       <option value="Feats">Feats</option>
     </select>
   </div>
