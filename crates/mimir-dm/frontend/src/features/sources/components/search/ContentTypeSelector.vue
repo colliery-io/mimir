@@ -25,6 +25,7 @@
       <option value="Rewards">Rewards</option>
       <option value="Tables">Tables</option>
       <option value="Variant Rules">Variant Rules</option>
+      <option value="Vehicles">Vehicles</option>
     </select>
   </div>
 </template>

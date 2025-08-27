@@ -56,6 +56,7 @@
           @select-reward="selectReward"
           @select-table="selectTable"
           @select-variant-rule="selectVariantRule"
+          @select-vehicle="selectVehicle"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -123,6 +124,7 @@ const {
   selectReward,
   selectTable,
   selectVariantRule,
+  selectVehicle,
   closeModal,
   handleReferenceClick,
   initialize

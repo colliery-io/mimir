@@ -93,6 +93,9 @@ fn main() {
             let variant_rule_catalog = std::sync::Mutex::new(commands::catalog_variant_rule::VariantRuleCatalog::new());
             app.manage(variant_rule_catalog);
             
+            let vehicle_catalog = std::sync::Mutex::new(commands::catalog_vehicle::VehicleCatalog::new());
+            app.manage(vehicle_catalog);
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -229,7 +232,14 @@ fn main() {
             commands::catalog_variant_rule::search_variant_rules,
             commands::catalog_variant_rule::get_variant_rule_details,
             commands::catalog_variant_rule::get_variant_rule_types,
-            commands::catalog_variant_rule::get_variant_rule_sources
+            commands::catalog_variant_rule::get_variant_rule_sources,
+            // Vehicle catalog commands
+            commands::catalog_vehicle::init_vehicle_catalog,
+            commands::catalog_vehicle::search_vehicles,
+            commands::catalog_vehicle::get_vehicle_details,
+            commands::catalog_vehicle::get_vehicle_types,
+            commands::catalog_vehicle::get_vehicle_terrains,
+            commands::catalog_vehicle::get_vehicle_sources
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -20,6 +20,7 @@ pub mod language;
 pub mod reward;
 pub mod table;
 pub mod variant_rule;
+pub mod vehicle;
 
 // Re-export commonly used types
 pub use class::{
@@ -66,3 +67,5 @@ pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData
 pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData};
 
 pub use variant_rule::{VariantRule, VariantRuleData, VariantRuleSummary};
+
+pub use vehicle::{Vehicle, VehicleData, VehicleSummary, VehicleWeapon, Speed as VehicleSpeed};

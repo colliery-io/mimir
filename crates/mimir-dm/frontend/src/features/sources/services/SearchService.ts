@@ -57,7 +57,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule' | 'vehicle'
 }
 
 class SearchServiceClass {
@@ -116,6 +116,9 @@ class SearchServiceClass {
       case 'Variant Rules':
         await this.catalog.initializeVariantRuleCatalog()
         break
+      case 'Vehicles':
+        await this.catalog.initializeVehicleCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -160,6 +163,8 @@ class SearchServiceClass {
         return await this.searchTables({ query, sources })
       case 'Variant Rules':
         return await this.searchVariantRules({ query, sources })
+      case 'Vehicles':
+        return await this.searchVehicles({ query, sources })
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -401,6 +406,33 @@ class SearchServiceClass {
     return await this.catalog.getVariantRuleSources()
   }
   
+  async searchVehicles(params: {
+    query?: string
+    types?: string[]
+    sources?: string[]
+    terrains?: string[]
+    sizes?: string[]
+  }): Promise<any[]> {
+    const results = await this.catalog.searchVehicles(params)
+    return results
+  }
+  
+  async getVehicleDetails(name: string, source: string): Promise<any> {
+    return await this.catalog.getVehicleDetails(name, source)
+  }
+  
+  async getVehicleTypes(): Promise<string[]> {
+    return await this.catalog.getVehicleTypes()
+  }
+  
+  async getVehicleTerrains(): Promise<string[]> {
+    return await this.catalog.getVehicleTerrains()
+  }
+  
+  async getVehicleSources(): Promise<string[]> {
+    return await this.catalog.getVehicleSources()
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -439,6 +471,8 @@ class SearchServiceClass {
         return await this.catalog.getTableDetails(name, source)
       case 'variantrule':
         return await this.catalog.getVariantRuleDetails(name, source)
+      case 'vehicle':
+        return await this.catalog.getVehicleDetails(name, source)
       default:
         return null
     }

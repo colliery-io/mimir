@@ -439,6 +439,40 @@ export interface VariantRuleSummary {
   page?: number
 }
 
+export interface Vehicle {
+  name: string
+  source: string
+  vehicle_type?: string
+  size?: string
+  page?: number
+  cap_crew?: number
+  cap_passenger?: number
+  cap_cargo?: number
+  ac?: number
+  hp?: number
+  speed?: any
+  pace?: number
+  dimensions?: string[]
+  immune?: string[]
+  resist?: string[]
+  vulnerable?: string[]
+  terrain?: string[]
+  weapon?: any[]
+  entries?: any[]
+}
+
+export interface VehicleSummary {
+  name: string
+  source: string
+  vehicle_type?: string
+  size?: string
+  cap_crew?: number
+  cap_passenger?: number
+  terrain?: string[]
+  pace?: number
+  speed?: string
+}
+
 export interface Language {
   name: string
   source: string
@@ -1566,6 +1600,71 @@ export function useCatalog() {
         return sources || []
       } catch (e) {
         console.error(`Failed to get variant rule sources: ${e}`)
+        return []
+      }
+    },
+    // Vehicle catalog methods
+    initializeVehicleCatalog: async () => {
+      try {
+        await invoke('init_vehicle_catalog')
+      } catch (e) {
+        console.error(`Failed to initialize vehicle catalog: ${e}`)
+      }
+    },
+    searchVehicles: async (filters: {
+      query?: string
+      types?: string[]
+      sources?: string[]
+      terrains?: string[]
+      sizes?: string[]
+    }): Promise<VehicleSummary[]> => {
+      try {
+        const results = await invoke<VehicleSummary[]>('search_vehicles', {
+          query: filters.query || null,
+          types: filters.types || null,
+          sources: filters.sources || null,
+          terrains: filters.terrains || null,
+          sizes: filters.sizes || null
+        })
+        return results || []
+      } catch (e) {
+        console.error(`Failed to search vehicles: ${e}`)
+        return []
+      }
+    },
+    getVehicleDetails: async (name: string, source: string): Promise<Vehicle | null> => {
+      try {
+        const details = await invoke<Vehicle>('get_vehicle_details', { name, source })
+        return details
+      } catch (e) {
+        console.error(`Failed to get vehicle details: ${e}`)
+        return null
+      }
+    },
+    getVehicleTypes: async (): Promise<string[]> => {
+      try {
+        const types = await invoke<string[]>('get_vehicle_types')
+        return types || []
+      } catch (e) {
+        console.error(`Failed to get vehicle types: ${e}`)
+        return []
+      }
+    },
+    getVehicleTerrains: async (): Promise<string[]> => {
+      try {
+        const terrains = await invoke<string[]>('get_vehicle_terrains')
+        return terrains || []
+      } catch (e) {
+        console.error(`Failed to get vehicle terrains: ${e}`)
+        return []
+      }
+    },
+    getVehicleSources: async (): Promise<string[]> => {
+      try {
+        const sources = await invoke<string[]>('get_vehicle_sources')
+        return sources || []
+      } catch (e) {
+        console.error(`Failed to get vehicle sources: ${e}`)
         return []
       }
     }

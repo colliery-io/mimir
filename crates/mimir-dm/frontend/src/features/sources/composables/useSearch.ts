@@ -374,6 +374,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectVehicle(vehicle: any) {
+    const fullVehicle = await SearchService.getDetails({
+      name: vehicle.name,
+      source: vehicle.source,
+      type: 'vehicle'
+    })
+    
+    const { formatVehicleDetails } = await import('../formatters/vehicleFormatter')
+    const formattedContent = formatVehicleDetails(fullVehicle || vehicle)
+    modalStack.value.push({
+      visible: true,
+      title: vehicle.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -552,6 +568,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectReward,
     selectTable,
     selectVariantRule,
+    selectVehicle,
     closeModal,
     handleReferenceClick,
     initialize,
