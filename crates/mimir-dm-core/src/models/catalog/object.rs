@@ -2,12 +2,36 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+pub enum DamageType {
+    Simple(String),
+    Special {
+        special: String,
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum ArmorClass {
     Number(i32),
     Object {
+        #[serde(default)]
         ac: Option<i32>,
+        #[serde(default)]
         special: Option<String>,
+        #[serde(default)]
         from: Option<Vec<String>>,
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum HitPoints {
+    Number(i32),
+    Object {
+        #[serde(default)]
+        hp: Option<i32>,
+        #[serde(default)]
+        special: Option<String>,
     }
 }
 
@@ -48,11 +72,11 @@ pub struct DndObject {
     pub size: Option<Vec<String>>,
     
     pub ac: Option<ArmorClass>,
-    pub hp: Option<i32>,
+    pub hp: Option<HitPoints>,
     
-    pub immune: Option<Vec<String>>,
-    pub resist: Option<Vec<String>>,
-    pub vulnerable: Option<Vec<String>>,
+    pub immune: Option<Vec<DamageType>>,
+    pub resist: Option<Vec<DamageType>>,
+    pub vulnerable: Option<Vec<DamageType>>,
     
     #[serde(rename = "actionEntries")]
     pub action_entries: Option<Vec<ActionEntry>>,
@@ -94,7 +118,7 @@ impl From<&DndObject> for ObjectSummary {
             object_type: format_object_type(&obj.object_type),
             size: format_size(&obj.size),
             ac: format_ac(&obj.ac),
-            hp: obj.hp.map_or("—".to_string(), |h| h.to_string()),
+            hp: format_hp(&obj.hp),
             is_srd: obj.srd.unwrap_or(false),
         }
     }
@@ -132,6 +156,15 @@ fn format_ac(ac: &Option<ArmorClass>) -> String {
         Some(ArmorClass::Number(n)) => n.to_string(),
         Some(ArmorClass::Object { ac: Some(n), .. }) => n.to_string(),
         Some(ArmorClass::Object { special: Some(s), .. }) => s.clone(),
+        _ => "—".to_string(),
+    }
+}
+
+fn format_hp(hp: &Option<HitPoints>) -> String {
+    match hp {
+        Some(HitPoints::Number(n)) => n.to_string(),
+        Some(HitPoints::Object { hp: Some(n), .. }) => n.to_string(),
+        Some(HitPoints::Object { special: Some(s), .. }) => s.clone(),
         _ => "—".to_string(),
     }
 }
