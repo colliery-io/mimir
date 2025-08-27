@@ -21,7 +21,8 @@ import type {
   RewardSummary,
   Reward,
   TableSummary,
-  Table
+  Table,
+  PsionicSummary
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -419,6 +420,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectPsionic(psionic: PsionicSummary) {
+    const fullPsionic = await SearchService.getDetails({
+      name: psionic.name,
+      source: psionic.source,
+      type: 'psionic'
+    })
+    
+    const { formatPsionicDetails } = await import('../formatters/psionicFormatter')
+    const formattedContent = formatPsionicDetails(fullPsionic || psionic)
+    modalStack.value.push({
+      visible: true,
+      title: psionic.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -599,6 +616,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectVariantRule,
     selectVehicle,
     selectCult,
+    selectPsionic,
     closeModal,
     handleReferenceClick,
     initialize,

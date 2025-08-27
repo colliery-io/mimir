@@ -468,6 +468,38 @@ export interface Boon {
   signature_spells?: { entry: string }
 }
 
+export interface PsionicSummary {
+  name: string
+  source: string
+  psionic_type: string // "D" for Discipline, "T" for Talent
+  order?: string // Avatar, Awakened, Immortal, Nomad, Wu Jen, etc.
+  page?: number
+}
+
+export interface Psionic {
+  name: string
+  source: string
+  psionic_type: string
+  order?: string
+  page?: number
+  entries?: any[]
+  focus?: string // Focus benefit for disciplines
+  modes?: PsionicMode[] // Modes for disciplines
+}
+
+export interface PsionicMode {
+  name: string
+  cost: {
+    min: number
+    max?: number
+  }
+  entries: any[]
+  concentration?: {
+    duration: number
+    unit: string
+  }
+}
+
 export interface Vehicle {
   name: string
   source: string
@@ -1757,6 +1789,54 @@ export function useCatalog() {
         return sources || []
       } catch (e) {
         console.error(`Failed to get cult sources: ${e}`)
+        return []
+      }
+    },
+    
+    // Psionic catalog
+    searchPsionics: async (filters: {
+      query?: string
+      psionic_types?: string[]
+      orders?: string[]
+      sources?: string[]
+    }): Promise<PsionicSummary[]> => {
+      try {
+        const results = await invoke<PsionicSummary[]>('search_psionics', {
+          query: filters.query || null,
+          psionic_types: filters.psionic_types || null,
+          orders: filters.orders || null,
+          sources: filters.sources || null
+        })
+        return results || []
+      } catch (e) {
+        console.error(`Failed to search psionics: ${e}`)
+        return []
+      }
+    },
+    getPsionicDetails: async (name: string, source: string): Promise<Psionic | null> => {
+      try {
+        const details = await invoke<Psionic>('get_psionic_details', { name, source })
+        return details
+      } catch (e) {
+        console.error(`Failed to get psionic details: ${e}`)
+        return null
+      }
+    },
+    getPsionicOrders: async (): Promise<string[]> => {
+      try {
+        const orders = await invoke<string[]>('get_psionic_orders')
+        return orders || []
+      } catch (e) {
+        console.error(`Failed to get psionic orders: ${e}`)
+        return []
+      }
+    },
+    getPsionicSources: async (): Promise<string[]> => {
+      try {
+        const sources = await invoke<string[]>('get_psionic_sources')
+        return sources || []
+      } catch (e) {
+        console.error(`Failed to get psionic sources: ${e}`)
         return []
       }
     }

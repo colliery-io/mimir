@@ -22,6 +22,7 @@ pub mod table;
 pub mod variant_rule;
 pub mod vehicle;
 pub mod cult;
+pub mod psionic;
 
 // Re-export commonly used types
 pub use class::{
@@ -72,3 +73,5 @@ pub use variant_rule::{VariantRule, VariantRuleData, VariantRuleSummary};
 pub use vehicle::{Vehicle, VehicleData, VehicleSummary, VehicleWeapon, Speed as VehicleSpeed};
 
 pub use cult::{Cult, CultData, Boon, BoonData, CultBoonSummary};
+
+pub use psionic::{Psionic, PsionicSummary, PsionicMode, PsionicCost, ConcentrationDuration};

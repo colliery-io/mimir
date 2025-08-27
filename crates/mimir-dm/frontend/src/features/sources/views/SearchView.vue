@@ -58,6 +58,7 @@
           @select-variant-rule="selectVariantRule"
           @select-vehicle="selectVehicle"
           @select-cult="selectCult"
+          @select-psionic="selectPsionic"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -127,6 +128,7 @@ const {
   selectVariantRule,
   selectVehicle,
   selectCult,
+  selectPsionic,
   closeModal,
   handleReferenceClick,
   initialize

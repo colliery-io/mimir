@@ -27,6 +27,7 @@
       <option value="Variant Rules">Variant Rules</option>
       <option value="Vehicles">Vehicles</option>
       <option value="Cults & Boons">Cults & Boons</option>
+      <option value="Psionics">Psionics</option>
     </select>
   </div>
 </template>

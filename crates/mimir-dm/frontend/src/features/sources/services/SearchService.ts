@@ -57,7 +57,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule' | 'vehicle' | 'cult' | 'boon'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule' | 'vehicle' | 'cult' | 'boon' | 'psionic'
 }
 
 class SearchServiceClass {
@@ -122,6 +122,9 @@ class SearchServiceClass {
       case 'Cults & Boons':
         await this.catalog.initializeCultCatalog()
         break
+      case 'Psionics':
+        // No initialization needed - loaded from single file
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -170,6 +173,8 @@ class SearchServiceClass {
         return await this.searchVehicles({ query, sources })
       case 'Cults & Boons':
         return await this.searchCults({ query, sources })
+      case 'Psionics':
+        return await this.searchPsionics({ query, sources })
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -464,6 +469,28 @@ class SearchServiceClass {
     return await this.catalog.getCultSources()
   }
   
+  async searchPsionics(params: {
+    query?: string
+    psionic_types?: string[]
+    orders?: string[]
+    sources?: string[]
+  }): Promise<any[]> {
+    const results = await this.catalog.searchPsionics(params)
+    return results
+  }
+  
+  async getPsionicDetails(name: string, source: string): Promise<any> {
+    return await this.catalog.getPsionicDetails(name, source)
+  }
+  
+  async getPsionicOrders(): Promise<string[]> {
+    return await this.catalog.getPsionicOrders()
+  }
+  
+  async getPsionicSources(): Promise<string[]> {
+    return await this.catalog.getPsionicSources()
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -508,6 +535,8 @@ class SearchServiceClass {
         return await this.catalog.getCultDetails(name, source)
       case 'boon':
         return await this.catalog.getBoonDetails(name, source)
+      case 'psionic':
+        return await this.catalog.getPsionicDetails(name, source)
       default:
         return null
     }

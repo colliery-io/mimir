@@ -179,6 +179,16 @@
       @sort="$emit('sort', $event)"
     />
     
+    <PsionicTable
+      v-else-if="category === 'Psionics'"
+      :psionics="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
+      @select="$emit('select-psionic', $event)"
+      @sort="$emit('sort', $event)"
+    />
+    
     <div v-else class="placeholder-message">
       {{ category }} catalog coming soon...
     </div>
@@ -205,6 +215,7 @@ import TablesList from './TablesList.vue'
 import VariantRuleTable from './VariantRuleTable.vue'
 import VehicleTable from './VehicleTable.vue'
 import CultTable from './CultTable.vue'
+import PsionicTable from './PsionicTable.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -221,7 +232,8 @@ import type {
   TrapSummary,
   LanguageSummary,
   RewardSummary,
-  TableSummary
+  TableSummary,
+  PsionicSummary
 } from '../../composables/useCatalog'
 
 interface Props {
@@ -261,6 +273,7 @@ defineEmits<{
   'select-variant-rule': [rule: any]
   'select-vehicle': [vehicle: any]
   'select-cult': [item: any]
+  'select-psionic': [psionic: PsionicSummary]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()

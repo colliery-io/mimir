@@ -99,6 +99,9 @@ fn main() {
             let cult_catalog = std::sync::Mutex::new(commands::catalog_cult::CultCatalog::new());
             app.manage(cult_catalog);
             
+            let psionic_catalog = std::sync::Mutex::new(commands::catalog_psionic::PsionicCatalog::new());
+            app.manage(psionic_catalog);
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -249,7 +252,11 @@ fn main() {
             commands::catalog_cult::get_cult_details,
             commands::catalog_cult::get_boon_details,
             commands::catalog_cult::get_cult_types,
-            commands::catalog_cult::get_cult_sources
+            commands::catalog_cult::get_cult_sources,
+            commands::catalog_psionic::search_psionics,
+            commands::catalog_psionic::get_psionic_details,
+            commands::catalog_psionic::get_psionic_orders,
+            commands::catalog_psionic::get_psionic_sources
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
