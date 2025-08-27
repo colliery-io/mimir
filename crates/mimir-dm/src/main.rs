@@ -87,6 +87,9 @@ fn main() {
             let reward_catalog = std::sync::Mutex::new(commands::catalog_reward::RewardCatalog::new());
             app.manage(reward_catalog);
             
+            let table_catalog = std::sync::Mutex::new(commands::catalog_table::TableCatalog::new());
+            app.manage(table_catalog);
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -211,7 +214,13 @@ fn main() {
             commands::catalog_reward::search_rewards,
             commands::catalog_reward::get_reward_details,
             commands::catalog_reward::get_reward_types,
-            commands::catalog_reward::get_reward_sources
+            commands::catalog_reward::get_reward_sources,
+            // Table catalog commands
+            commands::catalog_table::init_table_catalog,
+            commands::catalog_table::search_tables,
+            commands::catalog_table::get_table_details,
+            commands::catalog_table::get_table_categories,
+            commands::catalog_table::get_table_sources
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

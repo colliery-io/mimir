@@ -19,7 +19,9 @@ import type {
   LanguageSummary,
   Language,
   RewardSummary,
-  Reward
+  Reward,
+  TableSummary,
+  Table
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -340,6 +342,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectTable(table: TableSummary) {
+    const fullTable = await SearchService.getDetails({
+      name: table.name,
+      source: table.source,
+      type: 'table'
+    })
+    
+    const { formatTableDetails } = await import('../formatters/tableFormatter')
+    const formattedContent = await formatTableDetails(fullTable || table)
+    modalStack.value.push({
+      visible: true,
+      title: table.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -516,6 +534,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectTrap,
     selectLanguage,
     selectReward,
+    selectTable,
     closeModal,
     handleReferenceClick,
     initialize,

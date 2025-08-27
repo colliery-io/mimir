@@ -54,6 +54,7 @@
           @select-trap="selectTrap"
           @select-language="selectLanguage"
           @select-reward="selectReward"
+          @select-table="selectTable"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -119,6 +120,7 @@ const {
   selectTrap,
   selectLanguage,
   selectReward,
+  selectTable,
   closeModal,
   handleReferenceClick,
   initialize

@@ -23,6 +23,7 @@
       <option value="Traps & Hazards">Traps & Hazards</option>
       <option value="Languages">Languages</option>
       <option value="Rewards">Rewards</option>
+      <option value="Tables">Tables</option>
     </select>
   </div>
 </template>

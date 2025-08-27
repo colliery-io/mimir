@@ -18,7 +18,9 @@ import type {
   LanguageSummary,
   Language,
   RewardSummary,
-  Reward
+  Reward,
+  TableSummary,
+  Table
 } from '../composables/useCatalog'
 
 export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails, OptionalFeatureSummary }
@@ -55,7 +57,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table'
 }
 
 class SearchServiceClass {
@@ -108,6 +110,9 @@ class SearchServiceClass {
       case 'Rewards':
         await this.catalog.initializeRewardCatalog()
         break
+      case 'Tables':
+        await this.catalog.initializeTableCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -148,6 +153,8 @@ class SearchServiceClass {
         return await this.searchLanguages({ query, sources })
       case 'Rewards':
         return await this.searchRewards({ query, sources })
+      case 'Tables':
+        return await this.searchTables({ query, sources })
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -345,6 +352,29 @@ class SearchServiceClass {
     return await this.catalog.getRewardSources()
   }
   
+  async searchTables(params: {
+    query?: string
+    sources?: string[]
+    categories?: string[]
+    min_rows?: number
+    max_rows?: number
+  }): Promise<TableSummary[]> {
+    const results = await this.catalog.searchTables(params)
+    return results
+  }
+  
+  async getTableDetails(name: string, source: string): Promise<Table | null> {
+    return await this.catalog.getTableDetails(name, source)
+  }
+  
+  async getTableCategories(): Promise<string[]> {
+    return await this.catalog.getTableCategories()
+  }
+  
+  async getTableSources(): Promise<string[]> {
+    return await this.catalog.getTableSources()
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -379,6 +409,8 @@ class SearchServiceClass {
         return await this.catalog.getLanguageDetails(name, source)
       case 'reward':
         return await this.catalog.getRewardDetails(name, source)
+      case 'table':
+        return await this.catalog.getTableDetails(name, source)
       default:
         return null
     }

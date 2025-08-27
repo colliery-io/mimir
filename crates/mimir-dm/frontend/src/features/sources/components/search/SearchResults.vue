@@ -143,6 +143,15 @@
       @sort="$emit('sort', $event)"
     />
     
+    <TablesList
+      v-else-if="category === 'Tables'"
+      :tables="results"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
+      @select="$emit('select-table', $event)"
+      @sort="$emit('sort', $event)"
+    />
+    
     <div v-else class="placeholder-message">
       {{ category }} catalog coming soon...
     </div>
@@ -165,6 +174,7 @@ import ObjectTable from './ObjectTable.vue'
 import TrapTable from './TrapTable.vue'
 import LanguageTable from './LanguageTable.vue'
 import RewardTable from './RewardTable.vue'
+import TablesList from './TablesList.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -180,7 +190,8 @@ import type {
   ObjectSummary,
   TrapSummary,
   LanguageSummary,
-  RewardSummary
+  RewardSummary,
+  TableSummary
 } from '../../composables/useCatalog'
 
 interface Props {
@@ -216,6 +227,7 @@ defineEmits<{
   'select-trap': [trap: TrapSummary]
   'select-language': [lang: LanguageSummary]
   'select-reward': [reward: RewardSummary]
+  'select-table': [table: TableSummary]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()

@@ -18,6 +18,7 @@ pub mod spell;
 pub mod trap;
 pub mod language;
 pub mod reward;
+pub mod table;
 
 // Re-export commonly used types
 pub use class::{
@@ -60,3 +61,5 @@ pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary};
 pub use language::{Language, LanguageData, LanguageSummary, LanguageFluff, LanguageFluffData};
 
 pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData};
+
+pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData};
