@@ -9,7 +9,8 @@ import type {
   RaceSummary,
   BackgroundSummary,
   ActionSummary,
-  ConditionSummary
+  ConditionSummary,
+  OptionalFeatureSummary
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -234,6 +235,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectOption(option: OptionalFeatureSummary) {
+    const fullOption = await SearchService.getDetails({
+      name: option.name,
+      source: option.source,
+      type: 'option'
+    })
+    
+    const { formatOptionalFeatureDetails } = await import('../formatters/optionalFeatureFormatter')
+    const formattedContent = formatOptionalFeatureDetails(fullOption || option)
+    modalStack.value.push({
+      visible: true,
+      title: option.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -403,6 +420,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectBackground,
     selectAction,
     selectCondition,
+    selectOption,
     closeModal,
     handleReferenceClick,
     initialize

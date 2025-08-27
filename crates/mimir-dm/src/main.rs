@@ -13,6 +13,7 @@ use commands::*;
 use commands::catalog_action::{init_action_catalog, search_actions, get_action_details};
 use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details};
 use commands::catalog_condition::{init_condition_catalog, search_conditions, get_condition_details};
+use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
 use services::database::DatabaseService;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
@@ -59,6 +60,7 @@ fn main() {
             let background_catalog = Mutex::new(commands::catalog_background::BackgroundCatalog::new());
             let action_catalog = Mutex::new(commands::catalog_action::ActionCatalog::new());
             let condition_catalog = Mutex::new(commands::catalog_condition::ConditionCatalog::new());
+            let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
             app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
@@ -68,6 +70,7 @@ fn main() {
             app.manage(background_catalog);
             app.manage(action_catalog);
             app.manage(condition_catalog);
+            app.manage(optional_feature_catalog);
             
             Ok(())
         })
@@ -160,7 +163,12 @@ fn main() {
             // Condition catalog commands
             init_condition_catalog,
             search_conditions,
-            get_condition_details
+            get_condition_details,
+            // Optional feature catalog commands
+            init_optional_feature_catalog,
+            search_optional_features,
+            get_optional_feature_details,
+            get_feature_types
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

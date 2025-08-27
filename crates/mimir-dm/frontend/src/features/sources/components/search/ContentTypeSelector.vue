@@ -17,6 +17,7 @@
       <option value="Actions">Actions</option>
       <option value="Conditions">Conditions & Diseases</option>
       <option value="Feats">Feats</option>
+      <option value="Options">Other Options & Features</option>
     </select>
   </div>
 </template>

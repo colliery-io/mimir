@@ -84,6 +84,12 @@
       @select="$emit('select-condition', $event)"
     />
     
+    <OptionsTable
+      v-else-if="category === 'Options'"
+      :options="results"
+      @select="$emit('select-option', $event)"
+    />
+    
     <div v-else class="placeholder-message">
       {{ category }} catalog coming soon...
     </div>
@@ -100,6 +106,7 @@ import RaceTable from './RaceTable.vue'
 import BackgroundTable from './BackgroundTable.vue'
 import ActionTable from './ActionTable.vue'
 import ConditionTable from './ConditionTable.vue'
+import OptionsTable from './OptionsTable.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -109,7 +116,8 @@ import type {
   RaceSummary,
   BackgroundSummary,
   ActionSummary,
-  ConditionSummary
+  ConditionSummary,
+  OptionalFeatureSummary
 } from '../../composables/useCatalog'
 
 interface Props {
@@ -139,6 +147,7 @@ defineEmits<{
   'select-background': [background: BackgroundSummary]
   'select-action': [action: ActionSummary]
   'select-condition': [condition: ConditionSummary]
+  'select-option': [option: OptionalFeatureSummary]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()

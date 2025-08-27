@@ -9,10 +9,11 @@ import type {
   BackgroundSummary,
   ActionSummary,
   ConditionSummary,
-  ConditionWithDetails
+  ConditionWithDetails,
+  OptionalFeatureSummary
 } from '../composables/useCatalog'
 
-export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails }
+export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails, OptionalFeatureSummary }
 
 export interface SearchFilters {
   spells: {
@@ -46,7 +47,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option'
 }
 
 class SearchServiceClass {
@@ -81,6 +82,9 @@ class SearchServiceClass {
       case 'Conditions':
         await this.catalog.initializeConditionCatalog()
         break
+      case 'Options':
+        await this.catalog.initializeOptionalFeatureCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -109,6 +113,8 @@ class SearchServiceClass {
         return await this.searchActions(query, sources)
       case 'Conditions':
         return await this.searchConditions(query, sources)
+      case 'Options':
+        return await this.searchOptionalFeatures(query, sources)
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -220,6 +226,14 @@ class SearchServiceClass {
     return results
   }
   
+  private async searchOptionalFeatures(query?: string, sources?: string[]): Promise<OptionalFeatureSummary[]> {
+    const results = await this.catalog.searchOptionalFeatures({
+      query: query || undefined,
+      sources: sources || undefined
+    })
+    return results
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -242,6 +256,8 @@ class SearchServiceClass {
         return await this.catalog.getActionDetails(name, source)
       case 'condition':
         return await this.catalog.getConditionDetails(name, source)
+      case 'option':
+        return await this.catalog.getOptionalFeatureDetails(name, source)
       default:
         return null
     }

@@ -48,6 +48,7 @@
           @select-background="selectBackground"
           @select-action="selectAction"
           @select-condition="selectCondition"
+          @select-option="selectOption"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -107,6 +108,7 @@ const {
   selectBackground,
   selectAction,
   selectCondition,
+  selectOption,
   closeModal,
   handleReferenceClick,
   initialize

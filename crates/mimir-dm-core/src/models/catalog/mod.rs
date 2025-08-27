@@ -10,6 +10,7 @@ pub mod condition;
 pub mod feat;
 pub mod item;
 pub mod monster;
+pub mod optionalfeature;
 pub mod race;
 pub mod spell;
 
@@ -42,3 +43,5 @@ pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFl
 pub use action::{Action, ActionData, ActionSummary};
 
 pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSummary, ConditionOrDisease, ConditionWithDetails, ConditionFluff, ConditionFluffData};
+
+pub use optionalfeature::{OptionalFeature, OptionalFeatureData, OptionalFeatureSummary};
