@@ -19,6 +19,7 @@ pub mod trap;
 pub mod language;
 pub mod reward;
 pub mod table;
+pub mod variant_rule;
 
 // Re-export commonly used types
 pub use class::{
@@ -63,3 +64,5 @@ pub use language::{Language, LanguageData, LanguageSummary, LanguageFluff, Langu
 pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData};
 
 pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData};
+
+pub use variant_rule::{VariantRule, VariantRuleData, VariantRuleSummary};

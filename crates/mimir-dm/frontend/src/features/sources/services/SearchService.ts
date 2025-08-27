@@ -57,7 +57,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule'
 }
 
 class SearchServiceClass {
@@ -113,6 +113,9 @@ class SearchServiceClass {
       case 'Tables':
         await this.catalog.initializeTableCatalog()
         break
+      case 'Variant Rules':
+        await this.catalog.initializeVariantRuleCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -155,6 +158,8 @@ class SearchServiceClass {
         return await this.searchRewards({ query, sources })
       case 'Tables':
         return await this.searchTables({ query, sources })
+      case 'Variant Rules':
+        return await this.searchVariantRules({ query, sources })
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -375,6 +380,27 @@ class SearchServiceClass {
     return await this.catalog.getTableSources()
   }
   
+  async searchVariantRules(params: {
+    query?: string
+    types?: string[]
+    sources?: string[]
+  }): Promise<any[]> {
+    const results = await this.catalog.searchVariantRules(params)
+    return results
+  }
+  
+  async getVariantRuleDetails(name: string, source: string): Promise<any> {
+    return await this.catalog.getVariantRuleDetails(name, source)
+  }
+  
+  async getVariantRuleTypes(): Promise<string[]> {
+    return await this.catalog.getVariantRuleTypes()
+  }
+  
+  async getVariantRuleSources(): Promise<string[]> {
+    return await this.catalog.getVariantRuleSources()
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -411,6 +437,8 @@ class SearchServiceClass {
         return await this.catalog.getRewardDetails(name, source)
       case 'table':
         return await this.catalog.getTableDetails(name, source)
+      case 'variantrule':
+        return await this.catalog.getVariantRuleDetails(name, source)
       default:
         return null
     }

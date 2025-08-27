@@ -90,6 +90,9 @@ fn main() {
             let table_catalog = std::sync::Mutex::new(commands::catalog_table::TableCatalog::new());
             app.manage(table_catalog);
             
+            let variant_rule_catalog = std::sync::Mutex::new(commands::catalog_variant_rule::VariantRuleCatalog::new());
+            app.manage(variant_rule_catalog);
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -220,7 +223,13 @@ fn main() {
             commands::catalog_table::search_tables,
             commands::catalog_table::get_table_details,
             commands::catalog_table::get_table_categories,
-            commands::catalog_table::get_table_sources
+            commands::catalog_table::get_table_sources,
+            // Variant Rule catalog commands
+            commands::catalog_variant_rule::init_variant_rule_catalog,
+            commands::catalog_variant_rule::search_variant_rules,
+            commands::catalog_variant_rule::get_variant_rule_details,
+            commands::catalog_variant_rule::get_variant_rule_types,
+            commands::catalog_variant_rule::get_variant_rule_sources
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

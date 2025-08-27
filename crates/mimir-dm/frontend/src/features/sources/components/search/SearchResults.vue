@@ -152,6 +152,15 @@
       @sort="$emit('sort', $event)"
     />
     
+    <VariantRuleTable
+      v-else-if="category === 'Variant Rules'"
+      :rules="results"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
+      @select="$emit('select-variant-rule', $event)"
+      @sort="$emit('sort', $event)"
+    />
+    
     <div v-else class="placeholder-message">
       {{ category }} catalog coming soon...
     </div>
@@ -175,6 +184,7 @@ import TrapTable from './TrapTable.vue'
 import LanguageTable from './LanguageTable.vue'
 import RewardTable from './RewardTable.vue'
 import TablesList from './TablesList.vue'
+import VariantRuleTable from './VariantRuleTable.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -228,6 +238,7 @@ defineEmits<{
   'select-language': [lang: LanguageSummary]
   'select-reward': [reward: RewardSummary]
   'select-table': [table: TableSummary]
+  'select-variant-rule': [rule: any]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()

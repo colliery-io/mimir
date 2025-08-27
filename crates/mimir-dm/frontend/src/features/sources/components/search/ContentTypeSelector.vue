@@ -24,6 +24,7 @@
       <option value="Languages">Languages</option>
       <option value="Rewards">Rewards</option>
       <option value="Tables">Tables</option>
+      <option value="Variant Rules">Variant Rules</option>
     </select>
   </div>
 </template>

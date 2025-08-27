@@ -424,6 +424,21 @@ export interface TableSummary {
   category: string
 }
 
+export interface VariantRule {
+  name: string
+  source: string
+  rule_type?: string
+  page?: number
+  entries?: any[]
+}
+
+export interface VariantRuleSummary {
+  name: string
+  source: string
+  rule_type?: string
+  page?: number
+}
+
 export interface Language {
   name: string
   source: string
@@ -1499,6 +1514,58 @@ export function useCatalog() {
         return sources || []
       } catch (e) {
         console.error(`Failed to get table sources: ${e}`)
+        return []
+      }
+    },
+    // Variant Rule catalog methods
+    initializeVariantRuleCatalog: async () => {
+      try {
+        await invoke('init_variant_rule_catalog')
+      } catch (e) {
+        console.error(`Failed to initialize variant rule catalog: ${e}`)
+      }
+    },
+    searchVariantRules: async (filters: {
+      query?: string
+      types?: string[]
+      sources?: string[]
+    }): Promise<VariantRuleSummary[]> => {
+      try {
+        const results = await invoke<VariantRuleSummary[]>('search_variant_rules', {
+          query: filters.query || null,
+          types: filters.types || null,
+          sources: filters.sources || null
+        })
+        return results || []
+      } catch (e) {
+        console.error(`Failed to search variant rules: ${e}`)
+        return []
+      }
+    },
+    getVariantRuleDetails: async (name: string, source: string): Promise<VariantRule | null> => {
+      try {
+        const details = await invoke<VariantRule>('get_variant_rule_details', { name, source })
+        return details
+      } catch (e) {
+        console.error(`Failed to get variant rule details: ${e}`)
+        return null
+      }
+    },
+    getVariantRuleTypes: async (): Promise<string[]> => {
+      try {
+        const types = await invoke<string[]>('get_variant_rule_types')
+        return types || []
+      } catch (e) {
+        console.error(`Failed to get variant rule types: ${e}`)
+        return []
+      }
+    },
+    getVariantRuleSources: async (): Promise<string[]> => {
+      try {
+        const sources = await invoke<string[]>('get_variant_rule_sources')
+        return sources || []
+      } catch (e) {
+        console.error(`Failed to get variant rule sources: ${e}`)
         return []
       }
     }

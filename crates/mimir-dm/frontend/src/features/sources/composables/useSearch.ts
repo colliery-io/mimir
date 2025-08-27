@@ -358,6 +358,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectVariantRule(rule: any) {
+    const fullRule = await SearchService.getDetails({
+      name: rule.name,
+      source: rule.source,
+      type: 'variantrule'
+    })
+    
+    const { formatVariantRuleDetails } = await import('../formatters/variantRuleFormatter')
+    const formattedContent = formatVariantRuleDetails(fullRule || rule)
+    modalStack.value.push({
+      visible: true,
+      title: rule.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -535,6 +551,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectLanguage,
     selectReward,
     selectTable,
+    selectVariantRule,
     closeModal,
     handleReferenceClick,
     initialize,

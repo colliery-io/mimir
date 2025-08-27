@@ -55,6 +55,7 @@
           @select-language="selectLanguage"
           @select-reward="selectReward"
           @select-table="selectTable"
+          @select-variant-rule="selectVariantRule"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -121,6 +122,7 @@ const {
   selectLanguage,
   selectReward,
   selectTable,
+  selectVariantRule,
   closeModal,
   handleReferenceClick,
   initialize

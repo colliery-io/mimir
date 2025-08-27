@@ -23,6 +23,7 @@ pub mod catalog_trap;
 pub mod catalog_language;
 pub mod catalog_reward;
 pub mod catalog_table;
+pub mod catalog_variant_rule;
 
 pub use campaigns::*;
 pub use app_info::*;
