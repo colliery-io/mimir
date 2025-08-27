@@ -49,6 +49,7 @@
           @select-action="selectAction"
           @select-condition="selectCondition"
           @select-option="selectOption"
+          @select-deity="selectDeity"
           @sort="handleSort"
           @update-monster-filters="updateMonsterFilters"
         />
@@ -109,6 +110,7 @@ const {
   selectAction,
   selectCondition,
   selectOption,
+  selectDeity,
   closeModal,
   handleReferenceClick,
   initialize

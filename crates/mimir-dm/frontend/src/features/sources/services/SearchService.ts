@@ -10,7 +10,8 @@ import type {
   ActionSummary,
   ConditionSummary,
   ConditionWithDetails,
-  OptionalFeatureSummary
+  OptionalFeatureSummary,
+  DeitySummary
 } from '../composables/useCatalog'
 
 export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails, OptionalFeatureSummary }
@@ -47,7 +48,7 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity'
 }
 
 class SearchServiceClass {
@@ -85,6 +86,9 @@ class SearchServiceClass {
       case 'Options':
         await this.catalog.initializeOptionalFeatureCatalog()
         break
+      case 'Deities':
+        await this.catalog.initializeDeityCatalog()
+        break
       case 'Feats':
         await this.catalog.initializeFeatCatalog()
         break
@@ -115,6 +119,8 @@ class SearchServiceClass {
         return await this.searchConditions(query, sources)
       case 'Options':
         return await this.searchOptionalFeatures(query, sources)
+      case 'Deities':
+        return await this.searchDeities(query, sources)
       case 'Feats':
         return await this.searchFeats(query)
       default:
@@ -234,6 +240,14 @@ class SearchServiceClass {
     return results
   }
   
+  private async searchDeities(query?: string, sources?: string[]): Promise<DeitySummary[]> {
+    const results = await this.catalog.searchDeities({
+      query: query || undefined,
+      sources: sources || undefined
+    })
+    return results
+  }
+  
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type } = params
     
@@ -258,6 +272,8 @@ class SearchServiceClass {
         return await this.catalog.getConditionDetails(name, source)
       case 'option':
         return await this.catalog.getOptionalFeatureDetails(name, source)
+      case 'deity':
+        return await this.catalog.getDeityDetails(name, source)
       default:
         return null
     }

@@ -17,6 +17,7 @@ pub mod catalog_background;
 pub mod catalog_condition;
 pub mod catalog_race;
 pub mod catalog_optionalfeature;
+pub mod catalog_deity;
 
 pub use campaigns::*;
 pub use app_info::*;

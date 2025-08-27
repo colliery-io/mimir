@@ -10,7 +10,8 @@ import type {
   BackgroundSummary,
   ActionSummary,
   ConditionSummary,
-  OptionalFeatureSummary
+  OptionalFeatureSummary,
+  DeitySummary
 } from './useCatalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
@@ -251,6 +252,22 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     })
   }
   
+  async function selectDeity(deity: DeitySummary) {
+    const fullDeity = await SearchService.getDetails({
+      name: deity.name,
+      source: deity.source,
+      type: 'deity'
+    })
+    
+    const { formatDeityContent } = await import('../formatters/deityFormatter')
+    const formattedContent = formatDeityContent(fullDeity || deity)
+    modalStack.value.push({
+      visible: true,
+      title: deity.name,
+      content: formattedContent
+    })
+  }
+  
   function closeModal(index?: number) {
     if (index !== undefined) {
       modalStack.value.splice(index, 1)
@@ -421,6 +438,7 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
     selectAction,
     selectCondition,
     selectOption,
+    selectDeity,
     closeModal,
     handleReferenceClick,
     initialize

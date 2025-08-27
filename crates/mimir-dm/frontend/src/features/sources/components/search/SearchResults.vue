@@ -85,9 +85,23 @@
     />
     
     <OptionsTable
-      v-else-if="category === 'Options'"
+      v-else-if="category === 'Other Options & Features'"
       :options="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
       @select="$emit('select-option', $event)"
+      @sort="$emit('sort', $event)"
+    />
+    
+    <DeityTable
+      v-else-if="category === 'Deities'"
+      :deities="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
+      @select="$emit('select-deity', $event)"
+      @sort="$emit('sort', $event)"
     />
     
     <div v-else class="placeholder-message">
@@ -107,6 +121,7 @@ import BackgroundTable from './BackgroundTable.vue'
 import ActionTable from './ActionTable.vue'
 import ConditionTable from './ConditionTable.vue'
 import OptionsTable from './OptionsTable.vue'
+import DeityTable from './DeityTable.vue'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -117,7 +132,8 @@ import type {
   BackgroundSummary,
   ActionSummary,
   ConditionSummary,
-  OptionalFeatureSummary
+  OptionalFeatureSummary,
+  DeitySummary
 } from '../../composables/useCatalog'
 
 interface Props {
@@ -148,6 +164,7 @@ defineEmits<{
   'select-action': [action: ActionSummary]
   'select-condition': [condition: ConditionSummary]
   'select-option': [option: OptionalFeatureSummary]
+  'select-deity': [deity: DeitySummary]
   'sort': [column: string]
   'update-monster-filters': [filters: { sizes?: string[], types?: string[] }]
 }>()

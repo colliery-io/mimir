@@ -7,6 +7,7 @@ pub mod action;
 pub mod background;
 pub mod class;
 pub mod condition;
+pub mod deity;
 pub mod feat;
 pub mod item;
 pub mod monster;
@@ -45,3 +46,5 @@ pub use action::{Action, ActionData, ActionSummary};
 pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSummary, ConditionOrDisease, ConditionWithDetails, ConditionFluff, ConditionFluffData};
 
 pub use optionalfeature::{OptionalFeature, OptionalFeatureData, OptionalFeatureSummary};
+
+pub use deity::{Deity, DeityData, DeitySummary};

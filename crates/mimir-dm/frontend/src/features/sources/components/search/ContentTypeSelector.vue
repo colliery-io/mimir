@@ -18,6 +18,7 @@
       <option value="Conditions">Conditions & Diseases</option>
       <option value="Feats">Feats</option>
       <option value="Options">Other Options & Features</option>
+      <option value="Deities">Deities</option>
     </select>
   </div>
 </template>
