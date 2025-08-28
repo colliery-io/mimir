@@ -2,9 +2,10 @@
   <div class="catalog-panel">
     <!-- Header -->
     <div class="catalog-header">
-      <div class="header-top">
-        <ContentTypeSelector v-model="selectedCategory" />
-        
+      <!-- Category Tabs -->
+      <ContentCategoryTabs v-model="selectedCategory" />
+      
+      <div class="header-controls">
         <div class="search-bar">
           <input 
             type="text" 
@@ -83,7 +84,7 @@
 import { computed, onMounted } from 'vue'
 import { useSearch } from '../composables/useSearch'
 import BaseModal from '@/components/shared/BaseModal.vue'
-import ContentTypeSelector from '../components/search/ContentTypeSelector.vue'
+import ContentCategoryTabs from '../components/search/ContentCategoryTabs.vue'
 import SearchFilters from '../components/search/SearchFilters.vue'
 import SearchResults from '../components/search/SearchResults.vue'
 
@@ -152,16 +153,16 @@ onMounted(() => {
 }
 
 .catalog-header {
-  padding: var(--spacing-md, 12px) var(--spacing-lg, 16px);
   background: var(--color-surface, #1a1a1a);
   border-bottom: 1px solid var(--color-border, #333);
 }
 
-.header-top {
+.header-controls {
   display: flex;
   align-items: center;
   gap: var(--spacing-lg, 16px);
-  margin-bottom: var(--spacing-sm, 8px);
+  padding: var(--spacing-md, 12px) var(--spacing-lg, 16px);
+  margin-top: var(--spacing-sm, 8px);
 }
 
 .search-bar {

@@ -49,18 +49,25 @@ pub struct ItemData {
 pub struct ItemSummary {
     pub name: String,
     pub source: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "itemType")]
     pub item_type: String,
+    #[serde(rename = "typeName")]
+    pub type_name: String,
     pub rarity: String,
-    pub attunement: bool,
+    pub value: Option<f64>,
+    pub weight: Option<f32>,
+    pub ac: Option<u8>,
+    pub damage: Option<String>,
+    #[serde(rename = "reqAttune")]
+    pub req_attune: Option<String>,
     pub description: String,
 }
 
 impl From<&Item> for ItemSummary {
     fn from(item: &Item) -> Self {
         let item_type = item.item_type.clone().unwrap_or_else(|| "Unknown".to_string());
-        let rarity = item.rarity.clone().unwrap_or_else(|| "Common".to_string());
-        let attunement = item.requires_attunement.is_some();
+        let type_name = get_type_name(&item_type);
+        let rarity = item.rarity.clone().unwrap_or_else(|| "none".to_string());
         
         // Get first line of description for summary
         let description = item.entries.as_ref()
@@ -71,13 +78,58 @@ impl From<&Item> for ItemSummary {
             .take(200)
             .collect::<String>();
         
+        // Combine damage fields if present
+        let damage = match (&item.dmg1, &item.dmg2) {
+            (Some(d1), Some(d2)) => Some(format!("{}/{}", d1, d2)),
+            (Some(d1), None) => Some(d1.clone()),
+            (None, Some(d2)) => Some(d2.clone()),
+            _ => None,
+        };
+        
         ItemSummary {
             name: item.name.clone(),
             source: item.source.clone(),
             item_type,
+            type_name,
             rarity,
-            attunement,
+            value: item.value,
+            weight: item.weight,
+            ac: item.ac,
+            damage,
+            req_attune: item.requires_attunement.clone(),
             description,
         }
     }
+}
+
+fn get_type_name(item_type: &str) -> String {
+    match item_type {
+        "M" => "Melee Weapon",
+        "R" => "Ranged Weapon",
+        "A" => "Ammunition",
+        "LA" => "Light Armor",
+        "MA" => "Medium Armor",
+        "HA" => "Heavy Armor",
+        "S" => "Shield",
+        "G" => "Adventuring Gear",
+        "AT" => "Artisan's Tools",
+        "T" => "Tools",
+        "GS" => "Gaming Set",
+        "SCF" => "Spellcasting Focus",
+        "INS" => "Instrument",
+        "MNT" => "Mount",
+        "TAH" => "Tack & Harness",
+        "VEH" => "Vehicle",
+        "FD" => "Food & Drink",
+        "TG" => "Trade Good",
+        "$C" => "Treasure",
+        "W" => "Wondrous Item",
+        "P" => "Potion",
+        "RG" => "Ring",
+        "RD" => "Rod",
+        "SC" => "Scroll",
+        "ST" => "Staff",
+        "WD" => "Wand",
+        _ => item_type,
+    }.to_string()
 }

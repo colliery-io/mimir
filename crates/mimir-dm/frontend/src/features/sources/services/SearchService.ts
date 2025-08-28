@@ -93,6 +93,7 @@ class SearchServiceClass {
         await this.catalog.initializeConditionCatalog()
         break
       case 'Options':
+      case 'Other Options & Features':
         await this.catalog.initializeOptionalFeatureCatalog()
         break
       case 'Deities':
@@ -154,6 +155,7 @@ class SearchServiceClass {
       case 'Conditions':
         return await this.searchConditions(query, sources)
       case 'Options':
+      case 'Other Options & Features':
         return await this.searchOptionalFeatures(query, sources)
       case 'Deities':
         return await this.searchDeities(query, sources)

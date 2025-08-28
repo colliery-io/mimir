@@ -969,7 +969,7 @@ export function useCatalog() {
     try {
       isLoading.value = true
       error.value = null
-      await invoke('initialize_race_catalog')
+      await invoke('init_race_catalog')
       isRacesInitialized.value = true
     } catch (e) {
       error.value = `Failed to initialize race catalog: ${e}`
