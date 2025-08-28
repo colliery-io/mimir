@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, toRef, isRef, type Ref, type MaybeRef } from 'vue'
 import { SearchService, type SearchFilters } from '../services/SearchService'
 import { useSharedContextStore } from '@/stores/sharedContext'
 import type { 
@@ -34,9 +34,11 @@ import { formatRaceDetails } from '../formatters/raceFormatter'
 import { formatBackgroundDetails } from '../formatters/backgroundFormatter'
 import { formatActionDetails } from '../formatters/actionFormatter'
 
-export function useSearch(initialCategory: string, selectedSourcesArray: string[]) {
+export function useSearch(initialCategory: string, initialSources: MaybeRef<string[]>) {
   const selectedCategory = ref(initialCategory)
-  const selectedSources = ref(selectedSourcesArray) // Make it reactive
+  // Convert to ref if it's not already
+  const sourcesRef = isRef(initialSources) ? initialSources : ref(initialSources)
+  const selectedSources = ref([...sourcesRef.value]) // Create a local reactive copy
   const searchQuery = ref('')
   const searchPerformed = ref(false)
   const sortColumn = ref('name')
@@ -44,13 +46,14 @@ export function useSearch(initialCategory: string, selectedSourcesArray: string[
   
   const contextStore = useSharedContextStore()
   
-  // Watch for source changes and re-search
-  watch(() => selectedSourcesArray, (newSources) => {
-    selectedSources.value = newSources
+  // Watch for external source changes and update local copy
+  watch(sourcesRef, (newSources) => {
+    selectedSources.value = [...newSources]
+    // Automatically re-search when sources change if we've already performed a search
     if (searchPerformed.value) {
-      performSearch() // Re-search when sources change
+      performSearch()
     }
-  })
+  }, { deep: true })
   
   const results = ref<any[]>([])
   const filters = ref<SearchFilters>({
@@ -97,7 +100,8 @@ export function useSearch(initialCategory: string, selectedSourcesArray: string[
       catalog: {
         selectedCategory: selectedCategory.value,
         searchQuery: searchQuery.value,
-        selectedItems: contextStore.reference?.catalog?.selectedItems || []
+        selectedItems: contextStore.reference?.catalog?.selectedItems || [],
+        selectedSources: selectedSources.value
       }
     })
     
@@ -610,10 +614,6 @@ export function useSearch(initialCategory: string, selectedSourcesArray: string[
     await SearchService.initialize(newCategory)
     await performSearch()
   })
-  
-  watch(() => selectedSources, () => {
-    performSearch()
-  }, { deep: true })
   
   return {
     selectedCategory,

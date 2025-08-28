@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, toRef } from 'vue'
 import { useSearch } from '../composables/useSearch'
 import BaseModal from '@/components/shared/BaseModal.vue'
 import ContentCategoryTabs from '../components/search/ContentCategoryTabs.vue'
@@ -94,6 +94,9 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// Create reactive references to props
+const sourcesRef = toRef(props, 'selectedSources')
 
 const {
   selectedCategory,
@@ -133,7 +136,7 @@ const {
   closeModal,
   handleReferenceClick,
   initialize
-} = useSearch(props.selectedCategory, props.selectedSources)
+} = useSearch(props.selectedCategory, sourcesRef)
 
 const showFilters = computed(() => {
   return ['Spells', 'Equipment', 'Magic Items'].includes(selectedCategory.value)
