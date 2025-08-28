@@ -69,10 +69,12 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCampaignStore } from '../../../stores/campaigns'
+import { useSharedContextStore } from '../../../stores/sharedContext'
 import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const campaignStore = useCampaignStore()
+const contextStore = useSharedContextStore()
 const { campaigns, currentCampaign, loading, error } = storeToRefs(campaignStore)
 
 // Local state for dropdown and selection
@@ -98,11 +100,20 @@ function closeDropdown() {
   isOpen.value = false
 }
 
-function selectCampaign(campaignId: number) {
+async function selectCampaign(campaignId: number) {
   selectedCampaignId.value = campaignId
   // Also update the current campaign in the store
-  campaignStore.getCampaign(campaignId)
+  const campaign = await campaignStore.getCampaign(campaignId)
   closeDropdown()
+  
+  // Update shared context with campaign info
+  if (campaign) {
+    await contextStore.updateCampaign({
+      id: campaign.id.toString(),
+      name: campaign.name,
+      currentStage: campaign.status
+    })
+  }
   
   // Persist selection to localStorage
   localStorage.setItem('selectedCampaignId', campaignId.toString())
@@ -130,13 +141,29 @@ onMounted(async () => {
     if (!isNaN(id)) {
       selectedCampaignId.value = id
       // Load the current campaign to ensure it's in the store
-      await campaignStore.getCampaign(id)
+      const campaign = await campaignStore.getCampaign(id)
+      // Update context with loaded campaign
+      if (campaign) {
+        await contextStore.updateCampaign({
+          id: campaign.id.toString(),
+          name: campaign.name,
+          currentStage: campaign.status
+        })
+      }
     }
   } else if (campaigns.value.length > 0) {
     // If no stored selection but we have campaigns, select the first one
     selectedCampaignId.value = campaigns.value[0].id
     localStorage.setItem('selectedCampaignId', campaigns.value[0].id.toString())
-    await campaignStore.getCampaign(campaigns.value[0].id)
+    const campaign = await campaignStore.getCampaign(campaigns.value[0].id)
+    // Update context with first campaign
+    if (campaign) {
+      await contextStore.updateCampaign({
+        id: campaign.id.toString(),
+        name: campaign.name,
+        currentStage: campaign.status
+      })
+    }
   }
   
   // Add click outside listener

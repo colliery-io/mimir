@@ -58,7 +58,7 @@
             <input 
               type="checkbox" 
               :value="book.id"
-              :checked="selectedSources.includes(book.id)"
+              :checked="internalSelectedSources.includes(book.id)"
               @change="toggleSource(book.id)"
             />
             <div class="book-info">
@@ -99,14 +99,14 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const emit = defineEmits<Emits>()
 
-// Selected sources for catalog mode - initialize with all books
-const selectedSources = ref<string[]>([])
+// Internal tracking of selected sources
+const internalSelectedSources = ref<string[]>([])
 
-// Initialize sources when books are loaded
+// Initialize sources when books are loaded - select all by default
 watch(() => props.libraryBooks, (books) => {
-  if (books.length > 0 && selectedSources.value.length === 0) {
-    selectedSources.value = books.map(b => b.id)
-    emit('updateSources', selectedSources.value)
+  if (books.length > 0 && internalSelectedSources.value.length === 0) {
+    internalSelectedSources.value = books.map(b => b.id)
+    emit('updateSources', internalSelectedSources.value)
   }
 }, { immediate: true })
 
@@ -119,13 +119,13 @@ function handleRemoveBook(book: BookInfo) {
 }
 
 function toggleSource(bookId: string) {
-  const index = selectedSources.value.indexOf(bookId)
+  const index = internalSelectedSources.value.indexOf(bookId)
   if (index > -1) {
-    selectedSources.value.splice(index, 1)
+    internalSelectedSources.value.splice(index, 1)
   } else {
-    selectedSources.value.push(bookId)
+    internalSelectedSources.value.push(bookId)
   }
-  emit('updateSources', selectedSources.value)
+  emit('updateSources', [...internalSelectedSources.value]) // Create new array to trigger reactivity
 }
 </script>
 

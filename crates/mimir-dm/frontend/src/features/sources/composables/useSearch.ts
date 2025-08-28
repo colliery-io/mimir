@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { SearchService, type SearchFilters } from '../services/SearchService'
+import { useSharedContextStore } from '@/stores/sharedContext'
 import type { 
   SpellSummary, 
   ItemSummary, 
@@ -33,12 +34,23 @@ import { formatRaceDetails } from '../formatters/raceFormatter'
 import { formatBackgroundDetails } from '../formatters/backgroundFormatter'
 import { formatActionDetails } from '../formatters/actionFormatter'
 
-export function useSearch(initialCategory: string, selectedSources: string[]) {
+export function useSearch(initialCategory: string, selectedSourcesArray: string[]) {
   const selectedCategory = ref(initialCategory)
+  const selectedSources = ref(selectedSourcesArray) // Make it reactive
   const searchQuery = ref('')
   const searchPerformed = ref(false)
   const sortColumn = ref('name')
   const sortDirection = ref<'asc' | 'desc'>('asc')
+  
+  const contextStore = useSharedContextStore()
+  
+  // Watch for source changes and re-search
+  watch(() => selectedSourcesArray, (newSources) => {
+    selectedSources.value = newSources
+    if (searchPerformed.value) {
+      performSearch() // Re-search when sources change
+    }
+  })
   
   const results = ref<any[]>([])
   const filters = ref<SearchFilters>({
@@ -78,8 +90,19 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
   async function performSearch() {
     searchPerformed.value = true
     
-    const sources = selectedSources.length > 0 
-      ? SearchService.mapBookIdsToSources(selectedSources) 
+    // Update context with catalog search info
+    await contextStore.updateReference({
+      activeTab: 'catalog',
+      reading: undefined,
+      catalog: {
+        selectedCategory: selectedCategory.value,
+        searchQuery: searchQuery.value,
+        selectedItems: contextStore.reference?.catalog?.selectedItems || []
+      }
+    })
+    
+    const sources = selectedSources.value.length > 0 
+      ? SearchService.mapBookIdsToSources(selectedSources.value) 
       : undefined
     
     results.value = await SearchService.search({
@@ -117,6 +140,16 @@ export function useSearch(initialCategory: string, selectedSources: string[]) {
       name: spell.name,
       source: spell.source,
       type: 'spell'
+    })
+    
+    // Update context with selected item in catalog mode
+    const selectedItems = contextStore.reference?.catalog?.selectedItems || []
+    await contextStore.updateReference({
+      ...contextStore.reference,
+      catalog: {
+        ...contextStore.reference?.catalog,
+        selectedItems: [...selectedItems, `Spell: ${spell.name}`].slice(-5) // Keep last 5
+      }
     })
     
     modalStack.value.push({

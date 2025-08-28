@@ -19,6 +19,7 @@ use commands::catalog_object::{init_object_catalog, search_objects, get_object_d
 use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, get_trap_types};
 use commands::catalog_language::{init_language_catalog, search_languages, get_language_details, get_language_types, get_language_scripts};
 use services::database::DatabaseService;
+use services::context_service::ContextState;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
 use tracing::{error, info};
@@ -53,6 +54,10 @@ fn main() {
             // Initialize database service
             let db_service = Arc::new(DatabaseService);
             app.manage(db_service);
+            
+            // Initialize context service
+            let context_state = ContextState::new();
+            app.manage(context_state);
             
             // Initialize catalogs
             let spell_catalog = Mutex::new(commands::catalog::SpellCatalog::new());
@@ -256,7 +261,18 @@ fn main() {
             commands::catalog_psionic::search_psionics,
             commands::catalog_psionic::get_psionic_details,
             commands::catalog_psionic::get_psionic_orders,
-            commands::catalog_psionic::get_psionic_sources
+            commands::catalog_psionic::get_psionic_sources,
+            // Context commands
+            update_context,
+            get_full_context,
+            register_window,
+            unregister_window,
+            clear_shared_context,
+            get_context_for_llm,
+            update_context_usage,
+            // Window management commands
+            open_context_debug_window,
+            open_chat_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

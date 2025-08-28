@@ -1,12 +1,14 @@
 import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { ModuleService, type Session } from '@/services/ModuleService'
+import { useSharedContextStore } from '@/stores/sharedContext'
 
 export function useSessionManagement(moduleId: number | null) {
   const sessions = ref<Session[]>([])
   const sessionBoardConfig = ref<any>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const contextStore = useSharedContextStore()
 
   // Load sessions for the module
   async function loadSessions() {
@@ -23,6 +25,43 @@ export function useSessionManagement(moduleId: number | null) {
         session_number: session.session_number ?? index + 1,
         created_at: session.created_at ?? new Date().toISOString()
       }))
+      
+      // Update module context with session info
+      if (sessions.value.length > 0) {
+        const sessionInfo = sessions.value.map(s => ({
+          id: s.id.toString(),
+          name: `Session #${s.session_number}`,
+          status: s.status
+        }))
+        
+        await contextStore.updateModule({
+          ...contextStore.module,
+          sessions: sessionInfo
+        })
+        
+        // Update session context with the most relevant session
+        // Priority: ready > in_prep > next_week > complete
+        const priorityStatuses = ['ready', 'in_prep', 'next_week', 'prep_needed', 'complete']
+        let currentSession = null
+        
+        for (const status of priorityStatuses) {
+          currentSession = sessions.value.find(s => s.status === status)
+          if (currentSession) break
+        }
+        
+        if (currentSession) {
+          await contextStore.updateSession({
+            id: currentSession.id.toString(),
+            name: `Session #${currentSession.session_number}`,
+            moduleId: moduleId.toString(),
+            status: currentSession.status,
+            notes: currentSession.notes || undefined
+          })
+        } else {
+          // Clear session context if no sessions
+          await contextStore.updateSession({})
+        }
+      }
     } catch (e) {
       error.value = `Failed to load sessions: ${e}`
       sessions.value = []
@@ -147,6 +186,15 @@ export function useSessionManagement(moduleId: number | null) {
           session_number: response.data.session_number ?? 1,
           created_at: response.data.created_at ?? new Date().toISOString()
         }
+        
+        // Update session context if this is the current session
+        await contextStore.updateSession({
+          id: session.id.toString(),
+          name: `Session #${session.session_number}`,
+          moduleId: moduleId?.toString(),
+          status: session.status
+        })
+        
         const index = sessions.value.findIndex(s => String(s.id) === String(sessionId))
         if (index !== -1) {
           sessions.value[index] = session

@@ -49,6 +49,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { DocumentService } from '@/services/DocumentService'
+import { useSharedContextStore } from '@/stores/sharedContext'
 import BaseBoardView from '../../../shared/components/ui/BaseBoardView.vue'
 import DocumentSidebar from '../components/DocumentSidebar.vue'
 import StageLandingView from '../components/StageLandingView.vue'
@@ -60,6 +61,8 @@ import type { Campaign, BoardConfig } from '../../../types'
 const props = defineProps<{
   id: string
 }>()
+
+const contextStore = useSharedContextStore()
 
 // Local state
 const campaign = ref<Campaign | null>(null)
@@ -108,6 +111,18 @@ const loadCampaign = async () => {
   if (data) {
     campaign.value = data
     
+    // Update context with campaign info
+    await contextStore.updateCampaign({
+      id: campaign.value.id.toString(),
+      name: campaign.value.name,
+      currentStage: campaign.value.status || undefined,
+      currentDocument: selectedDocument.value?.title || undefined
+    })
+    
+    // Clear module/session context when on campaign board
+    await contextStore.updateModule({})
+    await contextStore.updateSession({})
+    
     // Initialize stage documents if this is the first time
     await initializeStageDocuments()
     
@@ -140,8 +155,16 @@ const loadDocuments = async () => {
 }
 
 // Handle document selection from sidebar
-const handleSelectDocument = (document: any) => {
+const handleSelectDocument = async (document: any) => {
   selectedDocument.value = document
+  
+  // Update context with current document
+  if (document) {
+    await contextStore.updateCampaign({
+      ...contextStore.campaign,
+      currentDocument: document.title || document.name
+    })
+  }
 }
 
 // Handle create document from sidebar

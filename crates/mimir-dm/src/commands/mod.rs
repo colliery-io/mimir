@@ -27,6 +27,8 @@ pub mod catalog_variant_rule;
 pub mod catalog_vehicle;
 pub mod catalog_cult;
 pub mod catalog_psionic;
+pub mod context;
+pub mod window_manager;
 
 pub use campaigns::*;
 pub use app_info::*;
@@ -41,3 +43,5 @@ pub use catalog::*;
 pub use catalog_class::*;
 pub use catalog_feat::*;
 pub use catalog_race::*;
+pub use context::*;
+pub use window_manager::*;

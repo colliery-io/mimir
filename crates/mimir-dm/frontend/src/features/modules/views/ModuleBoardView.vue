@@ -55,6 +55,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useRoute } from 'vue-router'
 import { ModuleService } from '@/services/ModuleService'
+import { useSharedContextStore } from '@/stores/sharedContext'
 import BaseBoardView from '../../../shared/components/ui/BaseBoardView.vue'
 import ModuleDocumentSidebar from '../components/ModuleDocumentSidebar.vue'
 import ModuleStageLandingView from '../components/ModuleStageLandingView.vue'
@@ -65,6 +66,7 @@ import type { Module, Document, BoardConfig, Campaign } from '../../../types'
 
 const route = useRoute()
 const moduleId = computed(() => parseInt(route.params.id as string))
+const contextStore = useSharedContextStore()
 
 // Local state
 const module = ref<Module | null>(null)
@@ -150,6 +152,16 @@ const loadModule = async () => {
       id: moduleId.value 
     })
     module.value = response.data
+    
+    // Update context with module info
+    if (module.value) {
+      await contextStore.updateModule({
+        id: module.value.id.toString(),
+        name: module.value.name,
+        campaignId: module.value.campaign_id.toString(),
+        currentStage: module.value.status || undefined
+      })
+    }
     
     // Load campaign info
     await loadCampaign()
