@@ -19,7 +19,12 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
-use super::tools::{ToolRegistry, implementations::SayHelloTool};
+use super::tools::{
+    ToolRegistry, 
+    implementations::SayHelloTool,
+    document_tools::{GetDocumentTool, ListDocumentsTool},
+};
+use super::database::DatabaseService;
 
 /// The model we want to use for the DM assistant
 const REQUIRED_MODEL: &str = "qwen3:30b";
@@ -40,11 +45,12 @@ pub struct LlmService {
     provider: Arc<OllamaProvider>,
     model_name: String,
     tool_registry: Arc<ToolRegistry>,
+    db_service: Arc<DatabaseService>,
 }
 
 impl LlmService {
     /// Create a new LLM service instance
-    pub fn new() -> Result<Self> {
+    pub fn new(db_service: Arc<DatabaseService>) -> Result<Self> {
         let config = Self::create_config(REQUIRED_MODEL);
         let provider = OllamaProvider::new(config)
             .context("Failed to create Ollama provider")?;
@@ -52,11 +58,14 @@ impl LlmService {
         // Create tool registry and register tools
         let mut tool_registry = ToolRegistry::new();
         tool_registry.register(Arc::new(SayHelloTool));
+        tool_registry.register(Arc::new(GetDocumentTool::new(db_service.clone())));
+        tool_registry.register(Arc::new(ListDocumentsTool::new(db_service.clone())));
         
         Ok(Self {
             provider: Arc::new(provider),
             model_name: REQUIRED_MODEL.to_string(),
             tool_registry: Arc::new(tool_registry),
+            db_service,
         })
     }
     
@@ -189,10 +198,10 @@ impl LlmService {
 }
 
 /// Initialize the LLM service during application startup
-pub async fn initialize_llm(app: Option<AppHandle>) -> Result<LlmService> {
+pub async fn initialize_llm(app: Option<AppHandle>, db_service: Arc<DatabaseService>) -> Result<LlmService> {
     info!("Initializing LLM service...");
     
-    let service = LlmService::new()
+    let service = LlmService::new(db_service)
         .context("Failed to create LLM service")?;
     
     // Check and download model if needed

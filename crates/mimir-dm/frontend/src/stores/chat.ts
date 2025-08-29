@@ -56,7 +56,11 @@ RESPONSE FORMAT RULES:
 - Do NOT add system status messages like "(System: ...)" 
 - Do NOT add roleplay elements unless asked
 - Do NOT use decorative formatting unless needed for clarity
-- Focus on answering the actual question
+
+TOOL USAGE:
+- When you use tools to fetch information, incorporate the results naturally into your response
+- Don't announce that you're using tools or explain the process
+- Simply provide the information requested
 
 CONTEXT USAGE:
 - Use the provided JSON context to give relevant assistance

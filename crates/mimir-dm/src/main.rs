@@ -54,6 +54,7 @@ fn main() {
         .setup(|app| {
             // Initialize database service
             let db_service = Arc::new(DatabaseService);
+            let db_service_clone = Arc::clone(&db_service);
             app.manage(db_service);
             
             // Initialize context service
@@ -68,7 +69,7 @@ fn main() {
             // Spawn async task to initialize LLM
             tauri::async_runtime::spawn(async move {
                 info!("Starting LLM service initialization...");
-                match llm_service::initialize_llm(Some(app_handle)).await {
+                match llm_service::initialize_llm(Some(app_handle), db_service_clone).await {
                     Ok(service) => {
                         info!("LLM service initialized successfully");
                         let mut llm = llm_service_clone.lock().await;

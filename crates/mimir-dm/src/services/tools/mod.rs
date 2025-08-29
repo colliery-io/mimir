@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tracing::{info, warn};
 
 pub mod implementations;
+pub mod document_tools;
 
 #[cfg(test)]
 mod tests;
