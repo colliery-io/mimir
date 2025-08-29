@@ -74,6 +74,12 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
   
+  // Strip thinking blocks from content for API
+  const stripThinkingBlocks = (content: string): string => {
+    // Remove <thinking>, <think> blocks and their content
+    return content.replace(/<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi, '').trim()
+  }
+  
   const sendMessage = async (content: string): Promise<void> => {
     if (!content.trim() || isLoading.value) return
     
@@ -90,10 +96,10 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push(userMessage)
     
     try {
-      // Prepare messages for API (only role and content)
+      // Prepare messages for API (strip thinking blocks from assistant messages)
       const apiMessages = messages.value.map(msg => ({
         role: msg.role,
-        content: msg.content
+        content: msg.role === 'assistant' ? stripThinkingBlocks(msg.content) : msg.content
       }))
       
       // Send to backend
@@ -117,12 +123,9 @@ export const useChatStore = defineStore('chat', () => {
       
       messages.value.push(assistantMessage)
       
-      // Update user message with token usage (prompt tokens)
-      userMessage.tokenUsage = {
-        prompt: response.prompt_tokens,
-        completion: 0,
-        total: response.prompt_tokens
-      }
+      // Note: The token counts from the API reflect what was actually sent/received
+      // (without thinking blocks in the history). This is accurate for billing
+      // and context window tracking since thinking blocks are stripped from the API calls.
       
       // Update total tokens
       totalTokensUsed.value += response.total_tokens
