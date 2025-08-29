@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useSharedContextStore } from './sharedContext'
 
 export interface ChatMessage {
   id: string
@@ -12,6 +13,15 @@ export interface ChatMessage {
     completion: number
     total: number
   }
+}
+
+export interface SystemMessageConfig {
+  baseInstructions?: string
+  contextEnabled?: boolean
+  tools?: string[]
+  customInstructions?: string
+  temperature?: number
+  maxTokens?: number
 }
 
 export interface ModelInfo {
@@ -37,6 +47,28 @@ export const useChatStore = defineStore('chat', () => {
   const totalTokensUsed = ref(0)
   const maxResponseTokens = ref(2048)
   
+  // System message configuration
+  const systemConfig = ref<SystemMessageConfig>({
+    baseInstructions: `You are a D&D 5e Dungeon Master assistant.
+
+RESPONSE FORMAT RULES:
+- Provide direct, helpful answers
+- Do NOT add system status messages like "(System: ...)" 
+- Do NOT add roleplay elements unless asked
+- Do NOT use decorative formatting unless needed for clarity
+- Focus on answering the actual question
+
+CONTEXT USAGE:
+- Use the provided JSON context to give relevant assistance
+- The context shows current campaign, module, session, and user actions
+- Reference specific context details when relevant`,
+    contextEnabled: true,
+    tools: [],
+    customInstructions: '',
+    temperature: 0.5,  // Lower temperature for better instruction following
+    maxTokens: 2048
+  })
+  
   // Computed
   const conversationTokens = computed(() => {
     return messages.value.reduce((total, msg) => {
@@ -61,6 +93,9 @@ export const useChatStore = defineStore('chat', () => {
       modelInfo.value = info
       maxResponseTokens.value = info.defaultMaxTokens
       
+      // Load system configuration
+      loadSystemConfig()
+      
       // Load saved messages from localStorage if any
       const saved = localStorage.getItem('chat_history')
       if (saved) {
@@ -80,6 +115,52 @@ export const useChatStore = defineStore('chat', () => {
     return content.replace(/<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi, '').trim()
   }
   
+  // Build system message from configuration and context
+  const buildSystemMessage = (): ChatMessage => {
+    const contextStore = useSharedContextStore()
+    const parts: string[] = []
+    
+    // Base instructions
+    if (systemConfig.value.baseInstructions) {
+      parts.push(systemConfig.value.baseInstructions)
+    }
+    
+    // Add current context if enabled - send the full raw context as JSON
+    if (systemConfig.value.contextEnabled) {
+      const fullContext = {
+        campaign: contextStore.campaign,
+        module: contextStore.module,
+        session: contextStore.session,
+        reference: contextStore.reference,
+        windows: Array.from(contextStore.windows.values()),
+        recentActions: contextStore.recentActions.slice(0, 5), // Last 5 actions
+        contextUsage: contextStore.contextUsage
+      }
+      
+      parts.push('Current Application Context:')
+      parts.push('```json')
+      parts.push(JSON.stringify(fullContext, null, 2))
+      parts.push('```')
+    }
+    
+    // Add tools information if any
+    if (systemConfig.value.tools && systemConfig.value.tools.length > 0) {
+      parts.push(`Available tools: ${systemConfig.value.tools.join(', ')}`)
+    }
+    
+    // Add custom instructions
+    if (systemConfig.value.customInstructions) {
+      parts.push(systemConfig.value.customInstructions)
+    }
+    
+    return {
+      id: 'system',
+      role: 'system',
+      content: parts.join('\n\n'),
+      timestamp: Date.now()
+    }
+  }
+  
   const sendMessage = async (content: string): Promise<void> => {
     if (!content.trim() || isLoading.value) return
     
@@ -96,16 +177,25 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push(userMessage)
     
     try {
+      // Build system message with current context
+      const systemMessage = buildSystemMessage()
+      
       // Prepare messages for API (strip thinking blocks from assistant messages)
-      const apiMessages = messages.value.map(msg => ({
+      const conversationMessages = messages.value.map(msg => ({
         role: msg.role,
         content: msg.role === 'assistant' ? stripThinkingBlocks(msg.content) : msg.content
       }))
       
+      // Combine system message with conversation (system message always first)
+      const apiMessages = [
+        { role: systemMessage.role, content: systemMessage.content },
+        ...conversationMessages
+      ]
+      
       // Send to backend
       const response = await invoke<ChatResponseWithUsage>('send_chat_message', {
         messages: apiMessages,
-        maxTokens: maxResponseTokens.value
+        maxTokens: systemConfig.value.maxTokens || maxResponseTokens.value
       })
       
       // Add assistant response
@@ -171,6 +261,43 @@ export const useChatStore = defineStore('chat', () => {
       tokens,
       modelInfo.value?.defaultMaxTokens || 2048
     )
+    systemConfig.value.maxTokens = maxResponseTokens.value
+  }
+  
+  // System configuration methods
+  const updateSystemConfig = (config: Partial<SystemMessageConfig>) => {
+    systemConfig.value = { ...systemConfig.value, ...config }
+    saveSystemConfig()
+  }
+  
+  const toggleContext = () => {
+    systemConfig.value.contextEnabled = !systemConfig.value.contextEnabled
+    saveSystemConfig()
+  }
+  
+  const setSystemInstructions = (instructions: string) => {
+    systemConfig.value.baseInstructions = instructions
+    saveSystemConfig()
+  }
+  
+  const setCustomInstructions = (instructions: string) => {
+    systemConfig.value.customInstructions = instructions
+    saveSystemConfig()
+  }
+  
+  const saveSystemConfig = () => {
+    localStorage.setItem('chat_system_config', JSON.stringify(systemConfig.value))
+  }
+  
+  const loadSystemConfig = () => {
+    const saved = localStorage.getItem('chat_system_config')
+    if (saved) {
+      try {
+        systemConfig.value = JSON.parse(saved)
+      } catch (e) {
+        console.error('Failed to load system config:', e)
+      }
+    }
   }
   
   const saveToLocalStorage = () => {
@@ -189,6 +316,7 @@ export const useChatStore = defineStore('chat', () => {
     modelInfo,
     totalTokensUsed,
     maxResponseTokens,
+    systemConfig,
     
     // Computed
     conversationTokens,
@@ -200,6 +328,13 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     clearHistory,
     deleteMessage,
-    setMaxResponseTokens
+    setMaxResponseTokens,
+    
+    // System config methods
+    updateSystemConfig,
+    toggleContext,
+    setSystemInstructions,
+    setCustomInstructions,
+    buildSystemMessage
   }
 })

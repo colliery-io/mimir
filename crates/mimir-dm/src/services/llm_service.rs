@@ -248,6 +248,7 @@ pub async fn send_chat_message(
     service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
     messages: Vec<ChatMessage>,
     max_tokens: Option<u32>,
+    temperature: Option<f32>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = service.lock().await;
     
@@ -267,11 +268,11 @@ pub async fn send_chat_message(
     let response = llm.provider()
         .chat(
             provider_messages,
-            None,           // n (number of completions)
-            Some(0.7),      // temperature
-            max_tokens,     // max_tokens
-            None,           // stop sequences
-            None,           // extra config
+            None,                          // n (number of completions)
+            temperature.or(Some(0.5)),     // temperature (default to 0.5 for better instruction following)
+            max_tokens,                    // max_tokens
+            None,                          // stop sequences
+            None,                          // extra config
         )
         .await
         .map_err(|e| format!("Chat request failed: {}", e))?;
