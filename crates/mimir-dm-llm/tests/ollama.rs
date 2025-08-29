@@ -1,7 +1,7 @@
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig, RateLimit, RenewalPeriod},
     providers::ollama::OllamaProvider,
-    provider::{LlmProvider, Message},
+    LlmProvider, Message,
 };
 use std::collections::HashMap;
 

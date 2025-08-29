@@ -52,12 +52,14 @@
 //! ```
 
 pub mod config;
-pub mod provider;
+pub mod traits;
 pub mod providers;
 
-// Re-export commonly used types
+// Re-export commonly used types from config
 pub use config::{ModelConfig, EndpointType, RateLimit, RenewalPeriod, ConfigError};
-pub use provider::{
+
+// Re-export provider trait and types
+pub use traits::provider::{
     LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse,
-    Message, Usage, Timing
+    Message, Usage, Timing, ModelInfo, ModelPullProgress, RateLimitState
 };

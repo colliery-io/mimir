@@ -112,6 +112,31 @@ pub enum LlmError {
     NotImplemented(String),
     #[error("Configuration error: {0}")]
     ConfigError(String),
+    #[error("Service not available: {0}")]
+    ServiceUnavailable(String),
+    #[error("Model not found: {0}")]
+    ModelNotFound(String),
+    #[error("Model pull failed: {0}")]
+    ModelPullFailed(String),
+    #[error("Operation not supported")]
+    NotSupported,
+}
+
+/// Basic model information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelInfo {
+    pub name: String,
+}
+
+/// Progress information for model downloads
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelPullProgress {
+    /// Current status message
+    pub status: String,
+    /// Bytes downloaded
+    pub downloaded: u64,
+    /// Total bytes to download (0 if unknown)
+    pub total: u64,
 }
 
 /// State for rate limiting
@@ -264,6 +289,56 @@ pub trait LlmProvider: Send + Sync {
         }
         self.check_rate_limit().await?;
         Err(LlmError::NotImplemented("embedding".to_string()))
+    }
+    
+    // Model Management Methods (with default "not supported" implementations)
+    
+    /// Check if the service is available and running
+    async fn check_service(&self) -> Result<bool, LlmError> {
+        Err(LlmError::NotSupported)
+    }
+    
+    /// List all available models
+    async fn list_models(&self) -> Result<Vec<ModelInfo>, LlmError> {
+        Err(LlmError::NotSupported)
+    }
+    
+    /// Check if a specific model exists
+    async fn model_exists(&self, _model_name: &str) -> Result<bool, LlmError> {
+        Err(LlmError::NotSupported)
+    }
+    
+    /// Pull/download a model
+    async fn pull_model(&self, _model_name: &str) -> Result<(), LlmError> {
+        Err(LlmError::NotSupported)
+    }
+    
+    /// Pull/download a model with progress callback
+    async fn pull_model_with_progress<F>(
+        &self,
+        _model_name: &str,
+        _progress_callback: F,
+    ) -> Result<(), LlmError>
+    where
+        F: Fn(ModelPullProgress) + Send + 'static,
+    {
+        Err(LlmError::NotSupported)
+    }
+    
+    /// Ensure a model is available (download if necessary)
+    async fn ensure_model(&self, model_name: &str) -> Result<(), LlmError> {
+        // Default implementation that works for providers that support model management
+        if !self.check_service().await? {
+            return Err(LlmError::ServiceUnavailable(
+                "Service is not running".to_string()
+            ));
+        }
+        
+        if !self.model_exists(model_name).await? {
+            self.pull_model(model_name).await?;
+        }
+        
+        Ok(())
     }
 }
 

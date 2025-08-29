@@ -25,9 +25,9 @@ use std::time::Duration;
 use url::Url;
 
 use crate::config::{ModelConfig, EndpointType};
-use crate::provider::{
+use crate::traits::{
     LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse, 
-    Message, RateLimitState, Usage, Timing
+    Message, RateLimitState, Usage, Timing, ModelInfo, ModelPullProgress
 };
 
 /// Ollama chat message for API requests
@@ -119,6 +119,44 @@ struct OllamaCompletionResponse {
 #[derive(Debug, Deserialize)]
 struct OllamaEmbeddingResponse {
     embedding: Vec<f32>,
+}
+
+/// Response from Ollama's /api/tags endpoint
+#[derive(Debug, Deserialize)]
+struct OllamaTagsResponse {
+    models: Vec<OllamaModel>,
+}
+
+/// Represents a model available in Ollama
+#[derive(Debug, Clone, Deserialize)]
+struct OllamaModel {
+    name: String,
+    #[allow(dead_code)]
+    digest: String,
+    #[allow(dead_code)]
+    size: u64,
+    #[allow(dead_code)]
+    modified_at: String,
+}
+
+/// Request to pull a model
+#[derive(Debug, Serialize)]
+struct OllamaPullRequest {
+    name: String,
+    stream: bool,
+}
+
+/// Response from model pull (streaming)
+#[derive(Debug, Deserialize)]
+struct OllamaPullStreamResponse {
+    status: String,
+    #[serde(default)]
+    #[allow(dead_code)]
+    digest: String,
+    #[serde(default)]
+    total: u64,
+    #[serde(default)]
+    completed: u64,
 }
 
 /// Ollama provider implementation
@@ -399,6 +437,249 @@ impl LlmProvider for OllamaProvider {
             timing: None, // Ollama embeddings don't return timing info
             model: self.config.model.clone(),
         })
+    }
+    
+    // Model Management implementations
+    
+    /// Check if the Ollama service is available and responding
+    /// 
+    /// Returns `Ok(true)` if the service is running and accessible,
+    /// `Ok(false)` if the service is not responding.
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
+    /// # async fn example(provider: OllamaProvider) -> Result<(), Box<dyn std::error::Error>> {
+    /// if provider.check_service().await? {
+    ///     println!("Ollama is running");
+    /// } else {
+    ///     println!("Ollama is not available");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    async fn check_service(&self) -> Result<bool, LlmError> {
+        let url = format!("{}/api/tags", self.base_url);
+        
+        match self.client.get(&url).send().await {
+            Ok(response) => Ok(response.status().is_success()),
+            Err(_) => Ok(false), // Service not running
+        }
+    }
+    
+    /// List all models available in the Ollama service
+    /// 
+    /// Returns a vector of `ModelInfo` containing the names of all locally available models.
+    /// 
+    /// # Errors
+    /// Returns an error if the service is not available or if the response cannot be parsed.
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
+    /// # async fn example(provider: OllamaProvider) -> Result<(), Box<dyn std::error::Error>> {
+    /// let models = provider.list_models().await?;
+    /// for model in models {
+    ///     println!("Available model: {}", model.name);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    async fn list_models(&self) -> Result<Vec<ModelInfo>, LlmError> {
+        let url = format!("{}/api/tags", self.base_url);
+        
+        let response = self.client.get(&url)
+            .send()
+            .await
+            .map_err(|e| LlmError::ProviderError(format!(
+                "Failed to list models from {}: {}", self.base_url, e
+            )))?;
+            
+        if !response.status().is_success() {
+            return Err(LlmError::ServiceUnavailable(format!(
+                "Ollama service at {} returned status: {}", 
+                self.base_url, response.status()
+            )));
+        }
+        
+        let tags_response: OllamaTagsResponse = response.json().await
+            .map_err(|e| LlmError::ProviderError(format!("Failed to parse model list: {}", e)))?;
+            
+        Ok(tags_response.models.into_iter()
+            .map(|m| ModelInfo { name: m.name })
+            .collect())
+    }
+    
+    /// Check if a specific model exists locally in Ollama
+    /// 
+    /// This method checks if a model with the given name (or starting with the given name)
+    /// exists in the local Ollama installation. It handles partial matches, so "llama3.1"
+    /// will match "llama3.1:latest" or "llama3.1-instruct".
+    /// 
+    /// # Arguments
+    /// * `model_name` - The name of the model to check for
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
+    /// # async fn example(provider: OllamaProvider) -> Result<(), Box<dyn std::error::Error>> {
+    /// if provider.model_exists("llama3.1").await? {
+    ///     println!("Model is available locally");
+    /// } else {
+    ///     println!("Model needs to be pulled");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    async fn model_exists(&self, model_name: &str) -> Result<bool, LlmError> {
+        let models = self.list_models().await?;
+        // Check if any model name starts with the requested model
+        // This handles cases like "qwen2:8b" matching "qwen2:8b-instruct-q4_0"
+        Ok(models.iter().any(|m| m.name.starts_with(model_name)))
+    }
+    
+    /// Pull (download) a model from the Ollama library
+    /// 
+    /// This method downloads a model from the Ollama library if it's not already available locally.
+    /// The download happens synchronously (blocking until complete).
+    /// 
+    /// # Arguments
+    /// * `model_name` - The name of the model to pull (e.g., "llama3.1", "mistral:latest")
+    /// 
+    /// # Errors
+    /// Returns an error if the model cannot be found or if the download fails.
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
+    /// # async fn example(provider: OllamaProvider) -> Result<(), Box<dyn std::error::Error>> {
+    /// provider.pull_model("tinyllama").await?;
+    /// println!("Model downloaded successfully");
+    /// # Ok(())
+    /// # }
+    /// ```
+    async fn pull_model(&self, model_name: &str) -> Result<(), LlmError> {
+        let url = format!("{}/api/pull", self.base_url);
+        
+        let request = OllamaPullRequest {
+            name: model_name.to_string(),
+            stream: false,
+        };
+        
+        let response = self.client.post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| LlmError::ProviderError(format!(
+                "Failed to pull model '{}' from {}: {}", model_name, self.base_url, e
+            )))?;
+            
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(LlmError::ModelPullFailed(
+                format!("Failed to pull model '{}': HTTP {} - {}", 
+                    model_name, status, error_text)
+            ));
+        }
+        
+        // Wait for the response to complete (non-streaming)
+        let _body = response.text().await
+            .map_err(|e| LlmError::ProviderError(format!("Failed to read pull response: {}", e)))?;
+            
+        Ok(())
+    }
+    
+    /// Pull (download) a model with progress updates
+    /// 
+    /// This method downloads a model from the Ollama library and provides progress updates
+    /// through a callback function. This is useful for showing download progress to users.
+    /// 
+    /// # Arguments
+    /// * `model_name` - The name of the model to pull
+    /// * `progress_callback` - A callback function that receives progress updates
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider, ModelPullProgress};
+    /// # async fn example(provider: OllamaProvider) -> Result<(), Box<dyn std::error::Error>> {
+    /// provider.pull_model_with_progress("llama3.1", |progress: ModelPullProgress| {
+    ///     println!("{}: {}/{} bytes", progress.status, progress.downloaded, progress.total);
+    /// }).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    async fn pull_model_with_progress<F>(
+        &self,
+        model_name: &str,
+        progress_callback: F,
+    ) -> Result<(), LlmError>
+    where
+        F: Fn(ModelPullProgress) + Send + 'static,
+    {
+        let url = format!("{}/api/pull", self.base_url);
+        
+        let request = OllamaPullRequest {
+            name: model_name.to_string(),
+            stream: true,
+        };
+        
+        let response = self.client.post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| LlmError::ProviderError(format!(
+                "Failed to initiate pull for model '{}' from {}: {}", 
+                model_name, self.base_url, e
+            )))?;
+            
+        if !response.status().is_success() {
+            let status = response.status();
+            return Err(LlmError::ModelPullFailed(
+                format!("Failed to pull model '{}': HTTP {} from {}", 
+                    model_name, status, self.base_url)
+            ));
+        }
+        
+        // Process streaming response
+        use futures::StreamExt;
+        let mut stream = response.bytes_stream();
+        
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk
+                .map_err(|e| LlmError::ProviderError(format!("Stream error: {}", e)))?;
+            
+            // Parse each line as JSON (Ollama sends newline-delimited JSON)
+            for line in chunk.split(|&b| b == b'\n') {
+                if line.is_empty() {
+                    continue;
+                }
+                
+                match serde_json::from_slice::<OllamaPullStreamResponse>(line) {
+                    Ok(progress_data) => {
+                        let progress = ModelPullProgress {
+                            status: progress_data.status.clone(),
+                            downloaded: progress_data.completed,
+                            total: progress_data.total,
+                        };
+                        
+                        progress_callback(progress);
+                        
+                        // Check if done
+                        if progress_data.status.contains("success") || 
+                           progress_data.status.contains("already exists") {
+                            return Ok(());
+                        }
+                    }
+                    Err(_) => {
+                        // Ignore parse errors for individual lines
+                        // Ollama sends various status messages we don't need to parse
+                    }
+                }
+            }
+        }
+        
+        Ok(())
     }
 }
 
