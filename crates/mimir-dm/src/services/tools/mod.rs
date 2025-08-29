@@ -1,0 +1,78 @@
+//! Tool system for LLM function calling
+//! 
+//! This module provides tools that can be called by the LLM to fetch data
+//! and perform actions within the application.
+
+use anyhow::Result;
+use mimir_dm_llm::{Tool as LlmTool, ToolTrait};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tracing::{info, warn};
+
+pub mod implementations;
+
+#[cfg(test)]
+mod tests;
+
+/// Registry of available tools
+pub struct ToolRegistry {
+    tools: HashMap<String, Arc<dyn ToolTrait>>,
+}
+
+impl ToolRegistry {
+    /// Create a new empty tool registry
+    pub fn new() -> Self {
+        Self {
+            tools: HashMap::new(),
+        }
+    }
+    
+    /// Register a tool
+    pub fn register(&mut self, tool: Arc<dyn ToolTrait>) {
+        let name = tool.name().to_string();
+        info!("Registering tool: {}", name);
+        self.tools.insert(name, tool);
+    }
+    
+    /// Get all tool definitions for the LLM
+    pub fn get_tool_definitions(&self) -> Vec<LlmTool> {
+        self.tools
+            .values()
+            .map(|tool| tool.to_llm_tool())
+            .collect()
+    }
+    
+    /// Execute a tool by name with the given arguments
+    pub async fn execute_tool(&self, name: &str, arguments: Value) -> Result<String> {
+        match self.tools.get(name) {
+            Some(tool) => {
+                info!("Executing tool: {} with args: {}", name, arguments);
+                let result = tool.execute(arguments).await
+                    .map_err(|e| anyhow::anyhow!("Tool execution failed: {}", e))?;
+                info!("Tool {} returned: {}", name, result);
+                Ok(result)
+            }
+            None => {
+                warn!("Tool not found: {}", name);
+                Err(anyhow::anyhow!("Tool not found: {}", name))
+            }
+        }
+    }
+    
+    /// Check if a tool exists
+    pub fn has_tool(&self, name: &str) -> bool {
+        self.tools.contains_key(name)
+    }
+    
+    /// Get the number of registered tools
+    pub fn tool_count(&self) -> usize {
+        self.tools.len()
+    }
+}
+
+impl Default for ToolRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}

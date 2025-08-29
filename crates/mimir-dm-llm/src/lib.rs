@@ -61,5 +61,9 @@ pub use config::{ModelConfig, EndpointType, RateLimit, RenewalPeriod, ConfigErro
 // Re-export provider trait and types
 pub use traits::provider::{
     LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse,
-    Message, Usage, Timing, ModelInfo, ModelPullProgress, RateLimitState
+    Message, Usage, Timing, ModelInfo, ModelPullProgress, RateLimitState,
+    Tool, ToolFunction, ToolCall, ToolCallFunction
 };
+
+// Re-export tool trait
+pub use traits::ToolTrait;

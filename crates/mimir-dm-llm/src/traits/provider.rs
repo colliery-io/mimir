@@ -40,6 +40,43 @@ pub struct Timing {
     pub completion_duration_ms: u64,
 }
 
+/// Tool function definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolFunction {
+    /// Name of the function
+    pub name: String,
+    /// Description of what the function does
+    pub description: String,
+    /// JSON Schema for parameters
+    pub parameters: serde_json::Value,
+}
+
+/// Tool definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Tool {
+    /// Type of tool (usually "function")
+    #[serde(rename = "type")]
+    pub tool_type: String,
+    /// Function definition
+    pub function: ToolFunction,
+}
+
+/// Tool call in response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCall {
+    /// Function to call
+    pub function: ToolCallFunction,
+}
+
+/// Tool call function details
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCallFunction {
+    /// Name of the function
+    pub name: String,
+    /// Arguments as JSON value
+    pub arguments: serde_json::Value,
+}
+
 /// Response from chat endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
@@ -51,6 +88,8 @@ pub struct ChatResponse {
     pub timing: Option<Timing>,
     /// The model that generated the response
     pub model: String,
+    /// Tool calls if any
+    pub tool_calls: Option<Vec<ToolCall>>,
 }
 
 /// Response from completion endpoint
@@ -248,6 +287,7 @@ pub trait LlmProvider: Send + Sync {
     async fn chat(
         &self, 
         _messages: Vec<Message>,
+        _tools: Option<Vec<Tool>>,
         _n: Option<u32>,
         _temperature: Option<f32>,
         _max_tokens: Option<u32>,

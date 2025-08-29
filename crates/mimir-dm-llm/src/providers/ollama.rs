@@ -27,7 +27,8 @@ use url::Url;
 use crate::config::{ModelConfig, EndpointType};
 use crate::traits::{
     LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse, 
-    Message, RateLimitState, Usage, Timing, ModelInfo, ModelPullProgress
+    Message, RateLimitState, Usage, Timing, ModelInfo, ModelPullProgress,
+    Tool, ToolCall
 };
 
 /// Ollama chat message for API requests
@@ -35,6 +36,8 @@ use crate::traits::{
 struct OllamaChatMessage {
     role: String,
     content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_calls: Option<Vec<ToolCall>>,
 }
 
 /// Ollama chat request
@@ -45,6 +48,8 @@ struct OllamaChatRequest {
     stream: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     options: Option<OllamaOptions>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tools: Option<Vec<Tool>>,
 }
 
 /// Ollama completion request  
@@ -229,6 +234,7 @@ impl LlmProvider for OllamaProvider {
     async fn chat(
         &self,
         messages: Vec<Message>,
+        tools: Option<Vec<Tool>>,
         _n: Option<u32>,
         temperature: Option<f32>,
         max_tokens: Option<u32>,
@@ -246,6 +252,7 @@ impl LlmProvider for OllamaProvider {
             .map(|msg| OllamaChatMessage {
                 role: msg.role,
                 content: msg.content,
+                tool_calls: None,
             })
             .collect();
 
@@ -264,6 +271,7 @@ impl LlmProvider for OllamaProvider {
             messages: ollama_messages,
             stream: false,
             options,
+            tools,
         };
 
         let response = self
@@ -305,6 +313,7 @@ impl LlmProvider for OllamaProvider {
             usage,
             timing,
             model: self.config.model.clone(),
+            tool_calls: ollama_response.message.tool_calls,
         })
     }
 

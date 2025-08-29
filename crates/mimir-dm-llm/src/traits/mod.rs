@@ -1,6 +1,7 @@
 //! Traits for LLM providers and related functionality
 
 pub mod provider;
+pub mod tool;
 
 // Re-export commonly used types
 pub use provider::{
@@ -8,5 +9,8 @@ pub use provider::{
     ChatResponse, CompletionResponse, EmbeddingResponse,
     Message, Usage, Timing,
     ModelInfo, ModelPullProgress,
-    RateLimitState
+    RateLimitState,
+    Tool, ToolFunction, ToolCall, ToolCallFunction
 };
+
+pub use tool::Tool as ToolTrait;

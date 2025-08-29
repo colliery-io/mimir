@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig},
     providers::ollama::OllamaProvider,
-    LlmProvider, ModelPullProgress, Message, Usage,
+    LlmProvider, ModelPullProgress, Message, ToolTrait, Tool as LlmTool,
 };
 use serde_json;
 use std::collections::HashMap;
@@ -18,6 +18,8 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
+
+use super::tools::{ToolRegistry, implementations::SayHelloTool};
 
 /// The model we want to use for the DM assistant
 const REQUIRED_MODEL: &str = "qwen3:30b";
@@ -37,6 +39,7 @@ struct ModelDownloadProgress {
 pub struct LlmService {
     provider: Arc<OllamaProvider>,
     model_name: String,
+    tool_registry: Arc<ToolRegistry>,
 }
 
 impl LlmService {
@@ -46,9 +49,14 @@ impl LlmService {
         let provider = OllamaProvider::new(config)
             .context("Failed to create Ollama provider")?;
         
+        // Create tool registry and register tools
+        let mut tool_registry = ToolRegistry::new();
+        tool_registry.register(Arc::new(SayHelloTool));
+        
         Ok(Self {
             provider: Arc::new(provider),
             model_name: REQUIRED_MODEL.to_string(),
+            tool_registry: Arc::new(tool_registry),
         })
     }
     
@@ -242,13 +250,14 @@ pub struct ChatResponseWithUsage {
     pub total_tokens: u32,
 }
 
-/// Tauri command to send a chat message
+/// Tauri command to send a chat message (with optional tool support)
 #[tauri::command]
 pub async fn send_chat_message(
     service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
     messages: Vec<ChatMessage>,
     max_tokens: Option<u32>,
     temperature: Option<f32>,
+    enable_tools: Option<bool>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = service.lock().await;
     
@@ -256,7 +265,7 @@ pub async fn send_chat_message(
         .ok_or_else(|| "LLM service not initialized".to_string())?;
     
     // Convert to provider messages
-    let provider_messages: Vec<mimir_dm_llm::Message> = messages
+    let mut provider_messages: Vec<mimir_dm_llm::Message> = messages
         .into_iter()
         .map(|msg| mimir_dm_llm::Message {
             role: msg.role,
@@ -264,18 +273,77 @@ pub async fn send_chat_message(
         })
         .collect();
     
-    // Call the provider's chat method
-    let response = llm.provider()
-        .chat(
-            provider_messages,
-            None,                          // n (number of completions)
-            temperature.or(Some(0.5)),     // temperature (default to 0.5 for better instruction following)
-            max_tokens,                    // max_tokens
-            None,                          // stop sequences
-            None,                          // extra config
-        )
-        .await
-        .map_err(|e| format!("Chat request failed: {}", e))?;
+    // Get tools if enabled
+    let tools = if enable_tools.unwrap_or(false) {
+        Some(llm.tool_registry.get_tool_definitions())
+    } else {
+        None
+    };
+    
+    // Tool execution loop (max 5 iterations to prevent infinite loops)
+    const MAX_TOOL_ITERATIONS: usize = 5;
+    let mut tool_call_count = 0;
+    let mut final_response = None;
+    
+    while tool_call_count < MAX_TOOL_ITERATIONS {
+        // Call the provider's chat method
+        let response = llm.provider()
+            .chat(
+                provider_messages.clone(),
+                tools.clone(),
+                None,                          // n (number of completions)
+                temperature.or(Some(0.5)),     // temperature (default to 0.5 for better instruction following)
+                max_tokens,                    // max_tokens
+                None,                          // stop sequences
+                None,                          // extra config
+            )
+            .await
+            .map_err(|e| format!("Chat request failed: {}", e))?;
+        
+        // Check if there are tool calls
+        if let Some(tool_calls) = &response.tool_calls {
+            if !tool_calls.is_empty() {
+                tool_call_count += 1;
+                info!("Processing {} tool calls (iteration {})", tool_calls.len(), tool_call_count);
+                
+                // Add assistant message with tool calls
+                provider_messages.push(mimir_dm_llm::Message {
+                    role: "assistant".to_string(),
+                    content: response.content.clone(),
+                });
+                
+                // Execute each tool call
+                for tool_call in tool_calls {
+                    let tool_name = &tool_call.function.name;
+                    let tool_args = &tool_call.function.arguments;
+                    
+                    info!("Executing tool: {} with args: {}", tool_name, tool_args);
+                    
+                    // Execute the tool
+                    let tool_result = llm.tool_registry
+                        .execute_tool(tool_name, tool_args.clone())
+                        .await
+                        .unwrap_or_else(|e| format!("Tool execution failed: {}", e));
+                    
+                    // Add tool response to messages
+                    provider_messages.push(mimir_dm_llm::Message {
+                        role: "tool".to_string(),
+                        content: tool_result,
+                    });
+                }
+                
+                // Continue loop to get next response
+                continue;
+            }
+        }
+        
+        // No tool calls, we have the final response
+        final_response = Some(response);
+        break;
+    }
+    
+    let response = final_response
+        .ok_or_else(|| "Maximum tool iterations reached".to_string())?;
     
     // Extract token usage
     let usage = response.usage.unwrap_or(mimir_dm_llm::Usage {

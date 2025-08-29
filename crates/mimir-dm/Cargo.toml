@@ -41,6 +41,7 @@ tar = "0.4"
 flate2 = "1.0"
 tempfile = "3.10"
 walkdir = "2.5"
+async-trait.workspace = true
 
 # Remove TUI dependencies since we're going GUI
 # config = { workspace = true }

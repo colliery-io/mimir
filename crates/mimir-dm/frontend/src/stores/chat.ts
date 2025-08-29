@@ -195,7 +195,9 @@ CONTEXT USAGE:
       // Send to backend
       const response = await invoke<ChatResponseWithUsage>('send_chat_message', {
         messages: apiMessages,
-        maxTokens: systemConfig.value.maxTokens || maxResponseTokens.value
+        maxTokens: systemConfig.value.maxTokens || maxResponseTokens.value,
+        temperature: systemConfig.value.temperature,
+        enableTools: true  // Enable tools for testing
       })
       
       // Add assistant response
