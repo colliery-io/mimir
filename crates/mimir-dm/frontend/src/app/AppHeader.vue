@@ -16,6 +16,9 @@
         <button @click="handleOpenRules" class="rules-button" title="Open Reference Library (new window)">
           Reference
         </button>
+        <button @click="handleOpenChat" class="chat-button" title="Open Chat (new window)">
+          Chat
+        </button>
         <button @click="handleOpenContextDebug" class="debug-button" title="Open Context Debug (new window)">
           Debug
         </button>
@@ -49,6 +52,15 @@ const handleOpenRules = async () => {
   try {
     await openSourcesReference()
   } catch (error) {
+  }
+}
+
+// Handle opening the chat window
+const handleOpenChat = async () => {
+  try {
+    await invoke('open_chat_window')
+  } catch (error) {
+    console.error('Failed to open chat window:', error)
   }
 }
 
@@ -197,6 +209,28 @@ const skullIcon = computed(() => {
 }
 
 .rules-button:active {
+  transform: scale(0.98);
+}
+
+.chat-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.chat-button:hover {
+  background-color: var(--color-surface-variant);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.chat-button:active {
   transform: scale(0.98);
 }
 

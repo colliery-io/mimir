@@ -18,7 +18,8 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         sources: fileURLToPath(new URL('./sources.html', import.meta.url)),
-        contextDebug: fileURLToPath(new URL('./context-debug.html', import.meta.url))
+        contextDebug: fileURLToPath(new URL('./context-debug.html', import.meta.url)),
+        chat: fileURLToPath(new URL('./chat.html', import.meta.url))
       }
     }
   },

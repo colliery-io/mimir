@@ -20,9 +20,10 @@ use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, 
 use commands::catalog_language::{init_language_catalog, search_languages, get_language_details, get_language_types, get_language_scripts};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
+use services::llm_service::{self, LlmService};
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 // Global application state
 pub static APP_PATHS: OnceLock<AppPaths> = OnceLock::new();
@@ -58,6 +59,30 @@ fn main() {
             // Initialize context service
             let context_state = ContextState::new();
             app.manage(context_state);
+            
+            // Initialize LLM service
+            let app_handle = app.handle().clone();
+            let llm_service = Arc::new(tokio::sync::Mutex::new(None::<LlmService>));
+            let llm_service_clone = Arc::clone(&llm_service);
+            
+            // Spawn async task to initialize LLM
+            tauri::async_runtime::spawn(async move {
+                info!("Starting LLM service initialization...");
+                match llm_service::initialize_llm(Some(app_handle)).await {
+                    Ok(service) => {
+                        info!("LLM service initialized successfully");
+                        let mut llm = llm_service_clone.lock().await;
+                        *llm = Some(service);
+                    }
+                    Err(e) => {
+                        error!("Failed to initialize LLM service: {}", e);
+                        warn!("Application will continue without LLM functionality");
+                        // Don't fail app startup if LLM fails to initialize
+                    }
+                }
+            });
+            
+            app.manage(llm_service);
             
             // Initialize catalogs
             let spell_catalog = Mutex::new(commands::catalog::SpellCatalog::new());
@@ -272,7 +297,12 @@ fn main() {
             update_context_usage,
             // Window management commands
             open_context_debug_window,
-            open_chat_window
+            open_chat_window,
+            // LLM commands
+            llm_service::check_llm_status,
+            llm_service::get_llm_model_info,
+            llm_service::send_chat_message,
+            llm_service::get_model_context_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

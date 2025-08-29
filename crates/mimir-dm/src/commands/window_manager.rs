@@ -14,7 +14,7 @@ pub async fn open_context_debug_window(app: AppHandle) -> Result<(), String> {
     }
     
     // Create new window
-    let window = WebviewWindow::builder(
+    let _window = WebviewWindow::builder(
         &app,
         "context-debug",
         WebviewUrl::App("context-debug.html".into()),
@@ -44,14 +44,14 @@ pub async fn open_chat_window(app: AppHandle) -> Result<(), String> {
     }
     
     // Create new window
-    let window = WebviewWindow::builder(
+    let _window = WebviewWindow::builder(
         &app,
         "chat",
         WebviewUrl::App("chat.html".into()),
     )
     .title("Mimir Chat")
-    .inner_size(400.0, 600.0)
-    .min_inner_size(350.0, 500.0)
+    .inner_size(800.0, 700.0)
+    .min_inner_size(600.0, 500.0)
     .position(100.0, 100.0)
     .resizable(true)
     .build()
