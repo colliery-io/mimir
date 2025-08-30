@@ -6,14 +6,13 @@ use async_trait::async_trait;
 use mimir_dm_llm::ToolTrait;
 use mimir_dm_core::{
     dal::campaign::documents::DocumentRepository,
-    models::campaign::documents::Document,
 };
 use serde_json::{json, Value};
 use std::error::Error;
 use std::sync::Arc;
 use std::fs;
 use std::path::Path;
-use tracing::{info, error};
+use tracing::info;
 
 use crate::services::database::DatabaseService;
 
@@ -84,8 +83,6 @@ impl ToolTrait for GetDocumentTool {
             .and_then(|v| v.as_i64())
             .map(|id| id as i32);
         
-        info!("Getting document: type={}, campaign={}, module={:?}, session={:?}", 
-              document_type, campaign_id, module_id, session_id);
         
         // Get database connection
         let mut conn = self.db_service.get_connection()
@@ -197,8 +194,6 @@ impl ToolTrait for ListDocumentsTool {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         
-        info!("Listing documents: campaign={}, module={:?}, session={:?}, completed_only={}", 
-              campaign_id, module_id, session_id, completed_only);
         
         // Get database connection
         let mut conn = self.db_service.get_connection()

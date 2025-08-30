@@ -12,6 +12,7 @@ use tracing::{info, warn};
 
 pub mod implementations;
 pub mod document_tools;
+pub mod update_document_tool;
 
 #[cfg(test)]
 mod tests;
@@ -48,10 +49,8 @@ impl ToolRegistry {
     pub async fn execute_tool(&self, name: &str, arguments: Value) -> Result<String> {
         match self.tools.get(name) {
             Some(tool) => {
-                info!("Executing tool: {} with args: {}", name, arguments);
                 let result = tool.execute(arguments).await
                     .map_err(|e| anyhow::anyhow!("Tool execution failed: {}", e))?;
-                info!("Tool {} returned: {}", name, result);
                 Ok(result)
             }
             None => {
@@ -69,6 +68,41 @@ impl ToolRegistry {
     /// Get the number of registered tools
     pub fn tool_count(&self) -> usize {
         self.tools.len()
+    }
+    
+    /// Check if a tool requires confirmation
+    pub fn requires_confirmation(&self, name: &str) -> bool {
+        self.tools.get(name)
+            .map(|tool| tool.requires_confirmation())
+            .unwrap_or(false)
+    }
+    
+    /// Get action description for a tool
+    pub fn get_action_description(&self, name: &str, arguments: &Value) -> Option<mimir_dm_llm::traits::ActionDescription> {
+        self.tools.get(name)
+            .and_then(|tool| tool.describe_action(arguments))
+    }
+    
+    /// Generate system prompt rules based on registered tools
+    /// 
+    /// This method examines the available tools and generates guidance rules
+    /// that help the LLM understand tool dependencies and proper usage patterns.
+    pub fn generate_system_rules(&self) -> Vec<String> {
+        let mut rules = Vec::new();
+        
+        // Check if both get_document and update_document are available
+        if self.has_tool("get_document") && self.has_tool("update_document") {
+            rules.push(
+                "TOOL USAGE RULE: When asked to update a document:\n\
+                1. ALWAYS call get_document first to read the current content\n\
+                2. THEN call update_document with your changes\n\
+                Don't just explain what you would do - actually make the tool calls to complete the user's request.".to_string()
+            );
+        }
+        
+        // Add more tool-specific rules here as needed in the future
+        
+        rules
     }
 }
 

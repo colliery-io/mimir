@@ -6,23 +6,29 @@
 //! - Downloading models with progress tracking
 //! - Providing LLM access to the application
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig},
     providers::ollama::OllamaProvider,
-    LlmProvider, ModelPullProgress, Message, ToolTrait, Tool as LlmTool,
+    traits::ActionDescription,
+    LlmProvider, ModelPullProgress,
 };
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter};
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
+use tokio::time::timeout;
 use tracing::{error, info, warn};
+use uuid::Uuid;
 
 use super::tools::{
     ToolRegistry, 
     implementations::SayHelloTool,
     document_tools::{GetDocumentTool, ListDocumentsTool},
+    update_document_tool::UpdateDocumentTool,
 };
 use super::database::DatabaseService;
 
@@ -40,17 +46,32 @@ struct ModelDownloadProgress {
     percentage: f32,
 }
 
+/// Request for tool confirmation sent to frontend
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ToolConfirmationRequest {
+    pub id: String,
+    pub tool_name: String,
+    pub action: ActionDescription,
+}
+
+/// Global confirmation state that can be shared across the app
+pub type ConfirmationReceivers = Arc<Mutex<HashMap<Uuid, oneshot::Sender<bool>>>>;
+
 /// LLM Service state
 pub struct LlmService {
     provider: Arc<OllamaProvider>,
     model_name: String,
     tool_registry: Arc<ToolRegistry>,
     db_service: Arc<DatabaseService>,
+    /// Channel senders for pending confirmations (shared globally)
+    confirmation_receivers: ConfirmationReceivers,
+    /// App handle for emitting events
+    app_handle: Option<AppHandle>,
 }
 
 impl LlmService {
-    /// Create a new LLM service instance
-    pub fn new(db_service: Arc<DatabaseService>) -> Result<Self> {
+    /// Create a new LLM service instance with shared confirmation receivers
+    pub fn new(db_service: Arc<DatabaseService>, confirmation_receivers: ConfirmationReceivers) -> Result<Self> {
         let config = Self::create_config(REQUIRED_MODEL);
         let provider = OllamaProvider::new(config)
             .context("Failed to create Ollama provider")?;
@@ -60,14 +81,23 @@ impl LlmService {
         tool_registry.register(Arc::new(SayHelloTool));
         tool_registry.register(Arc::new(GetDocumentTool::new(db_service.clone())));
         tool_registry.register(Arc::new(ListDocumentsTool::new(db_service.clone())));
+        tool_registry.register(Arc::new(UpdateDocumentTool::new(db_service.clone())));
         
         Ok(Self {
             provider: Arc::new(provider),
             model_name: REQUIRED_MODEL.to_string(),
             tool_registry: Arc::new(tool_registry),
             db_service,
+            confirmation_receivers,
+            app_handle: None,
         })
     }
+    
+    /// Set the app handle for emitting events
+    pub fn set_app_handle(&mut self, app: AppHandle) {
+        self.app_handle = Some(app);
+    }
+    
     
     /// Create the model configuration
     fn create_config(model: &str) -> ModelConfig {
@@ -195,14 +225,68 @@ impl LlmService {
     pub fn model_name(&self) -> &str {
         &self.model_name
     }
+    
+    /// Request confirmation from the user for a tool action
+    async fn request_confirmation(
+        &self,
+        action: ActionDescription,
+        tool_name: String,
+    ) -> Result<bool> {
+        let app = self.app_handle.as_ref()
+            .ok_or_else(|| anyhow!("App handle not set for confirmation requests"))?;
+        
+        let confirmation_id = Uuid::new_v4();
+        info!("Creating confirmation request with ID: {}", confirmation_id);
+        
+        // Create a oneshot channel for this specific confirmation
+        let (tx, rx) = oneshot::channel::<bool>();
+        
+        // Store the sender so the Tauri command can send the response
+        {
+            let mut receivers = self.confirmation_receivers.lock().await;
+            receivers.insert(confirmation_id, tx);
+            info!("Stored confirmation receiver, total receivers: {}", receivers.len());
+        }
+        
+        // Emit event to frontend
+        app.emit("tool-confirmation-request", ToolConfirmationRequest {
+            id: confirmation_id.to_string(),
+            tool_name,
+            action,
+        })?;
+        info!("Emitted confirmation request to frontend");
+        
+        // Wait for response with timeout
+        match timeout(Duration::from_secs(60), rx).await {
+            Ok(Ok(confirmed)) => {
+                info!("Received confirmation response: {}", confirmed);
+                Ok(confirmed)
+            },
+            Ok(Err(_)) => Err(anyhow!("Confirmation channel closed")),
+            Err(_) => {
+                // Timeout - clean up the receiver
+                self.confirmation_receivers.lock().await.remove(&confirmation_id);
+                Err(anyhow!("Confirmation timeout - no response from user"))
+            }
+        }
+    }
 }
 
 /// Initialize the LLM service during application startup
-pub async fn initialize_llm(app: Option<AppHandle>, db_service: Arc<DatabaseService>) -> Result<LlmService> {
+pub async fn initialize_llm(
+    app: Option<AppHandle>, 
+    db_service: Arc<DatabaseService>,
+    confirmation_receivers: ConfirmationReceivers
+) -> Result<LlmService> {
     info!("Initializing LLM service...");
     
-    let service = LlmService::new(db_service)
+    let mut service = LlmService::new(db_service, confirmation_receivers)
         .context("Failed to create LLM service")?;
+    
+    // Set app handle if provided
+    if let Some(app_handle) = app.clone() {
+        service.set_app_handle(app_handle);
+    }
     
     // Check and download model if needed
     match service.ensure_model(app).await {
@@ -289,12 +373,50 @@ pub async fn send_chat_message(
         None
     };
     
+    // Inject system rules if tools are enabled
+    if tools.is_some() {
+        let system_rules = llm.tool_registry.generate_system_rules();
+        if !system_rules.is_empty() {
+            // Check if there's already a system message, or create one
+            let system_content = system_rules.join("\n\n");
+            
+            // If the first message is a system message, append to it
+            if let Some(first_msg) = provider_messages.first_mut() {
+                if first_msg.role == "system" {
+                    first_msg.content.push_str("\n\n");
+                    first_msg.content.push_str(&system_content);
+                } else {
+                    // Insert system message at the beginning
+                    provider_messages.insert(0, mimir_dm_llm::Message {
+                        role: "system".to_string(),
+                        content: system_content,
+                    });
+                }
+            } else {
+                // No messages yet, add system message
+                provider_messages.push(mimir_dm_llm::Message {
+                    role: "system".to_string(),
+                    content: system_content,
+                });
+            }
+            
+            info!("Injected {} system rules for tool guidance", system_rules.len());
+        }
+    }
+    
     // Tool execution loop (max 5 iterations to prevent infinite loops)
     const MAX_TOOL_ITERATIONS: usize = 5;
     let mut tool_call_count = 0;
     let mut final_response = None;
     
     while tool_call_count < MAX_TOOL_ITERATIONS {
+        // Log message flow before LLM call
+        info!("=== LLM Call {} ===", tool_call_count + 1);
+        info!("Sending {} messages to LLM ({})", 
+            provider_messages.len(),
+            provider_messages.iter().map(|m| m.role.as_str()).collect::<Vec<_>>().join(", ")
+        );
+        
         // Call the provider's chat method
         let response = llm.provider()
             .chat(
@@ -302,12 +424,25 @@ pub async fn send_chat_message(
                 tools.clone(),
                 None,                          // n (number of completions)
                 temperature.or(Some(0.5)),     // temperature (default to 0.5 for better instruction following)
-                max_tokens,                    // max_tokens
+                max_tokens.or(Some(16384)),    // max_tokens (default to 16384 for thinking models)
                 None,                          // stop sequences
                 None,                          // extra config
             )
             .await
             .map_err(|e| format!("Chat request failed: {}", e))?;
+        
+        // Log response structure
+        info!("LLM Response: content_length={}, tool_calls={}", 
+            response.content.len(),
+            response.tool_calls.as_ref().map_or(0, |tc| tc.len())
+        );
+        
+        if let Some(tool_calls) = &response.tool_calls {
+            if !tool_calls.is_empty() {
+                let tool_names: Vec<&str> = tool_calls.iter().map(|tc| tc.function.name.as_str()).collect();
+                info!("Tool calls requested: [{}]", tool_names.join(", "));
+            }
+        }
         
         // Check if there are tool calls
         if let Some(tool_calls) = &response.tool_calls {
@@ -322,33 +457,114 @@ pub async fn send_chat_message(
                 });
                 
                 // Execute each tool call
-                for tool_call in tool_calls {
+                for (idx, tool_call) in tool_calls.iter().enumerate() {
                     let tool_name = &tool_call.function.name;
                     let tool_args = &tool_call.function.arguments;
                     
-                    info!("Executing tool: {} with args: {}", tool_name, tool_args);
+                    // Extract key parameters for logging
+                    let doc_type = tool_args.get("document_type").and_then(|v| v.as_str()).unwrap_or("unknown");
+                    let campaign_id = tool_args.get("campaign_id").and_then(|v| v.as_i64()).unwrap_or(-1);
                     
-                    // Execute the tool
+                    info!("Tool {}: {} (campaign: {}, doc: {})", 
+                        idx + 1, tool_name, campaign_id, doc_type
+                    );
+                    
+                    // Check if tool requires confirmation
+                    if llm.tool_registry.requires_confirmation(tool_name) {
+                        // Get action description
+                        if let Some(action_desc) = llm.tool_registry.get_action_description(tool_name, tool_args) {
+                            info!("Tool {} requires confirmation, requesting from user", tool_name);
+                            
+                            // Request confirmation from user
+                            match llm.request_confirmation(action_desc, tool_name.clone()).await {
+                                Ok(confirmed) => {
+                                    if !confirmed {
+                                        info!("User rejected tool {} execution", tool_name);
+                                        // User rejected - add cancellation message
+                                        provider_messages.push(mimir_dm_llm::Message {
+                                            role: "tool".to_string(),
+                                            content: format!("Action cancelled by user: {}", tool_name),
+                                        });
+                                        continue; // Skip to next tool call
+                                    }
+                                    info!("User confirmed tool {} execution", tool_name);
+                                }
+                                Err(e) => {
+                                    error!("Confirmation request failed: {}", e);
+                                    provider_messages.push(mimir_dm_llm::Message {
+                                        role: "tool".to_string(),
+                                        content: format!("Confirmation failed: {}", e),
+                                    });
+                                    continue;
+                                }
+                            }
+                        } else {
+                            error!("Tool {} requires confirmation but provided no action description", tool_name);
+                            provider_messages.push(mimir_dm_llm::Message {
+                                role: "tool".to_string(),
+                                content: format!("Tool configuration error: missing action description"),
+                            });
+                            continue;
+                        }
+                    }
+                    
+                    // Execute the tool (either no confirmation needed or user confirmed)
                     let tool_result = llm.tool_registry
                         .execute_tool(tool_name, tool_args.clone())
                         .await
-                        .unwrap_or_else(|e| format!("Tool execution failed: {}", e));
+                        .unwrap_or_else(|e| {
+                            error!("Tool {} execution failed: {}", tool_name, e);
+                            format!("Tool execution failed: {}", e)
+                        });
+                    
+                    info!("Tool {} result: {} chars", tool_name, tool_result.len());
+                    
+                    // Check if this is a structured success response
+                    let is_success_response = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&tool_result) {
+                        parsed.get("status").and_then(|s| s.as_str()) == Some("success")
+                    } else {
+                        false
+                    };
                     
                     // Add tool response to messages
                     provider_messages.push(mimir_dm_llm::Message {
                         role: "tool".to_string(),
-                        content: tool_result,
+                        content: tool_result.clone(),
                     });
+                    
+                    // If this was a successful update action and it's the only/last tool call,
+                    // we can short-circuit and return a simple success message
+                    if is_success_response && idx == tool_calls.len() - 1 {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&tool_result) {
+                            if let Some(message) = parsed.get("message").and_then(|m| m.as_str()) {
+                                warn!("=== EARLY EXIT: Tool {} returned success, short-circuiting ===", tool_name);
+                                info!("Success message: {}", message);
+                                // Return early with a simple success message
+                                return Ok(ChatResponseWithUsage {
+                                    content: message.to_string(),
+                                    prompt_tokens: 0,  // We didn't make another LLM call
+                                    completion_tokens: 0,
+                                    total_tokens: 0,
+                                });
+                            }
+                        }
+                    }
                 }
                 
                 // Continue loop to get next response
+                info!("=== Continuing loop for next LLM call ===");
                 continue;
             }
         }
         
         // No tool calls, we have the final response
+        info!("=== No tool calls found, ending loop ===");
         final_response = Some(response);
         break;
+    }
+    
+    if tool_call_count >= MAX_TOOL_ITERATIONS {
+        warn!("Reached maximum tool iterations ({})", MAX_TOOL_ITERATIONS);
     }
     
     let response = final_response
@@ -384,7 +600,42 @@ pub async fn get_model_context_info(
     Ok(serde_json::json!({
         "model": llm.model_name(),
         "context_length": 262144,  // From our curl query
-        "default_max_tokens": 2048,
+        "default_max_tokens": 16384, // Increased for thinking models (thinking section gets discarded)
         "architecture": "qwen3moe"
     }))
+}
+
+/// Tauri command to confirm or reject a tool action
+#[tauri::command]
+pub async fn confirm_tool_action(
+    confirmation_receivers: tauri::State<'_, ConfirmationReceivers>,
+    confirmation_id: String,
+    confirmed: bool,
+) -> Result<(), String> {
+    info!("Received confirmation request: ID={}, confirmed={}", confirmation_id, confirmed);
+    
+    let id = Uuid::parse_str(&confirmation_id)
+        .map_err(|e| format!("Invalid confirmation ID: {}", e))?;
+    
+    // Find and remove the sender for this confirmation
+    let sender = {
+        let mut receivers = confirmation_receivers.lock().await;
+        info!("Current receivers in map: {}", receivers.len());
+        for (key, _) in receivers.iter() {
+            info!("  - Receiver ID: {}", key);
+        }
+        receivers.remove(&id)
+    };
+    
+    if let Some(tx) = sender {
+        // Send the response back to the waiting tool execution
+        tx.send(confirmed)
+            .map_err(|_| "Failed to send confirmation - receiver dropped".to_string())?;
+        info!("Confirmation {} sent successfully: {}", confirmation_id, confirmed);
+    } else {
+        error!("Confirmation ID {} not found in receivers map", confirmation_id);
+        return Err("Confirmation ID not found or already processed".to_string());
+    }
+    
+    Ok(())
 }
