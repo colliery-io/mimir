@@ -20,7 +20,8 @@ use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, 
 use commands::catalog_language::{init_language_catalog, search_languages, get_language_details, get_language_types, get_language_scripts};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
-use services::llm_service::{self, LlmService};
+use services::llm_service::{self, LlmService, ConfirmationReceivers};
+use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
 use tracing::{error, info, warn};
@@ -61,6 +62,20 @@ fn main() {
             let context_state = ContextState::new();
             app.manage(context_state);
             
+            // Initialize session manager
+            let app_paths = APP_PATHS.get().expect("App paths should be initialized");
+            let session_manager = commands::chat_sessions::init_session_manager(app_paths)
+                .map_err(|e| {
+                    error!("Failed to initialize session manager: {}", e);
+                    e
+                })?;
+            app.manage(session_manager);
+            
+            // Create shared confirmation receivers for LLM tools
+            let confirmation_receivers: ConfirmationReceivers = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+            let confirmation_receivers_clone = Arc::clone(&confirmation_receivers);
+            app.manage(confirmation_receivers);
+            
             // Initialize LLM service
             let app_handle = app.handle().clone();
             let llm_service = Arc::new(tokio::sync::Mutex::new(None::<LlmService>));
@@ -69,7 +84,7 @@ fn main() {
             // Spawn async task to initialize LLM
             tauri::async_runtime::spawn(async move {
                 info!("Starting LLM service initialization...");
-                match llm_service::initialize_llm(Some(app_handle), db_service_clone).await {
+                match llm_service::initialize_llm(Some(app_handle), db_service_clone, confirmation_receivers_clone).await {
                     Ok(service) => {
                         info!("LLM service initialized successfully");
                         let mut llm = llm_service_clone.lock().await;
@@ -303,7 +318,14 @@ fn main() {
             llm_service::check_llm_status,
             llm_service::get_llm_model_info,
             llm_service::send_chat_message,
-            llm_service::get_model_context_info
+            llm_service::get_model_context_info,
+            llm_service::confirm_tool_action,
+            // Chat session commands
+            list_chat_sessions,
+            load_chat_session,
+            save_chat_session,
+            create_chat_session,
+            delete_chat_session
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

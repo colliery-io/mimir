@@ -1,41 +1,38 @@
 <template>
-  <div class="chat-view">
-    <!-- Context Panel (collapsible at top) -->
-    <ContextPanel :start-collapsed="true" />
+  <div class="chat-view" :class="currentTheme">
+    <!-- Chat Sidebar -->
+    <ChatSidebar />
     
-    <!-- Main Chat Area -->
-    <div class="chat-container">
-      <!-- Chat History -->
-      <ChatHistory
-        :messages="messages"
-        :is-loading="isLoading"
-      />
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Context Panel (collapsible at top) -->
+      <ContextPanel :start-collapsed="true" />
       
-      <!-- Token Usage Bar -->
-      <TokenUsage
-        :last-message-tokens="lastMessageTokens"
-        :conversation-tokens="conversationTokens"
-        :max-context="maxContextTokens"
-      />
+      <!-- Main Chat Area -->
+      <div class="chat-container">
+        <!-- Chat History -->
+        <ChatHistory
+          :messages="messages"
+          :is-loading="isLoading"
+        />
+        
+        <!-- Token Usage Bar -->
+        <TokenUsage
+          :last-message-tokens="lastMessageTokens"
+          :conversation-tokens="conversationTokens"
+          :max-context="maxContextTokens"
+        />
+        
+        <!-- Chat Input -->
+        <ChatInput
+          :disabled="!isReady"
+          :is-loading="isLoading"
+          :error="error"
+          @send="handleSendMessage"
+        />
+      </div>
       
-      <!-- Chat Input -->
-      <ChatInput
-        :disabled="!isReady"
-        :is-loading="isLoading"
-        :error="error"
-        @send="handleSendMessage"
-      />
     </div>
-    
-    <!-- Clear History Button (floating) -->
-    <button
-      v-if="messages.length > 0"
-      @click="handleClearHistory"
-      class="clear-button"
-      title="Clear chat history"
-    >
-      Clear
-    </button>
   </div>
 </template>
 
@@ -43,6 +40,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useSharedContextStore } from '@/stores/sharedContext'
+import { useThemeStore } from '@/stores/theme'
+import ChatSidebar from '../components/ChatSidebar.vue'
 import ContextPanel from '../components/ContextPanel.vue'
 import ChatHistory from '../components/ChatHistory.vue'
 import ChatInput from '../components/ChatInput.vue'
@@ -51,6 +50,7 @@ import TokenUsage from '../components/TokenUsage.vue'
 // Stores
 const chatStore = useChatStore()
 const contextStore = useSharedContextStore()
+const themeStore = useThemeStore()
 
 // State
 const isReady = ref(false)
@@ -68,21 +68,24 @@ const lastMessageTokens = computed(() => {
   return lastMsg?.tokenUsage?.total || 0
 })
 
+// Theme class
+const currentTheme = computed(() => `theme-${themeStore.currentTheme}`)
+
 // Methods
 const handleSendMessage = async (content: string) => {
   await chatStore.sendMessage(content)
 }
 
-const handleClearHistory = () => {
-  if (confirm('Are you sure you want to clear the chat history?')) {
-    chatStore.clearHistory()
-  }
-}
 
 // Initialize on mount
 onMounted(async () => {
   // Set window ID for this window
   (window as any).__TAURI_WINDOW_ID__ = 'chat'
+  
+  // Initialize theme store first
+  await themeStore.loadThemes()
+  themeStore.applyTheme()
+  await themeStore.initThemeSync()
   
   // Register window with context service
   await contextStore.registerWindow({
@@ -100,6 +103,7 @@ onMounted(async () => {
   
   // Clean up on unmount
   onUnmounted(() => {
+    themeStore.cleanup()
     contextStore.unregisterWindow('chat')
   })
 })
@@ -109,17 +113,17 @@ import { onUnmounted } from 'vue'
 
 <style scoped>
 .chat-view {
-  @apply h-screen flex flex-col bg-gray-900 text-gray-100;
+  @apply h-screen flex;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+.main-content {
+  @apply flex-1 flex flex-col overflow-hidden;
 }
 
 .chat-container {
   @apply flex-1 flex flex-col overflow-hidden;
 }
 
-.clear-button {
-  @apply fixed bottom-24 right-4;
-  @apply px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg;
-  @apply shadow-lg transition-colors duration-200;
-  z-index: 10;
-}
 </style>

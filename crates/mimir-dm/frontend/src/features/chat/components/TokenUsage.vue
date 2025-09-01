@@ -60,7 +60,9 @@ const formatTokens = (count: number) => {
 
 <style scoped>
 .token-usage-bar {
-  @apply bg-gray-800 border-t border-gray-700 px-4 py-2;
+  @apply border-t px-4 py-2;
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .token-stats {
@@ -72,15 +74,17 @@ const formatTokens = (count: number) => {
 }
 
 .label {
-  @apply text-gray-400;
+  color: var(--color-text-secondary);
 }
 
 .value {
-  @apply text-gray-200 font-mono;
+  @apply font-mono;
+  color: var(--color-text);
 }
 
 .progress-bar {
-  @apply h-1 bg-gray-700 rounded-full overflow-hidden;
+  @apply h-1 rounded-full overflow-hidden;
+  background-color: var(--color-surface-variant);
 }
 
 .progress-fill {

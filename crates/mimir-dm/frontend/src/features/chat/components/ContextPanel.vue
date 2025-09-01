@@ -4,17 +4,17 @@
     <div v-if="isCollapsed" class="collapsed-content" @click="toggleCollapse">
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-4 text-sm">
-          <span v-if="campaign?.name" class="text-green-400">
+          <span v-if="campaign?.name" class="campaign-text">
             Campaign: {{ campaign.name }}
           </span>
-          <span v-if="module?.name" class="text-blue-400">
+          <span v-if="module?.name" class="module-text">
             Module: {{ module.name }}
           </span>
-          <span v-if="contextUsage" class="text-gray-400">
+          <span v-if="contextUsage" class="context-text">
             Context: {{ formatTokenCount(contextUsage) }}/262k
           </span>
         </div>
-        <button class="text-gray-400 hover:text-gray-200">
+        <button class="expand-button">
           ▼ Expand Context
         </button>
       </div>
@@ -149,11 +149,17 @@ const clearContext = async () => {
 
 <style scoped>
 .context-panel {
-  @apply bg-gray-800 border-b border-gray-700 transition-all duration-300;
+  @apply border-b transition-all duration-300;
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .collapsed-content {
-  @apply px-4 py-2 cursor-pointer hover:bg-gray-700;
+  @apply px-4 py-2 cursor-pointer;
+}
+
+.collapsed-content:hover {
+  background-color: var(--color-surface-variant);
 }
 
 .expanded-content {
@@ -175,5 +181,27 @@ const clearContext = async () => {
 .context-panel:not(.collapsed) {
   max-height: 200px;
   overflow-y: auto;
+}
+
+/* Theme-aware text colors */
+.campaign-text {
+  color: var(--color-success);
+}
+
+.module-text {
+  color: var(--color-info);
+}
+
+.context-text {
+  color: var(--color-text-secondary);
+}
+
+.expand-button {
+  color: var(--color-text-secondary);
+  transition: color 0.2s ease;
+}
+
+.expand-button:hover {
+  color: var(--color-text);
 }
 </style>

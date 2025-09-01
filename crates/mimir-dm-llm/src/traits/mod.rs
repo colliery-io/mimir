@@ -2,6 +2,7 @@
 
 pub mod provider;
 pub mod tool;
+pub mod context;
 
 // Re-export commonly used types
 pub use provider::{
@@ -13,4 +14,5 @@ pub use provider::{
     Tool, ToolFunction, ToolCall, ToolCallFunction
 };
 
-pub use tool::Tool as ToolTrait;
+pub use tool::{Tool as ToolTrait, ActionDescription, RiskLevel};
+pub use context::ToolContext;

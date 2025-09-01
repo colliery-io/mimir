@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { useSharedContextStore } from './sharedContext'
 
 export interface ChatMessage {
@@ -38,6 +39,44 @@ export interface ChatResponseWithUsage {
   total_tokens: number
 }
 
+export type RiskLevel = 'low' | 'medium' | 'high'
+
+export interface ActionDescription {
+  title: string
+  description: string
+  changes: string[]
+  risk_level: RiskLevel
+}
+
+export interface ToolConfirmationRequest {
+  id: string
+  tool_name: string
+  action: ActionDescription
+}
+
+export interface PendingConfirmation {
+  request: ToolConfirmationRequest
+  status: 'pending' | 'confirmed' | 'rejected'
+  messageId?: string
+}
+
+export interface ChatSession {
+  id: string
+  title: string
+  created_at: number
+  updated_at: number
+  messages: ChatMessage[]
+}
+
+export interface ChatSessionMetadata {
+  id: string
+  title: string
+  created_at: number
+  updated_at: number
+  message_count: number
+  preview: string
+}
+
 export const useChatStore = defineStore('chat', () => {
   // State
   const messages = ref<ChatMessage[]>([])
@@ -46,6 +85,12 @@ export const useChatStore = defineStore('chat', () => {
   const modelInfo = ref<ModelInfo | null>(null)
   const totalTokensUsed = ref(0)
   const maxResponseTokens = ref(2048)
+  const pendingConfirmations = ref<Map<string, PendingConfirmation>>(new Map())
+  
+  // Session state
+  const currentSessionId = ref<string | null>(null)
+  const sessions = ref<ChatSessionMetadata[]>([])
+  const sessionsLoading = ref(false)
   
   // System message configuration
   const systemConfig = ref<SystemMessageConfig>({
@@ -61,6 +106,10 @@ TOOL USAGE:
 - When you use tools to fetch information, incorporate the results naturally into your response
 - Don't announce that you're using tools or explain the process
 - Simply provide the information requested
+- Tool responses may return JSON with a "status" field:
+  - If status is "success", the action completed successfully - just acknowledge it
+  - If status is "error", explain the error to the user
+- NEVER ask for additional confirmation after a tool with status "success"
 
 CONTEXT USAGE:
 - Use the provided JSON context to give relevant assistance
@@ -100,13 +149,38 @@ CONTEXT USAGE:
       // Load system configuration
       loadSystemConfig()
       
-      // Load saved messages from localStorage if any
-      const saved = localStorage.getItem('chat_history')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        messages.value = parsed.messages || []
-        totalTokensUsed.value = parsed.totalTokens || 0
+      // Load available sessions
+      await loadSessions()
+      
+      // Try to load most recent session or create new one
+      if (sessions.value.length > 0) {
+        // Load the most recent session
+        await loadSession(sessions.value[0].id)
+      } else {
+        // Create a new session
+        await createNewSession()
       }
+      
+      // Set up event listener for tool confirmation requests
+      await listen<ToolConfirmationRequest>('tool-confirmation-request', (event) => {
+        console.log('Received confirmation request:', event.payload)
+        const request = event.payload
+        
+        // Add to pending confirmations
+        pendingConfirmations.value.set(request.id, {
+          request,
+          status: 'pending',
+          messageId: `confirm_${Date.now()}`
+        })
+        
+        // Add a system message to show the confirmation UI
+        messages.value.push({
+          id: `confirm_${Date.now()}`,
+          role: 'system',
+          content: `TOOL_CONFIRMATION:${request.id}`,
+          timestamp: Date.now()
+        })
+      })
     } catch (err) {
       console.error('Failed to initialize chat:', err)
       error.value = String(err)
@@ -208,7 +282,7 @@ CONTEXT USAGE:
       const assistantMessage: ChatMessage = {
         id: `msg_${Date.now()}_assistant`,
         role: 'assistant',
-        content: response.content,
+        content: response.content, // Keep raw content for display (thinking blocks will be rendered as collapsible)
         timestamp: Date.now(),
         tokenUsage: {
           prompt: response.prompt_tokens,
@@ -226,8 +300,8 @@ CONTEXT USAGE:
       // Update total tokens
       totalTokensUsed.value += response.total_tokens
       
-      // Save to localStorage
-      saveToLocalStorage()
+      // Auto-save current session
+      await saveCurrentSession()
       
     } catch (err) {
       console.error('Failed to send message:', err)
@@ -243,14 +317,14 @@ CONTEXT USAGE:
     }
   }
   
-  const clearHistory = () => {
-    messages.value = []
-    totalTokensUsed.value = 0
-    error.value = null
-    localStorage.removeItem('chat_history')
+  const clearHistory = async () => {
+    if (currentSessionId.value) {
+      // Create a new session to replace the current one
+      await createNewSession()
+    }
   }
   
-  const deleteMessage = (messageId: string) => {
+  const deleteMessage = async (messageId: string) => {
     const idx = messages.value.findIndex(m => m.id === messageId)
     if (idx !== -1) {
       const msg = messages.value[idx]
@@ -258,7 +332,7 @@ CONTEXT USAGE:
         totalTokensUsed.value -= msg.tokenUsage.total
       }
       messages.value.splice(idx, 1)
-      saveToLocalStorage()
+      await saveCurrentSession()
     }
   }
   
@@ -306,12 +380,138 @@ CONTEXT USAGE:
     }
   }
   
-  const saveToLocalStorage = () => {
-    localStorage.setItem('chat_history', JSON.stringify({
-      messages: messages.value,
-      totalTokens: totalTokensUsed.value,
-      savedAt: Date.now()
-    }))
+  
+  // Tool confirmation methods
+  const confirmToolAction = async (confirmationId: string) => {
+    try {
+      await invoke('confirm_tool_action', {
+        confirmationId,
+        confirmed: true
+      })
+      
+      // Update status
+      const confirmation = pendingConfirmations.value.get(confirmationId)
+      if (confirmation) {
+        confirmation.status = 'confirmed'
+      }
+    } catch (error) {
+      console.error('Failed to confirm action:', error)
+      throw error
+    }
+  }
+  
+  const rejectToolAction = async (confirmationId: string) => {
+    try {
+      await invoke('confirm_tool_action', {
+        confirmationId,
+        confirmed: false
+      })
+      
+      // Update status
+      const confirmation = pendingConfirmations.value.get(confirmationId)
+      if (confirmation) {
+        confirmation.status = 'rejected'
+      }
+    } catch (error) {
+      console.error('Failed to reject action:', error)
+      throw error
+    }
+  }
+  
+  const getConfirmationForMessage = (messageContent: string) => {
+    // Check if this is a confirmation message
+    if (messageContent.startsWith('TOOL_CONFIRMATION:')) {
+      const confirmationId = messageContent.split(':')[1]
+      return pendingConfirmations.value.get(confirmationId)
+    }
+    return null
+  }
+  
+  // Session management methods
+  const loadSessions = async () => {
+    try {
+      sessionsLoading.value = true
+      const sessionList = await invoke<ChatSessionMetadata[]>('list_chat_sessions')
+      sessions.value = sessionList
+    } catch (err) {
+      console.error('Failed to load sessions:', err)
+      error.value = String(err)
+    } finally {
+      sessionsLoading.value = false
+    }
+  }
+  
+  const loadSession = async (sessionId: string) => {
+    try {
+      const session = await invoke<ChatSession | null>('load_chat_session', { sessionId })
+      if (session) {
+        currentSessionId.value = session.id
+        messages.value = session.messages
+        // Recalculate total tokens from messages
+        totalTokensUsed.value = messages.value.reduce((total, msg) => {
+          return total + (msg.tokenUsage?.total || 0)
+        }, 0)
+      }
+    } catch (err) {
+      console.error('Failed to load session:', err)
+      error.value = String(err)
+    }
+  }
+  
+  const saveCurrentSession = async () => {
+    if (!currentSessionId.value) return
+    
+    try {
+      const session: ChatSession = {
+        id: currentSessionId.value,
+        title: '', // Will be auto-generated by backend
+        created_at: 0, // Will be set by backend
+        updated_at: Date.now(),
+        messages: messages.value
+      }
+      await invoke('save_chat_session', { session })
+      // Reload sessions to get updated metadata
+      await loadSessions()
+    } catch (err) {
+      console.error('Failed to save session:', err)
+      // Don't show error to user for auto-save failures
+    }
+  }
+  
+  const createNewSession = async () => {
+    try {
+      const newSession = await invoke<ChatSession>('create_chat_session')
+      currentSessionId.value = newSession.id
+      messages.value = []
+      totalTokensUsed.value = 0
+      error.value = null
+      await loadSessions()
+    } catch (err) {
+      console.error('Failed to create session:', err)
+      error.value = String(err)
+    }
+  }
+  
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const deleted = await invoke<boolean>('delete_chat_session', { sessionId })
+      if (deleted) {
+        await loadSessions()
+        // If we deleted the current session, create a new one
+        if (currentSessionId.value === sessionId) {
+          await createNewSession()
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete session:', err)
+      error.value = String(err)
+    }
+  }
+  
+  const switchToSession = async (sessionId: string) => {
+    if (currentSessionId.value !== sessionId) {
+      await loadSession(sessionId)
+    }
   }
   
   return {
@@ -323,6 +523,12 @@ CONTEXT USAGE:
     totalTokensUsed,
     maxResponseTokens,
     systemConfig,
+    pendingConfirmations,
+    
+    // Session state
+    currentSessionId,
+    sessions,
+    sessionsLoading,
     
     // Computed
     conversationTokens,
@@ -341,6 +547,19 @@ CONTEXT USAGE:
     toggleContext,
     setSystemInstructions,
     setCustomInstructions,
-    buildSystemMessage
+    buildSystemMessage,
+    
+    // Tool confirmation methods
+    confirmToolAction,
+    rejectToolAction,
+    getConfirmationForMessage,
+    
+    // Session management methods
+    loadSessions,
+    loadSession,
+    saveCurrentSession,
+    createNewSession,
+    deleteSession,
+    switchToSession
   }
 })

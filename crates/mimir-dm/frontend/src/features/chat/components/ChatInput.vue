@@ -87,7 +87,9 @@ onMounted(() => {
 
 <style scoped>
 .chat-input-container {
-  @apply border-t border-gray-700 bg-gray-800 p-4;
+  @apply border-t p-4;
+  border-color: var(--color-border);
+  background-color: var(--color-surface);
 }
 
 .input-wrapper {
@@ -95,13 +97,19 @@ onMounted(() => {
 }
 
 .message-input {
-  @apply flex-1 bg-gray-900 text-gray-100 rounded-lg px-3 py-2;
-  @apply border border-gray-700 focus:border-blue-500 focus:outline-none;
-  @apply resize-none overflow-y-auto;
+  @apply flex-1 rounded-lg px-3 py-2;
+  @apply border focus:outline-none resize-none overflow-y-auto;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  border-color: var(--color-border);
   min-height: 60px;
   max-height: 200px;
   font-family: inherit;
   line-height: 1.5;
+}
+
+.message-input:focus {
+  border-color: var(--color-primary-500);
 }
 
 .message-input:disabled {
@@ -109,13 +117,17 @@ onMounted(() => {
 }
 
 .send-button {
-  @apply px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg;
-  @apply transition-colors duration-200;
-  @apply self-end;
+  @apply px-4 py-2 text-white rounded-lg transition-colors duration-200 self-end;
+  background-color: var(--color-primary-500);
   min-width: 70px;
 }
 
+.send-button:hover:not(:disabled) {
+  background-color: var(--color-primary-600);
+}
+
 .error-message {
-  @apply mt-2 text-red-400 text-sm;
+  @apply mt-2 text-sm;
+  color: var(--color-error);
 }
 </style>

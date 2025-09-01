@@ -29,6 +29,7 @@ pub mod catalog_cult;
 pub mod catalog_psionic;
 pub mod context;
 pub mod window_manager;
+pub mod chat_sessions;
 
 pub use campaigns::*;
 pub use app_info::*;
@@ -45,3 +46,4 @@ pub use catalog_feat::*;
 pub use catalog_race::*;
 pub use context::*;
 pub use window_manager::*;
+pub use chat_sessions::*;

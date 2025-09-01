@@ -7,7 +7,16 @@
       'system-message': message.role === 'system'
     }"
   >
-    <div class="message-bubble">
+    <!-- Tool confirmation UI for system messages -->
+    <ToolConfirmation
+      v-if="toolConfirmation"
+      :confirmation="toolConfirmation"
+      @confirm="handleConfirm"
+      @reject="handleReject"
+    />
+    
+    <!-- Regular message bubble -->
+    <div v-else class="message-bubble">
       <!-- Thinking blocks (if any) -->
       <div v-if="thinkingBlocks.length > 0" class="thinking-blocks">
         <div
@@ -45,14 +54,26 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ChatMessage } from '@/stores/chat'
+import { useChatStore } from '@/stores/chat'
 import { marked } from 'marked'
+import ToolConfirmation from '@/components/ToolConfirmation.vue'
 
 const props = defineProps<{
   message: ChatMessage
 }>()
 
+const chatStore = useChatStore()
+
 // Track which thinking blocks are expanded
 const expandedThinking = ref<Record<number, boolean>>({})
+
+// Check if this is a tool confirmation message
+const toolConfirmation = computed(() => {
+  if (props.message.role === 'system' && props.message.content.startsWith('TOOL_CONFIRMATION:')) {
+    return chatStore.getConfirmationForMessage(props.message.content)
+  }
+  return null
+})
 
 // Parse thinking blocks from content
 const parsedContent = computed(() => {
@@ -127,6 +148,15 @@ const formatTime = (timestamp: number) => {
     minute: '2-digit' 
   })
 }
+
+// Handle tool confirmation actions
+const handleConfirm = async (confirmationId: string) => {
+  await chatStore.confirmToolAction(confirmationId)
+}
+
+const handleReject = async (confirmationId: string) => {
+  await chatStore.rejectToolAction(confirmationId)
+}
 </script>
 
 <style scoped>
@@ -144,6 +174,7 @@ const formatTime = (timestamp: number) => {
 
 .system-message {
   @apply justify-center;
+  width: 100%;
 }
 
 .message-bubble {
@@ -151,15 +182,19 @@ const formatTime = (timestamp: number) => {
 }
 
 .user-message .message-bubble {
-  @apply bg-blue-600 text-white;
+  @apply text-white;
+  background-color: var(--color-primary-500);
 }
 
 .assistant-message .message-bubble {
-  @apply bg-gray-700 text-gray-100;
+  background-color: var(--color-surface-variant);
+  color: var(--color-text);
 }
 
 .system-message .message-bubble {
-  @apply bg-gray-800 text-gray-400 italic text-sm;
+  @apply italic text-sm;
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
 }
 
 .message-content {
@@ -168,11 +203,13 @@ const formatTime = (timestamp: number) => {
 
 /* Markdown content styling */
 .message-content :deep(pre) {
-  @apply bg-gray-900 rounded p-2 my-2 overflow-x-auto;
+  @apply rounded p-2 my-2 overflow-x-auto;
+  background-color: var(--color-background);
 }
 
 .message-content :deep(code) {
-  @apply bg-gray-900 px-1 py-0.5 rounded text-xs;
+  @apply px-1 py-0.5 rounded text-xs;
+  background-color: var(--color-background);
 }
 
 .message-content :deep(pre code) {
@@ -216,33 +253,58 @@ const formatTime = (timestamp: number) => {
 }
 
 .thinking-toggle {
-  @apply w-full text-left px-2 py-1 rounded text-xs;
-  @apply bg-gray-800 hover:bg-gray-700 transition-colors;
-  @apply flex items-center gap-1;
-  @apply text-gray-400;
+  @apply w-full text-left px-3 py-2 rounded text-xs transition-colors;
+  @apply flex items-center gap-2;
+  background: var(--gradient-chromatic-subtle);
+  border: 1px solid var(--color-chromatic-border);
+  color: var(--color-text);
+  position: relative;
+  overflow: hidden;
 }
 
-.assistant-message .thinking-toggle {
-  @apply bg-gray-800 hover:bg-gray-600;
+.thinking-toggle::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(135deg, 
+    transparent 30%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    transparent 70%);
+  animation: shimmer 4s infinite linear;
+  pointer-events: none;
+}
+
+.thinking-toggle:hover {
+  border-color: var(--color-primary-400);
+  background: var(--gradient-chromatic);
+  opacity: 0.9;
 }
 
 .toggle-icon {
   @apply text-xs;
   width: 12px;
   display: inline-block;
+  position: relative;
+  z-index: 1;
 }
 
 .thinking-label {
-  @apply italic opacity-80;
+  @apply italic;
+  position: relative;
+  z-index: 1;
 }
 
 .thinking-content {
-  @apply mt-1 p-2 rounded text-xs;
-  @apply bg-gray-800 text-gray-300;
-  @apply whitespace-pre-wrap;
-  @apply border border-gray-700;
+  @apply mt-2 p-3 rounded text-xs whitespace-pre-wrap;
+  background: var(--gradient-chromatic-subtle);
+  border: 1px solid var(--color-chromatic-border);
+  color: var(--color-text);
   max-height: 200px;
   overflow-y: auto;
+  position: relative;
 }
 
 .thinking-content::-webkit-scrollbar {
@@ -250,6 +312,20 @@ const formatTime = (timestamp: number) => {
 }
 
 .thinking-content::-webkit-scrollbar-thumb {
-  @apply bg-gray-600 rounded;
+  background-color: var(--color-surface-variant);
+  border-radius: 3px;
+}
+
+.thinking-content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translate(-100%, -100%);
+  }
+  100% {
+    transform: translate(100%, 100%);
+  }
 }
 </style>

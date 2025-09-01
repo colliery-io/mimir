@@ -42,6 +42,7 @@ flate2 = "1.0"
 tempfile = "3.10"
 walkdir = "2.5"
 async-trait.workspace = true
+uuid = { version = "1.10", features = ["v4", "serde"] }
 
 # Remove TUI dependencies since we're going GUI
 # config = { workspace = true }

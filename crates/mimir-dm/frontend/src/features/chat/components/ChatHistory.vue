@@ -64,9 +64,9 @@ watch(
 
 <style scoped>
 .chat-history {
-  @apply flex-1 overflow-y-auto p-4 bg-gray-900;
+  @apply flex-1 overflow-y-auto p-4;
+  background-color: var(--color-background);
   scrollbar-width: thin;
-  scrollbar-color: #4a5568 #1a202c;
 }
 
 .chat-history::-webkit-scrollbar {
@@ -74,15 +74,16 @@ watch(
 }
 
 .chat-history::-webkit-scrollbar-track {
-  @apply bg-gray-900;
+  background-color: var(--color-background);
 }
 
 .chat-history::-webkit-scrollbar-thumb {
-  @apply bg-gray-700 rounded;
+  background-color: var(--color-surface-variant);
+  border-radius: 4px;
 }
 
 .chat-history::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-600;
+  background-color: var(--color-border-hover);
 }
 
 .empty-state {
