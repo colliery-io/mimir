@@ -79,6 +79,26 @@ pub struct ToolConfirmationRequest {
     pub action: ActionDescription,
 }
 
+/// Intermediate message from LLM (during multi-turn tool execution)
+#[derive(Clone, Serialize, Deserialize)]
+pub struct IntermediateMessage {
+    pub role: String,
+    pub content: String,
+    pub tool_calls: Vec<String>,
+    pub iteration: usize,
+    pub session_id: Option<String>,
+}
+
+/// Tool result message
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ToolResultMessage {
+    pub tool_name: String,
+    pub result: String,
+    pub success: bool,
+    pub iteration: usize,
+    pub session_id: Option<String>,
+}
+
 /// Global confirmation state that can be shared across the app
 pub type ConfirmationReceivers = Arc<Mutex<HashMap<Uuid, oneshot::Sender<bool>>>>;
 
@@ -96,7 +116,7 @@ pub struct LlmService {
 
 impl LlmService {
     /// Create a new LLM service instance with shared confirmation receivers
-    pub fn new(db_service: Arc<DatabaseService>, confirmation_receivers: ConfirmationReceivers) -> Result<Self> {
+    pub fn new(db_service: Arc<DatabaseService>, confirmation_receivers: ConfirmationReceivers, app_handle: AppHandle) -> Result<Self> {
         let config = Self::create_config(REQUIRED_MODEL);
         let provider = OllamaProvider::new(config)
             .context("Failed to create Ollama provider")?;
@@ -110,7 +130,9 @@ impl LlmService {
         
         // Register TodoListTool with app data directory
         if let Some(app_paths) = APP_PATHS.get() {
-            tool_registry.register(Arc::new(TodoListTool::new(app_paths.data_dir.clone())));
+            let todo_tool = TodoListTool::new(app_paths.data_dir.clone())
+                .with_app_handle(app_handle.clone());
+            tool_registry.register(Arc::new(todo_tool));
             info!("Registered TodoListTool with data directory: {}", app_paths.data_dir.display());
         } else {
             warn!("APP_PATHS not available, TodoListTool not registered");
@@ -122,7 +144,7 @@ impl LlmService {
             tool_registry: Arc::new(tool_registry),
             db_service,
             confirmation_receivers,
-            app_handle: None,
+            app_handle: Some(app_handle),
         })
     }
     
@@ -302,22 +324,17 @@ impl LlmService {
 
 /// Initialize the LLM service during application startup
 pub async fn initialize_llm(
-    app: Option<AppHandle>, 
+    app_handle: AppHandle, 
     db_service: Arc<DatabaseService>,
     confirmation_receivers: ConfirmationReceivers
 ) -> Result<LlmService> {
     info!("Initializing LLM service...");
     
-    let mut service = LlmService::new(db_service, confirmation_receivers)
+    let service = LlmService::new(db_service, confirmation_receivers, app_handle)
         .context("Failed to create LLM service")?;
     
-    // Set app handle if provided
-    if let Some(app_handle) = app.clone() {
-        service.set_app_handle(app_handle);
-    }
-    
     // Check and download model if needed
-    match service.ensure_model(app).await {
+    match service.ensure_model(None).await {
         Ok(()) => {
             info!("LLM service initialized successfully with model: {}", service.model_name());
         }
@@ -439,8 +456,8 @@ pub async fn send_chat_message(
         }
     }
     
-    // Tool execution loop (max 5 iterations to prevent infinite loops)
-    const MAX_TOOL_ITERATIONS: usize = 5;
+    // Tool execution loop (max 20 iterations to prevent infinite loops)
+    const MAX_TOOL_ITERATIONS: usize = 20;
     let mut tool_call_count = 0;
     let mut final_response = None;
     
@@ -536,6 +553,25 @@ pub async fn send_chat_message(
                 tool_call_count += 1;
                 info!("Processing {} tool calls (iteration {})", tool_calls.len(), tool_call_count);
                 
+                // Emit intermediate LLM response
+                if let Some(ref app) = llm.app_handle {
+                    let tool_names: Vec<String> = tool_calls.iter()
+                        .map(|tc| tc.function.name.clone())
+                        .collect();
+                    
+                    let intermediate_msg = IntermediateMessage {
+                        role: "assistant".to_string(),
+                        content: response.content.clone(),
+                        tool_calls: tool_names,
+                        iteration: tool_call_count,
+                        session_id: session_id.clone(),
+                    };
+                    
+                    if let Err(e) = app.emit("llm-intermediate-message", &intermediate_msg) {
+                        debug!("Failed to emit intermediate message: {}", e);
+                    }
+                }
+                
                 // Add assistant message with tool calls
                 provider_messages.push(mimir_dm_llm::Message {
                     role: "assistant".to_string(),
@@ -606,15 +642,48 @@ pub async fn send_chat_message(
                     }
                     
                     // Execute the tool (either no confirmation needed or user confirmed)
-                    let tool_result = llm.tool_registry
-                        .execute_tool(tool_name, tool_args.clone())
-                        .await
-                        .unwrap_or_else(|e| {
-                            error!("Tool {} execution failed: {}", tool_name, e);
-                            format!("Tool execution failed: {}", e)
-                        });
+                    // Try up to 2 times if it fails
+                    let mut tool_result = None;
+                    for attempt in 1..=2 {
+                        match llm.tool_registry.execute_tool(tool_name, tool_args.clone()).await {
+                            Ok(result) => {
+                                tool_result = Some(result);
+                                if attempt > 1 {
+                                    info!("Tool {} succeeded on retry attempt {}", tool_name, attempt);
+                                }
+                                break;
+                            }
+                            Err(e) => {
+                                error!("Tool {} execution failed on attempt {}: {}", tool_name, attempt, e);
+                                if attempt == 2 {
+                                    // Final attempt failed
+                                    tool_result = Some(format!("Tool execution failed after {} attempts: {}", attempt, e));
+                                } else {
+                                    // Wait a bit before retry
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                                }
+                            }
+                        }
+                    }
+                    let tool_result = tool_result.unwrap();
                     
                     info!("Tool {} result: {} chars", tool_name, tool_result.len());
+                    
+                    // Emit tool result
+                    if let Some(ref app) = llm.app_handle {
+                        let success = !tool_result.contains("Tool execution failed");
+                        let tool_result_msg = ToolResultMessage {
+                            tool_name: tool_name.clone(),
+                            result: tool_result.clone(),
+                            success,
+                            iteration: tool_call_count,
+                            session_id: session_id.clone(),
+                        };
+                        
+                        if let Err(e) = app.emit("tool-result-message", &tool_result_msg) {
+                            debug!("Failed to emit tool result message: {}", e);
+                        }
+                    }
                     
                     // Check if this is a structured success response
                     let is_success_response = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&tool_result) {

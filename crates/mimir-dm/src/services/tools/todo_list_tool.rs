@@ -9,6 +9,8 @@ use serde_json::{json, Value};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info};
 
 /// Represents a single todo item
@@ -20,9 +22,19 @@ pub struct TodoItem {
     pub active_form: String, // Present tense form for display during execution
 }
 
+/// Event for task state changes
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TaskStateChangeEvent {
+    pub task_content: String,
+    pub old_status: String,
+    pub new_status: String,
+    pub session_id: String,
+}
+
 /// Tool for managing todo lists with JSON file persistence
 pub struct TodoListTool {
     todos_dir: PathBuf,
+    app_handle: Option<AppHandle>,
 }
 
 impl TodoListTool {
@@ -36,7 +48,16 @@ impl TodoListTool {
             debug!("Todo directory initialized: {}", todos_dir.display());
         }
         
-        Self { todos_dir }
+        Self { 
+            todos_dir,
+            app_handle: None,
+        }
+    }
+    
+    /// Set app handle for event emission
+    pub fn with_app_handle(mut self, app_handle: AppHandle) -> Self {
+        self.app_handle = Some(app_handle);
+        self
     }
     
     /// Get the file path for a session's todos
@@ -199,8 +220,10 @@ When in doubt, use this tool. Being proactive with task management demonstrates 
     }
     
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
+        // Accept both "todos" and "tasks" parameter names for backward compatibility
         let todos_array = arguments
             .get("todos")
+            .or_else(|| arguments.get("tasks"))
             .and_then(|v| v.as_array())
             .ok_or("Missing or invalid 'todos' parameter")?;
         
@@ -240,6 +263,38 @@ When in doubt, use this tool. Being proactive with task management demonstrates 
             .get("session_id")
             .and_then(|v| v.as_str())
             .unwrap_or("default");
+        
+        // Load previous todos to detect state changes
+        let previous_todos = self.load_todos(session_id).unwrap_or_default();
+        
+        // Emit events for all state changes
+        if let Some(ref app) = self.app_handle {
+            for todo in &todos {
+                // Find the previous state of this task
+                let old_status = previous_todos
+                    .iter()
+                    .find(|prev| prev.content == todo.content)
+                    .map(|prev| prev.status.as_str())
+                    .unwrap_or("new"); // "new" for tasks that didn't exist before
+                
+                // Emit event if status changed
+                if old_status != todo.status {
+                    let state_change_event = TaskStateChangeEvent {
+                        task_content: todo.content.clone(),
+                        old_status: old_status.to_string(),
+                        new_status: todo.status.clone(),
+                        session_id: session_id.to_string(),
+                    };
+                    
+                    if let Err(e) = app.emit("task-state-changed", &state_change_event) {
+                        debug!("Failed to emit task state change event: {}", e);
+                    } else {
+                        debug!("Emitted state change event for task '{}': {} → {}", 
+                               todo.content, old_status, todo.status);
+                    }
+                }
+            }
+        }
         
         // Save the todos
         self.save_todos(session_id, &todos)?;

@@ -6,7 +6,7 @@ import { useSharedContextStore } from './sharedContext'
 
 export interface ChatMessage {
   id: string
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
   timestamp: number
   tokenUsage?: {
@@ -14,6 +14,11 @@ export interface ChatMessage {
     completion: number
     total: number
   }
+  isIntermediate?: boolean
+  iteration?: number
+  toolName?: string
+  toolCalls?: string[]
+  success?: boolean
 }
 
 export interface SystemMessageConfig {
@@ -49,6 +54,22 @@ export interface ToolConfirmationRequest {
   id: string
   tool_name: string
   action: ActionDescription
+}
+
+export interface IntermediateMessage {
+  role: string
+  content: string
+  tool_calls: string[]
+  iteration: number
+  session_id?: string
+}
+
+export interface ToolResultMessage {
+  tool_name: string
+  result: string
+  success: boolean
+  iteration: number
+  session_id?: string
 }
 
 export interface PendingConfirmation {
@@ -244,6 +265,82 @@ Task states: pending → in_progress → completed
         if (currentSessionId.value === session_id) {
           updateTodos(newTodos)
           console.log(`Updated ${newTodos.length} todos for current session`)
+        }
+      })
+      
+      // Set up event listener for intermediate LLM messages
+      await listen<IntermediateMessage>('llm-intermediate-message', (event) => {
+        console.log('Received intermediate LLM message:', event.payload)
+        const intermediateMsg = event.payload
+        
+        // Only process if this is for the current session
+        if (!intermediateMsg.session_id || currentSessionId.value === intermediateMsg.session_id) {
+          const message: ChatMessage = {
+            id: `intermediate_${Date.now()}_${Math.random()}`,
+            role: 'assistant',
+            content: intermediateMsg.content,
+            timestamp: Date.now(),
+            isIntermediate: true,
+            iteration: intermediateMsg.iteration,
+            toolCalls: intermediateMsg.tool_calls
+          }
+          messages.value.push(message)
+          console.log(`Added intermediate message (iteration ${intermediateMsg.iteration})`)
+        }
+      })
+      
+      // Set up event listener for tool result messages
+      await listen<ToolResultMessage>('tool-result-message', (event) => {
+        console.log('Received tool result message:', event.payload)
+        const toolResult = event.payload
+        
+        // Only process if this is for the current session
+        if (!toolResult.session_id || currentSessionId.value === toolResult.session_id) {
+          const message: ChatMessage = {
+            id: `tool_${Date.now()}_${Math.random()}`,
+            role: 'tool',
+            content: toolResult.result,
+            timestamp: Date.now(),
+            toolName: toolResult.tool_name,
+            success: toolResult.success,
+            iteration: toolResult.iteration
+          }
+          messages.value.push(message)
+          console.log(`Added tool result message: ${toolResult.tool_name}`)
+        }
+      })
+      
+      // Set up event listener for task state changes
+      await listen<{task_content: string, old_status: string, new_status: string, session_id: string}>('task-state-changed', (event) => {
+        console.log('Received task state change event:', event.payload)
+        const stateChange = event.payload
+        
+        // Only process if this is for the current session
+        if (currentSessionId.value === stateChange.session_id) {
+          // Create appropriate message based on state change
+          let content = ''
+          let success = true
+          
+          if (stateChange.old_status === 'new' && stateChange.new_status === 'pending') {
+            content = `Added task: ${stateChange.task_content}`
+          } else if (stateChange.new_status === 'in_progress') {
+            content = `Started task: ${stateChange.task_content}`
+          } else if (stateChange.new_status === 'completed') {
+            content = `Completed task: ${stateChange.task_content}`
+          } else {
+            content = `Task "${stateChange.task_content}" changed from ${stateChange.old_status} to ${stateChange.new_status}`
+          }
+          
+          const message: ChatMessage = {
+            id: `task_${Date.now()}_${Math.random()}`,
+            role: 'tool',
+            content,
+            timestamp: Date.now(),
+            toolName: 'todo_write',
+            success
+          }
+          messages.value.push(message)
+          console.log(`Added task state change message: ${stateChange.task_content} (${stateChange.old_status} → ${stateChange.new_status})`)
         }
       })
     } catch (err) {

@@ -4,7 +4,8 @@
     :class="{
       'user-message': message.role === 'user',
       'assistant-message': message.role === 'assistant',
-      'system-message': message.role === 'system'
+      'system-message': message.role === 'system',
+      'tool-message': message.role === 'tool'
     }"
   >
     <!-- Tool confirmation UI for system messages -->
@@ -13,6 +14,15 @@
       :confirmation="toolConfirmation"
       @confirm="handleConfirm"
       @reject="handleReject"
+    />
+    
+    <!-- Tool result display -->
+    <ToolResultMessage
+      v-else-if="message.role === 'tool'"
+      :tool-name="message.toolName || 'Unknown Tool'"
+      :content="message.content"
+      :success="message.success !== false"
+      :iteration="message.iteration"
     />
     
     <!-- Regular message bubble -->
@@ -57,6 +67,7 @@ import type { ChatMessage } from '@/stores/chat'
 import { useChatStore } from '@/stores/chat'
 import { marked } from 'marked'
 import ToolConfirmation from '@/components/ToolConfirmation.vue'
+import ToolResultMessage from '@/components/ToolResultMessage.vue'
 
 const props = defineProps<{
   message: ChatMessage
@@ -174,6 +185,11 @@ const handleReject = async (confirmationId: string) => {
 
 .system-message {
   @apply justify-center;
+  width: 100%;
+}
+
+.tool-message {
+  @apply justify-start;
   width: 100%;
 }
 

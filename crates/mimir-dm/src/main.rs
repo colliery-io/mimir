@@ -84,7 +84,7 @@ fn main() {
             // Spawn async task to initialize LLM
             tauri::async_runtime::spawn(async move {
                 info!("Starting LLM service initialization...");
-                match llm_service::initialize_llm(Some(app_handle), db_service_clone, confirmation_receivers_clone).await {
+                match llm_service::initialize_llm(app_handle, db_service_clone, confirmation_receivers_clone).await {
                     Ok(service) => {
                         info!("LLM service initialized successfully");
                         let mut llm = llm_service_clone.lock().await;
