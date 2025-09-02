@@ -30,8 +30,6 @@ pub struct ActionDescription {
     pub description: String,
     /// List of specific changes that will be made
     pub changes: Vec<String>,
-    /// Risk level of the action
-    pub risk_level: RiskLevel,
 }
 
 /// Trait that all callable tools must implement

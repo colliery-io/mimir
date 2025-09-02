@@ -39,13 +39,10 @@ export interface ChatResponseWithUsage {
   total_tokens: number
 }
 
-export type RiskLevel = 'low' | 'medium' | 'high'
-
 export interface ActionDescription {
   title: string
   description: string
   changes: string[]
-  risk_level: RiskLevel
 }
 
 export interface ToolConfirmationRequest {
@@ -84,7 +81,7 @@ export const useChatStore = defineStore('chat', () => {
   const error = ref<string | null>(null)
   const modelInfo = ref<ModelInfo | null>(null)
   const totalTokensUsed = ref(0)
-  const maxResponseTokens = ref(2048)
+  const maxResponseTokens = ref(16384)
   const pendingConfirmations = ref<Map<string, PendingConfirmation>>(new Map())
   
   // Session state
@@ -114,12 +111,21 @@ TOOL USAGE:
 CONTEXT USAGE:
 - Use the provided JSON context to give relevant assistance
 - The context shows current campaign, module, session, and user actions
-- Reference specific context details when relevant`,
+- Reference specific context details when relevant
+
+DOCUMENT TYPES:
+Common document types in the system:
+- campaign_bible/campaign-bible/bible - Main campaign information
+- session_plan/session-plan/session_notes - Session planning documents  
+- campaign_pitch/pitch - Campaign overview and pitch
+- npc_notes/npcs/characters - Character information
+- location_notes/locations/places - Location details
+Use get_document tool with these types or their variations`,
     contextEnabled: true,
     tools: [],
     customInstructions: '',
-    temperature: 0.5,  // Lower temperature for better instruction following
-    maxTokens: 2048
+    temperature: 0.3,  // Lower temperature for more deterministic tool calling
+    maxTokens: 16384   // Increased to allow room for thinking blocks and tool calls
   })
   
   // Computed
@@ -187,11 +193,7 @@ CONTEXT USAGE:
     }
   }
   
-  // Strip thinking blocks from content for API
-  const stripThinkingBlocks = (content: string): string => {
-    // Remove <thinking>, <think> blocks and their content
-    return content.replace(/<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi, '').trim()
-  }
+  // Note: Thinking blocks are now preserved in conversation context for better continuity
   
   // Build system message from configuration and context
   const buildSystemMessage = (): ChatMessage => {
@@ -258,10 +260,10 @@ CONTEXT USAGE:
       // Build system message with current context
       const systemMessage = buildSystemMessage()
       
-      // Prepare messages for API (strip thinking blocks from assistant messages)
+      // Prepare messages for API (keep full content including thinking blocks)
       const conversationMessages = messages.value.map(msg => ({
         role: msg.role,
-        content: msg.role === 'assistant' ? stripThinkingBlocks(msg.content) : msg.content
+        content: msg.content
       }))
       
       // Combine system message with conversation (system message always first)

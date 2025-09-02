@@ -22,6 +22,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+use tracing::{debug, error};
 use url::Url;
 
 use crate::config::{ModelConfig, EndpointType};
@@ -274,6 +275,12 @@ impl LlmProvider for OllamaProvider {
             tools,
         };
 
+        debug!("Ollama API request: model={} messages={} tools={}", 
+            request.model, 
+            request.messages.len(), 
+            request.tools.as_ref().map_or(0, |t| t.len())
+        );
+
         let response = self
             .client
             .post(&format!("{}/api/chat", self.base_url))
@@ -289,10 +296,53 @@ impl LlmProvider for OllamaProvider {
             )));
         }
 
-        let ollama_response: OllamaChatResponse = response
-            .json()
+        // Get the response text to log its size before parsing
+        let response_text = response
+            .text()
             .await
-            .map_err(|e| LlmError::ProviderError(format!("JSON parsing failed: {}", e)))?;
+            .map_err(|e| LlmError::ProviderError(format!("Failed to read response text: {}", e)))?;
+        
+        debug!("Raw response size: {} bytes", response_text.len());
+
+        let ollama_response: OllamaChatResponse = serde_json::from_str(&response_text)
+            .map_err(|e| {
+                error!("JSON parsing failed for response of {} bytes: {}", response_text.len(), e);
+                if response_text.len() > 1000 {
+                    error!("Response preview (first 500 chars): {}", &response_text[..500]);
+                    error!("Response preview (last 500 chars): {}", &response_text[response_text.len()-500..]);
+                } else {
+                    error!("Full response: {}", response_text);
+                }
+                LlmError::ProviderError(format!("JSON parsing failed: {}", e))
+            })?;
+
+        // Calculate thinking block size
+        let thinking_block_size = if ollama_response.message.content.contains("<thinking>") {
+            let thinking_start = ollama_response.message.content.find("<thinking>").unwrap_or(0);
+            let thinking_end = ollama_response.message.content.rfind("</thinking>").unwrap_or(ollama_response.message.content.len());
+            if thinking_end > thinking_start {
+                thinking_end - thinking_start + "</thinking>".len()
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        debug!("Ollama API response: content_length={} thinking_block_size={} tool_calls={}", 
+            ollama_response.message.content.len(),
+            thinking_block_size,
+            ollama_response.message.tool_calls.is_some()
+        );
+        
+        if let Some(ref tool_calls) = ollama_response.message.tool_calls {
+            debug!("  Tool calls returned: {}", tool_calls.len());
+            for tool_call in tool_calls {
+                debug!("    Tool: {}", tool_call.function.name);
+            }
+        } else {
+            debug!("  No tool calls in response");
+        }
 
         let usage = Some(Usage {
             prompt_tokens: ollama_response.prompt_eval_count.unwrap_or(0),

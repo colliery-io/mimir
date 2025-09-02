@@ -15,13 +15,19 @@ export const useCampaignStore = defineStore('campaigns', () => {
     error.value = null
     
     try {
+      console.log('Fetching campaigns...')
       const response = await invoke<ApiResponse<Campaign[]>>('list_campaigns')
+      console.log('Campaign response:', response)
+      
       if (response.success && response.data) {
         campaigns.value = response.data
+        console.log('Campaigns loaded successfully:', response.data.length, 'campaigns')
       } else {
+        console.error('Campaign fetch failed:', response.error)
         error.value = response.error || 'Failed to fetch campaigns'
       }
     } catch (e) {
+      console.error('Campaign fetch exception:', e)
       error.value = e instanceof Error ? e.message : 'Unknown error occurred'
     } finally {
       loading.value = false

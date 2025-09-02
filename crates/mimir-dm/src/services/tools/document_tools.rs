@@ -16,6 +16,19 @@ use tracing::info;
 
 use crate::services::database::DatabaseService;
 
+/// Get common naming variations for document types
+fn get_document_type_variations(document_type: &str) -> Vec<&str> {
+    match document_type.to_lowercase().as_str() {
+        "campaign_bible" => vec!["campaign_bible", "campaign-bible", "bible", "campaign_guide"],
+        "session_plan" => vec!["session_plan", "session-plan", "session_notes", "session-notes"],
+        "campaign_pitch" => vec!["campaign_pitch", "campaign-pitch", "pitch", "campaign_overview"],
+        "session_notes" => vec!["session_notes", "session-notes", "session_plan", "session-plan"],
+        "npc_notes" => vec!["npc_notes", "npc-notes", "npcs", "characters"],
+        "location_notes" => vec!["location_notes", "location-notes", "locations", "places"],
+        _ => vec![document_type] // Return original if no variations known
+    }
+}
+
 /// Tool for retrieving specific document content
 pub struct GetDocumentTool {
     db_service: Arc<DatabaseService>,
@@ -100,11 +113,23 @@ impl ToolTrait for GetDocumentTool {
                 .map_err(|e| format!("Failed to query documents: {}", e))?
         };
         
-        // Find the specific document by type
+        // Find the specific document by type with fallback search
         let document = documents
-            .into_iter()
+            .iter()
             .find(|doc| doc.document_type == document_type)
-            .ok_or_else(|| format!("No {} document found for the specified context", document_type))?;
+            .or_else(|| {
+                // Try common naming variations
+                let variations = get_document_type_variations(document_type);
+                documents.iter().find(|doc| {
+                    variations.contains(&doc.document_type.as_str())
+                })
+            })
+            .cloned()
+            .ok_or_else(|| {
+                let available_types: Vec<&str> = documents.iter().map(|d| d.document_type.as_str()).collect();
+                format!("No {} document found for the specified context. Available document types: [{}]", 
+                    document_type, available_types.join(", "))
+            })?;
         
         // Read the file content
         let file_path = Path::new(&document.file_path);

@@ -17,11 +17,9 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{oneshot, Mutex};
-use tokio::time::timeout;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use super::tools::{
@@ -32,8 +30,33 @@ use super::tools::{
 };
 use super::database::DatabaseService;
 
+/// Strip thinking blocks from content for logging (simple string replacement)
+fn strip_thinking_blocks(content: &str) -> String {
+    let mut result = content.to_string();
+    
+    // Remove <thinking> blocks (simple approach)
+    while let (Some(start), Some(end)) = (result.find("<thinking>"), result.find("</thinking>")) {
+        if start < end {
+            result = format!("{}{}", &result[..start], &result[end + 12..]);
+        } else {
+            break;
+        }
+    }
+    
+    // Remove <think> blocks
+    while let (Some(start), Some(end)) = (result.find("<think>"), result.find("</think>")) {
+        if start < end {
+            result = format!("{}{}", &result[..start], &result[end + 8..]);
+        } else {
+            break;
+        }
+    }
+    
+    result.trim().to_string()
+}
+
 /// The model we want to use for the DM assistant
-const REQUIRED_MODEL: &str = "qwen3:30b";
+const REQUIRED_MODEL: &str = "qwen3:30b-a3b";
 const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -256,18 +279,13 @@ impl LlmService {
         })?;
         info!("Emitted confirmation request to frontend");
         
-        // Wait for response with timeout
-        match timeout(Duration::from_secs(60), rx).await {
-            Ok(Ok(confirmed)) => {
+        // Wait for response indefinitely
+        match rx.await {
+            Ok(confirmed) => {
                 info!("Received confirmation response: {}", confirmed);
                 Ok(confirmed)
             },
-            Ok(Err(_)) => Err(anyhow!("Confirmation channel closed")),
-            Err(_) => {
-                // Timeout - clean up the receiver
-                self.confirmation_receivers.lock().await.remove(&confirmation_id);
-                Err(anyhow!("Confirmation timeout - no response from user"))
-            }
+            Err(_) => Err(anyhow!("Confirmation channel closed"))
         }
     }
 }
@@ -368,8 +386,14 @@ pub async fn send_chat_message(
     
     // Get tools if enabled
     let tools = if enable_tools.unwrap_or(false) {
-        Some(llm.tool_registry.get_tool_definitions())
+        let tool_definitions = llm.tool_registry.get_tool_definitions();
+        debug!("Tools enabled: {} tools available", tool_definitions.len());
+        for tool in &tool_definitions {
+            debug!("  Tool: {}", tool.function.name);
+        }
+        Some(tool_definitions)
     } else {
+        debug!("Tools disabled for this request");
         None
     };
     
@@ -417,13 +441,40 @@ pub async fn send_chat_message(
             provider_messages.iter().map(|m| m.role.as_str()).collect::<Vec<_>>().join(", ")
         );
         
+        debug!("Request parameters:");
+        debug!("  Temperature: {:?}", temperature.or(Some(0.3)));
+        debug!("  Max tokens: {:?}", max_tokens.or(Some(16384)));
+        debug!("  Tools provided: {}", tools.is_some());
+        if let Some(ref tools) = tools {
+            debug!("  Tool names: [{}]", tools.iter().map(|t| t.function.name.as_str()).collect::<Vec<_>>().join(", "));
+        }
+        
+        debug!("Message details:");
+        for (i, msg) in provider_messages.iter().enumerate() {
+            debug!("  Message {}: role='{}' content_length={}", i + 1, msg.role, msg.content.len());
+            
+            // Strip thinking blocks and show the actual content being sent
+            let content_without_thinking = strip_thinking_blocks(&msg.content);
+            if content_without_thinking.len() < 300 {
+                debug!("    Content: {}", content_without_thinking);
+            } else {
+                debug!("    Content preview: {}...", &content_without_thinking[..300]);
+            }
+            
+            // Show if thinking blocks were present
+            if content_without_thinking.len() != msg.content.len() {
+                debug!("    [Thinking blocks removed: {} chars -> {} chars]", 
+                    msg.content.len(), content_without_thinking.len());
+            }
+        }
+        
         // Call the provider's chat method
         let response = llm.provider()
             .chat(
                 provider_messages.clone(),
                 tools.clone(),
                 None,                          // n (number of completions)
-                temperature.or(Some(0.5)),     // temperature (default to 0.5 for better instruction following)
+                temperature.or(Some(0.3)),     // temperature (default to 0.3 for more deterministic tool calling)
                 max_tokens.or(Some(16384)),    // max_tokens (default to 16384 for thinking models)
                 None,                          // stop sequences
                 None,                          // extra config
@@ -437,11 +488,35 @@ pub async fn send_chat_message(
             response.tool_calls.as_ref().map_or(0, |tc| tc.len())
         );
         
+        debug!("Response details:");
+        let response_without_thinking = strip_thinking_blocks(&response.content);
+        debug!("  Content preview: {}...", 
+            if response_without_thinking.len() > 300 { &response_without_thinking[..300] } else { &response_without_thinking });
+        if response_without_thinking.len() != response.content.len() {
+            debug!("  [Response thinking blocks removed: {} chars -> {} chars]", 
+                response.content.len(), response_without_thinking.len());
+        }
+        debug!("  Tool calls present: {}", response.tool_calls.is_some());
+        
         if let Some(tool_calls) = &response.tool_calls {
+            debug!("  Tool calls count: {}", tool_calls.len());
+            for (i, tool_call) in tool_calls.iter().enumerate() {
+                debug!("    Tool call {}: function='{}' args_length={}", 
+                    i + 1, 
+                    tool_call.function.name, 
+                    serde_json::to_string(&tool_call.function.arguments).map_or(0, |s| s.len())
+                );
+                debug!("      Arguments: {}", 
+                    serde_json::to_string_pretty(&tool_call.function.arguments).unwrap_or_else(|_| "Invalid JSON".to_string())
+                );
+            }
+            
             if !tool_calls.is_empty() {
                 let tool_names: Vec<&str> = tool_calls.iter().map(|tc| tc.function.name.as_str()).collect();
                 info!("Tool calls requested: [{}]", tool_names.join(", "));
             }
+        } else {
+            debug!("  No tool calls in response - final answer mode");
         }
         
         // Check if there are tool calls
@@ -577,8 +652,11 @@ pub async fn send_chat_message(
         total_tokens: 0,
     });
     
+    // Apply thinking block size limit to prevent future token issues
+    let limited_content = limit_thinking_block_size(&response.content, 12000); // ~3k tokens worth of thinking
+    
     Ok(ChatResponseWithUsage {
-        content: response.content,
+        content: limited_content,
         prompt_tokens: usage.prompt_tokens,
         completion_tokens: usage.completion_tokens,
         total_tokens: usage.total_tokens,
@@ -638,4 +716,62 @@ pub async fn confirm_tool_action(
     }
     
     Ok(())
+}
+
+/// Limit the size of thinking blocks to prevent token overflow
+/// If thinking blocks exceed the limit, truncate them with a warning
+fn limit_thinking_block_size(content: &str, max_thinking_chars: usize) -> String {
+    if !content.contains("<thinking>") {
+        return content.to_string();
+    }
+    
+    let mut result = String::new();
+    let mut remaining = content;
+    let mut total_thinking_size = 0;
+    
+    while let Some(start_pos) = remaining.find("<thinking>") {
+        // Add content before thinking block
+        result.push_str(&remaining[..start_pos]);
+        
+        // Find the end of this thinking block
+        let thinking_start = start_pos + "<thinking>".len();
+        if let Some(end_pos) = remaining[thinking_start..].find("</thinking>") {
+            let thinking_content = &remaining[thinking_start..thinking_start + end_pos];
+            let thinking_size = thinking_content.len();
+            
+            total_thinking_size += thinking_size;
+            
+            if total_thinking_size <= max_thinking_chars {
+                // Include full thinking block
+                result.push_str("<thinking>");
+                result.push_str(thinking_content);
+                result.push_str("</thinking>");
+            } else {
+                // Truncate thinking block
+                let available_space = max_thinking_chars - (total_thinking_size - thinking_size);
+                if available_space > 100 {
+                    result.push_str("<thinking>");
+                    result.push_str(&thinking_content[..available_space]);
+                    result.push_str("\n\n[THINKING TRUNCATED - too long for token limit]");
+                    result.push_str("</thinking>");
+                } else {
+                    result.push_str("<thinking>[THINKING TRUNCATED - too long for token limit]</thinking>");
+                }
+                
+                warn!("Truncated thinking block: {} chars -> {} chars (limit: {})", 
+                    thinking_size, available_space, max_thinking_chars);
+            }
+            
+            // Move past this thinking block
+            remaining = &remaining[thinking_start + end_pos + "</thinking>".len()..];
+        } else {
+            // Malformed thinking block, just add it as-is
+            result.push_str(&remaining[start_pos..]);
+            break;
+        }
+    }
+    
+    // Add any remaining content
+    result.push_str(remaining);
+    result
 }

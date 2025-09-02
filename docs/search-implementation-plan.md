@@ -271,6 +271,75 @@ The following models can be used locally without any external API:
 - **BAAI/bge-large-en-v1.5** - 1024 dimensions, best quality
 - **sentence-transformers/all-MiniLM-L12-v2** - 384 dimensions, lightweight
 
+## Example Implementation with Native Rust Embeddings
+
+```rust
+// crates/mimir-dm-core/src/services/search/embeddings.rs
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+use sqlite_vec::sqlite3_vec_init;
+use rusqlite::{Connection, Result};
+use zerocopy::AsBytes;
+
+pub struct EmbeddingService {
+    model: TextEmbedding,
+}
+
+impl EmbeddingService {
+    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        // Initialize with local model - no external API needed
+        let model = TextEmbedding::try_new(
+            InitOptions::new(EmbeddingModel::AllMiniLML6V2)
+                .with_show_download_progress(true)
+                .with_cache_dir("./.models"), // Cache models locally
+        )?;
+        
+        Ok(Self { model })
+    }
+    
+    pub fn embed_documents(&self, texts: Vec<&str>) -> Result<Vec<Vec<f32>>, Box<dyn std::error::Error>> {
+        // Generate embeddings locally with batch processing
+        let embeddings = self.model.embed(texts, None)?;
+        Ok(embeddings)
+    }
+    
+    pub fn store_embeddings(
+        &self, 
+        conn: &Connection,
+        content_id: i32,
+        embeddings: Vec<f32>
+    ) -> Result<()> {
+        // Store in sqlite-vec using zero-copy conversion
+        conn.execute(
+            "INSERT INTO embeddings (content_id, embedding) VALUES (?, ?)",
+            rusqlite::params![content_id, embeddings.as_bytes()],
+        )?;
+        Ok(())
+    }
+    
+    pub fn search_similar(
+        &self,
+        conn: &Connection,
+        query_embedding: Vec<f32>,
+        limit: usize
+    ) -> Result<Vec<(i32, f32)>> {
+        // Vector similarity search using sqlite-vec
+        let mut stmt = conn.prepare(
+            "SELECT content_id, vec_distance_L2(embedding, ?) as distance 
+             FROM embeddings 
+             ORDER BY distance 
+             LIMIT ?"
+        )?;
+        
+        let results = stmt.query_map(
+            rusqlite::params![query_embedding.as_bytes(), limit],
+            |row| Ok((row.get(0)?, row.get(1)?))
+        )?;
+        
+        Ok(results.collect::<Result<Vec<_>, _>>()?)
+    }
+}
+```
+
 ## Success Metrics
 
 - Search latency < 100ms for catalog items

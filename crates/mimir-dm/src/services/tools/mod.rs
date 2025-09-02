@@ -93,10 +93,12 @@ impl ToolRegistry {
         // Check if both get_document and update_document are available
         if self.has_tool("get_document") && self.has_tool("update_document") {
             rules.push(
-                "TOOL USAGE RULE: When asked to update a document:\n\
+                "TOOL USAGE RULE: When asked to update, create, or work on a document:\n\
                 1. ALWAYS call get_document first to read the current content\n\
                 2. THEN call update_document with your changes\n\
-                Don't just explain what you would do - actually make the tool calls to complete the user's request.".to_string()
+                3. NEVER just show content without saving it - if you generate content, you MUST use update_document to save it\n\
+                4. Don't just explain what you would do - actually make the tool calls to complete the user's request\n\
+                5. If you create new content for a document, use update_document to save it immediately".to_string()
             );
         }
         

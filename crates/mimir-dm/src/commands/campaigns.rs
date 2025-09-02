@@ -14,7 +14,7 @@ use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::State;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Campaign {
@@ -58,11 +58,16 @@ pub async fn list_campaigns(
         Ok(campaigns) => {
             let campaigns: Vec<Campaign> = campaigns.into_iter().map(Campaign::from).collect();
             info!("Found {} campaigns", campaigns.len());
-            Ok(ApiResponse::success(campaigns))
+            debug!("Campaign details: {:?}", campaigns);
+            let response = ApiResponse::success(campaigns);
+            debug!("Returning success response");
+            Ok(response)
         }
         Err(e) => {
             error!("Failed to list campaigns: {}", e);
-            Ok(ApiResponse::error(format!("Failed to list campaigns: {}", e)))
+            let response = ApiResponse::error(format!("Failed to list campaigns: {}", e));
+            debug!("Returning error response: {:?}", response);
+            Ok(response)
         }
     }
 }

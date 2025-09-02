@@ -1,7 +1,7 @@
 <template>
-  <div class="tool-confirmation" :class="riskClass">
+  <div class="tool-confirmation">
     <div class="confirmation-header">
-      <span class="risk-indicator">{{ riskEmoji }}</span>
+      <span class="action-indicator">🔧</span>
       <h4>{{ confirmation.request.action.title }}</h4>
     </div>
     
@@ -58,20 +58,7 @@ const emit = defineEmits<{
 
 const isProcessing = ref(false)
 
-const riskClass = computed(() => {
-  return `risk-${props.confirmation.request.action.risk_level}`
-})
-
-const riskEmoji = computed(() => {
-  switch (props.confirmation.request.action.risk_level) {
-    case 'high':
-      return '⚠️'
-    case 'medium':
-      return '⚡'
-    default:
-      return 'ℹ️'
-  }
-})
+// Removed risk level logic - all confirmations are treated equally
 
 const handleApprove = async (event: Event) => {
   event.preventDefault()
@@ -114,16 +101,8 @@ const handleReject = async (event: Event) => {
   width: 100%;
 }
 
-.tool-confirmation.risk-low {
-  border-left: 3px solid var(--color-success);
-}
-
-.tool-confirmation.risk-medium {
-  border-left: 3px solid var(--color-warning);
-}
-
-.tool-confirmation.risk-high {
-  border-left: 3px solid var(--color-danger);
+.tool-confirmation {
+  border-left: 3px solid var(--color-primary-500);
 }
 
 .confirmation-header {
@@ -140,7 +119,7 @@ const handleReject = async (event: Event) => {
   color: var(--color-text-primary);
 }
 
-.risk-indicator {
+.action-indicator {
   font-size: 1.2rem;
   flex-shrink: 0;
 }
