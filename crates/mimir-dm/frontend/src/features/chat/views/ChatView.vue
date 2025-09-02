@@ -8,6 +8,11 @@
       <!-- Context Panel (collapsible at top) -->
       <ContextPanel :start-collapsed="true" />
       
+      <!-- Todo Panel -->
+      <div class="todo-panel-container">
+        <TodoPanel />
+      </div>
+      
       <!-- Main Chat Area -->
       <div class="chat-container">
         <!-- Chat History -->
@@ -46,6 +51,7 @@ import ContextPanel from '../components/ContextPanel.vue'
 import ChatHistory from '../components/ChatHistory.vue'
 import ChatInput from '../components/ChatInput.vue'
 import TokenUsage from '../components/TokenUsage.vue'
+import TodoPanel from '@/components/TodoPanel.vue'
 
 // Stores
 const chatStore = useChatStore()
@@ -120,6 +126,12 @@ import { onUnmounted } from 'vue'
 
 .main-content {
   @apply flex-1 flex flex-col overflow-hidden;
+}
+
+.todo-panel-container {
+  @apply px-4 py-2 border-b border-gray-200;
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .chat-container {

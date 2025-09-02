@@ -27,8 +27,10 @@ use super::tools::{
     implementations::SayHelloTool,
     document_tools::{GetDocumentTool, ListDocumentsTool},
     update_document_tool::UpdateDocumentTool,
+    todo_list_tool::TodoListTool,
 };
 use super::database::DatabaseService;
+use crate::APP_PATHS;
 
 /// Strip thinking blocks from content for logging (simple string replacement)
 fn strip_thinking_blocks(content: &str) -> String {
@@ -105,6 +107,14 @@ impl LlmService {
         tool_registry.register(Arc::new(GetDocumentTool::new(db_service.clone())));
         tool_registry.register(Arc::new(ListDocumentsTool::new(db_service.clone())));
         tool_registry.register(Arc::new(UpdateDocumentTool::new(db_service.clone())));
+        
+        // Register TodoListTool with app data directory
+        if let Some(app_paths) = APP_PATHS.get() {
+            tool_registry.register(Arc::new(TodoListTool::new(app_paths.data_dir.clone())));
+            info!("Registered TodoListTool with data directory: {}", app_paths.data_dir.display());
+        } else {
+            warn!("APP_PATHS not available, TodoListTool not registered");
+        }
         
         Ok(Self {
             provider: Arc::new(provider),
@@ -369,6 +379,7 @@ pub async fn send_chat_message(
     max_tokens: Option<u32>,
     temperature: Option<f32>,
     enable_tools: Option<bool>,
+    session_id: Option<String>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = service.lock().await;
     
@@ -534,7 +545,18 @@ pub async fn send_chat_message(
                 // Execute each tool call
                 for (idx, tool_call) in tool_calls.iter().enumerate() {
                     let tool_name = &tool_call.function.name;
-                    let tool_args = &tool_call.function.arguments;
+                    let mut tool_args = tool_call.function.arguments.clone();
+                    
+                    // Inject session_id for todo_write tool if session_id is provided
+                    if tool_name == "todo_write" && session_id.is_some() {
+                        if let Some(ref session_id_value) = session_id {
+                            tool_args.as_object_mut().unwrap().insert(
+                                "session_id".to_string(), 
+                                serde_json::Value::String(session_id_value.clone())
+                            );
+                            debug!("Injected session_id '{}' into todo_write tool", session_id_value);
+                        }
+                    }
                     
                     // Extract key parameters for logging
                     let doc_type = tool_args.get("document_type").and_then(|v| v.as_str()).unwrap_or("unknown");
@@ -547,7 +569,7 @@ pub async fn send_chat_message(
                     // Check if tool requires confirmation
                     if llm.tool_registry.requires_confirmation(tool_name) {
                         // Get action description
-                        if let Some(action_desc) = llm.tool_registry.get_action_description(tool_name, tool_args) {
+                        if let Some(action_desc) = llm.tool_registry.get_action_description(tool_name, &tool_args) {
                             info!("Tool {} requires confirmation, requesting from user", tool_name);
                             
                             // Request confirmation from user

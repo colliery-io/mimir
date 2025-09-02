@@ -74,6 +74,12 @@ export interface ChatSessionMetadata {
   preview: string
 }
 
+export interface TodoItem {
+  content: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm: string
+}
+
 export const useChatStore = defineStore('chat', () => {
   // State
   const messages = ref<ChatMessage[]>([])
@@ -88,6 +94,10 @@ export const useChatStore = defineStore('chat', () => {
   const currentSessionId = ref<string | null>(null)
   const sessions = ref<ChatSessionMetadata[]>([])
   const sessionsLoading = ref(false)
+  
+  // Todo state
+  const todos = ref<TodoItem[]>([])
+  const todosVisible = ref(false)
   
   // System message configuration
   const systemConfig = ref<SystemMessageConfig>({
@@ -120,7 +130,26 @@ Common document types in the system:
 - campaign_pitch/pitch - Campaign overview and pitch
 - npc_notes/npcs/characters - Character information
 - location_notes/locations/places - Location details
-Use get_document tool with these types or their variations`,
+Use get_document tool with these types or their variations
+
+TASK MANAGEMENT:
+You have access to the todo_write tool to help manage complex tasks. Use it for:
+- Multi-step D&D preparation (campaign creation, session planning)
+- Complex rules research across multiple sources
+- Plot analysis spanning multiple sessions
+- Character development workflows
+- Large document updates or creation
+
+When to use todo_write:
+- Tasks requiring 3+ distinct steps
+- User provides multiple tasks or requests
+- Complex D&D workflows (campaign prep, adventure design)
+- When you need to track progress on lengthy operations
+
+Task states: pending → in_progress → completed
+- Only ONE task can be in_progress at a time
+- Mark tasks completed IMMEDIATELY when finished
+- Use descriptive task names and activeForm text`,
     contextEnabled: true,
     tools: [],
     customInstructions: '',
@@ -142,6 +171,24 @@ Use get_document tool with these types or their variations`,
   
   const lastMessage = computed(() => {
     return messages.value[messages.value.length - 1] || null
+  })
+  
+  // Todo computed properties
+  const todoProgress = computed(() => {
+    const total = todos.value.length
+    if (total === 0) return { completed: 0, total: 0, percentage: 0 }
+    
+    const completed = todos.value.filter(t => t.status === 'completed').length
+    const percentage = Math.round((completed / total) * 100)
+    return { completed, total, percentage }
+  })
+  
+  const currentTodo = computed(() => {
+    return todos.value.find(t => t.status === 'in_progress')
+  })
+  
+  const hasTodos = computed(() => {
+    return todos.value.length > 0
   })
   
   // Actions
@@ -186,6 +233,18 @@ Use get_document tool with these types or their variations`,
           content: `TOOL_CONFIRMATION:${request.id}`,
           timestamp: Date.now()
         })
+      })
+      
+      // Set up event listener for todo updates
+      await listen<{session_id: string, todos: TodoItem[]}>('todos-updated', (event) => {
+        console.log('Received todos update:', event.payload)
+        const { session_id, todos: newTodos } = event.payload
+        
+        // Only update if this is for the current session
+        if (currentSessionId.value === session_id) {
+          updateTodos(newTodos)
+          console.log(`Updated ${newTodos.length} todos for current session`)
+        }
       })
     } catch (err) {
       console.error('Failed to initialize chat:', err)
@@ -277,7 +336,8 @@ Use get_document tool with these types or their variations`,
         messages: apiMessages,
         maxTokens: systemConfig.value.maxTokens || maxResponseTokens.value,
         temperature: systemConfig.value.temperature,
-        enableTools: true  // Enable tools for testing
+        enableTools: true,  // Enable tools for testing
+        sessionId: currentSessionId.value
       })
       
       // Add assistant response
@@ -301,6 +361,14 @@ Use get_document tool with these types or their variations`,
       
       // Update total tokens
       totalTokensUsed.value += response.total_tokens
+      
+      // Refresh todos after any assistant message (simple and reliable)
+      if (currentSessionId.value) {
+        console.log('Refreshing todos after message for session:', currentSessionId.value)
+        await loadTodosForSession(currentSessionId.value)
+      } else {
+        console.warn('No current session ID available for todo refresh')
+      }
       
       // Auto-save current session
       await saveCurrentSession()
@@ -453,6 +521,8 @@ Use get_document tool with these types or their variations`,
         totalTokensUsed.value = messages.value.reduce((total, msg) => {
           return total + (msg.tokenUsage?.total || 0)
         }, 0)
+        // Load todos for this session
+        await loadTodosForSession(session.id)
       }
     } catch (err) {
       console.error('Failed to load session:', err)
@@ -516,6 +586,49 @@ Use get_document tool with these types or their variations`,
     }
   }
   
+  // Todo management methods
+  const updateTodos = (newTodos: TodoItem[]) => {
+    todos.value = newTodos
+  }
+  
+  const toggleTodosVisibility = () => {
+    todosVisible.value = !todosVisible.value
+  }
+  
+  const clearTodos = () => {
+    todos.value = []
+  }
+  
+  const loadTodosForSession = async (sessionId: string) => {
+    try {
+      console.log(`Loading todos for session: ${sessionId}`)
+      const response = await invoke<{success: boolean, data?: TodoItem[], error?: string}>('get_todos', { sessionId })
+      console.log('Todo API response:', response)
+      if (response.success && response.data) {
+        todos.value = response.data
+        console.log(`Successfully loaded ${response.data.length} todos for session ${sessionId}:`, response.data)
+      } else {
+        console.error('Todo API returned error:', response.error || 'Unknown error')
+      }
+    } catch (err) {
+      console.error('Failed to load todos:', err)
+    }
+  }
+  
+  // Parse todos from assistant messages that contain "Todos have been modified successfully"
+  const extractTodosFromMessage = async (content: string) => {
+    // Look for assistant messages that indicate todo updates
+    if (content.includes("Todos have been modified successfully")) {
+      // This indicates todos were updated via the tool, refresh them
+      if (currentSessionId.value) {
+        console.log('Detected todo update in message, refreshing todos...')
+        await loadTodosForSession(currentSessionId.value)
+        return true
+      }
+    }
+    return false
+  }
+  
   return {
     // State
     messages,
@@ -532,10 +645,17 @@ Use get_document tool with these types or their variations`,
     sessions,
     sessionsLoading,
     
+    // Todo state
+    todos,
+    todosVisible,
+    
     // Computed
     conversationTokens,
     contextUsagePercentage,
     lastMessage,
+    todoProgress,
+    currentTodo,
+    hasTodos,
     
     // Actions
     initialize,
@@ -562,6 +682,13 @@ Use get_document tool with these types or their variations`,
     saveCurrentSession,
     createNewSession,
     deleteSession,
-    switchToSession
+    switchToSession,
+    
+    // Todo management methods
+    updateTodos,
+    toggleTodosVisibility,
+    clearTodos,
+    loadTodosForSession,
+    extractTodosFromMessage
   }
 })

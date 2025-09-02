@@ -13,6 +13,7 @@ use tracing::{info, warn};
 pub mod implementations;
 pub mod document_tools;
 pub mod update_document_tool;
+pub mod todo_list_tool;
 
 #[cfg(test)]
 mod tests;

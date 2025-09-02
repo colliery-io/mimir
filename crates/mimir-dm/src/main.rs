@@ -325,7 +325,10 @@ fn main() {
             load_chat_session,
             save_chat_session,
             create_chat_session,
-            delete_chat_session
+            delete_chat_session,
+            // Todo commands
+            get_todos,
+            clear_todos
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
