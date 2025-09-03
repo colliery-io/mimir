@@ -179,7 +179,25 @@ NOTE that you should not use this tool if there is only one trivial task to do. 
      - content: \"Fix authentication bug\"
      - activeForm: \"Fixing authentication bug\"
 
-When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully."
+When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.
+
+## Example JSON Structure
+When calling this tool, use EXACTLY this format:
+{
+  \"todos\": [
+    {
+      \"content\": \"Implement login feature\",
+      \"status\": \"pending\",
+      \"activeForm\": \"Implementing login feature\"
+    },
+    {
+      \"content\": \"Write unit tests\", 
+      \"status\": \"in_progress\",
+      \"activeForm\": \"Writing unit tests\"
+    }
+  ]
+}
+CRITICAL: The field name is \"status\" NOT \"state\". Different LLM models may try to use \"state\" - this will cause errors."
     }
     
     fn parameters_schema(&self) -> Value {
@@ -194,14 +212,17 @@ When in doubt, use this tool. Being proactive with task management demonstrates 
                         "properties": {
                             "content": {
                                 "type": "string",
+                                "description": "Task description in imperative form (e.g., 'Fix bug', 'Run tests')",
                                 "minLength": 1
                             },
                             "status": {
                                 "type": "string",
+                                "description": "Task status - MUST be 'status' field name, NOT 'state'",
                                 "enum": ["pending", "in_progress", "completed"]
                             },
                             "activeForm": {
                                 "type": "string",
+                                "description": "Task description in present continuous form (e.g., 'Fixing bug', 'Running tests')",
                                 "minLength": 1
                             }
                         },

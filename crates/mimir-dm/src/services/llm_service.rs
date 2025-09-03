@@ -58,7 +58,7 @@ fn strip_thinking_blocks(content: &str) -> String {
 }
 
 /// The model we want to use for the DM assistant
-const REQUIRED_MODEL: &str = "qwen3:30b-a3b";
+const REQUIRED_MODEL: &str = "qwen3:8b";
 const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -397,6 +397,8 @@ pub async fn send_chat_message(
     temperature: Option<f32>,
     enable_tools: Option<bool>,
     session_id: Option<String>,
+    model_name: Option<String>,
+    ollama_url: Option<String>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = service.lock().await;
     
@@ -865,4 +867,42 @@ fn limit_thinking_block_size(content: &str, max_thinking_chars: usize) -> String
     // Add any remaining content
     result.push_str(remaining);
     result
+}
+
+/// Tauri command to list available models from Ollama
+#[tauri::command]
+pub async fn list_available_models() -> Result<Vec<serde_json::Value>, String> {
+    // For now, we'll use a simple approach - just try to call Ollama's list endpoint
+    let client = reqwest::Client::new();
+    let url = format!("{}/api/tags", OLLAMA_BASE_URL);
+    
+    match client.get(&url).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => {
+                        if let Some(models) = data.get("models").and_then(|m| m.as_array()) {
+                            let model_list: Vec<serde_json::Value> = models
+                                .iter()
+                                .map(|model| {
+                                    serde_json::json!({
+                                        "name": model.get("name").and_then(|n| n.as_str()).unwrap_or("unknown"),
+                                        "size": model.get("size").and_then(|s| s.as_u64()).unwrap_or(0),
+                                        "modified_at": model.get("modified_at").and_then(|m| m.as_str()).unwrap_or("")
+                                    })
+                                })
+                                .collect();
+                            Ok(model_list)
+                        } else {
+                            Ok(vec![])
+                        }
+                    }
+                    Err(e) => Err(format!("Failed to parse Ollama response: {}", e))
+                }
+            } else {
+                Err(format!("Ollama API returned status: {}", response.status()))
+            }
+        }
+        Err(e) => Err(format!("Failed to connect to Ollama: {}", e))
+    }
 }

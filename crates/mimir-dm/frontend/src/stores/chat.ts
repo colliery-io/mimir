@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useSharedContextStore } from './sharedContext'
+import { DEFAULT_SYSTEM_PROMPT } from '@/constants/defaultSystemPrompt'
 
 export interface ChatMessage {
   id: string
@@ -122,55 +123,7 @@ export const useChatStore = defineStore('chat', () => {
   
   // System message configuration
   const systemConfig = ref<SystemMessageConfig>({
-    baseInstructions: `You are a D&D 5e Dungeon Master assistant.
-
-RESPONSE FORMAT RULES:
-- Provide direct, helpful answers
-- Do NOT add system status messages like "(System: ...)" 
-- Do NOT add roleplay elements unless asked
-- Do NOT use decorative formatting unless needed for clarity
-
-TOOL USAGE:
-- When you use tools to fetch information, incorporate the results naturally into your response
-- Don't announce that you're using tools or explain the process
-- Simply provide the information requested
-- Tool responses may return JSON with a "status" field:
-  - If status is "success", the action completed successfully - just acknowledge it
-  - If status is "error", explain the error to the user
-- NEVER ask for additional confirmation after a tool with status "success"
-
-CONTEXT USAGE:
-- Use the provided JSON context to give relevant assistance
-- The context shows current campaign, module, session, and user actions
-- Reference specific context details when relevant
-
-DOCUMENT TYPES:
-Common document types in the system:
-- campaign_bible/campaign-bible/bible - Main campaign information
-- session_plan/session-plan/session_notes - Session planning documents  
-- campaign_pitch/pitch - Campaign overview and pitch
-- npc_notes/npcs/characters - Character information
-- location_notes/locations/places - Location details
-Use get_document tool with these types or their variations
-
-TASK MANAGEMENT:
-You have access to the todo_write tool to help manage complex tasks. Use it for:
-- Multi-step D&D preparation (campaign creation, session planning)
-- Complex rules research across multiple sources
-- Plot analysis spanning multiple sessions
-- Character development workflows
-- Large document updates or creation
-
-When to use todo_write:
-- Tasks requiring 3+ distinct steps
-- User provides multiple tasks or requests
-- Complex D&D workflows (campaign prep, adventure design)
-- When you need to track progress on lengthy operations
-
-Task states: pending → in_progress → completed
-- Only ONE task can be in_progress at a time
-- Mark tasks completed IMMEDIATELY when finished
-- Use descriptive task names and activeForm text`,
+    baseInstructions: DEFAULT_SYSTEM_PROMPT,
     contextEnabled: true,
     tools: [],
     customInstructions: '',
@@ -532,6 +485,12 @@ Task states: pending → in_progress → completed
     saveSystemConfig()
   }
   
+  const resetToDefaultPrompt = () => {
+    systemConfig.value.baseInstructions = DEFAULT_SYSTEM_PROMPT
+    saveSystemConfig()
+  }
+  
+  
   const saveSystemConfig = () => {
     localStorage.setItem('chat_system_config', JSON.stringify(systemConfig.value))
   }
@@ -618,7 +577,8 @@ Task states: pending → in_progress → completed
         totalTokensUsed.value = messages.value.reduce((total, msg) => {
           return total + (msg.tokenUsage?.total || 0)
         }, 0)
-        // Load todos for this session
+        // Clear todos from UI cache and load todos for this session
+        todos.value = []
         await loadTodosForSession(session.id)
       }
     } catch (err) {
@@ -654,6 +614,9 @@ Task states: pending → in_progress → completed
       messages.value = []
       totalTokensUsed.value = 0
       error.value = null
+      // Clear todos from UI cache and load todos for new session (should be empty)
+      todos.value = []
+      await loadTodosForSession(newSession.id)
       await loadSessions()
     } catch (err) {
       console.error('Failed to create session:', err)
@@ -766,6 +729,7 @@ Task states: pending → in_progress → completed
     toggleContext,
     setSystemInstructions,
     setCustomInstructions,
+    resetToDefaultPrompt,
     buildSystemMessage,
     
     // Tool confirmation methods

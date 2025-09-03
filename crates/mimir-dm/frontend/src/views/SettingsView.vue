@@ -47,6 +47,17 @@
           </div>
         </section>
         
+        <!-- AI Assistant Configuration Section -->
+        <section class="settings-section">
+          <h2 class="section-title">AI Assistant Configuration</h2>
+          
+          <SystemPromptEditor
+            :model-value="chatStore.systemConfig.baseInstructions || ''"
+            @update:model-value="chatStore.setSystemInstructions"
+          />
+          
+        </section>
+        
         <!-- Application Settings Section -->
         <section class="settings-section">
           <h2 class="section-title">Application Settings</h2>
@@ -83,8 +94,11 @@ import { useRouter } from 'vue-router'
 import { open } from '@tauri-apps/plugin-dialog'
 import MainLayout from '../shared/components/layout/MainLayout.vue'
 import ThemeSelector from '../shared/components/ui/ThemeSelector.vue'
+import SystemPromptEditor from '@/components/SystemPromptEditor.vue'
+import { useChatStore } from '@/stores/chat'
 
 const router = useRouter()
+const chatStore = useChatStore()
 const defaultCampaignDir = ref('')
 
 const handleImportRuleSets = () => {
@@ -113,6 +127,7 @@ const selectDefaultDirectory = async () => {
     // TODO: Save to application settings
   }
 }
+
 </script>
 
 <style scoped>
@@ -258,4 +273,5 @@ const selectDefaultDirectory = async () => {
 .theme-dark .button-secondary:hover {
   background-color: var(--color-gray-700);
 }
+
 </style>

@@ -45,6 +45,7 @@ walkdir = "2.5"
 async-trait.workspace = true
 uuid = { version = "1.10", features = ["v4", "serde"] }
 similar = "2.6"
+reqwest = { version = "0.12", features = ["json"] }
 
 # Remove TUI dependencies since we're going GUI
 # config = { workspace = true }

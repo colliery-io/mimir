@@ -320,6 +320,7 @@ fn main() {
             llm_service::send_chat_message,
             llm_service::get_model_context_info,
             llm_service::confirm_tool_action,
+            llm_service::list_available_models,
             // Chat session commands
             list_chat_sessions,
             load_chat_session,
