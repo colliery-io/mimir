@@ -16,8 +16,8 @@
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
               </div>
-              <h3 class="card-title">Import Rule Sets</h3>
-              <p class="card-description">Import D&D rule sets, modules, and content from external sources</p>
+              <h3 class="card-title">Import Books</h3>
+              <p class="card-description">Import D&D rule sets, modules, and content from book archives</p>
             </div>
             
             <div class="settings-card" @click="handleManageTemplates">
@@ -85,6 +85,12 @@
         </section>
       </div>
     </div>
+    
+    <!-- Book Management Modal -->
+    <BookManagementModal 
+      :visible="showBookManagementModal"
+      @close="showBookManagementModal = false"
+    />
   </MainLayout>
 </template>
 
@@ -95,15 +101,16 @@ import { open } from '@tauri-apps/plugin-dialog'
 import MainLayout from '../shared/components/layout/MainLayout.vue'
 import ThemeSelector from '../shared/components/ui/ThemeSelector.vue'
 import SystemPromptEditor from '@/components/SystemPromptEditor.vue'
+import BookManagementModal from '@/components/BookManagementModal.vue'
 import { useChatStore } from '@/stores/chat'
 
 const router = useRouter()
 const chatStore = useChatStore()
 const defaultCampaignDir = ref('')
+const showBookManagementModal = ref(false)
 
 const handleImportRuleSets = () => {
-  // TODO: Navigate to import page or open import dialog
-  router.push('/settings/import')
+  showBookManagementModal.value = true
 }
 
 const handleManageTemplates = () => {

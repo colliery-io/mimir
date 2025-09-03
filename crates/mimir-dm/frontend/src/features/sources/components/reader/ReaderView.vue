@@ -29,7 +29,6 @@
           :mode="currentMode"
           @select="selectBook"
           @updateSources="selectedSources = $event"
-          @add="addBook"
           @remove="removeBook"
         />
       </template>
@@ -70,7 +69,6 @@
           :mode="currentMode"
           @select="selectBook"
           @updateSources="selectedSources = $event"
-          @add="addBook"
           @remove="removeBook"
         />
       </template>
@@ -153,7 +151,6 @@ const {
   isLoadingLibrary,
   isDevelopment,
   loadLibraryBooks,
-  addBook,
   removeBook,
   selectBook,
   installDevTestBook

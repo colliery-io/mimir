@@ -1,14 +1,5 @@
 <template>
   <Panel title="Library" variant="surface">
-    <template #actions v-if="mode === 'reading'">
-      <button 
-        @click="handleAddBook" 
-        class="add-book-btn"
-        title="Add a book archive to your library"
-      >
-        Add Book
-      </button>
-    </template>
     
     <div class="library-content">
       <div v-if="isLoadingLibrary" class="loading-message">
@@ -90,7 +81,6 @@ interface Props {
 interface Emits {
   (e: 'select', book: BookInfo): void
   (e: 'updateSources', sources: string[]): void
-  (e: 'add'): void
   (e: 'remove', book: BookInfo): void
 }
 
@@ -109,10 +99,6 @@ watch(() => props.libraryBooks, (books) => {
     emit('updateSources', internalSelectedSources.value)
   }
 }, { immediate: true })
-
-function handleAddBook() {
-  emit('add')
-}
 
 function handleRemoveBook(book: BookInfo) {
   emit('remove', book)
@@ -136,20 +122,6 @@ function toggleSource(bookId: string) {
   flex-direction: column;
 }
 
-.add-book-btn {
-  padding: 6px 12px;
-  background: var(--color-primary, #4a9eff);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
-}
-
-.add-book-btn:hover {
-  background: var(--color-primary-dark, #357abd);
-}
 
 .loading-message,
 .empty-message {
