@@ -9,6 +9,7 @@ diesel::table! {
         session_zero_date -> Nullable<Text>,
         first_session_date -> Nullable<Text>,
         last_activity_at -> Text,
+        archived_at -> Nullable<Text>,
     }
 }
 

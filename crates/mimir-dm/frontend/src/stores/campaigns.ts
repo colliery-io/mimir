@@ -5,6 +5,7 @@ import type { ApiResponse, Campaign, NewCampaign } from '../types/api'
 
 export const useCampaignStore = defineStore('campaigns', () => {
   const campaigns = ref<Campaign[]>([])
+  const archivedCampaigns = ref<Campaign[]>([])
   const currentCampaign = ref<Campaign | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -107,16 +108,94 @@ export const useCampaignStore = defineStore('campaigns', () => {
     }
   }
   
-  // Delete campaign
-  const deleteCampaign = async (id: number) => {
+  // Fetch archived campaigns
+  const fetchArchivedCampaigns = async () => {
     loading.value = true
     error.value = null
     
     try {
-      const response = await invoke<ApiResponse<void>>('delete_campaign', { id })
-      if (response.success) {
-        // Remove from local state
+      const response = await invoke<ApiResponse<Campaign[]>>('list_archived_campaigns')
+      if (response.success && response.data) {
+        archivedCampaigns.value = response.data
+      } else {
+        error.value = response.error || 'Failed to fetch archived campaigns'
+      }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Unknown error occurred'
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // Archive campaign
+  const archiveCampaign = async (id: number) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await invoke<ApiResponse<Campaign>>('archive_campaign', { campaignId: id })
+      if (response.success && response.data) {
+        // Remove from active campaigns
         campaigns.value = campaigns.value.filter(c => c.id !== id)
+        // Add to archived campaigns
+        archivedCampaigns.value.push(response.data)
+        if (currentCampaign.value?.id === id) {
+          currentCampaign.value = null
+        }
+        return true
+      } else {
+        error.value = response.error || 'Failed to archive campaign'
+        return false
+      }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Unknown error occurred'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // Unarchive campaign
+  const unarchiveCampaign = async (id: number) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      console.log('Calling unarchive_campaign with:', { campaignId: id })
+      const response = await invoke<ApiResponse<Campaign>>('unarchive_campaign', { campaignId: id })
+      console.log('Unarchive response:', response)
+      if (response.success && response.data) {
+        // Remove from archived campaigns
+        archivedCampaigns.value = archivedCampaigns.value.filter(c => c.id !== id)
+        // Add to active campaigns
+        campaigns.value.push(response.data)
+        return true
+      } else {
+        console.error('Unarchive failed with response:', response)
+        error.value = response.error || 'Failed to unarchive campaign'
+        return false
+      }
+    } catch (e) {
+      console.error('Unarchive exception:', e)
+      error.value = e instanceof Error ? e.message : 'Unknown error occurred'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // Delete campaign (hard delete - only for archived campaigns)
+  const deleteCampaign = async (id: number, deleteFiles = false) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await invoke<ApiResponse<void>>('delete_campaign', { 
+        request: { campaign_id: id, delete_files: deleteFiles }
+      })
+      if (response.success) {
+        // Remove from archived campaigns
+        archivedCampaigns.value = archivedCampaigns.value.filter(c => c.id !== id)
         if (currentCampaign.value?.id === id) {
           currentCampaign.value = null
         }
@@ -135,13 +214,17 @@ export const useCampaignStore = defineStore('campaigns', () => {
   
   return {
     campaigns,
+    archivedCampaigns,
     currentCampaign,
     loading,
     error,
     fetchCampaigns,
+    fetchArchivedCampaigns,
     getCampaign,
     createCampaign,
     updateCampaignStatus,
+    archiveCampaign,
+    unarchiveCampaign,
     deleteCampaign
   }
 })

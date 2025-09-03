@@ -16,6 +16,7 @@ pub struct Campaign {
     pub session_zero_date: Option<String>,
     pub first_session_date: Option<String>,
     pub last_activity_at: String,
+    pub archived_at: Option<String>,
 }
 
 /// New campaign for insertion
@@ -37,6 +38,7 @@ pub struct UpdateCampaign {
     pub session_zero_date: Option<Option<String>>,
     pub first_session_date: Option<Option<String>>,
     pub last_activity_at: Option<String>,
+    pub archived_at: Option<Option<String>>,
 }
 
 impl Campaign {

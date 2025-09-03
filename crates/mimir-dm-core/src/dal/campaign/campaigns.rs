@@ -84,13 +84,44 @@ impl<'a> CampaignRepository<'a> {
             .map_err(Into::into)
     }
     
-    /// List active campaigns (not in concluding status)
+    /// List active campaigns (not archived)
     pub fn list_active(&mut self) -> Result<Vec<Campaign>> {
         campaigns::table
-            .filter(campaigns::status.ne("concluding"))
+            .filter(campaigns::archived_at.is_null())
             .order_by(campaigns::last_activity_at.desc())
             .load(self.conn)
             .map_err(Into::into)
+    }
+    
+    /// List archived campaigns
+    pub fn list_archived(&mut self) -> Result<Vec<Campaign>> {
+        campaigns::table
+            .filter(campaigns::archived_at.is_not_null())
+            .order_by(campaigns::archived_at.desc())
+            .load(self.conn)
+            .map_err(Into::into)
+    }
+    
+    /// Archive a campaign
+    pub fn archive(&mut self, id: i32) -> Result<Campaign> {
+        let update = UpdateCampaign {
+            archived_at: Some(Some(Utc::now().to_rfc3339())),
+            last_activity_at: Some(Utc::now().to_rfc3339()),
+            ..Default::default()
+        };
+        
+        self.update(id, update)
+    }
+    
+    /// Unarchive a campaign
+    pub fn unarchive(&mut self, id: i32) -> Result<Campaign> {
+        let update = UpdateCampaign {
+            archived_at: Some(None),
+            last_activity_at: Some(Utc::now().to_rfc3339()),
+            ..Default::default()
+        };
+        
+        self.update(id, update)
     }
 }
 
@@ -104,6 +135,7 @@ impl Default for UpdateCampaign {
             session_zero_date: None,
             first_session_date: None,
             last_activity_at: None,
+            archived_at: None,
         }
     }
 }

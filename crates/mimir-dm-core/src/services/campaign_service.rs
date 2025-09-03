@@ -124,6 +124,62 @@ impl<'a> CampaignService<'a> {
         repo.find_by_id(campaign_id)
     }
     
+    /// Archive a campaign
+    pub fn archive_campaign(&mut self, campaign_id: i32) -> Result<Campaign> {
+        let mut repo = CampaignRepository::new(self.conn);
+        repo.archive(campaign_id)
+    }
+    
+    /// Unarchive a campaign
+    pub fn unarchive_campaign(&mut self, campaign_id: i32) -> Result<Campaign> {
+        let mut repo = CampaignRepository::new(self.conn);
+        repo.unarchive(campaign_id)
+    }
+    
+    /// Delete a campaign (hard delete)
+    pub fn delete_campaign(&mut self, campaign_id: i32, delete_files: bool) -> Result<()> {
+        // Get campaign info for directory path
+        let mut repo = CampaignRepository::new(self.conn);
+        let campaign = repo.find_by_id(campaign_id)?
+            .ok_or_else(|| crate::error::DbError::NotFound {
+                entity_type: "Campaign".to_string(),
+                id: campaign_id.to_string()
+            })?;
+        
+        // Check if campaign is archived (safety check)
+        if campaign.archived_at.is_none() {
+            return Err(crate::error::DbError::InvalidData(
+                "Cannot delete active campaign. Archive it first.".to_string()
+            ));
+        }
+        
+        // Delete from database first
+        repo.delete(campaign_id)?;
+        
+        // Optionally delete campaign directory
+        if delete_files {
+            if let Err(e) = std::fs::remove_dir_all(&campaign.directory_path) {
+                eprintln!("Warning: Failed to delete campaign directory {}: {}", 
+                         campaign.directory_path, e);
+                // Continue - database deletion succeeded
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// List active campaigns (not archived)
+    pub fn list_active_campaigns(&mut self) -> Result<Vec<Campaign>> {
+        let mut repo = CampaignRepository::new(self.conn);
+        repo.list_active()
+    }
+    
+    /// List archived campaigns
+    pub fn list_archived_campaigns(&mut self) -> Result<Vec<Campaign>> {
+        let mut repo = CampaignRepository::new(self.conn);
+        repo.list_archived()
+    }
+    
     /// Create the campaign directory structure
     fn create_campaign_directory_structure(
         &self,

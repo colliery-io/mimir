@@ -54,7 +54,7 @@ pub async fn list_campaigns(
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
-    match service.list_campaigns() {
+    match service.list_active_campaigns() {
         Ok(campaigns) => {
             let campaigns: Vec<Campaign> = campaigns.into_iter().map(Campaign::from).collect();
             info!("Found {} campaigns", campaigns.len());
@@ -369,6 +369,104 @@ pub async fn transition_campaign_stage(
         Err(e) => {
             error!("Failed to transition campaign: {}", e);
             Ok(ApiResponse::error(format!("Failed to transition campaign: {}", e)))
+        }
+    }
+}
+
+/// Archive a campaign
+#[tauri::command]
+pub async fn archive_campaign(
+    campaign_id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Campaign>, String> {
+    info!("Archiving campaign {}", campaign_id);
+    
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
+    
+    match service.archive_campaign(campaign_id) {
+        Ok(archived_campaign) => {
+            info!("Successfully archived campaign {}", campaign_id);
+            Ok(ApiResponse::success(Campaign::from(archived_campaign)))
+        }
+        Err(e) => {
+            error!("Failed to archive campaign: {}", e);
+            Ok(ApiResponse::error(format!("Failed to archive campaign: {}", e)))
+        }
+    }
+}
+
+/// Unarchive a campaign
+#[tauri::command]
+pub async fn unarchive_campaign(
+    campaign_id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Campaign>, String> {
+    info!("Unarchiving campaign {}", campaign_id);
+    
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
+    
+    match service.unarchive_campaign(campaign_id) {
+        Ok(unarchived_campaign) => {
+            info!("Successfully unarchived campaign {}", campaign_id);
+            Ok(ApiResponse::success(Campaign::from(unarchived_campaign)))
+        }
+        Err(e) => {
+            error!("Failed to unarchive campaign: {}", e);
+            Ok(ApiResponse::error(format!("Failed to unarchive campaign: {}", e)))
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteCampaignRequest {
+    pub campaign_id: i32,
+    pub delete_files: bool,
+}
+
+/// Delete a campaign (hard delete - only allowed for archived campaigns)
+#[tauri::command]
+pub async fn delete_campaign(
+    request: DeleteCampaignRequest,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<()>, String> {
+    info!("Deleting campaign {} (delete_files: {})", request.campaign_id, request.delete_files);
+    
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
+    
+    match service.delete_campaign(request.campaign_id, request.delete_files) {
+        Ok(()) => {
+            info!("Successfully deleted campaign {}", request.campaign_id);
+            Ok(ApiResponse::success(()))
+        }
+        Err(e) => {
+            error!("Failed to delete campaign: {}", e);
+            Ok(ApiResponse::error(format!("Failed to delete campaign: {}", e)))
+        }
+    }
+}
+
+/// List archived campaigns
+#[tauri::command]
+pub async fn list_archived_campaigns(
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Vec<Campaign>>, String> {
+    info!("Listing archived campaigns");
+    
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
+    
+    match service.list_archived_campaigns() {
+        Ok(campaigns) => {
+            let campaigns: Vec<Campaign> = campaigns.into_iter().map(Campaign::from).collect();
+            info!("Found {} archived campaigns", campaigns.len());
+            Ok(ApiResponse::success(campaigns))
+        }
+        Err(e) => {
+            error!("Failed to list archived campaigns: {}", e);
+            Ok(ApiResponse::error(format!("Failed to list archived campaigns: {}", e)))
         }
     }
 }

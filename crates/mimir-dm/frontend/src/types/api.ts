@@ -19,6 +19,10 @@ export interface Campaign {
   status: string
   directory_path: string
   created_at: string
+  session_zero_date?: string
+  first_session_date?: string
+  last_activity_at: string
+  archived_at?: string
 }
 
 export interface NewCampaign {

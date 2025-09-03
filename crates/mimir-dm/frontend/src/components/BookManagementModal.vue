@@ -43,6 +43,31 @@
       </div>
     </div>
   </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div v-if="showDeleteModal" class="modal-overlay">
+    <div class="modal-content delete-modal" @click.stop>
+      <div class="modal-header">
+        <h2 class="modal-title">Remove Book</h2>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to remove "<strong>{{ bookToDelete?.name }}</strong>" from your library?</p>
+        <p class="warning-text">This will remove the book from your reference library.</p>
+        
+        <div v-if="deleteError" class="error-message">
+          {{ deleteError }}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button @click="confirmDelete" class="delete-confirm-button">
+          Remove Book
+        </button>
+        <button @click="cancelDelete" class="cancel-button">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -64,6 +89,9 @@ const emit = defineEmits<Emits>()
 
 const books = ref<BookInfo[]>([])
 const isLoadingBooks = ref(false)
+const showDeleteModal = ref(false)
+const bookToDelete = ref<BookInfo | null>(null)
+const deleteError = ref<string | null>(null)
 
 // Load books when modal becomes visible
 watch(() => props.visible, (newVisible) => {
@@ -119,29 +147,43 @@ async function handleImportBook() {
       }
     }
   } catch (error) {
-    alert('Failed to import book. Please try again.')
+    console.error('Failed to import book:', error)
+    // Could show error in a toast or status message instead
   }
 }
 
-async function handleRemoveBook(book: BookInfo) {
-  if (!confirm(`Are you sure you want to remove "${book.name}" from your library?`)) {
-    return
-  }
+function handleRemoveBook(book: BookInfo) {
+  bookToDelete.value = book
+  deleteError.value = null
+  showDeleteModal.value = true
+}
 
+async function confirmDelete() {
+  if (!bookToDelete.value) return
+
+  deleteError.value = null
   try {
     const response = await invoke<{ success: boolean; message?: string }>('remove_book_from_library', {
-      bookId: book.id
+      bookId: bookToDelete.value.id
     })
     
     if (response.success) {
+      showDeleteModal.value = false
+      bookToDelete.value = null
       // Reload the book list
       await loadBooks()
     } else {
-      alert(`Failed to remove book: ${response.message}`)
+      deleteError.value = response.message || 'Failed to remove book'
     }
   } catch (error) {
-    alert('Failed to remove book. Please try again.')
+    deleteError.value = 'Failed to remove book. Please try again.'
   }
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false
+  bookToDelete.value = null
+  deleteError.value = null
 }
 
 function closeModal() {
@@ -348,5 +390,55 @@ function handleOverlayClick() {
 
 .theme-dark .cancel-button:hover {
   background: var(--color-gray-700);
+}
+
+.delete-modal {
+  max-width: 500px;
+}
+
+.warning-text {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin-top: var(--spacing-sm);
+}
+
+.error-message {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+  border: 1px solid var(--color-error-200);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-md) 0;
+  font-size: 0.875rem;
+}
+
+.theme-dark .error-message {
+  background: var(--color-error-900);
+  color: var(--color-error-300);
+  border-color: var(--color-error-800);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.delete-confirm-button {
+  background: var(--color-error-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.delete-confirm-button:hover {
+  background: var(--color-error-600);
 }
 </style>

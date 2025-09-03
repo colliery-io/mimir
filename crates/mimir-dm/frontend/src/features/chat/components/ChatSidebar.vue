@@ -58,13 +58,43 @@
       </button>
     </div>
   </div>
+
+  <!-- Delete Session Confirmation Modal -->
+  <div v-if="showDeleteModal" class="modal-overlay" @click="cancelDelete">
+    <div class="modal-content delete-modal" @click.stop>
+      <div class="modal-header">
+        <h2 class="modal-title">Delete Chat Session</h2>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this chat session?</p>
+        <p class="warning-text">This action cannot be undone. All messages in this session will be permanently deleted.</p>
+        
+        <div v-if="deleteError" class="error-message">
+          {{ deleteError }}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button @click="confirmDelete" class="delete-confirm-button">
+          Delete Session
+        </button>
+        <button @click="cancelDelete" class="cancel-button">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useChatStore } from '@/stores/chat'
 
 const chatStore = useChatStore()
+
+// Reactive state
+const showDeleteModal = ref(false)
+const sessionToDelete = ref<string | null>(null)
+const deleteError = ref<string | null>(null)
 
 // Computed
 const sessions = computed(() => chatStore.sessions)
@@ -81,10 +111,29 @@ const createNewChat = async () => {
   await chatStore.createNewSession()
 }
 
-const deleteSessionHandler = async (sessionId: string) => {
-  if (confirm('Are you sure you want to delete this chat session?')) {
-    await chatStore.deleteSession(sessionId)
+const deleteSessionHandler = (sessionId: string) => {
+  sessionToDelete.value = sessionId
+  deleteError.value = null
+  showDeleteModal.value = true
+}
+
+const confirmDelete = async () => {
+  if (!sessionToDelete.value) return
+
+  deleteError.value = null
+  try {
+    await chatStore.deleteSession(sessionToDelete.value)
+    showDeleteModal.value = false
+    sessionToDelete.value = null
+  } catch (error) {
+    deleteError.value = 'Failed to delete session. Please try again.'
   }
+}
+
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  sessionToDelete.value = null
+  deleteError.value = null
 }
 
 const formatDate = (timestamp: number) => {
@@ -230,5 +279,120 @@ const formatDate = (timestamp: number) => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.modal-body {
+  padding: var(--spacing-lg);
+}
+
+.modal-body p {
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text);
+}
+
+.warning-text {
+  color: var(--color-error-600);
+  font-size: 0.875rem;
+  margin-top: var(--spacing-sm);
+}
+
+.error-message {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+  border: 1px solid var(--color-error-200);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-md) 0;
+  font-size: 0.875rem;
+}
+
+.theme-dark .error-message {
+  background: var(--color-error-900);
+  color: var(--color-error-300);
+  border-color: var(--color-error-800);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.delete-confirm-button {
+  background: var(--color-error-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.delete-confirm-button:hover {
+  background: var(--color-error-600);
+}
+
+.cancel-button {
+  background: var(--color-surface-variant);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cancel-button:hover {
+  background: var(--color-gray-200);
+  border-color: var(--color-border-hover);
+}
+
+.theme-dark .cancel-button:hover {
+  background: var(--color-gray-700);
 }
 </style>

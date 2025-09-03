@@ -11,6 +11,14 @@
             <ul class="sidebar-nav">
               <li>
                 <button 
+                  @click="activeSection = 'manage-campaigns'"
+                  :class="['nav-item', { active: activeSection === 'manage-campaigns' }]"
+                >
+                  Manage Campaigns
+                </button>
+              </li>
+              <li>
+                <button 
                   @click="activeSection = 'import-books'"
                   :class="['nav-item', { active: activeSection === 'import-books' }]"
                 >
@@ -77,7 +85,13 @@
     <!-- Book Management Modal -->
     <BookManagementModal 
       :visible="showBookManagementModal"
-      @close="handleModalClose"
+      @close="handleBookModalClose"
+    />
+    
+    <!-- Campaign Management Modal -->
+    <CampaignManagementModal 
+      :visible="showCampaignManagementModal"
+      @close="handleCampaignModalClose"
     />
   </MainLayout>
 </template>
@@ -88,22 +102,31 @@ import MainLayout from '../shared/components/layout/MainLayout.vue'
 import ThemeSelector from '../shared/components/ui/ThemeSelector.vue'
 import SystemPromptEditor from '@/components/SystemPromptEditor.vue'
 import BookManagementModal from '@/components/BookManagementModal.vue'
+import CampaignManagementModal from '@/components/CampaignManagementModal.vue'
 import { useChatStore } from '@/stores/chat'
 
 const chatStore = useChatStore()
 const showBookManagementModal = ref(false)
+const showCampaignManagementModal = ref(false)
 const activeSection = ref('theme')
 
-// Open book management modal when Import Books is selected
+// Open modals based on section selection
 watch(activeSection, (newSection) => {
   if (newSection === 'import-books') {
     showBookManagementModal.value = true
+  } else if (newSection === 'manage-campaigns') {
+    showCampaignManagementModal.value = true
   }
 })
 
-// When modal closes, switch to a different section (theme)  
-const handleModalClose = () => {
+// When modals close, switch to a different section (theme)  
+const handleBookModalClose = () => {
   showBookManagementModal.value = false
+  activeSection.value = 'theme'
+}
+
+const handleCampaignModalClose = () => {
+  showCampaignManagementModal.value = false
   activeSection.value = 'theme'
 }
 
