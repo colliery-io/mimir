@@ -1,12 +1,10 @@
 <template>
-  <table class="catalog-table">
-    <thead>
-      <tr>
-        <th class="col-name sortable" @click="$emit('sort', 'name')">
-          Name {{ sortIndicator('name') }}
-        </th>
-        <th class="col-type">
-          <select v-model="localFilters.type" @change="updateFilters" class="filter-select">
+  <div class="catalog-table">
+    <div class="catalog-table__header">
+      <h2 class="catalog-table__title">Items</h2>
+      <div class="catalog-table__filters">
+        <div class="catalog-table__filter-group">
+          <select v-model="localFilters.type" @change="updateFilters" class="catalog-table__filter-select">
             <option value="">Type</option>
             <optgroup label="Weapons">
               <option value="M">Melee Weapon</option>
@@ -38,13 +36,9 @@
               <option value="$C">Treasure</option>
             </optgroup>
           </select>
-        </th>
-        <th class="col-cost sortable" @click="$emit('sort', 'value')">
-          Cost {{ sortIndicator('value') }}
-        </th>
-        <th class="col-weight">Weight</th>
-        <th class="col-rarity">
-          <select v-model="localFilters.rarity" @change="updateFilters" class="filter-select">
+        </div>
+        <div class="catalog-table__filter-group">
+          <select v-model="localFilters.rarity" @change="updateFilters" class="catalog-table__filter-select">
             <option value="">Rarity</option>
             <option value="common">Common</option>
             <option value="uncommon">Uncommon</option>
@@ -53,33 +47,73 @@
             <option value="legendary">Legendary</option>
             <option value="artifact">Artifact</option>
           </select>
-        </th>
-        <th class="col-source sortable" @click="$emit('sort', 'source')">
-          Source {{ sortIndicator('source') }}
-        </th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-if="items.length === 0">
-        <td :colspan="6" class="no-results">
-          <span v-if="searchPerformed">No items found matching your criteria</span>
-          <span v-else>Search for items to see results</span>
-        </td>
-      </tr>
-      <tr
-        v-for="item in sortedItems"
-        :key="`${item.name}-${item.source}`"
-        @click="$emit('select', item)"
-      >
-        <td class="col-name">{{ item.name }}</td>
-        <td class="col-type">{{ item.typeName }}</td>
-        <td class="col-cost">{{ formatCost(item.value) }}</td>
-        <td class="col-weight">{{ formatWeight(item.weight) }}</td>
-        <td class="col-rarity">{{ formatRarity(item.rarity) }}</td>
-        <td class="col-source">{{ item.source }}</td>
-      </tr>
-    </tbody>
-  </table>
+        </div>
+      </div>
+    </div>
+    
+    <div class="catalog-table__content">
+      <div class="catalog-table__results-info">
+        <span class="catalog-table__result-count">{{ sortedItems.length }} items</span>
+      </div>
+      
+      <div class="catalog-table__scroll-container">
+        <table class="catalog-table__table">
+          <thead>
+            <tr>
+              <th>
+                <div class="catalog-table__sort-header" @click="$emit('sort', 'name')">
+                  Name
+                  <span class="catalog-table__sort-icon">{{ sortIndicator('name') }}</span>
+                </div>
+              </th>
+              <th>Type</th>
+              <th>
+                <div class="catalog-table__sort-header" @click="$emit('sort', 'value')">
+                  Cost
+                  <span class="catalog-table__sort-icon">{{ sortIndicator('value') }}</span>
+                </div>
+              </th>
+              <th>Weight</th>
+              <th>Rarity</th>
+              <th>
+                <div class="catalog-table__sort-header" @click="$emit('sort', 'source')">
+                  Source
+                  <span class="catalog-table__sort-icon">{{ sortIndicator('source') }}</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="sortedItems.length === 0" class="catalog-table__empty-row">
+              <td colspan="6">
+                <div class="catalog-table__empty">
+                  <h3 v-if="searchPerformed">No items found</h3>
+                  <h3 v-else>Search for items</h3>
+                  <p v-if="searchPerformed">No items found matching your criteria</p>
+                  <p v-else>Search for items to see results</p>
+                </div>
+              </td>
+            </tr>
+            <tr
+              v-for="item in sortedItems"
+              :key="`${item.name}-${item.source}`"
+              class="catalog-table__row"
+              @click="$emit('select', item)"
+            >
+              <td>
+                <div class="catalog-table__cell-name">{{ item.name }}</div>
+              </td>
+              <td>{{ item.typeName }}</td>
+              <td>{{ formatCost(item.value) }}</td>
+              <td>{{ formatWeight(item.weight) }}</td>
+              <td>{{ formatRarity(item.rarity) }}</td>
+              <td>{{ item.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -176,82 +210,4 @@ function sortIndicator(column: string) {
 }
 </script>
 
-<style scoped>
-.catalog-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.catalog-table thead {
-  position: sticky;
-  top: 0;
-  background: var(--color-surface, #1a1a1a);
-  z-index: 10;
-}
-
-.catalog-table th {
-  padding: var(--spacing-sm, 8px);
-  text-align: left;
-  color: var(--color-text, #e0e0e0);
-  font-weight: 600;
-  border-bottom: 2px solid var(--color-border, #333);
-  white-space: nowrap;
-}
-
-.catalog-table th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.catalog-table th.sortable:hover {
-  background: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
-}
-
-.filter-select {
-  width: 100%;
-  padding: 2px 4px;
-  background: var(--color-background, #0d0d0d);
-  border: 1px solid var(--color-border, #333);
-  border-radius: 3px;
-  color: var(--color-text, #e0e0e0);
-  font-size: 0.875rem;
-  font-weight: normal;
-  cursor: pointer;
-}
-
-.filter-select:focus {
-  outline: none;
-  border-color: var(--color-primary, #4a9eff);
-}
-
-.catalog-table tbody tr {
-  border-bottom: 1px solid var(--color-border-light, #222);
-  transition: background-color 0.1s;
-}
-
-.catalog-table tbody tr:hover {
-  background: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
-  cursor: pointer;
-}
-
-.catalog-table td {
-  padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
-  color: var(--color-text-secondary, #999);
-}
-
-.no-results {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-text-dim, #666);
-  font-style: italic;
-}
-
-/* Column widths */
-.col-name { width: 35%; }
-.col-type { width: 20%; }
-.col-cost { width: 12%; }
-.col-weight { width: 10%; }
-.col-rarity { width: 13%; }
-.col-source { width: 10%; }
-</style>
+<!-- All styling now handled by consolidated CSS classes -->
