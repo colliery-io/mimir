@@ -48,14 +48,6 @@
       </p>
       
       <div class="editor-actions">
-        <button @click="exportPrompt" class="button button-secondary">
-          Export
-        </button>
-        
-        <button @click="importPrompt" class="button button-secondary">
-          Import
-        </button>
-        
         <button 
           @click="savePrompt" 
           class="button button-primary"
@@ -66,14 +58,6 @@
       </div>
     </div>
     
-    <!-- File input for import (hidden) -->
-    <input 
-      ref="fileInput" 
-      type="file" 
-      accept=".txt,.md" 
-      style="display: none"
-      @change="handleFileImport"
-    />
   </div>
 </template>
 
@@ -94,7 +78,6 @@ const emit = defineEmits<{
 const localPrompt = ref(props.modelValue || DEFAULT_SYSTEM_PROMPT)
 const showPreview = ref(false)
 const hasUnsavedChanges = ref(false)
-const fileInput = ref<HTMLInputElement>()
 
 // Watch for external changes to modelValue
 watch(() => props.modelValue, (newValue) => {
@@ -148,40 +131,6 @@ const togglePreview = () => {
   showPreview.value = !showPreview.value
 }
 
-const exportPrompt = () => {
-  const blob = new Blob([localPrompt.value], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'mimir-system-prompt.txt'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-
-const importPrompt = () => {
-  fileInput.value?.click()
-}
-
-const handleFileImport = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  
-  if (file) {
-    try {
-      const text = await file.text()
-      localPrompt.value = text
-      hasUnsavedChanges.value = true
-    } catch (error) {
-      console.error('Failed to import file:', error)
-      alert('Failed to import file. Please try again.')
-    }
-  }
-  
-  // Reset file input
-  target.value = ''
-}
 </script>
 
 <style scoped>
