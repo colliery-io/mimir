@@ -1,31 +1,33 @@
 <template>
-  <div class="options-table-container">
-    <table class="options-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Prerequisites</th>
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="option in options" :key="`${option.name}-${option.source}`"
-            @click="emit('select', option)"
-            class="option-row">
-          <td class="name">
-            {{ option.name }}
-            <span v-if="option.grants_spells" class="spell-badge" title="Grants Additional Spells">🔮</span>
-          </td>
-          <td class="type">{{ option.feature_type_full }}</td>
-          <td class="prerequisites">{{ option.prerequisite_text || '—' }}</td>
-          <td class="source">
-            {{ option.source }}
-            <span v-if="option.is_srd" class="srd-badge">SRD</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="catalog-table">
+    <div class="catalog-table__content">
+      <table class="catalog-table__table">
+        <thead class="catalog-table__header">
+          <tr>
+            <th class="catalog-table__th">Name</th>
+            <th class="catalog-table__th">Type</th>
+            <th class="catalog-table__th">Prerequisites</th>
+            <th class="catalog-table__th">Source</th>
+          </tr>
+        </thead>
+        <tbody class="catalog-table__body">
+          <tr v-for="option in options" :key="`${option.name}-${option.source}`"
+              class="catalog-table__row catalog-table__row--clickable"
+              @click="emit('select', option)">
+            <td class="catalog-table__td catalog-table__name">
+              {{ option.name }}
+              <span v-if="option.grants_spells" class="spell-badge" title="Grants Additional Spells">🔮</span>
+            </td>
+            <td class="catalog-table__td catalog-table__secondary">{{ option.feature_type_full }}</td>
+            <td class="catalog-table__td catalog-table__secondary">{{ option.prerequisite_text || '—' }}</td>
+            <td class="catalog-table__td catalog-table__source">
+              {{ option.source }}
+              <span v-if="option.is_srd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -44,74 +46,10 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-.options-table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.options-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.options-table th {
-  text-align: left;
-  padding: 8px;
-  border-bottom: 2px solid var(--color-border, #333);
-  color: var(--color-text-secondary, #999);
-  font-weight: 600;
-}
-
-.option-row {
-  cursor: pointer;
-  border-bottom: 1px solid var(--color-border-light, #222);
-  transition: background-color 0.2s;
-}
-
-.option-row:hover {
-  background: rgba(74, 158, 255, 0.1);
-}
-
-.option-row td {
-  padding: 10px 8px;
-  vertical-align: top;
-}
-
-.name {
-  color: var(--color-primary, #4a9eff);
-  font-weight: 500;
-  position: relative;
-}
-
+/* Custom badge for spell indication */
 .spell-badge {
   margin-left: 4px;
   font-size: 0.85em;
   vertical-align: super;
-}
-
-.type {
-  color: var(--color-text, #e0e0e0);
-  font-size: 0.9em;
-  white-space: nowrap;
-}
-
-.prerequisites {
-  font-size: 0.9em;
-  color: var(--color-text-secondary, #999);
-  max-width: 300px;
-}
-
-.source {
-  font-size: 0.85em;
-  color: var(--color-text-secondary, #999);
-  white-space: nowrap;
-}
-
-.srd-badge {
-  margin-left: 4px;
-  padding: 1px 4px;
-  background: var(--color-background-tertiary, #262626);
-  border-radius: 3px;
-  font-size: 0.8em;
 }
 </style>

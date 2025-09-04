@@ -1,27 +1,31 @@
 <template>
-  <div class="race-table-container">
-    <table class="catalog-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Size</th>
-          <th>Speed</th>
-          <th>Ability Bonuses</th>
-          <th>Traits</th>
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="race in races" :key="`${race.name}-${race.source}`" @click="selectRace(race)" class="clickable">
-          <td>{{ race.name }}</td>
-          <td>{{ race.size }}</td>
-          <td>{{ race.speed }} ft.</td>
-          <td>{{ race.abilityBonuses }}</td>
-          <td>{{ race.traitsCount }}</td>
-          <td>{{ race.source }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="catalog-table">
+    <div class="catalog-table__content">
+      <table class="catalog-table__table">
+        <thead class="catalog-table__header">
+          <tr>
+            <th class="catalog-table__th">Name</th>
+            <th class="catalog-table__th">Size</th>
+            <th class="catalog-table__th">Speed</th>
+            <th class="catalog-table__th">Ability Bonuses</th>
+            <th class="catalog-table__th">Traits</th>
+            <th class="catalog-table__th">Source</th>
+          </tr>
+        </thead>
+        <tbody class="catalog-table__body">
+          <tr v-for="race in races" :key="`${race.name}-${race.source}`" 
+              class="catalog-table__row catalog-table__row--clickable" 
+              @click="selectRace(race)">
+            <td class="catalog-table__td catalog-table__name">{{ race.name }}</td>
+            <td class="catalog-table__td catalog-table__center">{{ race.size }}</td>
+            <td class="catalog-table__td catalog-table__center">{{ race.speed }} ft.</td>
+            <td class="catalog-table__td catalog-table__secondary">{{ race.abilityBonuses }}</td>
+            <td class="catalog-table__td catalog-table__center">{{ race.traitsCount }}</td>
+            <td class="catalog-table__td catalog-table__source">{{ race.source }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -41,35 +45,4 @@ function selectRace(race: RaceSummary) {
 }
 </script>
 
-<style scoped>
-.race-table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.catalog-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.catalog-table th {
-  background: var(--color-surface-variant);
-  padding: var(--spacing-sm);
-  text-align: left;
-  font-weight: 600;
-  border-bottom: 2px solid var(--color-border);
-}
-
-.catalog-table td {
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.catalog-table tbody tr:hover {
-  background: var(--color-surface-hover);
-}
-
-.clickable {
-  cursor: pointer;
-}
-</style>
+<!-- All styling now handled by consolidated CSS classes -->

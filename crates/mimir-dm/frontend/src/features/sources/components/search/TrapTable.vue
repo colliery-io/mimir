@@ -1,40 +1,43 @@
 <template>
-  <div class="trap-table">
-    <table v-if="traps.length > 0">
-      <thead>
-        <tr>
-          <th @click="$emit('sort', 'name')">
-            Name
-            <span class="sort-indicator" v-if="sortColumn === 'name'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th>Category</th>
-          <th>Type</th>
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr 
-          v-for="trap in traps" 
-          :key="`${trap.name}-${trap.source}`"
-          @click="$emit('select', trap)"
-        >
-          <td>
-            <span class="trap-name">{{ trap.name }}</span>
-            <span v-if="trap.is_srd" class="srd-badge">SRD</span>
-          </td>
-          <td>
-            <span :class="getCategoryClass(trap.category)">{{ trap.category }}</span>
-          </td>
-          <td>{{ trap.trap_type }}</td>
-          <td>
-            <span class="source-badge">{{ trap.source }}</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <div v-else-if="searchPerformed" class="no-results">
+  <div class="catalog-table">
+    <div class="catalog-table__content" v-if="traps.length > 0">
+      <table class="catalog-table__table">
+        <thead class="catalog-table__header">
+          <tr>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="$emit('sort', 'name')">
+              Name
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'name'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th">Category</th>
+            <th class="catalog-table__th">Type</th>
+            <th class="catalog-table__th">Source</th>
+          </tr>
+        </thead>
+        <tbody class="catalog-table__body">
+          <tr 
+            v-for="trap in traps" 
+            :key="`${trap.name}-${trap.source}`"
+            class="catalog-table__row catalog-table__row--clickable"
+            @click="$emit('select', trap)"
+          >
+            <td class="catalog-table__td catalog-table__name">
+              {{ trap.name }}
+              <span v-if="trap.is_srd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
+            </td>
+            <td class="catalog-table__td">
+              <span :class="['catalog-table__badge', getCategoryClass(trap.category)]">{{ trap.category }}</span>
+            </td>
+            <td class="catalog-table__td">{{ trap.trap_type }}</td>
+            <td class="catalog-table__td">
+              <span class="catalog-table__badge catalog-table__badge--source">{{ trap.source }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div v-else-if="searchPerformed" class="catalog-table__empty">
       No traps or hazards found matching your search criteria.
     </div>
   </div>
@@ -70,98 +73,22 @@ function getCategoryClass(category: string): string {
 </script>
 
 <style scoped>
-.trap-table {
-  width: 100%;
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-th {
-  background: var(--color-surface, #1a1a1a);
-  color: var(--color-text-secondary, #999);
-  text-align: left;
-  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
-  border-bottom: 2px solid var(--color-border, #333);
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-
-th:hover {
-  background: var(--color-surface-hover, #252525);
-}
-
-.sort-indicator {
-  margin-left: 4px;
-  color: var(--color-primary, #4a9eff);
-}
-
-tbody tr {
-  cursor: pointer;
-  transition: background-color 0.2s;
-  border-bottom: 1px solid var(--color-border, #333);
-}
-
-tbody tr:hover {
-  background: rgba(74, 158, 255, 0.1);
-}
-
-td {
-  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
-  color: var(--color-text, #e0e0e0);
-  vertical-align: middle;
-}
-
-.trap-name {
-  font-weight: 500;
-  color: var(--color-primary, #4a9eff);
-}
-
-.srd-badge {
-  display: inline-block;
-  padding: 2px 4px;
-  margin-left: 4px;
-  background: var(--color-primary, #4a9eff);
-  color: var(--color-background, #0d0d0d);
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  vertical-align: middle;
-}
-
+/* Custom category colors for traps/hazards */
 .category-trap {
+  background: rgba(231, 76, 60, 0.2);
   color: #e74c3c;
-  font-weight: 500;
+  border: 1px solid rgba(231, 76, 60, 0.4);
 }
 
 .category-hazard {
+  background: rgba(243, 156, 18, 0.2);
   color: #f39c12;
-  font-weight: 500;
+  border: 1px solid rgba(243, 156, 18, 0.4);
 }
 
 .category-default {
-  color: var(--color-text-secondary, #999);
-}
-
-.source-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  background: rgba(74, 158, 255, 0.15);
-  color: var(--color-primary, #4a9eff);
-  border-radius: 3px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.no-results {
-  padding: var(--spacing-xl, 24px);
-  text-align: center;
-  color: var(--color-text-secondary, #999);
-  font-style: italic;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 </style>

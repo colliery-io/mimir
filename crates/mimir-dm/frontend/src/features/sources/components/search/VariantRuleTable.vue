@@ -1,43 +1,46 @@
 <template>
-  <div class="variant-rule-table-container">
-    <table class="variant-rule-table">
-      <thead>
-        <tr>
-          <th @click="emit('sort', 'name')" class="sortable">
-            Name
-            <span class="sort-indicator" v-if="sortColumn === 'name'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th @click="emit('sort', 'rule_type')" class="sortable">
-            Type
-            <span class="sort-indicator" v-if="sortColumn === 'rule_type'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th @click="emit('sort', 'source')" class="sortable">
-            Source
-            <span class="sort-indicator" v-if="sortColumn === 'source'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th>Page</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="rule in rules" :key="`${rule.name}-${rule.source}`" 
-            @click="emit('select', rule)" class="clickable-row">
-          <td class="name-cell">{{ rule.name }}</td>
-          <td class="type-cell">
-            <span :class="['type-badge', getTypeClass(rule.rule_type)]">
-              {{ rule.rule_type || 'General' }}
-            </span>
-          </td>
-          <td class="source-cell">{{ rule.source }}</td>
-          <td class="page-cell">{{ rule.page ? `p. ${rule.page}` : '—' }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="catalog-table">
+    <div class="catalog-table__content">
+      <table class="catalog-table__table">
+        <thead class="catalog-table__header">
+          <tr>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="emit('sort', 'name')">
+              Name
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'name'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="emit('sort', 'rule_type')">
+              Type
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'rule_type'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="emit('sort', 'source')">
+              Source
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'source'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th">Page</th>
+          </tr>
+        </thead>
+        <tbody class="catalog-table__body">
+          <tr v-for="rule in rules" :key="`${rule.name}-${rule.source}`" 
+              class="catalog-table__row catalog-table__row--clickable"
+              @click="emit('select', rule)">
+            <td class="catalog-table__td catalog-table__name">{{ rule.name }}</td>
+            <td class="catalog-table__td">
+              <span :class="['catalog-table__badge', getTypeClass(rule.rule_type)]">
+                {{ rule.rule_type || 'General' }}
+              </span>
+            </td>
+            <td class="catalog-table__td catalog-table__source">{{ rule.source }}</td>
+            <td class="catalog-table__td catalog-table__page">{{ rule.page ? `p. ${rule.page}` : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -63,81 +66,11 @@ function getTypeClass(type: string | undefined): string {
 </script>
 
 <style scoped>
-.variant-rule-table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.variant-rule-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.variant-rule-table th {
-  text-align: left;
-  padding: var(--spacing-sm, 8px);
-  border-bottom: 2px solid var(--color-border, #333);
-  background: var(--color-surface, #1a1a1a);
-  color: var(--color-text-secondary, #999);
-  white-space: nowrap;
-}
-
-.variant-rule-table th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.variant-rule-table th.sortable:hover {
-  color: var(--color-text, #e0e0e0);
-}
-
-.sort-indicator {
-  display: inline-block;
-  margin-left: 4px;
-  font-size: 0.8em;
-}
-
-.variant-rule-table tbody tr {
-  border-bottom: 1px solid var(--color-border-light, #262626);
-  transition: background-color 0.15s ease;
-}
-
-.variant-rule-table tbody tr:hover {
-  background: var(--color-surface-hover, #262626);
-}
-
-.clickable-row {
-  cursor: pointer;
-}
-
-.variant-rule-table td {
-  padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
-  color: var(--color-text, #e0e0e0);
-}
-
-/* Cell-specific styles */
-.name-cell {
-  font-weight: 500;
-  color: var(--color-primary, #4a9eff);
-}
-
-.type-cell {
-  white-space: nowrap;
-}
-
-.type-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
+/* Custom variant rule type colors */
 .type-general {
-  background: var(--color-surface, #1a1a1a);
-  color: var(--color-text-secondary, #999);
-  border: 1px solid var(--color-border, #333);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 
 .type-action-options {
@@ -156,17 +89,5 @@ function getTypeClass(type: string | undefined): string {
   background: rgba(33, 150, 243, 0.2);
   color: #2196f3;
   border: 1px solid rgba(33, 150, 243, 0.4);
-}
-
-.source-cell {
-  color: var(--color-text-secondary, #999);
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.page-cell {
-  color: var(--color-text-secondary, #999);
-  font-size: 0.85rem;
-  text-align: center;
 }
 </style>

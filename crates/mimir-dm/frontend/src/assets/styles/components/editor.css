@@ -74,50 +74,7 @@
   flex-direction: column;
 }
 
-/* Toolbar */
-.editor-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  flex-wrap: wrap;
-}
-
-.toolbar-btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: all var(--transition-base);
-}
-
-.toolbar-btn:hover {
-  background-color: var(--color-surface-variant);
-  border-color: var(--color-border);
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.toolbar-btn.is-active {
-  background-color: var(--color-primary-100);
-  color: var(--color-primary-700);
-  border-color: var(--color-primary-300);
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 24px;
-  background-color: var(--color-border);
-  margin: 0 var(--spacing-xs);
-}
+/* Toolbar styles now handled by consolidated btn-toolbar system */
 
 /* Editor Area */
 .editor-area {

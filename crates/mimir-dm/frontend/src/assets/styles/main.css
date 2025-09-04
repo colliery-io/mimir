@@ -22,6 +22,12 @@
 @import './components/book-content.css';
 @import './components/stage-landing.css';
 
+/* Import consolidated component utilities - AFTER tables.css to override */
+@import './components/catalog-tables.css';
+@import './components/base-modal.css';
+@import './components/form-inputs.css';
+@import './components/chat.css';
+
 /* Import layout styles */
 @import './layouts/reader-layout.css';
 @import './layouts/board-layout.css';

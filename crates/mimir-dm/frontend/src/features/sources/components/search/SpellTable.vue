@@ -1,68 +1,97 @@
 <template>
-  <table class="catalog-table">
-    <thead>
-      <tr>
-        <th class="col-name sortable" @click="$emit('sort', 'name')">
-          Name {{ sortIndicator('name') }}
-        </th>
-        <th class="col-level">
+  <div class="catalog-table">
+    <div class="catalog-table__header">
+      <h2 class="catalog-table__title">Spells</h2>
+      <div class="catalog-table__filters">
+        <div class="catalog-table__filter-group">
           <MultiSelectFilter
             label="Level"
             :options="levelOptions"
             v-model="localFilters.levels"
           />
-        </th>
-        <th class="col-school">
+        </div>
+        <div class="catalog-table__filter-group">
           <MultiSelectFilter
             label="School"
             :options="schoolOptions"
             v-model="localFilters.schools"
           />
-        </th>
-        <th class="col-cast-time">Cast Time</th>
-        <th class="col-range">Range</th>
-        <th class="col-components">Components</th>
-        <th class="col-tags">
-          <div class="tag-filters">
-            <label class="tag-filter" title="Filter by Concentration spells">
-              <input type="checkbox" v-model="localFilters.concentration" />
-              <span>Conc</span>
-            </label>
-            <label class="tag-filter" title="Filter by Ritual spells">
-              <input type="checkbox" v-model="localFilters.ritual" />
-              <span>Ritual</span>
-            </label>
-          </div>
-        </th>
-        <th class="col-source">Source</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-if="spells.length === 0">
-        <td colspan="8" class="no-results">
-          <span v-if="searchPerformed">No spells found matching your criteria</span>
-          <span v-else>Search for spells to see results</span>
-        </td>
-      </tr>
-      <tr
-        v-for="spell in sortedSpells"
-        :key="`${spell.name}-${spell.source}`"
-        @click="$emit('select', spell)"
+        </div>
+        <div class="catalog-table__filter-group">
+          <label class="form-checkbox" title="Filter by Concentration spells">
+            <input type="checkbox" class="form-checkbox__input" v-model="localFilters.concentration" />
+            <span class="form-checkbox__box"></span>
+            <span class="form-checkbox__label">Conc</span>
+          </label>
+          <label class="form-checkbox" title="Filter by Ritual spells">
+            <input type="checkbox" class="form-checkbox__input" v-model="localFilters.ritual" />
+            <span class="form-checkbox__box"></span>
+            <span class="form-checkbox__label">Ritual</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="catalog-table__content">
+      <div class="catalog-table__results-info">
+        <span class="catalog-table__result-count">{{ spells.length }} spells</span>
+      </div>
+      
+      <div class="catalog-table__scroll-container">
+        <table class="catalog-table__table">
+          <thead>
+            <tr>
+              <th>
+                <div class="catalog-table__sort-header" @click="$emit('sort', 'name')">
+                  Name
+                  <span class="catalog-table__sort-icon">{{ sortIndicator('name') }}</span>
+                </div>
+              </th>
+              <th>Level</th>
+              <th>School</th>
+              <th>Cast Time</th>
+              <th>Range</th>
+              <th>Components</th>
+              <th>Tags</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="spells.length === 0" class="catalog-table__empty-row">
+              <td colspan="8">
+                <div class="catalog-table__empty">
+                  <h3 v-if="searchPerformed">No spells found</h3>
+                  <h3 v-else>Search for spells</h3>
+                  <p v-if="searchPerformed">No spells found matching your criteria</p>
+                  <p v-else>Search for spells to see results</p>
+                </div>
+              </td>
+            </tr>
+            <tr
+              v-for="spell in sortedSpells"
+              :key="`${spell.name}-${spell.source}`"
+              class="catalog-table__row"
+              @click="$emit('select', spell)"
       >
-        <td class="col-name">{{ spell.name }}</td>
-        <td class="col-level">{{ formatLevel(spell.level) }}</td>
-        <td class="col-school">{{ spell.school }}</td>
-        <td class="col-cast-time">{{ spell.casting_time }}</td>
-        <td class="col-range">{{ spell.range }}</td>
-        <td class="col-components">{{ spell.components }}</td>
-        <td class="col-tags">
-          <span v-if="spell.concentration" class="tag-badge concentration">Conc</span>
-          <span v-if="spell.ritual" class="tag-badge ritual">Ritual</span>
-        </td>
-        <td class="col-source">{{ spell.source }}</td>
-      </tr>
-    </tbody>
-  </table>
+              <td>
+                <div class="catalog-table__cell-name">{{ spell.name }}</div>
+              </td>
+              <td>{{ formatLevel(spell.level) }}</td>
+              <td>{{ spell.school }}</td>
+              <td>{{ spell.casting_time }}</td>
+              <td>{{ spell.range }}</td>
+              <td>{{ spell.components }}</td>
+              <td>
+                <span v-if="spell.concentration" class="catalog-table__cell-badge catalog-table__cell-badge--primary">Conc</span>
+                <span v-if="spell.ritual" class="catalog-table__cell-badge catalog-table__cell-badge--secondary">Ritual</span>
+              </td>
+              <td>{{ spell.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -165,118 +194,4 @@ function sortIndicator(column: string) {
 }
 </script>
 
-<style scoped>
-.catalog-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.catalog-table thead {
-  position: sticky;
-  top: 0;
-  background: var(--color-surface, #1a1a1a);
-  z-index: 10;
-}
-
-.catalog-table th {
-  padding: var(--spacing-sm, 8px);
-  text-align: left;
-  color: var(--color-text, #e0e0e0);
-  font-weight: 600;
-  border-bottom: 2px solid var(--color-border, #333);
-  white-space: nowrap;
-}
-
-.catalog-table th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.catalog-table th.sortable:hover {
-  background: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
-}
-
-.catalog-table tbody tr {
-  border-bottom: 1px solid var(--color-border-light, #222);
-  transition: background-color 0.1s;
-}
-
-.catalog-table tbody tr:hover {
-  background: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
-  cursor: pointer;
-}
-
-.catalog-table td {
-  padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
-  color: var(--color-text-secondary, #999);
-}
-
-.no-results {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-text-dim, #666);
-  font-style: italic;
-}
-
-/* Column widths */
-.col-name { width: 20%; }
-.col-level { width: 10%; }
-.col-school { width: 12%; }
-.col-cast-time { width: 10%; }
-.col-range { width: 10%; }
-.col-components { width: 8%; }
-.col-tags { width: 12%; }
-.col-source { width: 8%; }
-
-/* Tag filters */
-.tag-filters {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.tag-filter {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary, #999);
-}
-
-.tag-filter input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
-}
-
-.tag-filter span {
-  font-weight: normal;
-}
-
-.tag-filter:hover {
-  color: var(--color-text, #e0e0e0);
-}
-
-/* Tag badges in cells */
-.tag-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  margin-right: 4px;
-}
-
-.tag-badge.concentration {
-  background: rgba(74, 158, 255, 0.2);
-  color: var(--color-primary, #4a9eff);
-  border: 1px solid rgba(74, 158, 255, 0.3);
-}
-
-.tag-badge.ritual {
-  background: rgba(168, 199, 255, 0.2);
-  color: #a8c7ff;
-  border: 1px solid rgba(168, 199, 255, 0.3);
-}
-</style>
+<!-- All styling now handled by consolidated CSS classes -->

@@ -1,21 +1,25 @@
 <template>
-  <div class="feat-table-container">
-    <table class="catalog-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Prerequisites</th>
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="feat in feats" :key="`${feat.name}-${feat.source}`" @click="selectFeat(feat)" class="clickable">
-          <td>{{ feat.name }}</td>
-          <td>{{ feat.prerequisites || feat.brief || '—' }}</td>
-          <td>{{ feat.source }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="catalog-table">
+    <div class="catalog-table__content">
+      <table class="catalog-table__table">
+        <thead class="catalog-table__header">
+          <tr>
+            <th class="catalog-table__th">Name</th>
+            <th class="catalog-table__th">Prerequisites</th>
+            <th class="catalog-table__th">Source</th>
+          </tr>
+        </thead>
+        <tbody class="catalog-table__body">
+          <tr v-for="feat in feats" :key="`${feat.name}-${feat.source}`" 
+              class="catalog-table__row catalog-table__row--clickable" 
+              @click="selectFeat(feat)">
+            <td class="catalog-table__td catalog-table__name">{{ feat.name }}</td>
+            <td class="catalog-table__td catalog-table__secondary">{{ feat.prerequisites || feat.brief || '—' }}</td>
+            <td class="catalog-table__td catalog-table__source">{{ feat.source }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -35,35 +39,4 @@ function selectFeat(feat: FeatSummary) {
 }
 </script>
 
-<style scoped>
-.feat-table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.catalog-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.catalog-table th {
-  background: var(--color-surface-variant);
-  padding: var(--spacing-sm);
-  text-align: left;
-  font-weight: 600;
-  border-bottom: 2px solid var(--color-border);
-}
-
-.catalog-table td {
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.catalog-table tbody tr:hover {
-  background: var(--color-surface-hover);
-}
-
-.clickable {
-  cursor: pointer;
-}
-</style>
+<!-- All styling now handled by consolidated CSS classes -->

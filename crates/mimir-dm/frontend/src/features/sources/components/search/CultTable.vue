@@ -1,55 +1,58 @@
 <template>
-  <div class="cult-table-container">
-    <table class="cult-table">
-      <thead>
-        <tr>
-          <th @click="emit('sort', 'name')" class="sortable">
-            Name
-            <span class="sort-indicator" v-if="sortColumn === 'name'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th @click="emit('sort', 'item_type')" class="sortable">
-            Category
-            <span class="sort-indicator" v-if="sortColumn === 'item_type'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th @click="emit('sort', 'subtype')" class="sortable">
-            Type
-            <span class="sort-indicator" v-if="sortColumn === 'subtype'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th @click="emit('sort', 'source')" class="sortable">
-            Source
-            <span class="sort-indicator" v-if="sortColumn === 'source'">
-              {{ sortDirection === 'asc' ? '▲' : '▼' }}
-            </span>
-          </th>
-          <th>Page</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in items" :key="`${item.name}-${item.source}`" 
-            @click="emit('select', item)" class="clickable-row">
-          <td class="name-cell">{{ item.name }}</td>
-          <td class="category-cell">
-            <span :class="['category-badge', getCategoryClass(item.item_type)]">
-              {{ item.item_type === 'cult' ? 'Cult' : 'Boon' }}
-            </span>
-          </td>
-          <td class="type-cell">
-            <span v-if="item.subtype" :class="['type-badge', getTypeClass(item.subtype)]">
-              {{ item.subtype }}
-            </span>
-            <span v-else>—</span>
-          </td>
-          <td class="source-cell">{{ item.source }}</td>
-          <td class="page-cell">{{ item.page ? `p. ${item.page}` : '—' }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="catalog-table">
+    <div class="catalog-table__content">
+      <table class="catalog-table__table">
+        <thead class="catalog-table__header">
+          <tr>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="emit('sort', 'name')">
+              Name
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'name'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="emit('sort', 'item_type')">
+              Category
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'item_type'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="emit('sort', 'subtype')">
+              Type
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'subtype'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th catalog-table__th--sortable" @click="emit('sort', 'source')">
+              Source
+              <span class="catalog-table__sort-indicator" v-if="sortColumn === 'source'">
+                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+              </span>
+            </th>
+            <th class="catalog-table__th">Page</th>
+          </tr>
+        </thead>
+        <tbody class="catalog-table__body">
+          <tr v-for="item in items" :key="`${item.name}-${item.source}`" 
+              class="catalog-table__row catalog-table__row--clickable" 
+              @click="emit('select', item)">
+            <td class="catalog-table__td catalog-table__name">{{ item.name }}</td>
+            <td class="catalog-table__td">
+              <span :class="['catalog-table__badge', getCategoryClass(item.item_type)]">
+                {{ item.item_type === 'cult' ? 'Cult' : 'Boon' }}
+              </span>
+            </td>
+            <td class="catalog-table__td">
+              <span v-if="item.subtype" :class="['catalog-table__badge', getTypeClass(item.subtype)]">
+                {{ item.subtype }}
+              </span>
+              <span v-else class="catalog-table__empty">—</span>
+            </td>
+            <td class="catalog-table__td catalog-table__source">{{ item.source }}</td>
+            <td class="catalog-table__td catalog-table__page">{{ item.page ? `p. ${item.page}` : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -87,77 +90,7 @@ function getTypeClass(type: string): string {
 </script>
 
 <style scoped>
-.cult-table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.cult-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.cult-table th {
-  text-align: left;
-  padding: var(--spacing-sm, 8px);
-  border-bottom: 2px solid var(--color-border, #333);
-  background: var(--color-surface, #1a1a1a);
-  color: var(--color-text-secondary, #999);
-  white-space: nowrap;
-}
-
-.cult-table th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.cult-table th.sortable:hover {
-  color: var(--color-text, #e0e0e0);
-}
-
-.sort-indicator {
-  display: inline-block;
-  margin-left: 4px;
-  font-size: 0.8em;
-}
-
-.cult-table tbody tr {
-  border-bottom: 1px solid var(--color-border-light, #262626);
-  transition: background-color 0.15s ease;
-}
-
-.cult-table tbody tr:hover {
-  background: var(--color-surface-hover, #262626);
-}
-
-.clickable-row {
-  cursor: pointer;
-}
-
-.cult-table td {
-  padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
-  color: var(--color-text, #e0e0e0);
-}
-
-/* Cell-specific styles */
-.name-cell {
-  font-weight: 500;
-  color: var(--color-primary, #4a9eff);
-}
-
-.category-cell, .type-cell {
-  white-space: nowrap;
-}
-
-.category-badge, .type-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
+/* Custom badge colors for cult/boon categories */
 .category-cult {
   background: rgba(156, 39, 176, 0.2);
   color: #9c27b0;
@@ -189,20 +122,8 @@ function getTypeClass(type: string): string {
 }
 
 .type-other {
-  background: var(--color-surface, #1a1a1a);
-  color: var(--color-text-secondary, #999);
-  border: 1px solid var(--color-border, #333);
-}
-
-.source-cell {
-  color: var(--color-text-secondary, #999);
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.page-cell {
-  color: var(--color-text-secondary, #999);
-  font-size: 0.85rem;
-  text-align: center;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 </style>

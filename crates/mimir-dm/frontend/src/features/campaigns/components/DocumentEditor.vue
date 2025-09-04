@@ -20,90 +20,90 @@
       <!-- Editor -->
       <div class="editor-wrapper">
         <!-- Toolbar -->
-        <div v-if="editor" class="editor-toolbar">
+        <div v-if="editor" class="editor-toolbar" style="display: flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-sm) var(--spacing-lg); background-color: var(--color-surface); border-bottom: 1px solid var(--color-border); flex-wrap: wrap;">
           <button
             @click="editor?.chain().focus().toggleHeading({ level: 1 }).run()"
-            :class="{ 'is-active': editor?.isActive('heading', { level: 1 }) }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('heading', { level: 1 }) }"
+            class="btn-toolbar"
           >
             H1
           </button>
           <button
             @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()"
-            :class="{ 'is-active': editor?.isActive('heading', { level: 2 }) }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('heading', { level: 2 }) }"
+            class="btn-toolbar"
           >
             H2
           </button>
           <button
             @click="editor?.chain().focus().toggleHeading({ level: 3 }).run()"
-            :class="{ 'is-active': editor?.isActive('heading', { level: 3 }) }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('heading', { level: 3 }) }"
+            class="btn-toolbar"
           >
             H3
           </button>
-          <div class="toolbar-divider"></div>
+          <div class="btn-toolbar-divider"></div>
           <button
             @click="editor?.chain().focus().toggleBold().run()"
-            :class="{ 'is-active': editor?.isActive('bold') }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('bold') }"
+            class="btn-toolbar"
           >
             <strong>B</strong>
           </button>
           <button
             @click="editor?.chain().focus().toggleItalic().run()"
-            :class="{ 'is-active': editor?.isActive('italic') }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('italic') }"
+            class="btn-toolbar"
           >
             <em>I</em>
           </button>
           <button
             @click="editor?.chain().focus().toggleStrike().run()"
-            :class="{ 'is-active': editor?.isActive('strike') }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('strike') }"
+            class="btn-toolbar"
           >
             <strike>S</strike>
           </button>
-          <div class="toolbar-divider"></div>
+          <div class="btn-toolbar-divider"></div>
           <button
             @click="editor?.chain().focus().toggleBulletList().run()"
-            :class="{ 'is-active': editor?.isActive('bulletList') }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('bulletList') }"
+            class="btn-toolbar"
           >
             • List
           </button>
           <button
             @click="editor?.chain().focus().toggleOrderedList().run()"
-            :class="{ 'is-active': editor?.isActive('orderedList') }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('orderedList') }"
+            class="btn-toolbar"
           >
             1. List
           </button>
           <button
             @click="editor?.chain().focus().toggleBlockquote().run()"
-            :class="{ 'is-active': editor?.isActive('blockquote') }"
-            class="toolbar-btn"
+            :class="{ 'btn-toolbar--active': editor?.isActive('blockquote') }"
+            class="btn-toolbar"
           >
             " Quote
           </button>
-          <div class="toolbar-divider"></div>
+          <div class="btn-toolbar-divider"></div>
           <button
             @click="editor?.chain().focus().setHorizontalRule().run()"
-            class="toolbar-btn"
+            class="btn-toolbar"
           >
             — Rule
           </button>
           <button
             @click="editor?.chain().focus().undo().run()"
             :disabled="!editor?.can().undo()"
-            class="toolbar-btn"
+            class="btn-toolbar"
           >
             ↶ Undo
           </button>
           <button
             @click="editor?.chain().focus().redo().run()"
             :disabled="!editor?.can().redo()"
-            class="toolbar-btn"
+            class="btn-toolbar"
           >
             ↷ Redo
           </button>

@@ -154,13 +154,16 @@
   background: var(--color-surface);
 }
 
-/* Catalog/D&D Specific Tables */
+/* Catalog/D&D Specific Tables - DEPRECATED: Now using consolidated catalog-tables.css */
+/*
 .catalog-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
+*/
 
+/*
 .catalog-table th {
   background: var(--color-surface-variant);
   padding: var(--spacing-sm);
@@ -181,6 +184,7 @@
   background: var(--color-surface-hover);
   cursor: pointer;
 }
+*/
 
 /* Spell Table Specific */
 .spell-level-0 { color: var(--color-gray-600); }

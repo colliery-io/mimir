@@ -1,0 +1,168 @@
+/* ========================================
+   Catalog Table Components - SIMPLIFIED
+   ======================================== */
+
+/* Base catalog table container */
+.catalog-table {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+/* Table content area */
+.catalog-table__content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* SIMPLE TABLE STYLES - NO BEM COMPLEXITY */
+.catalog-table table,
+.catalog-table .catalog-table__table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  background: var(--color-surface);
+}
+
+.catalog-table th,
+.catalog-table .catalog-table__th {
+  background: var(--color-surface-variant) !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+  padding: 16px !important;
+  border: 1px solid var(--color-border) !important;
+  font-size: 0.9rem !important;
+  line-height: 1.4 !important;
+}
+
+.catalog-table td,
+.catalog-table .catalog-table__td {
+  padding: 16px !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  font-size: 0.9rem !important;
+  line-height: 1.5 !important;
+  vertical-align: top !important;
+}
+
+/* Row styling */
+.catalog-table tr,
+.catalog-table .catalog-table__row {
+  transition: background-color 0.2s ease;
+}
+
+.catalog-table tbody tr:hover,
+.catalog-table .catalog-table__row:hover {
+  background-color: var(--color-surface-variant) !important;
+}
+
+.catalog-table tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.catalog-table tbody tr:nth-child(even):hover {
+  background-color: var(--color-surface-variant) !important;
+}
+
+/* Content styling */
+.catalog-table .catalog-table__name {
+  font-weight: 600;
+}
+
+.catalog-table .catalog-table__center {
+  text-align: center;
+}
+
+.catalog-table .catalog-table__description {
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.catalog-table .catalog-table__secondary {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.catalog-table .catalog-table__source {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.catalog-table .catalog-table__empty {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Badge styles */
+.catalog-table .catalog-table__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.catalog-table .catalog-table__badge--primary {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.catalog-table .catalog-table__badge--secondary {
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-secondary);
+}
+
+.catalog-table .catalog-table__badge--srd {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-700);
+  margin-left: 8px;
+}
+
+.catalog-table .catalog-table__badge--source {
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-secondary);
+}
+
+/* Sortable headers */
+.catalog-table .catalog-table__th--sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.catalog-table .catalog-table__th--sortable:hover {
+  background-color: var(--color-border) !important;
+}
+
+.catalog-table .catalog-table__sort-indicator {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+/* Fixed column widths for ActionTable */
+.catalog-table[data-table="action"] table {
+  table-layout: fixed;
+}
+
+.catalog-table[data-table="action"] th:nth-child(1),
+.catalog-table[data-table="action"] td:nth-child(1) { width: 15%; }
+
+.catalog-table[data-table="action"] th:nth-child(2),
+.catalog-table[data-table="action"] td:nth-child(2) { width: 12%; }
+
+.catalog-table[data-table="action"] th:nth-child(3),
+.catalog-table[data-table="action"] td:nth-child(3) { width: 45%; }
+
+.catalog-table[data-table="action"] th:nth-child(4),
+.catalog-table[data-table="action"] td:nth-child(4) { width: 18%; }
+
+.catalog-table[data-table="action"] th:nth-child(5),
+.catalog-table[data-table="action"] td:nth-child(5) { width: 10%; }
