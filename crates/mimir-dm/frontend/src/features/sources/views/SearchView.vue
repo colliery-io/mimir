@@ -21,12 +21,6 @@
         </div>
       </div>
       
-      <SearchFilters 
-        v-if="showFilters"
-        :category="selectedCategory"
-        :filters="filters"
-        @update="filters = $event; performSearch()"
-      />
     </div>
     
     <!-- Content -->
@@ -81,11 +75,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, toRef } from 'vue'
+import { onMounted, toRef } from 'vue'
 import { useSearch } from '../composables/useSearch'
 import BaseModal from '@/components/shared/BaseModal.vue'
 import ContentCategoryTabs from '../components/search/ContentCategoryTabs.vue'
-import SearchFilters from '../components/search/SearchFilters.vue'
 import SearchResults from '../components/search/SearchResults.vue'
 
 interface Props {
@@ -138,9 +131,6 @@ const {
   initialize
 } = useSearch(props.selectedCategory, sourcesRef)
 
-const showFilters = computed(() => {
-  return ['Spells', 'Equipment', 'Magic Items'].includes(selectedCategory.value)
-})
 
 onMounted(() => {
   initialize()

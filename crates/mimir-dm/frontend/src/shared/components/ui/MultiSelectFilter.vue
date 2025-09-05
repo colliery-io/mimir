@@ -100,7 +100,7 @@ function selectAll() {
 // Close dropdown when clicking outside
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement
-  if (!target.closest('.multi-select-filter')) {
+  if (!target.closest('.form-select-custom')) {
     isOpen.value = false
   }
 }

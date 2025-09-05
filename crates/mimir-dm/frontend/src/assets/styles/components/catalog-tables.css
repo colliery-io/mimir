@@ -166,3 +166,58 @@
 
 .catalog-table[data-table="action"] th:nth-child(5),
 .catalog-table[data-table="action"] td:nth-child(5) { width: 10%; }
+
+/* ========================================
+   Catalog Table Header & Filters Layout
+   ======================================== */
+
+.catalog-table__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 12px);
+  padding: var(--spacing-lg, 16px);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.catalog-table__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.catalog-table__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md, 12px);
+  align-items: center;
+}
+
+/* Responsive filter layout */
+@media (max-width: 768px) {
+  .catalog-table__filters {
+    gap: var(--spacing-sm, 8px);
+  }
+}
+
+.catalog-table__filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+}
+
+.catalog-table__results-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm, 8px) var(--spacing-lg, 16px);
+  background: var(--color-surface-variant);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.catalog-table__result-count {
+  font-weight: 500;
+}
