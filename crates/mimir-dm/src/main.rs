@@ -18,6 +18,7 @@ use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_deta
 use commands::catalog_object::{init_object_catalog, search_objects, get_object_details, get_object_types};
 use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, get_trap_types};
 use commands::catalog_language_db::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
+use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
 use services::llm_service::{self, LlmService, ConfirmationReceivers};
@@ -128,8 +129,7 @@ fn main() {
             app.manage(trap_catalog);
             // Language catalog now uses database-backed service (no state needed)
             
-            let reward_catalog = std::sync::Mutex::new(commands::catalog_reward::RewardCatalog::new());
-            app.manage(reward_catalog);
+            // Reward catalog now uses database-backed service (no state needed)
             
             let table_catalog = std::sync::Mutex::new(commands::catalog_table::TableCatalog::new());
             app.manage(table_catalog);
@@ -281,11 +281,11 @@ fn main() {
             get_language_sources,
             get_language_count,
             // Reward catalog commands
-            commands::catalog_reward::initialize_reward_catalog,
-            commands::catalog_reward::search_rewards,
-            commands::catalog_reward::get_reward_details,
-            commands::catalog_reward::get_reward_types,
-            commands::catalog_reward::get_reward_sources,
+            search_rewards,
+            get_reward_details,
+            get_reward_types,
+            get_reward_sources,
+            get_reward_count,
             // Table catalog commands
             commands::catalog_table::init_table_catalog,
             commands::catalog_table::search_tables,

@@ -68,7 +68,7 @@ pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary};
 
 pub use language::{Language, LanguageData, LanguageSummary, LanguageFluff, LanguageFluffData, CatalogLanguage, NewCatalogLanguage, LanguageFilters};
 
-pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData};
+pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData, CatalogReward, NewCatalogReward, RewardFilters};
 
 pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData};
 

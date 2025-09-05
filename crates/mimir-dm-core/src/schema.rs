@@ -174,6 +174,19 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_rewards (id) {
+        id -> Integer,
+        name -> Text,
+        reward_type -> Text,
+        description -> Text,
+        has_prerequisites -> Integer,
+        is_srd -> Integer,
+        source -> Text,
+        full_reward_json -> Text,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -196,6 +209,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_actions,
     catalog_conditions,
     catalog_languages,
+    catalog_rewards,
     catalog_spells,
     catalog_sources,
     uploaded_books,

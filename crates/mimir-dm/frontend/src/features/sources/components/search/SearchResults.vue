@@ -145,6 +145,7 @@
     <RewardTable
       v-else-if="category === 'Rewards'"
       :rewards="results"
+      :search-performed="searchPerformed"
       :sort-column="sortColumn"
       :sort-direction="sortDirection"
       @select="$emit('select-reward', $event)"

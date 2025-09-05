@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_rewards;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reward {
@@ -70,13 +72,7 @@ fn extract_first_entry(entries: &Option<Vec<serde_json::Value>>) -> String {
     if let Some(entries) = entries {
         if let Some(first) = entries.first() {
             if let serde_json::Value::String(s) = first {
-                // Truncate for summary
-                let cleaned = s.replace(|c: char| c == '{' || c == '}' || c == '@', "");
-                if cleaned.len() > 150 {
-                    format!("{}...", &cleaned[..147])
-                } else {
-                    cleaned
-                }
+                s.clone()
             } else {
                 "Complex reward description".to_string()
             }
@@ -107,4 +103,57 @@ pub struct RewardFluff {
 pub struct RewardFluffData {
     #[serde(rename = "rewardFluff")]
     pub reward_fluff: Option<Vec<RewardFluff>>,
+}
+
+// Database models
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = catalog_rewards)]
+pub struct CatalogReward {
+    pub id: i32,
+    pub name: String,
+    pub reward_type: String,
+    pub description: String,
+    pub has_prerequisites: i32, // SQLite INTEGER for boolean
+    pub is_srd: i32, // SQLite INTEGER for boolean
+    pub source: String,
+    pub full_reward_json: String,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = catalog_rewards)]
+pub struct NewCatalogReward {
+    pub name: String,
+    pub reward_type: String,
+    pub description: String,
+    pub has_prerequisites: i32,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_reward_json: String,
+}
+
+impl From<Reward> for NewCatalogReward {
+    fn from(reward: Reward) -> Self {
+        let summary = RewardSummary::from(&reward);
+        let json = serde_json::to_string(&reward).unwrap_or_default();
+        
+        Self {
+            name: summary.name,
+            reward_type: summary.reward_type,
+            description: summary.description,
+            has_prerequisites: if summary.has_prerequisites { 1 } else { 0 },
+            is_srd: if reward.srd.unwrap_or(false) { 1 } else { 0 },
+            source: summary.source,
+            full_reward_json: json,
+        }
+    }
+}
+
+// Filter struct for search operations
+#[derive(Debug, Default)]
+pub struct RewardFilters {
+    pub name: Option<String>,
+    pub search: Option<String>,
+    pub reward_types: Option<Vec<String>>,
+    pub sources: Option<Vec<String>>,
+    pub has_prerequisites: Option<bool>,
 }
