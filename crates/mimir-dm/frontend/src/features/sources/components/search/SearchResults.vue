@@ -69,7 +69,11 @@
     <BackgroundTable
       v-else-if="category === 'Backgrounds'"
       :backgrounds="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
       @select="$emit('select-background', $event)"
+      @sort="$emit('sort', $event)"
     />
     
     <ActionTable

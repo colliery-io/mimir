@@ -11,7 +11,7 @@ mod types;
 use app_init::{initialize_app, AppPaths};
 use commands::*;
 use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
-use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details};
+// use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details}; // Replaced by catalog_background_db
 use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
 use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
 use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
@@ -19,6 +19,7 @@ use commands::catalog_object::{init_object_catalog, search_objects, get_object_d
 use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, get_trap_types};
 use commands::catalog_language_db::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
 use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
+use commands::catalog_background_db::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
 use services::llm_service::{self, LlmService, ConfirmationReceivers};
@@ -107,7 +108,7 @@ fn main() {
             let class_catalog = Mutex::new(commands::catalog_class::ClassCatalog::new());
             let feat_catalog = Mutex::new(commands::catalog_feat::FeatCatalog::new());
             let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
-            let background_catalog = Mutex::new(commands::catalog_background::BackgroundCatalog::new());
+            // Background catalog now uses database-backed service
             // Action catalog now uses database-backed service
             // Condition catalog now uses database-backed service
             let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
@@ -120,7 +121,7 @@ fn main() {
             app.manage(class_catalog);
             app.manage(feat_catalog);
             app.manage(race_catalog);
-            app.manage(background_catalog);
+            // Background catalog now uses database-backed service (no state needed)
             // Action catalog now uses database-backed service (no state needed)
             // Condition catalog now uses database-backed service (no state needed)
             app.manage(optional_feature_catalog);
@@ -240,9 +241,10 @@ fn main() {
             search_races,
             get_race_details,
             // Background catalog commands
-            init_background_catalog,
             search_backgrounds,
             get_background_details,
+            get_background_sources,
+            get_background_count,
             // Action catalog commands
             search_actions,
             get_action,

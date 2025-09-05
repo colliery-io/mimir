@@ -14,7 +14,7 @@ pub mod catalog_spell;
 pub mod catalog_class;
 pub mod catalog_feat;
 pub mod catalog_action;
-pub mod catalog_background;
+// pub mod catalog_background; // Replaced by catalog_background_db
 pub mod catalog_condition;
 pub mod catalog_race;
 pub mod catalog_optionalfeature;
@@ -30,6 +30,7 @@ pub mod catalog_cult;
 pub mod catalog_psionic;
 pub mod catalog_language_db;
 pub mod catalog_reward_db;
+pub mod catalog_background_db;
 pub mod context;
 pub mod window_manager;
 pub mod chat_sessions;

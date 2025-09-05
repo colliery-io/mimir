@@ -113,6 +113,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_backgrounds (id) {
+        id -> Integer,
+        name -> Text,
+        skills -> Text,
+        languages -> Text,
+        tools -> Text,
+        feature -> Text,
+        is_srd -> Integer,
+        source -> Text,
+        full_background_json -> Text,
+        created_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
     catalog_conditions (id) {
         id -> Integer,
         name -> Text,
@@ -207,6 +222,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     template_documents,
     documents,
     catalog_actions,
+    catalog_backgrounds,
     catalog_conditions,
     catalog_languages,
     catalog_rewards,

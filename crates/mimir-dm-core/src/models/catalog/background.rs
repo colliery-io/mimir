@@ -175,3 +175,74 @@ fn titlecase(s: &str) -> String {
         Some(first) => first.to_uppercase().chain(chars).collect(),
     }
 }
+
+// Database models for catalog_backgrounds table
+use diesel::prelude::*;
+use crate::schema::catalog_backgrounds;
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = catalog_backgrounds)]
+pub struct CatalogBackground {
+    pub id: i32,
+    pub name: String,
+    pub skills: String,
+    pub languages: String,
+    pub tools: String,
+    pub feature: String,
+    pub is_srd: i32, // SQLite INTEGER for boolean
+    pub source: String,
+    pub full_background_json: String,
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = catalog_backgrounds)]
+pub struct NewCatalogBackground {
+    pub name: String,
+    pub skills: String,
+    pub languages: String,
+    pub tools: String,
+    pub feature: String,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_background_json: String,
+}
+
+impl From<&Background> for NewCatalogBackground {
+    fn from(background: &Background) -> Self {
+        let summary = BackgroundSummary::from(background);
+        let full_json = serde_json::to_string(background).unwrap_or_default();
+        let is_srd = if background.srd.unwrap_or(false) || background.basic_rules.unwrap_or(false) { 1 } else { 0 };
+
+        Self {
+            name: summary.name,
+            skills: summary.skills,
+            languages: summary.languages,
+            tools: summary.tools,
+            feature: summary.feature,
+            is_srd,
+            source: summary.source,
+            full_background_json: full_json,
+        }
+    }
+}
+
+impl From<&CatalogBackground> for BackgroundSummary {
+    fn from(bg: &CatalogBackground) -> Self {
+        Self {
+            name: bg.name.clone(),
+            source: bg.source.clone(),
+            skills: bg.skills.clone(),
+            languages: bg.languages.clone(),
+            tools: bg.tools.clone(),
+            feature: bg.feature.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct BackgroundFilters {
+    pub search_pattern: Option<String>,
+    pub sources: Option<Vec<String>>,
+    pub has_tools: Option<bool>,
+}

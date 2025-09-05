@@ -50,7 +50,7 @@ pub use feat::{Feat, FeatData, FeatSummary};
 
 pub use race::{Race, RaceData, RaceSummary, Subrace, RaceFluff, RaceFluffData};
 
-pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFluff, BackgroundFluffData, BackgroundWithDetails};
+pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFluff, BackgroundFluffData, BackgroundWithDetails, CatalogBackground, NewCatalogBackground, BackgroundFilters};
 
 pub use book::{UploadedBook, NewUploadedBook};
 
