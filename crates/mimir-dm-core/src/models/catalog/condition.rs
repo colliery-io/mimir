@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_conditions;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Condition {
@@ -101,45 +103,21 @@ impl From<&Disease> for ConditionSummary {
 }
 
 fn extract_description(entries: &[serde_json::Value]) -> String {
-    if entries.is_empty() {
-        return String::new();
-    }
-    
-    // Get first entry or first item in list
-    let first_text = if let Some(first) = entries.first() {
-        if let Some(s) = first.as_str() {
-            s.to_string()
-        } else if let Some(obj) = first.as_object() {
-            if let Some(items) = obj.get("items").and_then(|i| i.as_array()) {
-                // Get first list item as description
-                items.first()
+    entries.first()
+        .and_then(|entry| {
+            if let Some(s) = entry.as_str() {
+                Some(s.to_string())
+            } else if let Some(obj) = entry.as_object() {
+                obj.get("items")
+                    .and_then(|items| items.as_array())
+                    .and_then(|arr| arr.first())
                     .and_then(|item| item.as_str())
-                    .unwrap_or("")
-                    .to_string()
+                    .map(|s| s.to_string())
             } else {
-                "Effect".to_string()
+                None
             }
-        } else {
-            "Effect".to_string()
-        }
-    } else {
-        String::new()
-    };
-    
-    // Clean up formatting tags and truncate if needed
-    let cleaned = first_text
-        .replace("{@", "")
-        .replace("}", "")
-        .split('|')
-        .next()
-        .unwrap_or(&first_text)
-        .to_string();
-    
-    if cleaned.len() > 150 {
-        format!("{}...", &cleaned[..147])
-    } else {
-        cleaned
-    }
+        })
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,4 +125,84 @@ pub struct ConditionWithDetails {
     #[serde(flatten)]
     pub item: ConditionOrDisease,
     pub fluff: Option<ConditionFluff>,
+}
+
+/// Database model for catalog_conditions table
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = catalog_conditions)]
+pub struct CatalogCondition {
+    pub id: i32,
+    pub name: String,
+    pub item_type: String,    // "Condition" or "Disease"
+    pub description: String,  // First entry as description
+    pub is_srd: i32,         // SQLite boolean as INTEGER (0/1)
+    pub source: String,
+    pub full_condition_json: String, // Complete condition/disease JSON
+}
+
+/// For inserting new conditions into the database
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = catalog_conditions)]
+pub struct NewCatalogCondition {
+    pub name: String,
+    pub item_type: String,
+    pub description: String,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_condition_json: String,
+}
+
+/// Condition search filters for database queries
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConditionFilters {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub item_types: Option<Vec<String>>, // Filter by "Condition", "Disease"
+    #[serde(default)]
+    pub sources: Option<Vec<String>>,
+    #[serde(default)]
+    pub search: Option<String>, // General search term
+}
+
+impl From<CatalogCondition> for ConditionSummary {
+    fn from(catalog_condition: CatalogCondition) -> Self {
+        Self {
+            name: catalog_condition.name,
+            source: catalog_condition.source,
+            item_type: catalog_condition.item_type,
+            description: catalog_condition.description,
+            is_srd: catalog_condition.is_srd == 1, // Convert INTEGER to bool
+        }
+    }
+}
+
+impl From<Condition> for NewCatalogCondition {
+    fn from(condition: Condition) -> Self {
+        let description = extract_description(&condition.entries);
+        
+        Self {
+            name: condition.name.clone(),
+            item_type: "Condition".to_string(),
+            description,
+            is_srd: if condition.srd.unwrap_or(false) { 1 } else { 0 }, // Convert bool to INTEGER
+            source: condition.source.clone(),
+            full_condition_json: serde_json::to_string(&condition).unwrap_or_default(),
+        }
+    }
+}
+
+impl From<Disease> for NewCatalogCondition {
+    fn from(disease: Disease) -> Self {
+        let description = extract_description(&disease.entries);
+        
+        Self {
+            name: disease.name.clone(),
+            item_type: "Disease".to_string(),
+            description,
+            is_srd: 0, // Diseases typically aren't SRD
+            source: disease.source.clone(),
+            full_condition_json: serde_json::to_string(&disease).unwrap_or_default(),
+        }
+    }
 }

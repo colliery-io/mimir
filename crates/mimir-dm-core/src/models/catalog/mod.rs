@@ -56,7 +56,7 @@ pub use book::{UploadedBook, NewUploadedBook};
 
 pub use action::{Action, ActionTime, CatalogAction, NewCatalogAction, ActionFilters, ActionSummary};
 
-pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSummary, ConditionOrDisease, ConditionWithDetails, ConditionFluff, ConditionFluffData};
+pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSummary, ConditionOrDisease, ConditionWithDetails, ConditionFluff, ConditionFluffData, CatalogCondition, NewCatalogCondition, ConditionFilters};
 
 pub use optionalfeature::{OptionalFeature, OptionalFeatureData, OptionalFeatureSummary};
 

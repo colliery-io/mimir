@@ -10,6 +10,7 @@ pub mod template_service;
 pub mod catalog_service;
 pub mod spell_service;
 pub mod action_service;
+pub mod condition_service;
 
 // Re-export services
 pub use campaign_service::CampaignService;
@@ -19,3 +20,4 @@ pub use template_service::TemplateService;
 pub use catalog_service::CatalogService;
 pub use spell_service::SpellService;
 pub use action_service::ActionService;
+pub use condition_service::ConditionService;

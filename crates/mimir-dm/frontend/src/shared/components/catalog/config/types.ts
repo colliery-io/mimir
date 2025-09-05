@@ -4,8 +4,8 @@ export interface ColumnDef {
   label: string
   sortable?: boolean
   width?: string
-  type?: 'text' | 'badge' | 'badges' | 'number' | 'array'
-  formatter?: (value: any) => string | string[]
+  type?: 'text' | 'badge' | 'badges' | 'number' | 'array' | 'source'
+  formatter?: (value: any) => string | string[] | { text: string; variant: string } | { source: string; showSrd: boolean }
   badgeType?: string
   className?: string
 }
@@ -46,6 +46,7 @@ export interface CatalogConfig {
     details: string
     sources?: string
     timeTypes?: string
+    itemTypes?: string
   }
   emptyMessage?: {
     title: string

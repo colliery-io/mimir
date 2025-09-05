@@ -12,7 +12,7 @@ use app_init::{initialize_app, AppPaths};
 use commands::*;
 use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
 use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details};
-use commands::catalog_condition::{init_condition_catalog, search_conditions, get_condition_details};
+use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
 use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
 use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
 use commands::catalog_object::{init_object_catalog, search_objects, get_object_details, get_object_types};
@@ -108,7 +108,7 @@ fn main() {
             let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
             let background_catalog = Mutex::new(commands::catalog_background::BackgroundCatalog::new());
             // Action catalog now uses database-backed service
-            let condition_catalog = Mutex::new(commands::catalog_condition::ConditionCatalog::new());
+            // Condition catalog now uses database-backed service
             let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
             let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
             let object_catalog = Mutex::new(commands::catalog_object::ObjectCatalog::new());
@@ -121,7 +121,7 @@ fn main() {
             app.manage(race_catalog);
             app.manage(background_catalog);
             // Action catalog now uses database-backed service (no state needed)
-            app.manage(condition_catalog);
+            // Condition catalog now uses database-backed service (no state needed)
             app.manage(optional_feature_catalog);
             app.manage(deity_catalog);
             app.manage(object_catalog);
@@ -247,9 +247,11 @@ fn main() {
             search_actions,
             get_action,
             // Condition catalog commands
-            init_condition_catalog,
             search_conditions,
-            get_condition_details,
+            get_condition,
+            get_condition_item_types,
+            get_condition_sources,
+            get_condition_count,
             // Optional feature catalog commands
             init_optional_feature_catalog,
             search_optional_features,

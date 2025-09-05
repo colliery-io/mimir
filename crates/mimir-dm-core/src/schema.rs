@@ -113,6 +113,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_conditions (id) {
+        id -> Integer,
+        name -> Text,
+        item_type -> Text,
+        description -> Text,
+        is_srd -> Integer,
+        source -> Text,
+        full_condition_json -> Text,
+    }
+}
+
+diesel::table! {
     catalog_spells (id) {
         id -> Integer,
         name -> Text,
@@ -169,6 +181,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     template_documents,
     documents,
     catalog_actions,
+    catalog_conditions,
     catalog_spells,
     catalog_sources,
     uploaded_books,

@@ -85,7 +85,11 @@
     <ConditionTable
       v-else-if="category === 'Conditions'"
       :conditions="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
       @select="$emit('select-condition', $event)"
+      @sort="$emit('sort', $event)"
     />
     
     <OptionsTable
