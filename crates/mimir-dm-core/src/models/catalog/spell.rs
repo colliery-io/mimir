@@ -1,6 +1,8 @@
 //! Spell catalog models
 
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_spells;
 
 /// A D&D 5e spell
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,6 +276,200 @@ impl From<&Spell> for SpellSummary {
             components,
             classes,
             description,
+        }
+    }
+}
+
+/// Database model for a spell in the catalog_spells table
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = catalog_spells)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CatalogSpell {
+    pub id: i32,
+    pub name: String,
+    pub level: i32,
+    pub school: String,
+    pub cast_time: String,
+    pub range: String,
+    pub components: String,
+    pub tags: String,           // JSON string of tags array
+    pub source: String,
+    pub full_spell_json: String, // Complete spell JSON for modal display
+}
+
+/// Insertable model for new spells in the database
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = catalog_spells)]
+pub struct NewCatalogSpell {
+    pub name: String,
+    pub level: i32,
+    pub school: String,
+    pub cast_time: String,
+    pub range: String,
+    pub components: String,
+    pub tags: String,
+    pub source: String,
+    pub full_spell_json: String,
+}
+
+impl CatalogSpell {
+    /// Convert database spell to frontend SpellSummary
+    pub fn to_summary(&self) -> SpellSummary {
+        // Parse tags to extract boolean flags
+        let tags: Vec<String> = serde_json::from_str(&self.tags).unwrap_or_default();
+        let concentration = tags.contains(&"Concentration".to_string());
+        let ritual = tags.contains(&"Ritual".to_string());
+        
+        // Parse full spell JSON to extract classes and description
+        let full_spell: serde_json::Value = serde_json::from_str(&self.full_spell_json).unwrap_or_default();
+        
+        let classes = full_spell
+            .get("classes")
+            .and_then(|c| c.get("fromClassList"))
+            .and_then(|list| list.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|class| class.get("name")?.as_str())
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+        
+        let description = full_spell
+            .get("entries")
+            .and_then(|entries| entries.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|entry| entry.as_str())
+            .unwrap_or("")
+            .chars()
+            .take(200)
+            .collect::<String>();
+        
+        SpellSummary {
+            name: self.name.clone(),
+            level: self.level as u8,
+            school: self.school.clone(),
+            source: self.source.clone(),
+            concentration,
+            ritual,
+            casting_time: self.cast_time.clone(),
+            range: self.range.clone(),
+            components: self.components.clone(),
+            classes,
+            description,
+        }
+    }
+}
+
+/// Spell filter parameters for database queries
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpellFilters {
+    pub query: Option<String>,      // Name search
+    pub levels: Vec<i32>,          // Filter by level
+    pub schools: Vec<String>,       // Filter by school
+    pub sources: Vec<String>,       // Filter by book
+    pub tags: Vec<String>,          // Filter by tags (concentration, ritual, etc.)
+    pub limit: Option<i32>,         // Pagination
+    pub offset: Option<i32>,
+}
+
+impl Default for SpellFilters {
+    fn default() -> Self {
+        Self {
+            query: None,
+            levels: vec![],
+            schools: vec![],
+            sources: vec![],
+            tags: vec![],
+            limit: None,
+            offset: None,
+        }
+    }
+}
+
+impl NewCatalogSpell {
+    /// Transform a JSON spell into a database-ready format
+    pub fn from_spell(spell: Spell, source: &str) -> Self {
+        // Format casting time
+        let cast_time = spell.time.first()
+            .map(|t| {
+                let base = format!("{} {}", t.number, t.unit);
+                if let Some(condition) = &t.condition {
+                    format!("{} ({})", base, condition)
+                } else {
+                    base
+                }
+            })
+            .unwrap_or_else(|| "Unknown".to_string());
+        
+        // Format range
+        let range = match &spell.range {
+            SpellRange::Point { distance, .. } => {
+                if let Some(amount) = distance.amount {
+                    format!("{} {}", amount, distance.distance_type)
+                } else {
+                    distance.distance_type.clone()
+                }
+            },
+            SpellRange::Special { range_type } => range_type.clone(),
+        };
+        
+        // Format components
+        let mut comp_parts = Vec::new();
+        if spell.components.v.unwrap_or(false) { 
+            comp_parts.push("V".to_string()); 
+        }
+        if spell.components.s.unwrap_or(false) { 
+            comp_parts.push("S".to_string()); 
+        }
+        if spell.components.m.is_some() { 
+            comp_parts.push("M".to_string()); 
+        }
+        let components = comp_parts.join(", ");
+        
+        // Build tags array
+        let mut tags = Vec::new();
+        
+        // Check for concentration
+        if spell.duration.iter().any(|d| d.concentration.unwrap_or(false)) {
+            tags.push("Concentration".to_string());
+        }
+        
+        // Check for ritual
+        if spell.meta.as_ref().map(|m| m.ritual).unwrap_or(false) {
+            tags.push("Ritual".to_string());
+        }
+        
+        // Check for SRD
+        if let Some(srd_value) = spell.entries.iter()
+            .find_map(|entry| entry.get("srd"))
+            .and_then(|v| v.as_bool())
+        {
+            if srd_value {
+                tags.push("SRD".to_string());
+            }
+        }
+        
+        // Check for Basic Rules
+        if let Some(basic_rules) = spell.entries.iter()
+            .find_map(|entry| entry.get("basicRules"))
+            .and_then(|v| v.as_bool())
+        {
+            if basic_rules {
+                tags.push("Basic Rules".to_string());
+            }
+        }
+        
+        Self {
+            name: spell.name.clone(),
+            level: spell.level as i32,
+            school: spell.school.as_str().to_string(),
+            cast_time,
+            range,
+            components,
+            tags: serde_json::to_string(&tags).unwrap_or_else(|_| "[]".to_string()),
+            source: source.to_string(),
+            full_spell_json: serde_json::to_string(&spell).unwrap_or_else(|_| "{}".to_string()),
         }
     }
 }

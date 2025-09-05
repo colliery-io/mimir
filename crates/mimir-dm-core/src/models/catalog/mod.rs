@@ -43,6 +43,7 @@ pub use spell::{
     CastingTime, ClassReference, Classes, Components, Distance, Duration,
     DurationValue, MaterialComponent, ScalingLevelDice, Spell, SpellData, SpellMeta,
     SpellRange, SpellSchool, SpellSummary, SubclassReference, SubclassReference2,
+    CatalogSpell, NewCatalogSpell, SpellFilters,
 };
 
 pub use feat::{Feat, FeatData, FeatSummary};

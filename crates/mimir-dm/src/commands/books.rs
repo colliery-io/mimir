@@ -15,6 +15,7 @@ use serde_json::Value;
 use diesel::prelude::*;
 use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
+use mimir_dm_core::services::CatalogService;
 use chrono::Utc;
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit)
@@ -205,6 +206,24 @@ pub async fn upload_book_archive(
     
     info!("Successfully imported book '{}'", book_name);
     
+    // Import catalog content automatically
+    match crate::db_connection::get_connection() {
+        Ok(mut catalog_conn) => {
+            match CatalogService::import_spells_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+                Ok(spell_count) => {
+                    info!("Imported {} spells from book '{}'", spell_count, book_name);
+                }
+                Err(e) => {
+                    warn!("Book uploaded successfully but failed to import spells: {}", e);
+                    // Don't fail the entire upload for catalog import errors
+                }
+            }
+        }
+        Err(e) => {
+            warn!("Book uploaded successfully but couldn't connect to database for catalog import: {}", e);
+        }
+    }
+    
     // Return simple BookInfo 
     Ok(ApiResponse::success(BookInfo {
         id: book_id,
@@ -251,10 +270,6 @@ pub async fn remove_book_from_library(
 ) -> Result<ApiResponse<()>, String> {
     info!("Removing book from library: {}", book_id);
     
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
-    
     // First, get book info from database to know what to clean up
     let book_record = match crate::db_connection::get_connection() {
         Ok(mut conn) => {
@@ -287,9 +302,9 @@ pub async fn remove_book_from_library(
                     diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
                         .execute(conn)?;
                     
-                    // TODO: Also delete related catalog data when that's implemented
-                    // diesel::delete(catalog_spells::table.filter(catalog_spells::source.eq(&book_id)))
-                    //     .execute(conn)?;
+                    // Delete related catalog data
+                    let _ = CatalogService::remove_spells_by_source(conn, &book_id);
+                    // We don't want catalog cleanup errors to fail the book removal
                     
                     Ok(())
                 });
@@ -520,40 +535,6 @@ fn find_book_content_file(dir: &Path) -> Result<Option<PathBuf>, String> {
     Ok(None)
 }
 
-/// Count images recursively in a directory
-fn count_images_recursive(dir: &Path) -> usize {
-    let mut count = 0;
-    
-    for entry in walkdir::WalkDir::new(dir) {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if matches!(ext.to_lowercase().as_str(), "png" | "jpg" | "jpeg" | "webp" | "gif") {
-                        count += 1;
-                    }
-                }
-            }
-        }
-    }
-    
-    count
-}
-
-/// Get total size of a directory recursively
-fn get_directory_size(dir: &Path) -> u64 {
-    let mut size = 0;
-    
-    for entry in walkdir::WalkDir::new(dir) {
-        if let Ok(entry) = entry {
-            if let Ok(metadata) = entry.metadata() {
-                size += metadata.len();
-            }
-        }
-    }
-    
-    size
-}
 
 /// Copy directory recursively
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), std::io::Error> {

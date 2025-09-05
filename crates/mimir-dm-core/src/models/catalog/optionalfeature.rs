@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionalFeature {
@@ -35,7 +34,7 @@ pub struct Prerequisite {
     pub patron: Option<String>,
     pub feature: Option<Vec<String>>,
     pub item: Option<Vec<String>>,
-    pub otherSummary: Option<String>,
+    pub other_summary: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,7 +160,7 @@ fn format_prerequisites(prereqs: &Option<Vec<Prerequisite>>) -> String {
                 } else {
                     None
                 }
-            } else if let Some(summary) = &p.otherSummary {
+            } else if let Some(summary) = &p.other_summary {
                 Some(summary.clone())
             } else {
                 None

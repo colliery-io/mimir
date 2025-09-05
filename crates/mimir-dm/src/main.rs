@@ -101,7 +101,6 @@ fn main() {
             app.manage(llm_service);
             
             // Initialize catalogs
-            let spell_catalog = Mutex::new(commands::catalog::SpellCatalog::new());
             let item_catalog = Mutex::new(commands::catalog::ItemCatalog::new());
             let monster_catalog = Mutex::new(commands::catalog::MonsterCatalog::new());
             let class_catalog = Mutex::new(commands::catalog_class::ClassCatalog::new());
@@ -115,7 +114,6 @@ fn main() {
             let object_catalog = Mutex::new(commands::catalog_object::ObjectCatalog::new());
             let trap_catalog = Mutex::new(commands::catalog_trap::TrapCatalog::new());
             let language_catalog = Mutex::new(commands::catalog_language::LanguageCatalog::new());
-            app.manage(spell_catalog);
             app.manage(item_catalog);
             app.manage(monster_catalog);
             app.manage(class_catalog);
@@ -208,9 +206,12 @@ fn main() {
             install_dev_test_book,
             remove_dev_test_book,
             // Catalog commands
-            initialize_spell_catalog,
             search_spells,
             get_spell_details,
+            get_spell_sources,
+            get_spell_schools,
+            get_spell_statistics,
+            get_spell_count,
             initialize_item_catalog,
             search_items,
             get_item_details,
