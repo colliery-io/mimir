@@ -100,6 +100,43 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_spells (id) {
+        id -> Integer,
+        name -> Text,
+        level -> Integer,
+        school -> Text,
+        cast_time -> Text,
+        range -> Text,
+        components -> Text,
+        tags -> Text,
+        source -> Text,
+        full_spell_json -> Text,
+    }
+}
+
+diesel::table! {
+    catalog_sources (source_name) {
+        source_name -> Text,
+        catalog_type -> Text,
+        last_imported -> Nullable<Text>,
+        file_path -> Text,
+        file_hash -> Text,
+        record_count -> Integer,
+    }
+}
+
+diesel::table! {
+    uploaded_books (id) {
+        id -> Text,
+        name -> Text,
+        location -> Text,
+        archive_path -> Text,
+        uploaded_at -> Text,
+        metadata_json -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -119,4 +156,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     workflow_card_tags,
     template_documents,
     documents,
+    catalog_spells,
+    catalog_sources,
+    uploaded_books,
 );

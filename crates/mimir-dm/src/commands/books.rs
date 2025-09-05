@@ -6,12 +6,16 @@ use crate::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info, debug};
+use tracing::{error, info, debug, warn};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use tar::Archive;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use diesel::prelude::*;
+use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
+use mimir_dm_core::schema::uploaded_books;
+use chrono::Utc;
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit)
 #[tauri::command]
@@ -89,6 +93,23 @@ pub async fn upload_book_archive(
     let book_id = book_id
         .ok_or_else(|| "No book directory found in archive".to_string())?;
     
+    // Check database for collision before doing any work
+    match crate::db_connection::get_connection() {
+        Ok(mut conn) => {
+            let existing: Result<UploadedBook, _> = uploaded_books::table
+                .filter(uploaded_books::id.eq(&book_id))
+                .first(&mut conn);
+                
+            if existing.is_ok() {
+                return Ok(ApiResponse::error(format!("Book '{}' is already uploaded. Please remove it first.", book_id)));
+            }
+        }
+        Err(e) => {
+            error!("Database connection error during collision check: {}", e);
+            return Ok(ApiResponse::error("Database error - please try again".to_string()));
+        }
+    }
+    
     // Extract book name from metadata or book data
     let book_name = book_metadata
         .as_ref()
@@ -110,111 +131,115 @@ pub async fn upload_book_archive(
         return Ok(ApiResponse::error(format!("Book '{}' already exists", book_name)));
     }
     
+    // Create archives directory if it doesn't exist
+    let archives_dir = app_paths.data_dir.join("archives");
+    if !archives_dir.exists() {
+        fs::create_dir_all(&archives_dir)
+            .map_err(|e| format!("Failed to create archives directory: {}", e))?;
+        info!("Created archives directory at: {:?}", archives_dir);
+    }
+    
+    // Strategy: Do all database work first, then move files
+    // This way if database fails, we haven't moved anything yet
+    
+    // Create database record first
+    let archive_destination = archives_dir.join(format!("{}.tar.gz", book_id));
+    let new_book = NewUploadedBook {
+        id: book_id.clone(),
+        name: book_name.clone(),
+        location: final_book_dir.to_string_lossy().to_string(),
+        archive_path: archive_destination.to_string_lossy().to_string(),
+        uploaded_at: Utc::now().to_rfc3339(),
+        metadata_json: book_metadata.map(|m| m.to_string()),
+    };
+    
+    match crate::db_connection::get_connection() {
+        Ok(mut conn) => {
+            match diesel::insert_into(uploaded_books::table)
+                .values(&new_book)
+                .execute(&mut conn)
+            {
+                Ok(_) => {
+                    info!("Successfully recorded book '{}' in database", book_name);
+                }
+                Err(e) => {
+                    error!("Failed to insert book into database: {}", e);
+                    return Ok(ApiResponse::error("Failed to record book in database".to_string()));
+                }
+            }
+        }
+        Err(e) => {
+            error!("Database connection error during insert: {}", e);
+            return Ok(ApiResponse::error("Database error - upload failed".to_string()));
+        }
+    }
+    
+    // Now that database is committed, move the files
+    // If this fails, we have the database record so user can retry or we can implement repair
+    
+    // Copy archive to archives directory
+    if let Err(e) = fs::copy(&archive_file, &archive_destination) {
+        error!("Failed to copy archive after database insert: {}", e);
+        // Clean up database record
+        if let Ok(mut conn) = crate::db_connection::get_connection() {
+            let _ = diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
+                .execute(&mut conn);
+        }
+        return Ok(ApiResponse::error("Failed to copy archive file".to_string()));
+    }
+    
     // Move the entire extracted book directory to its final location
     let temp_book_dir = temp_dir.path().join(&book_id);
-    fs::rename(&temp_book_dir, &final_book_dir)
-        .or_else(|_| {
-            // If rename fails (e.g., across filesystems), copy recursively
-            copy_dir_recursive(&temp_book_dir, &final_book_dir)
-        })
-        .map_err(|e| format!("Failed to move book directory: {}", e))?;
+    if let Err(e) = fs::rename(&temp_book_dir, &final_book_dir)
+        .or_else(|_| copy_dir_recursive(&temp_book_dir, &final_book_dir))
+    {
+        error!("Failed to move book directory after database insert: {}", e);
+        // Clean up archive and database record
+        let _ = fs::remove_file(&archive_destination);
+        if let Ok(mut conn) = crate::db_connection::get_connection() {
+            let _ = diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
+                .execute(&mut conn);
+        }
+        return Ok(ApiResponse::error("Failed to move book directory".to_string()));
+    }
     
-    // Count images
-    let image_count = count_images_recursive(&final_book_dir);
+    info!("Successfully imported book '{}'", book_name);
     
-    // Get book size
-    let size = get_directory_size(&final_book_dir);
-    
-    info!("Successfully imported book '{}' with {} images", book_name, image_count);
-    
+    // Return simple BookInfo 
     Ok(ApiResponse::success(BookInfo {
         id: book_id,
         name: book_name,
-        size_bytes: size,
-        image_count,
     }))
 }
 
 /// List all books in the library
 #[tauri::command]
 pub async fn list_library_books() -> Result<ApiResponse<Vec<BookInfo>>, String> {
-    info!("Listing library books");
+    info!("Listing library books from database");
     
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
-    
-    // Get books directory
-    let books_dir = app_paths.data_dir.join("books");
-    if !books_dir.exists() {
-        // No books directory yet, return empty list
-        return Ok(ApiResponse::success(vec![]));
-    }
-    
-    // Read directory and collect book info
-    let mut books = Vec::new();
-    
-    match fs::read_dir(&books_dir) {
-        Ok(entries) => {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    // Look for directories (each book is in its own folder)
-                    if path.is_dir() {
-                        // Get the book ID from directory name
-                        let book_id = entry.file_name().to_string_lossy().to_string();
-                        
-                        // Try to get book name from metadata or book content
-                        let mut book_name = book_id.clone();
-                        
-                        // Check metadata.json first
-                        let metadata_path = path.join("metadata.json");
-                        if metadata_path.exists() {
-                            if let Ok(content) = fs::read_to_string(&metadata_path) {
-                                if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
-                                    if let Some(name) = metadata.get("name").and_then(|n| n.as_str()) {
-                                        book_name = name.to_string();
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // If no name in metadata, try to get from book content
-                        if book_name == book_id {
-                            if let Some(book_file) = find_book_content_file(&path).ok().flatten() {
-                                if let Ok(content) = fs::read_to_string(&book_file) {
-                                    if let Ok(book_data) = serde_json::from_str::<serde_json::Value>(&content) {
-                                        if let Some(name) = book_data.get("data")
-                                            .and_then(|d| d.get(0))
-                                            .and_then(|d| d.get("name"))
-                                            .and_then(|n| n.as_str()) {
-                                            book_name = name.to_string();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Count images and get size
-                        let image_count = count_images_recursive(&path);
-                        let size_bytes = get_directory_size(&path);
-                        
-                        books.push(BookInfo {
-                            id: book_id,
-                            name: book_name,
-                            size_bytes,
-                            image_count,
-                        });
-                    }
+    match crate::db_connection::get_connection() {
+        Ok(mut conn) => {
+            match uploaded_books::table.load::<UploadedBook>(&mut conn) {
+                Ok(books) => {
+                    let book_list: Vec<BookInfo> = books.into_iter()
+                        .map(|book| BookInfo {
+                            id: book.id,
+                            name: book.name,
+                        })
+                        .collect();
+                    
+                    info!("Found {} books in library", book_list.len());
+                    Ok(ApiResponse::success(book_list))
+                }
+                Err(e) => {
+                    error!("Failed to query books from database: {}", e);
+                    Ok(ApiResponse::error("Failed to load books from database".to_string()))
                 }
             }
-            
-            info!("Found {} books in library", books.len());
-            Ok(ApiResponse::success(books))
         }
         Err(e) => {
-            error!("Failed to read books directory: {}", e);
-            Ok(ApiResponse::error(format!("Failed to read books directory: {}", e)))
+            error!("Database connection error when listing books: {}", e);
+            Ok(ApiResponse::error("Database connection error".to_string()))
         }
     }
 }
@@ -230,23 +255,92 @@ pub async fn remove_book_from_library(
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
-    // Get book directory path
-    let book_dir = app_paths.data_dir.join("books").join(&book_id);
-    
-    if !book_dir.exists() {
-        return Ok(ApiResponse::error(format!("Book not found: {}", book_id)));
-    }
-    
-    // Delete the entire directory
-    match fs::remove_dir_all(&book_dir) {
-        Ok(_) => {
-            info!("Successfully removed book: {}", book_id);
-            Ok(ApiResponse::success(()))
+    // First, get book info from database to know what to clean up
+    let book_record = match crate::db_connection::get_connection() {
+        Ok(mut conn) => {
+            match uploaded_books::table
+                .filter(uploaded_books::id.eq(&book_id))
+                .first::<UploadedBook>(&mut conn)
+            {
+                Ok(book) => Some(book),
+                Err(diesel::NotFound) => {
+                    return Ok(ApiResponse::error(format!("Book '{}' not found in database", book_id)));
+                }
+                Err(e) => {
+                    error!("Database error when looking up book: {}", e);
+                    return Ok(ApiResponse::error("Database error during lookup".to_string()));
+                }
+            }
         }
         Err(e) => {
-            error!("Failed to remove book: {}", e);
-            Ok(ApiResponse::error(format!("Failed to remove book: {}", e)))
+            error!("Database connection error during lookup: {}", e);
+            return Ok(ApiResponse::error("Database connection error".to_string()));
         }
+    };
+    
+    if let Some(book) = book_record {
+        // Use database transaction for atomic cleanup
+        match crate::db_connection::get_connection() {
+            Ok(mut conn) => {
+                let transaction_result = conn.transaction::<_, diesel::result::Error, _>(|conn| {
+                    // Delete from database first
+                    diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
+                        .execute(conn)?;
+                    
+                    // TODO: Also delete related catalog data when that's implemented
+                    // diesel::delete(catalog_spells::table.filter(catalog_spells::source.eq(&book_id)))
+                    //     .execute(conn)?;
+                    
+                    Ok(())
+                });
+                
+                match transaction_result {
+                    Ok(_) => {
+                        info!("Successfully removed book '{}' from database", book_id);
+                        
+                        // Now clean up files
+                        let mut cleanup_errors = Vec::new();
+                        
+                        // Remove extracted directory
+                        let book_dir = Path::new(&book.location);
+                        if book_dir.exists() {
+                            if let Err(e) = fs::remove_dir_all(&book_dir) {
+                                error!("Failed to remove book directory: {}", e);
+                                cleanup_errors.push(format!("directory: {}", e));
+                            }
+                        }
+                        
+                        // Remove archive file
+                        let archive_path = Path::new(&book.archive_path);
+                        if archive_path.exists() {
+                            if let Err(e) = fs::remove_file(&archive_path) {
+                                error!("Failed to remove archive file: {}", e);
+                                cleanup_errors.push(format!("archive: {}", e));
+                            }
+                        }
+                        
+                        if cleanup_errors.is_empty() {
+                            info!("Successfully removed all files for book '{}'", book_id);
+                            Ok(ApiResponse::success(()))
+                        } else {
+                            warn!("Book '{}' removed from database but some files couldn't be deleted: {}", 
+                                  book_id, cleanup_errors.join(", "));
+                            Ok(ApiResponse::success(())) // Still success since database is clean
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to remove book from database: {}", e);
+                        Ok(ApiResponse::error("Failed to remove book from database".to_string()))
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Database connection error during removal: {}", e);
+                Ok(ApiResponse::error("Database connection error".to_string()))
+            }
+        }
+    } else {
+        Ok(ApiResponse::error(format!("Book '{}' not found", book_id)))
     }
 }
 
@@ -377,8 +471,6 @@ pub async fn serve_book_image(
 pub struct BookInfo {
     pub id: String,           // Book ID (e.g., "phb", "dmg")
     pub name: String,         // Display name (e.g., "Player's Handbook")
-    pub size_bytes: u64,      // Total size of book directory
-    pub image_count: usize,   // Number of images
 }
 
 // Helper functions

@@ -5,6 +5,7 @@
 
 pub mod action;
 pub mod background;
+pub mod book;
 pub mod class;
 pub mod condition;
 pub mod deity;
@@ -49,6 +50,8 @@ pub use feat::{Feat, FeatData, FeatSummary};
 pub use race::{Race, RaceData, RaceSummary, Subrace, RaceFluff, RaceFluffData};
 
 pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFluff, BackgroundFluffData, BackgroundWithDetails};
+
+pub use book::{UploadedBook, NewUploadedBook};
 
 pub use action::{Action, ActionData, ActionSummary};
 
