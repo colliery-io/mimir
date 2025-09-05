@@ -10,7 +10,7 @@ mod types;
 
 use app_init::{initialize_app, AppPaths};
 use commands::*;
-use commands::catalog_action::{init_action_catalog, search_actions, get_action_details};
+use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
 use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details};
 use commands::catalog_condition::{init_condition_catalog, search_conditions, get_condition_details};
 use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
@@ -107,7 +107,7 @@ fn main() {
             let feat_catalog = Mutex::new(commands::catalog_feat::FeatCatalog::new());
             let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
             let background_catalog = Mutex::new(commands::catalog_background::BackgroundCatalog::new());
-            let action_catalog = Mutex::new(commands::catalog_action::ActionCatalog::new());
+            // Action catalog now uses database-backed service
             let condition_catalog = Mutex::new(commands::catalog_condition::ConditionCatalog::new());
             let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
             let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
@@ -120,7 +120,7 @@ fn main() {
             app.manage(feat_catalog);
             app.manage(race_catalog);
             app.manage(background_catalog);
-            app.manage(action_catalog);
+            // Action catalog now uses database-backed service (no state needed)
             app.manage(condition_catalog);
             app.manage(optional_feature_catalog);
             app.manage(deity_catalog);
@@ -212,6 +212,12 @@ fn main() {
             get_spell_schools,
             get_spell_statistics,
             get_spell_count,
+            // Action catalog commands
+            search_actions,
+            get_action,
+            get_action_time_types,
+            get_action_sources,
+            get_action_count,
             initialize_item_catalog,
             search_items,
             get_item_details,
@@ -238,9 +244,8 @@ fn main() {
             search_backgrounds,
             get_background_details,
             // Action catalog commands
-            init_action_catalog,
             search_actions,
-            get_action_details,
+            get_action,
             // Condition catalog commands
             init_condition_catalog,
             search_conditions,

@@ -75,7 +75,11 @@
     <ActionTable
       v-else-if="category === 'Actions'"
       :actions="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
       @select="$emit('select-action', $event)"
+      @sort="$emit('sort', $event)"
     />
     
     <ConditionTable

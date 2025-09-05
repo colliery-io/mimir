@@ -209,12 +209,24 @@ pub async fn upload_book_archive(
     // Import catalog content automatically
     match crate::db_connection::get_connection() {
         Ok(mut catalog_conn) => {
+            // Import spells
             match CatalogService::import_spells_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(spell_count) => {
                     info!("Imported {} spells from book '{}'", spell_count, book_name);
                 }
                 Err(e) => {
                     warn!("Book uploaded successfully but failed to import spells: {}", e);
+                    // Don't fail the entire upload for catalog import errors
+                }
+            }
+            
+            // Import actions
+            match CatalogService::import_actions_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+                Ok(action_count) => {
+                    info!("Imported {} actions from book '{}'", action_count, book_name);
+                }
+                Err(e) => {
+                    warn!("Book uploaded successfully but failed to import actions: {}", e);
                     // Don't fail the entire upload for catalog import errors
                 }
             }
@@ -304,6 +316,7 @@ pub async fn remove_book_from_library(
                     
                     // Delete related catalog data
                     let _ = CatalogService::remove_spells_by_source(conn, &book_id);
+                    let _ = CatalogService::remove_actions_by_source(conn, &book_id);
                     // We don't want catalog cleanup errors to fail the book removal
                     
                     Ok(())

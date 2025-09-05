@@ -4,7 +4,7 @@ export interface ColumnDef {
   label: string
   sortable?: boolean
   width?: string
-  type?: 'text' | 'badge' | 'badges' | 'number'
+  type?: 'text' | 'badge' | 'badges' | 'number' | 'array'
   formatter?: (value: any) => string | string[]
   badgeType?: string
   className?: string
@@ -12,7 +12,7 @@ export interface ColumnDef {
 
 // Filter definition types
 export interface FilterConfig {
-  type: 'select' | 'multiselect' | 'checkbox' | 'range'
+  type: 'text' | 'select' | 'multiselect' | 'checkbox' | 'range'
   key: string
   label: string
   options?: (string | SelectOption)[]
@@ -22,6 +22,7 @@ export interface FilterConfig {
   min?: number
   max?: number
   step?: number
+  apiSource?: string
 }
 
 export interface SelectOption {
@@ -40,6 +41,12 @@ export interface CatalogConfig {
   title: string
   columns: ColumnDef[]
   filters: FilterConfig[]
+  searchCommands?: {
+    search: string
+    details: string
+    sources?: string
+    timeTypes?: string
+  }
   emptyMessage?: {
     title: string
     subtitle: string

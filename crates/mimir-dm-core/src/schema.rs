@@ -101,6 +101,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_actions (id) {
+        id -> Integer,
+        name -> Text,
+        time_type -> Text,
+        description -> Text,
+        see_also -> Nullable<Text>,
+        source -> Text,
+        full_action_json -> Text,
+    }
+}
+
+diesel::table! {
     catalog_spells (id) {
         id -> Integer,
         name -> Text,
@@ -156,6 +168,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     workflow_card_tags,
     template_documents,
     documents,
+    catalog_actions,
     catalog_spells,
     catalog_sources,
     uploaded_books,

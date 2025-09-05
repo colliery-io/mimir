@@ -54,7 +54,7 @@ pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFl
 
 pub use book::{UploadedBook, NewUploadedBook};
 
-pub use action::{Action, ActionData, ActionSummary};
+pub use action::{Action, ActionTime, CatalogAction, NewCatalogAction, ActionFilters, ActionSummary};
 
 pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSummary, ConditionOrDisease, ConditionWithDetails, ConditionFluff, ConditionFluffData};
 
