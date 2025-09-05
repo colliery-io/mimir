@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_languages;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Language {
@@ -142,4 +144,57 @@ pub struct LanguageFluff {
 pub struct LanguageFluffData {
     #[serde(rename = "languageFluff")]
     pub language_fluff: Option<Vec<LanguageFluff>>,
+}
+
+// Database models
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = catalog_languages)]
+pub struct CatalogLanguage {
+    pub id: i32,
+    pub name: String,
+    pub language_type: String,
+    pub script: String,
+    pub typical_speakers: String,
+    pub is_srd: i32, // SQLite INTEGER for boolean
+    pub source: String,
+    pub full_language_json: String,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = catalog_languages)]
+pub struct NewCatalogLanguage {
+    pub name: String,
+    pub language_type: String,
+    pub script: String,
+    pub typical_speakers: String,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_language_json: String,
+}
+
+impl From<Language> for NewCatalogLanguage {
+    fn from(language: Language) -> Self {
+        let summary = LanguageSummary::from(&language);
+        let json = serde_json::to_string(&language).unwrap_or_default();
+        
+        Self {
+            name: summary.name,
+            language_type: summary.language_type,
+            script: summary.script,
+            typical_speakers: summary.typical_speakers,
+            is_srd: if summary.is_srd { 1 } else { 0 },
+            source: summary.source,
+            full_language_json: json,
+        }
+    }
+}
+
+// Filter struct for search operations
+#[derive(Debug, Default)]
+pub struct LanguageFilters {
+    pub name: Option<String>,
+    pub search: Option<String>,
+    pub language_types: Option<Vec<String>>,
+    pub scripts: Option<Vec<String>>,
+    pub sources: Option<Vec<String>>,
 }

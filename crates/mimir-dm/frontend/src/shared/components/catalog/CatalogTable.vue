@@ -103,6 +103,10 @@
                   {{ getCellValue(item, column).source }}
                   <span v-if="getCellValue(item, column).showSrd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
                 </template>
+                <template v-else-if="column.type === 'name-with-srd'">
+                  {{ getCellValue(item, column).name }}
+                  <span v-if="getCellValue(item, column).showSrd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
+                </template>
                 <template v-else>
                   {{ getCellValue(item, column) }}
                 </template>
@@ -253,8 +257,8 @@ const sortedData = computed(() => {
 
 function getCellValue(item: any, column: any): any {
   if (column.formatter) {
-    if (column.type === 'badges' || column.type === 'badge' || column.type === 'source') {
-      // For badges, badge, and source types, pass the full item
+    if (column.type === 'badges' || column.type === 'badge' || column.type === 'source' || column.type === 'name-with-srd') {
+      // For badges, badge, source, and name-with-srd types, pass the full item
       return column.formatter(item)
     } else {
       // For regular cells, format the specific field value

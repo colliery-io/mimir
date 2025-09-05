@@ -3,8 +3,8 @@
 //! This service handles automatic import of catalog content from uploaded books
 //! into the SQLite database for fast searching and filtering.
 
-use crate::models::catalog::{NewCatalogSpell, Spell, SpellData, NewCatalogAction, Action, NewCatalogCondition, Condition, ConditionData, Disease, DiseaseData};
-use crate::schema::{catalog_spells, catalog_actions, catalog_conditions};
+use crate::models::catalog::{NewCatalogSpell, Spell, SpellData, NewCatalogAction, Action, NewCatalogCondition, Condition, ConditionData, Disease, DiseaseData, NewCatalogLanguage, LanguageData};
+use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages};
 use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
@@ -674,6 +674,85 @@ impl CatalogService {
             .map_err(|e| format!("Failed to delete conditions from source {}: {}", source, e))?;
         
         info!("Removed {} conditions from source: {}", deleted, source);
+        Ok(deleted)
+    }
+
+    /// Import all language data from an uploaded book directory  
+    pub fn import_languages_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str,
+    ) -> Result<usize, String> {
+        info!("Importing languages from book directory: {:?} (source: {})", book_dir, source);
+        
+        let languages_dir = book_dir.join("languages");
+        if !languages_dir.exists() || !languages_dir.is_dir() {
+            debug!("No languages directory found in book: {:?}", book_dir);
+            return Ok(0);
+        }
+
+        let mut imported_count = 0;
+
+        // Read all JSON files in the languages directory
+        let entries = fs::read_dir(&languages_dir)
+            .map_err(|e| format!("Failed to read languages directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+            
+            // Skip fluff files and non-JSON files
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                if filename.starts_with("fluff") || !filename.ends_with(".json") {
+                    continue;
+                }
+            }
+
+            debug!("Processing language file: {:?}", path);
+            
+            let content = fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read file {:?}: {}", path, e))?;
+                
+            let language_data: LanguageData = serde_json::from_str(&content)
+                .map_err(|e| format!("Failed to parse language data from {:?}: {}", path, e))?;
+
+            if let Some(languages) = language_data.language {
+                let new_languages: Vec<NewCatalogLanguage> = languages
+                    .into_iter()
+                    .map(|mut lang| {
+                        lang.source = source.to_string();
+                        NewCatalogLanguage::from(lang)
+                    })
+                    .collect();
+
+                if !new_languages.is_empty() {
+                    let inserted = diesel::insert_into(catalog_languages::table)
+                        .values(&new_languages)
+                        .execute(conn)
+                        .map_err(|e| format!("Failed to insert languages: {}", e))?;
+                    
+                    imported_count += inserted;
+                    info!("Imported {} languages from {:?}", inserted, path);
+                }
+            }
+        }
+
+        info!("Successfully imported {} languages from source: {}", imported_count, source);
+        Ok(imported_count)
+    }
+
+    /// Remove all languages from a specific source
+    pub fn remove_languages_by_source(
+        conn: &mut SqliteConnection,
+        source: &str,
+    ) -> Result<usize, String> {
+        info!("Removing languages from source: {}", source);
+        
+        let deleted = diesel::delete(catalog_languages::table.filter(catalog_languages::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete languages from source {}: {}", source, e))?;
+        
+        info!("Removed {} languages from source: {}", deleted, source);
         Ok(deleted)
     }
 

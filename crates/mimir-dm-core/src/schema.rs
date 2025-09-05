@@ -161,6 +161,19 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_languages (id) {
+        id -> Integer,
+        name -> Text,
+        language_type -> Text,
+        script -> Text,
+        typical_speakers -> Text,
+        is_srd -> Integer,
+        source -> Text,
+        full_language_json -> Text,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -182,6 +195,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     documents,
     catalog_actions,
     catalog_conditions,
+    catalog_languages,
     catalog_spells,
     catalog_sources,
     uploaded_books,

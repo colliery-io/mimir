@@ -21,13 +21,14 @@ pub mod catalog_optionalfeature;
 pub mod catalog_deity;
 pub mod catalog_object;
 pub mod catalog_trap;
-pub mod catalog_language;
+// pub mod catalog_language; // Replaced by catalog_language_db
 pub mod catalog_reward;
 pub mod catalog_table;
 pub mod catalog_variant_rule;
 pub mod catalog_vehicle;
 pub mod catalog_cult;
 pub mod catalog_psionic;
+pub mod catalog_language_db;
 pub mod context;
 pub mod window_manager;
 pub mod chat_sessions;
