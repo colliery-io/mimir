@@ -9,7 +9,6 @@ use serde_json::{json, Value};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info};
 

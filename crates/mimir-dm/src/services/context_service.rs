@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager};
 use tracing::{debug, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

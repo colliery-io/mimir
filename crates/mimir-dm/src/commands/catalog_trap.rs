@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use tauri::State;
 use tracing::{debug, error, info, warn};
-use mimir_dm_core::models::catalog::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary};
+use mimir_dm_core::models::catalog::{TrapData, HazardData, TrapOrHazard, TrapSummary};
 
 /// In-memory catalog of traps and hazards
 pub struct TrapCatalog {

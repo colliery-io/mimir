@@ -66,10 +66,6 @@ impl ToolRegistry {
         self.tools.contains_key(name)
     }
     
-    /// Get the number of registered tools
-    pub fn tool_count(&self) -> usize {
-        self.tools.len()
-    }
     
     /// Check if a tool requires confirmation
     pub fn requires_confirmation(&self, name: &str) -> bool {

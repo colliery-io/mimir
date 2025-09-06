@@ -12,7 +12,6 @@ use std::error::Error;
 use std::sync::Arc;
 use std::fs;
 use std::path::Path;
-use tracing::info;
 
 use crate::services::database::DatabaseService;
 

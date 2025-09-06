@@ -3,7 +3,6 @@
 
 use tar::Archive;
 use flate2::read::GzDecoder;
-use std::collections::HashMap;
 use tracing::{info, error};
 
 /// Structure to hold embedded test book data
@@ -71,32 +70,3 @@ fn extract_single_book(book: &EmbeddedTestBook, target_dir: &std::path::Path) ->
     Ok(())
 }
 
-/// Get a map of test book names to their data
-pub fn get_test_books_map() -> HashMap<String, &'static [u8]> {
-    let mut map = HashMap::new();
-    for book in get_embedded_test_books() {
-        map.insert(book.name, book.data);
-    }
-    map
-}
-
-// Legacy functions for backwards compatibility
-/// Extract the first test book archive (backwards compatibility)
-pub fn extract_test_book(target_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    let books = get_embedded_test_books();
-    if let Some(book) = books.first() {
-        extract_single_book(book, target_dir)
-    } else {
-        Err("No test books found".into())
-    }
-}
-
-/// Extract the second test book archive (backwards compatibility)
-pub fn extract_test_book_two(target_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    let books = get_embedded_test_books();
-    if books.len() > 1 {
-        extract_single_book(&books[1], target_dir)
-    } else {
-        Err("Second test book not found".into())
-    }
-}

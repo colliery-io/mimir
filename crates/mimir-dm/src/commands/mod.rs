@@ -49,7 +49,6 @@ pub use catalog::*;
 pub use catalog_spell::*;
 pub use catalog_class::*;
 pub use catalog_feat::*;
-pub use catalog_action::*;
 pub use catalog_race::*;
 pub use context::*;
 pub use window_manager::*;

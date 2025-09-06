@@ -107,7 +107,7 @@ pub struct LlmService {
     provider: Arc<OllamaProvider>,
     model_name: String,
     tool_registry: Arc<ToolRegistry>,
-    db_service: Arc<DatabaseService>,
+    _db_service: Arc<DatabaseService>,
     /// Channel senders for pending confirmations (shared globally)
     confirmation_receivers: ConfirmationReceivers,
     /// App handle for emitting events
@@ -142,16 +142,12 @@ impl LlmService {
             provider: Arc::new(provider),
             model_name: REQUIRED_MODEL.to_string(),
             tool_registry: Arc::new(tool_registry),
-            db_service,
+            _db_service: db_service,
             confirmation_receivers,
             app_handle: Some(app_handle),
         })
     }
     
-    /// Set the app handle for emitting events
-    pub fn set_app_handle(&mut self, app: AppHandle) {
-        self.app_handle = Some(app);
-    }
     
     
     /// Create the model configuration
@@ -397,8 +393,8 @@ pub async fn send_chat_message(
     temperature: Option<f32>,
     enable_tools: Option<bool>,
     session_id: Option<String>,
-    model_name: Option<String>,
-    ollama_url: Option<String>,
+    _model_name: Option<String>,
+    _ollama_url: Option<String>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = service.lock().await;
     

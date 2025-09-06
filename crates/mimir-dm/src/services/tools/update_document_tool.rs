@@ -13,7 +13,6 @@ use std::error::Error;
 use std::sync::Arc;
 use std::fs;
 use std::path::Path;
-use tracing::info;
 use similar::{ChangeTag, TextDiff};
 
 use crate::services::database::DatabaseService;

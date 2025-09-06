@@ -3,8 +3,6 @@
 use crate::{APP_PATHS, types::ApiResponse};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
-use tauri::State;
 use tracing::{debug, error, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
