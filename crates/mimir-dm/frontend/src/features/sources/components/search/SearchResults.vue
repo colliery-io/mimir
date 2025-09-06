@@ -67,7 +67,11 @@
     <RaceTable
       v-else-if="category === 'Races'"
       :races="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
       @select="$emit('select-race', $event)"
+      @sort="$emit('sort', $event)"
     />
     
     <BackgroundTable

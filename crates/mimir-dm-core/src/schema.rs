@@ -215,6 +215,20 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_races (id) {
+        id -> Integer,
+        name -> Text,
+        size -> Nullable<Text>,
+        speed -> Nullable<Integer>,
+        ability_bonuses -> Nullable<Text>,
+        traits_count -> Integer,
+        source -> Text,
+        full_race_json -> Text,
+        created_at -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -239,6 +253,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_conditions,
     catalog_feats,
     catalog_languages,
+    catalog_races,
     catalog_rewards,
     catalog_spells,
     catalog_sources,

@@ -983,20 +983,16 @@ export function useCatalog() {
   }
 
   async function searchRaces(filters: RaceFilters = {}): Promise<RaceSummary[]> {
-    if (!isRacesInitialized.value) {
-      await initializeRaceCatalog()
-    }
-    
     try {
       isLoading.value = true
       error.value = null
       
       const results = await invoke<RaceSummary[]>('search_races', {
-        query: filters.query || null,
+        search: filters.query || null,
         sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
         sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
-        hasDarkvision: filters.has_darkvision !== undefined ? filters.has_darkvision : null,
-        hasFlight: filters.has_flight !== undefined ? filters.has_flight : null,
+        has_darkvision: filters.has_darkvision !== undefined ? filters.has_darkvision : null,
+        has_flight: filters.has_flight !== undefined ? filters.has_flight : null,
       })
       
       races.value = results
@@ -1011,9 +1007,24 @@ export function useCatalog() {
 
   async function getRaceDetails(name: string, source: string): Promise<RaceWithDetails | null> {
     try {
-      const details = await invoke<RaceWithDetails>('get_race_details', { name, source })
-      return details
+      const jsonString = await invoke<string | null>('get_race_details', { name, source })
+      if (!jsonString) {
+        return null
+      }
+      
+      // Parse the JSON string to get the race object
+      const raceData = JSON.parse(jsonString)
+      
+      // For database-backed races, we return a simplified structure
+      // The full race data is in the JSON, we just need to wrap it
+      return {
+        race: raceData.name ? raceData : null,
+        subrace: raceData.race_name ? raceData : null,
+        relatedSubraces: [],
+        fluff: null
+      } as RaceWithDetails
     } catch (e) {
+      console.error('Failed to get race details:', e)
       return null
     }
   }

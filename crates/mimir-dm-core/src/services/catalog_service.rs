@@ -3,8 +3,8 @@
 //! This service handles automatic import of catalog content from uploaded books
 //! into the SQLite database for fast searching and filtering.
 
-use crate::models::catalog::{NewCatalogSpell, Spell, SpellData, NewCatalogAction, Action, NewCatalogCondition, Condition, ConditionData, Disease, DiseaseData, NewCatalogLanguage, LanguageData, NewCatalogReward, RewardData, NewCatalogBackground, BackgroundData, NewCatalogFeat, FeatData};
-use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats};
+use crate::models::catalog::{NewCatalogSpell, Spell, SpellData, NewCatalogAction, Action, NewCatalogCondition, Condition, ConditionData, Disease, DiseaseData, NewCatalogLanguage, LanguageData, NewCatalogReward, RewardData, NewCatalogBackground, BackgroundData, NewCatalogFeat, FeatData, NewCatalogRace, RaceData};
+use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats, catalog_races};
 use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
@@ -955,6 +955,135 @@ impl CatalogService {
             .map_err(|e| format!("Failed to delete feats: {}", e))?;
             
         info!("Removed {} feats from source: {}", deleted, source);
+        Ok(deleted)
+    }
+
+    /// Import all race data from an uploaded book directory  
+    pub fn import_races_from_book(
+        conn: &mut SqliteConnection, 
+        book_dir: &Path, 
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing races from book directory: {:?} (source: {})", book_dir, source);
+        let mut imported_count = 0;
+        
+        let races_dir = book_dir.join("races");
+        if !races_dir.exists() || !races_dir.is_dir() {
+            debug!("No races directory found in book: {:?}", book_dir);
+            return Ok(0);
+        }
+        
+        info!("Found races directory: {:?}", races_dir);
+        
+        // Read all JSON files in the races directory
+        let entries = fs::read_dir(&races_dir)
+            .map_err(|e| format!("Failed to read races directory: {}", e))?;
+            
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+            
+            if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+            
+            let filename = path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+                
+            // Skip fluff files - we only want race data
+            if filename.starts_with("fluff-") {
+                debug!("Skipping fluff file: {}", filename);
+                continue;
+            }
+            
+            debug!("Processing race file: {}", filename);
+            
+            let content = fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read file {}: {}", filename, e))?;
+                
+            let race_data: RaceData = serde_json::from_str(&content)
+                .map_err(|e| format!("Failed to parse race file {}: {}", filename, e))?;
+                
+            // Import main races
+            if let Some(races) = race_data.race {
+                for race in &races {
+                    let new_race = NewCatalogRace::from(race);
+                    
+                    match diesel::insert_into(catalog_races::table)
+                        .values(&new_race)
+                        .on_conflict((catalog_races::name, catalog_races::source))
+                        .do_update()
+                        .set((
+                            catalog_races::size.eq(&new_race.size),
+                            catalog_races::speed.eq(&new_race.speed),
+                            catalog_races::ability_bonuses.eq(&new_race.ability_bonuses),
+                            catalog_races::traits_count.eq(&new_race.traits_count),
+                            catalog_races::full_race_json.eq(&new_race.full_race_json),
+                        ))
+                        .execute(conn) {
+                        Ok(_) => {
+                            imported_count += 1;
+                            debug!("Imported race: {} ({})", race.name, source);
+                        }
+                        Err(e) => {
+                            error!("Failed to insert race {}: {}", race.name, e);
+                        }
+                    }
+                }
+            }
+            
+            // Import subraces
+            if let Some(subraces) = race_data.subrace {
+                for subrace in &subraces {
+                    // Skip unnamed subraces
+                    if subrace.name.is_none() {
+                        continue;
+                    }
+                    
+                    let new_subrace = NewCatalogRace::from(subrace);
+                    
+                    match diesel::insert_into(catalog_races::table)
+                        .values(&new_subrace)
+                        .on_conflict((catalog_races::name, catalog_races::source))
+                        .do_update()
+                        .set((
+                            catalog_races::size.eq(&new_subrace.size),
+                            catalog_races::speed.eq(&new_subrace.speed),
+                            catalog_races::ability_bonuses.eq(&new_subrace.ability_bonuses),
+                            catalog_races::traits_count.eq(&new_subrace.traits_count),
+                            catalog_races::full_race_json.eq(&new_subrace.full_race_json),
+                        ))
+                        .execute(conn) {
+                        Ok(_) => {
+                            imported_count += 1;
+                            debug!("Imported subrace: {} ({})", new_subrace.name, source);
+                        }
+                        Err(e) => {
+                            error!("Failed to insert subrace {}: {}", new_subrace.name, e);
+                        }
+                    }
+                }
+            }
+        }
+        
+        info!("Successfully imported {} races/subraces from source: {}", imported_count, source);
+        Ok(imported_count)
+    }
+
+    /// Remove all races from a specific source
+    pub fn remove_races_by_source(
+        conn: &mut SqliteConnection, 
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing races from source: {}", source);
+        
+        let deleted = diesel::delete(catalog_races::table)
+            .filter(catalog_races::source.eq(source))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete races: {}", e))?;
+            
+        info!("Removed {} races from source: {}", deleted, source);
         Ok(deleted)
     }
 

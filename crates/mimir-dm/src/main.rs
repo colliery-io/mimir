@@ -108,7 +108,7 @@ fn main() {
             let monster_catalog = Mutex::new(commands::catalog::MonsterCatalog::new());
             let class_catalog = Mutex::new(commands::catalog_class::ClassCatalog::new());
             // Feat catalog now uses database-backed service
-            let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
+            // Race catalog now uses database-backed service
             // Background catalog now uses database-backed service
             // Action catalog now uses database-backed service
             // Condition catalog now uses database-backed service
@@ -121,7 +121,7 @@ fn main() {
             app.manage(monster_catalog);
             app.manage(class_catalog);
             // Feat catalog now uses database-backed service (no state needed)
-            app.manage(race_catalog);
+            // Race catalog now uses database-backed service (no state needed)
             // Background catalog now uses database-backed service (no state needed)
             // Action catalog now uses database-backed service (no state needed)
             // Condition catalog now uses database-backed service (no state needed)
@@ -238,9 +238,11 @@ fn main() {
             get_feat_sources,
             get_feat_count,
             // Race catalog commands
-            init_race_catalog,
             search_races,
             get_race_details,
+            get_race_sources,
+            get_race_count,
+            get_race_sizes,
             // Background catalog commands
             search_backgrounds,
             get_background_details,

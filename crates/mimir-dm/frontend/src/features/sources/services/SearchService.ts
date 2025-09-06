@@ -79,9 +79,7 @@ class SearchServiceClass {
         await this.catalog.initializeClassCatalog()
         break
       case 'Races':
-        console.log('Initializing race catalog...')
-        await this.catalog.initializeRaceCatalog()
-        console.log('Race catalog initialized')
+        console.log('Races now use database-backed service (no initialization needed)')
         break
       case 'Backgrounds':
         await this.catalog.initializeBackgroundCatalog()

@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use diesel::prelude::*;
+use crate::schema::catalog_races;
 
 /// A player character race
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -357,5 +359,95 @@ fn format_ability_bonuses(ability: Option<&Vec<serde_json::Value>>) -> String {
                 .join("; ")
         }
         None => "None".to_string(),
+    }
+}
+
+/// Database model for catalog_races table
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = catalog_races)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CatalogRace {
+    pub id: i32,
+    pub name: String,
+    pub size: Option<String>,
+    pub speed: Option<i32>,
+    pub ability_bonuses: Option<String>,
+    pub traits_count: i32,
+    pub source: String,
+    pub full_race_json: String,
+    pub created_at: Option<String>,
+}
+
+/// Model for inserting new races into the database
+#[derive(Insertable, Debug)]
+#[diesel(table_name = catalog_races)]
+pub struct NewCatalogRace {
+    pub name: String,
+    pub size: Option<String>,
+    pub speed: Option<i32>,
+    pub ability_bonuses: Option<String>,
+    pub traits_count: i32,
+    pub source: String,
+    pub full_race_json: String,
+}
+
+/// Filter parameters for race search
+#[derive(Debug, Clone)]
+pub struct RaceFilters {
+    pub search_pattern: Option<String>,
+    pub sources: Option<Vec<String>>,
+    pub sizes: Option<Vec<String>>,
+    pub has_darkvision: Option<bool>,
+    pub has_flight: Option<bool>,
+}
+
+impl From<&CatalogRace> for RaceSummary {
+    fn from(race: &CatalogRace) -> Self {
+        RaceSummary {
+            name: race.name.clone(),
+            source: race.source.clone(),
+            size: race.size.clone().unwrap_or("Medium".to_string()),
+            speed: race.speed.unwrap_or(30),
+            ability_bonuses: race.ability_bonuses.clone().unwrap_or("None".to_string()),
+            traits_count: race.traits_count as usize,
+            is_subrace: race.name.contains(", "), // Detect subraces by name format
+            parent_race: if race.name.contains(", ") {
+                Some(race.name.split(", ").nth(1).unwrap_or("").to_string())
+            } else {
+                None
+            },
+        }
+    }
+}
+
+impl From<&Race> for NewCatalogRace {
+    fn from(race: &Race) -> Self {
+        let race_summary = RaceSummary::from(race);
+        
+        NewCatalogRace {
+            name: race.name.clone(),
+            size: Some(race_summary.size),
+            speed: Some(race_summary.speed),
+            ability_bonuses: Some(race_summary.ability_bonuses),
+            traits_count: race_summary.traits_count as i32,
+            source: race.source.clone(),
+            full_race_json: serde_json::to_string(race).unwrap_or_default(),
+        }
+    }
+}
+
+impl From<&Subrace> for NewCatalogRace {
+    fn from(subrace: &Subrace) -> Self {
+        let race_summary = RaceSummary::from(subrace);
+        
+        NewCatalogRace {
+            name: race_summary.name, // Already formatted as "Subrace, Race"
+            size: Some(race_summary.size),
+            speed: Some(race_summary.speed),
+            ability_bonuses: Some(race_summary.ability_bonuses),
+            traits_count: race_summary.traits_count as i32,
+            source: subrace.source.clone(),
+            full_race_json: serde_json::to_string(subrace).unwrap_or_default(),
+        }
     }
 }
