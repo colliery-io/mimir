@@ -252,49 +252,32 @@ impl CatalogService {
     fn find_action_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
         let mut action_files = Vec::new();
         
-        // Common action file patterns
-        let patterns = vec![
-            "actions.json",
-            "action.json", 
-            "*action*.json",
-        ];
-        
-        if let Ok(entries) = fs::read_dir(book_dir) {
-            for entry in entries.flatten() {
-                if let Some(filename) = entry.file_name().to_str() {
-                    if filename.ends_with(".json") {
-                        for pattern in &patterns {
-                            if Self::matches_pattern(filename, pattern) {
-                                debug!("Found potential action file: {}", filename);
-                                action_files.push(entry.path());
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+        let actions_dir = book_dir.join("actions");
+        if !actions_dir.exists() || !actions_dir.is_dir() {
+            debug!("No actions directory found in book: {:?}", book_dir);
+            return Ok(action_files);
         }
         
-        // Also check common subdirectories
-        let subdirs = vec!["data", "content", "json"];
-        for subdir in subdirs {
-            let subdir_path = book_dir.join(subdir);
-            if subdir_path.is_dir() {
-                if let Ok(entries) = fs::read_dir(&subdir_path) {
-                    for entry in entries.flatten() {
-                        if let Some(filename) = entry.file_name().to_str() {
-                            if filename.ends_with(".json") {
-                                for pattern in &patterns {
-                                    if Self::matches_pattern(filename, pattern) {
-                                        debug!("Found action file in subdir: {:?}", entry.path());
-                                        action_files.push(entry.path());
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
+        debug!("Found actions directory: {:?}", actions_dir);
+        
+        // Read all JSON files in the actions directory
+        let entries = fs::read_dir(&actions_dir)
+            .map_err(|e| format!("Failed to read actions directory: {}", e))?;
+            
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let path = entry.path();
+            
+            // Skip fluff files and non-JSON files
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                if filename.starts_with("fluff") || !filename.ends_with(".json") {
+                    continue;
                 }
+            }
+
+            if path.is_file() {
+                debug!("Found action file: {:?}", path);
+                action_files.push(path);
             }
         }
         

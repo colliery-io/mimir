@@ -132,8 +132,19 @@ export async function formatActionDetails(action: any): Promise<string> {
   return content
 }
 
-function formatTime(time: any[]): string {
-  if (!time || time.length === 0) {
+function formatTime(time: any): string {
+  // Handle if time is already a formatted string from the database
+  if (typeof time === 'string') {
+    return time
+  }
+  
+  // Handle if time is null/undefined or empty array
+  if (!time || (Array.isArray(time) && time.length === 0)) {
+    return '1 action'
+  }
+  
+  // Handle if time is not an array
+  if (!Array.isArray(time)) {
     return '1 action'
   }
   

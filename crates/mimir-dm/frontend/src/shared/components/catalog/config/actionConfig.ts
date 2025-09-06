@@ -33,7 +33,7 @@ export const actionConfig: CatalogConfig = {
       label: 'See Also',
       type: 'array',
       formatter: (action: any) => {
-        if (!action.see_also || action.see_also.length === 0) {
+        if (!action || !action.see_also || action.see_also.length === 0) {
           return '—'
         }
         return action.see_also.join(', ')

@@ -14,21 +14,21 @@ pub struct Action {
     pub page: Option<u32>,
     pub time: Vec<ActionTime>,
     pub entries: Vec<serde_json::Value>,  // Can be strings or objects
-    #[serde(default)]
+    #[serde(default, rename = "seeAlsoAction")]
     pub see_also: Option<Vec<String>>,
 }
 
 /// Action time (how long the action takes)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActionTime {
-    #[serde(rename = "type")]
-    pub time_type: String,  // "action", "bonus", "reaction", etc.
-    #[serde(default)]
-    pub number: Option<u32>,
-    #[serde(default)]
-    pub unit: Option<String>, // "minute", "hour", etc.
-    #[serde(default)]
-    pub condition: Option<String>, // For reactions
+#[serde(untagged)]
+pub enum ActionTime {
+    Structured {
+        number: u32,
+        unit: String,
+        #[serde(default)]
+        condition: Option<String>,
+    },
+    Simple(String), // For "Varies", "Free", etc.
 }
 
 /// Database model for catalog_actions table
@@ -106,18 +106,23 @@ impl From<Action> for NewCatalogAction {
         } else {
             action.time.iter()
                 .map(|t| {
-                    match t.time_type.as_str() {
-                        "action" => "Action".to_string(),
-                        "bonus" => "Bonus Action".to_string(),
-                        "reaction" => {
-                            if let Some(condition) = &t.condition {
-                                format!("Reaction ({})", condition)
-                            } else {
-                                "Reaction".to_string()
+                    match t {
+                        ActionTime::Structured { number: _, unit, condition } => {
+                            match unit.as_str() {
+                                "action" => "Action".to_string(),
+                                "bonus" => "Bonus Action".to_string(),
+                                "reaction" => {
+                                    if let Some(condition) = condition {
+                                        format!("Reaction ({})", condition)
+                                    } else {
+                                        "Reaction".to_string()
+                                    }
+                                }
+                                "free" => "Free".to_string(),
+                                other => other.to_string(),
                             }
                         }
-                        "free" => "Free".to_string(),
-                        other => other.to_string(),
+                        ActionTime::Simple(s) => s.clone()
                     }
                 })
                 .collect::<Vec<_>>()
