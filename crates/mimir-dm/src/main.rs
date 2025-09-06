@@ -20,6 +20,7 @@ use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, 
 use commands::catalog_language_db::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
 use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
 use commands::catalog_background_db::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
+use commands::catalog_feat_db::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
 use services::llm_service::{self, LlmService, ConfirmationReceivers};
@@ -106,7 +107,7 @@ fn main() {
             let item_catalog = Mutex::new(commands::catalog::ItemCatalog::new());
             let monster_catalog = Mutex::new(commands::catalog::MonsterCatalog::new());
             let class_catalog = Mutex::new(commands::catalog_class::ClassCatalog::new());
-            let feat_catalog = Mutex::new(commands::catalog_feat::FeatCatalog::new());
+            // Feat catalog now uses database-backed service
             let race_catalog = Mutex::new(commands::catalog_race::RaceCatalog::new());
             // Background catalog now uses database-backed service
             // Action catalog now uses database-backed service
@@ -119,7 +120,7 @@ fn main() {
             app.manage(item_catalog);
             app.manage(monster_catalog);
             app.manage(class_catalog);
-            app.manage(feat_catalog);
+            // Feat catalog now uses database-backed service (no state needed)
             app.manage(race_catalog);
             // Background catalog now uses database-backed service (no state needed)
             // Action catalog now uses database-backed service (no state needed)
@@ -232,10 +233,10 @@ fn main() {
             get_class_subclasses,
             get_class_sources,
             // Feat catalog commands
-            initialize_feat_catalog,
             search_feats,
             get_feat_details,
             get_feat_sources,
+            get_feat_count,
             // Race catalog commands
             init_race_catalog,
             search_races,
@@ -245,6 +246,11 @@ fn main() {
             get_background_details,
             get_background_sources,
             get_background_count,
+            // Feat catalog commands
+            search_feats,
+            get_feat_details,
+            get_feat_sources,
+            get_feat_count,
             // Action catalog commands
             search_actions,
             get_action,

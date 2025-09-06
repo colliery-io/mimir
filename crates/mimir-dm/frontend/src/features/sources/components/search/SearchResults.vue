@@ -57,7 +57,11 @@
     <FeatTable
       v-else-if="category === 'Feats'"
       :feats="results"
+      :search-performed="searchPerformed"
+      :sort-column="sortColumn"
+      :sort-direction="sortDirection"
       @select="$emit('select-feat', $event)"
+      @sort="$emit('sort', $event)"
     />
     
     <RaceTable

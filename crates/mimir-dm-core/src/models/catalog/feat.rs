@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_feats;
 
 /// Feat from D&D 5e
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +143,70 @@ impl From<&Feat> for FeatSummary {
             page: feat.page,
             prerequisites,
             brief,
+        }
+    }
+}
+
+/// Database model for catalog_feats table
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = catalog_feats)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CatalogFeat {
+    pub id: i32,
+    pub name: String,
+    pub prerequisites: Option<String>,
+    pub brief: Option<String>,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_feat_json: String,
+    pub created_at: Option<String>,
+}
+
+/// Model for inserting new feats into the database
+#[derive(Insertable, Debug)]
+#[diesel(table_name = catalog_feats)]
+pub struct NewCatalogFeat {
+    pub name: String,
+    pub prerequisites: Option<String>,
+    pub brief: Option<String>,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_feat_json: String,
+}
+
+/// Filter parameters for feat search
+#[derive(Debug, Clone)]
+pub struct FeatFilters {
+    pub search_pattern: Option<String>,
+    pub sources: Option<Vec<String>>,
+    pub is_srd: Option<bool>,
+    pub has_prerequisites: Option<bool>,
+}
+
+impl From<&CatalogFeat> for FeatSummary {
+    fn from(feat: &CatalogFeat) -> Self {
+        FeatSummary {
+            name: feat.name.clone(),
+            source: feat.source.clone(),
+            page: None, // Page info is in the JSON, would need to parse if needed
+            prerequisites: feat.prerequisites.clone(),
+            brief: feat.brief.clone(),
+        }
+    }
+}
+
+impl From<&Feat> for NewCatalogFeat {
+    fn from(feat: &Feat) -> Self {
+        // Extract prerequisites as a simple string (reuse logic from FeatSummary)
+        let feat_summary = FeatSummary::from(feat);
+        
+        NewCatalogFeat {
+            name: feat.name.clone(),
+            prerequisites: feat_summary.prerequisites,
+            brief: feat_summary.brief,
+            is_srd: feat.srd.unwrap_or(false) as i32,
+            source: feat.source.clone(),
+            full_feat_json: serde_json::to_string(feat).unwrap_or_default(),
         }
     }
 }

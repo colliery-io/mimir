@@ -12,7 +12,7 @@ pub mod dev_tools;
 pub mod catalog;
 pub mod catalog_spell;
 pub mod catalog_class;
-pub mod catalog_feat;
+// pub mod catalog_feat; // Replaced by catalog_feat_db
 pub mod catalog_action;
 // pub mod catalog_background; // Replaced by catalog_background_db
 pub mod catalog_condition;
@@ -31,6 +31,7 @@ pub mod catalog_psionic;
 pub mod catalog_language_db;
 pub mod catalog_reward_db;
 pub mod catalog_background_db;
+pub mod catalog_feat_db;
 pub mod context;
 pub mod window_manager;
 pub mod chat_sessions;
@@ -48,7 +49,7 @@ pub use dev_tools::*;
 pub use catalog::*;
 pub use catalog_spell::*;
 pub use catalog_class::*;
-pub use catalog_feat::*;
+// pub use catalog_feat::*; // Replaced by catalog_feat_db
 pub use catalog_race::*;
 pub use context::*;
 pub use window_manager::*;

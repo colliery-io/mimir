@@ -932,20 +932,24 @@ export function useCatalog() {
     }
   }
 
-  // Feat catalog functions
-  async function initializeFeatCatalog() {
-    try {
-      await invoke('initialize_feat_catalog')
-    } catch (e) {
-      throw e
-    }
-  }
+  // Feat catalog functions - now database-backed, no initialization needed
 
-  async function searchFeats(params: { query?: string; source?: string } = {}) {
+  async function searchFeats(params: { 
+    query?: string; 
+    sources?: string[];
+    is_srd?: boolean;
+    has_prerequisites?: boolean;
+  } = {}) {
     try {
-      const results = await invoke<FeatSummary[]>('search_feats', params)
+      const results = await invoke<FeatSummary[]>('search_feats', {
+        query: params.query,
+        sources: params.sources,
+        is_srd: params.is_srd,
+        has_prerequisites: params.has_prerequisites
+      })
       return results || []
     } catch (e) {
+      console.error('Error searching feats:', e)
       return []
     }
   }
@@ -1363,7 +1367,6 @@ export function useCatalog() {
     getMonsterDetails,
     getClassDetails,
     getClassSubclasses,
-    initializeFeatCatalog,
     searchFeats,
     getFeatDetails,
     initializeRaceCatalog,

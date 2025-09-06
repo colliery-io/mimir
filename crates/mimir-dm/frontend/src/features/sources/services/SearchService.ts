@@ -127,7 +127,7 @@ class SearchServiceClass {
         // No initialization needed - loaded from single file
         break
       case 'Feats':
-        await this.catalog.initializeFeatCatalog()
+        // No initialization needed - uses database-backed service
         break
     }
   }
@@ -178,7 +178,7 @@ class SearchServiceClass {
       case 'Psionics':
         return await this.searchPsionics({ query, sources })
       case 'Feats':
-        return await this.searchFeats(query)
+        return await this.searchFeats(query, sources)
       default:
         return []
     }
@@ -248,9 +248,10 @@ class SearchServiceClass {
     })
   }
   
-  private async searchFeats(query?: string): Promise<FeatSummary[]> {
+  private async searchFeats(query?: string, sources?: string[]): Promise<FeatSummary[]> {
     return await this.catalog.searchFeats({
-      query: query || undefined
+      query: query || undefined,
+      sources: sources || undefined
     })
   }
   

@@ -46,7 +46,7 @@ pub use spell::{
     CatalogSpell, NewCatalogSpell, SpellFilters,
 };
 
-pub use feat::{Feat, FeatData, FeatSummary};
+pub use feat::{Feat, FeatData, FeatSummary, CatalogFeat, NewCatalogFeat, FeatFilters};
 
 pub use race::{Race, RaceData, RaceSummary, Subrace, RaceFluff, RaceFluffData};
 

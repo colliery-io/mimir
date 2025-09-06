@@ -202,6 +202,19 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_feats (id) {
+        id -> Integer,
+        name -> Text,
+        prerequisites -> Nullable<Text>,
+        brief -> Nullable<Text>,
+        is_srd -> Integer,
+        source -> Text,
+        full_feat_json -> Text,
+        created_at -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -224,6 +237,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_actions,
     catalog_backgrounds,
     catalog_conditions,
+    catalog_feats,
     catalog_languages,
     catalog_rewards,
     catalog_spells,

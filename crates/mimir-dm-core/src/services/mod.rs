@@ -14,6 +14,7 @@ pub mod condition_service;
 pub mod language_service;
 pub mod reward_service;
 pub mod background_service;
+pub mod feat_service;
 
 // Re-export services
 pub use campaign_service::CampaignService;
@@ -27,3 +28,4 @@ pub use condition_service::ConditionService;
 pub use language_service::LanguageService;
 pub use reward_service::RewardService;
 pub use background_service::BackgroundService;
+pub use feat_service::FeatService;

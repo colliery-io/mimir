@@ -274,6 +274,17 @@ pub async fn upload_book_archive(
                     // Don't fail the entire upload for catalog import errors
                 }
             }
+            
+            // Import feats
+            match CatalogService::import_feats_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+                Ok(feat_count) => {
+                    info!("Imported {} feats from book '{}'", feat_count, book_name);
+                }
+                Err(e) => {
+                    warn!("Book uploaded successfully but failed to import feats: {}", e);
+                    // Don't fail the entire upload for catalog import errors
+                }
+            }
         }
         Err(e) => {
             warn!("Book uploaded successfully but couldn't connect to database for catalog import: {}", e);
