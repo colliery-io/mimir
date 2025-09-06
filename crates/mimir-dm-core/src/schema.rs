@@ -229,6 +229,21 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_objects (id) {
+        id -> Integer,
+        name -> Text,
+        object_type -> Nullable<Text>,
+        size -> Nullable<Text>,
+        ac -> Nullable<Text>,
+        hp -> Nullable<Text>,
+        is_srd -> Integer,
+        source -> Text,
+        full_object_json -> Text,
+        created_at -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -253,6 +268,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_conditions,
     catalog_feats,
     catalog_languages,
+    catalog_objects,
     catalog_races,
     catalog_rewards,
     catalog_spells,

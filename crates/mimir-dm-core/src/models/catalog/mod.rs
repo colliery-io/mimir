@@ -62,7 +62,7 @@ pub use optionalfeature::{OptionalFeature, OptionalFeatureData, OptionalFeatureS
 
 pub use deity::{Deity, DeityData, DeitySummary};
 
-pub use object::{DndObject, ObjectData, ObjectSummary};
+pub use object::{DndObject, ObjectData, ObjectSummary, CatalogObject, NewCatalogObject, ObjectFilters};
 
 pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary};
 

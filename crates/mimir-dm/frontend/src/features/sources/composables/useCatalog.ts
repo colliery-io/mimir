@@ -1275,20 +1275,17 @@ export function useCatalog() {
     }
   }
 
-  async function searchObjects(filters: { query?: string, sources?: string[], object_types?: string[], sizes?: string[] }) {
-    if (!isObjectsInitialized.value) {
-      await initializeObjectCatalog()
-    }
-    
+  async function searchObjects(filters: { query?: string, sources?: string[], object_types?: string[], sizes?: string[], is_srd?: boolean }) {
     try {
       isLoading.value = true
       error.value = null
       
       const results = await invoke<ObjectSummary[]>('search_objects', {
-        query: filters.query || null,
-        sources: filters.sources || null,
-        object_types: filters.object_types || null,
-        sizes: filters.sizes || null
+        search: filters.query || null,
+        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+        object_types: filters.object_types && filters.object_types.length > 0 ? filters.object_types : null,
+        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
+        is_srd: filters.is_srd !== undefined ? filters.is_srd : null
       })
       
       return results || []
@@ -1302,8 +1299,14 @@ export function useCatalog() {
 
   async function getObjectDetails(name: string, source: string): Promise<DndObject | null> {
     try {
-      const obj = await invoke<DndObject>('get_object_details', { name, source })
-      return obj
+      const jsonString = await invoke<string | null>('get_object_details', { name, source })
+      if (!jsonString) {
+        return null
+      }
+      
+      // Parse the JSON string to get the object data
+      const objectData = JSON.parse(jsonString)
+      return objectData as DndObject
     } catch (e) {
       console.error('Failed to get object details:', e)
       return null

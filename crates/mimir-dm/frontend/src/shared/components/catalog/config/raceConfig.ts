@@ -54,32 +54,6 @@ export const raceConfig: CatalogConfig = {
       key: 'search',
       label: 'Search',
       placeholder: 'Search races...'
-    },
-    {
-      type: 'multiselect',
-      key: 'sources',
-      label: 'Source',
-      options: [], // Will be populated dynamically from API
-      apiSource: 'get_race_sources'
-    },
-    {
-      type: 'multiselect',
-      key: 'sizes',
-      label: 'Size',
-      options: [], // Will be populated dynamically from API
-      apiSource: 'get_race_sizes'
-    },
-    {
-      type: 'checkbox',
-      key: 'has_darkvision',
-      label: 'Has Darkvision',
-      tooltip: 'Show only races with darkvision ability'
-    },
-    {
-      type: 'checkbox',
-      key: 'has_flight',
-      label: 'Has Flight',
-      tooltip: 'Show only races with flying speed'
     }
   ],
   emptyMessage: {

@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_objects;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -173,4 +175,76 @@ fn format_hp(hp: &Option<HitPoints>) -> String {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ObjectData {
     pub object: Option<Vec<DndObject>>,
+}
+
+/// Database model for catalog_objects table
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = catalog_objects)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CatalogObject {
+    pub id: i32,
+    pub name: String,
+    pub object_type: Option<String>,
+    pub size: Option<String>,
+    pub ac: Option<String>,
+    pub hp: Option<String>,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_object_json: String,
+    pub created_at: Option<String>,
+}
+
+/// Model for inserting new objects into the database
+#[derive(Insertable, Debug)]
+#[diesel(table_name = catalog_objects)]
+pub struct NewCatalogObject {
+    pub name: String,
+    pub object_type: Option<String>,
+    pub size: Option<String>,
+    pub ac: Option<String>,
+    pub hp: Option<String>,
+    pub is_srd: i32,
+    pub source: String,
+    pub full_object_json: String,
+}
+
+/// Filter parameters for object search
+#[derive(Debug, Clone)]
+pub struct ObjectFilters {
+    pub search_pattern: Option<String>,
+    pub sources: Option<Vec<String>>,
+    pub object_types: Option<Vec<String>>,
+    pub sizes: Option<Vec<String>>,
+    pub is_srd: Option<bool>,
+}
+
+impl From<&CatalogObject> for ObjectSummary {
+    fn from(obj: &CatalogObject) -> Self {
+        ObjectSummary {
+            name: obj.name.clone(),
+            source: obj.source.clone(),
+            object_type: obj.object_type.clone().unwrap_or_else(|| "Object".to_string()),
+            size: obj.size.clone().unwrap_or_else(|| "—".to_string()),
+            ac: obj.ac.clone().unwrap_or_else(|| "—".to_string()),
+            hp: obj.hp.clone().unwrap_or_else(|| "—".to_string()),
+            is_srd: obj.is_srd == 1,
+        }
+    }
+}
+
+impl From<&DndObject> for NewCatalogObject {
+    fn from(obj: &DndObject) -> Self {
+        let object_summary = ObjectSummary::from(obj);
+        
+        NewCatalogObject {
+            name: obj.name.clone(),
+            object_type: Some(object_summary.object_type),
+            size: Some(object_summary.size),
+            ac: Some(object_summary.ac),
+            hp: Some(object_summary.hp),
+            is_srd: obj.srd.unwrap_or(false) as i32,
+            source: obj.source.clone(),
+            full_object_json: serde_json::to_string(obj).unwrap_or_default(),
+        }
+    }
 }

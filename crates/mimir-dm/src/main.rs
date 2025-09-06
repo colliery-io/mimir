@@ -15,7 +15,7 @@ use commands::catalog_action::{search_actions, get_action, get_action_time_types
 use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
 use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
 use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
-use commands::catalog_object::{init_object_catalog, search_objects, get_object_details, get_object_types};
+// Object catalog now uses database-backed service
 use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, get_trap_types};
 use commands::catalog_language_db::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
 use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
@@ -114,7 +114,7 @@ fn main() {
             // Condition catalog now uses database-backed service
             let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
             let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
-            let object_catalog = Mutex::new(commands::catalog_object::ObjectCatalog::new());
+            // Object catalog now uses database-backed service
             let trap_catalog = Mutex::new(commands::catalog_trap::TrapCatalog::new());
             // Language catalog now uses database-backed service
             app.manage(item_catalog);
@@ -127,7 +127,7 @@ fn main() {
             // Condition catalog now uses database-backed service (no state needed)
             app.manage(optional_feature_catalog);
             app.manage(deity_catalog);
-            app.manage(object_catalog);
+            // Object catalog now uses database-backed service (no state needed)
             app.manage(trap_catalog);
             // Language catalog now uses database-backed service (no state needed)
             
@@ -274,10 +274,12 @@ fn main() {
             get_pantheons,
             get_domains,
             // Object catalog commands
-            init_object_catalog,
             search_objects,
             get_object_details,
+            get_object_sources,
+            get_object_count,
             get_object_types,
+            get_object_sizes,
             // Trap catalog commands
             init_trap_catalog,
             search_traps,

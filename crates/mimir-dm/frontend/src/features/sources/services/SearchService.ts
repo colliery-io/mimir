@@ -98,7 +98,7 @@ class SearchServiceClass {
         await this.catalog.initializeDeityCatalog()
         break
       case 'Objects':
-        await this.catalog.initializeObjectCatalog()
+        console.log('Objects now use database-backed service (no initialization needed)')
         break
       case 'Traps & Hazards':
         await this.catalog.initializeTrapCatalog()
