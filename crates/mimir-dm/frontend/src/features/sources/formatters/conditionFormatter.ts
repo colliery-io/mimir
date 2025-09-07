@@ -14,9 +14,6 @@ function formatConditionSummary(summary: ConditionSummary): string {
   // Source info
   html += '<div class="source-info">'
   html += `<strong>Source:</strong> ${summary.source}`
-  if (summary.is_srd) {
-    html += ' <span class="srd-badge">SRD</span>'
-  }
   html += '</div>'
   
   // Description
@@ -79,7 +76,6 @@ export function formatConditionDetails(details: ConditionWithDetails | Condition
       source: (details as any).source || 'Unknown',
       item_type: 'Condition',
       description: (details as any).description || '',
-      is_srd: false
     })
   }
 

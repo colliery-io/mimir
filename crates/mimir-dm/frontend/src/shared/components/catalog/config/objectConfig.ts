@@ -13,12 +13,7 @@ export const objectConfig: CatalogConfig = {
       key: 'name',
       label: 'Name',
       sortable: true,
-      type: 'name-with-srd',
-      className: 'catalog-table__cell-name',
-      formatter: (item: any) => ({
-        name: item.name,
-        showSrd: item.is_srd
-      })
+      className: 'catalog-table__cell-name'
     },
     {
       key: 'object_type',

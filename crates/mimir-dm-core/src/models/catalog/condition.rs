@@ -9,7 +9,6 @@ pub struct Condition {
     pub page: Option<i32>,
     #[serde(default)]
     pub entries: Vec<serde_json::Value>,
-    pub srd: Option<bool>,
     #[serde(rename = "basicRules")]
     pub basic_rules: Option<bool>,
     #[serde(rename = "hasFluffImages")]
@@ -69,7 +68,6 @@ pub struct ConditionSummary {
     pub source: String,
     pub item_type: String, // "Condition" or "Disease"
     pub description: String,
-    pub is_srd: bool,
 }
 
 impl From<&Condition> for ConditionSummary {
@@ -82,7 +80,6 @@ impl From<&Condition> for ConditionSummary {
             source: condition.source.clone(),
             item_type: "Condition".to_string(),
             description,
-            is_srd: condition.srd.unwrap_or(false),
         }
     }
 }
@@ -97,7 +94,6 @@ impl From<&Disease> for ConditionSummary {
             source: disease.source.clone(),
             item_type: "Disease".to_string(),
             description,
-            is_srd: false, // Diseases typically aren't SRD
         }
     }
 }
@@ -135,7 +131,6 @@ pub struct CatalogCondition {
     pub name: String,
     pub item_type: String,    // "Condition" or "Disease"
     pub description: String,  // First entry as description
-    pub is_srd: i32,         // SQLite boolean as INTEGER (0/1)
     pub source: String,
     pub full_condition_json: String, // Complete condition/disease JSON
 }
@@ -147,7 +142,6 @@ pub struct NewCatalogCondition {
     pub name: String,
     pub item_type: String,
     pub description: String,
-    pub is_srd: i32,
     pub source: String,
     pub full_condition_json: String,
 }
@@ -172,7 +166,6 @@ impl From<CatalogCondition> for ConditionSummary {
             source: catalog_condition.source,
             item_type: catalog_condition.item_type,
             description: catalog_condition.description,
-            is_srd: catalog_condition.is_srd == 1, // Convert INTEGER to bool
         }
     }
 }
@@ -185,7 +178,6 @@ impl From<Condition> for NewCatalogCondition {
             name: condition.name.clone(),
             item_type: "Condition".to_string(),
             description,
-            is_srd: if condition.srd.unwrap_or(false) { 1 } else { 0 }, // Convert bool to INTEGER
             source: condition.source.clone(),
             full_condition_json: serde_json::to_string(&condition).unwrap_or_default(),
         }
@@ -200,7 +192,6 @@ impl From<Disease> for NewCatalogCondition {
             name: disease.name.clone(),
             item_type: "Disease".to_string(),
             description,
-            is_srd: 0, // Diseases typically aren't SRD
             source: disease.source.clone(),
             full_condition_json: serde_json::to_string(&disease).unwrap_or_default(),
         }

@@ -91,7 +91,6 @@ pub struct DndObject {
     #[serde(rename = "tokenCredit")]
     pub token_credit: Option<String>,
     
-    pub srd: Option<bool>,
     
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
@@ -109,7 +108,6 @@ pub struct ObjectSummary {
     pub size: String,
     pub ac: String,
     pub hp: String,
-    pub is_srd: bool,
 }
 
 impl From<&DndObject> for ObjectSummary {
@@ -121,7 +119,6 @@ impl From<&DndObject> for ObjectSummary {
             size: format_size(&obj.size),
             ac: format_ac(&obj.ac),
             hp: format_hp(&obj.hp),
-            is_srd: obj.srd.unwrap_or(false),
         }
     }
 }
@@ -188,7 +185,6 @@ pub struct CatalogObject {
     pub size: Option<String>,
     pub ac: Option<String>,
     pub hp: Option<String>,
-    pub is_srd: i32,
     pub source: String,
     pub full_object_json: String,
     pub created_at: Option<String>,
@@ -203,7 +199,6 @@ pub struct NewCatalogObject {
     pub size: Option<String>,
     pub ac: Option<String>,
     pub hp: Option<String>,
-    pub is_srd: i32,
     pub source: String,
     pub full_object_json: String,
 }
@@ -215,7 +210,6 @@ pub struct ObjectFilters {
     pub sources: Option<Vec<String>>,
     pub object_types: Option<Vec<String>>,
     pub sizes: Option<Vec<String>>,
-    pub is_srd: Option<bool>,
 }
 
 impl From<&CatalogObject> for ObjectSummary {
@@ -227,7 +221,6 @@ impl From<&CatalogObject> for ObjectSummary {
             size: obj.size.clone().unwrap_or_else(|| "—".to_string()),
             ac: obj.ac.clone().unwrap_or_else(|| "—".to_string()),
             hp: obj.hp.clone().unwrap_or_else(|| "—".to_string()),
-            is_srd: obj.is_srd == 1,
         }
     }
 }
@@ -242,7 +235,6 @@ impl From<&DndObject> for NewCatalogObject {
             size: Some(object_summary.size),
             ac: Some(object_summary.ac),
             hp: Some(object_summary.hp),
-            is_srd: obj.srd.unwrap_or(false) as i32,
             source: obj.source.clone(),
             full_object_json: serde_json::to_string(obj).unwrap_or_default(),
         }

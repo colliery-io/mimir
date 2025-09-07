@@ -23,7 +23,6 @@ pub struct Reward {
     // Duration for temporary rewards
     pub duration: Option<String>,
     
-    pub srd: Option<bool>,
     
     #[serde(rename = "basicRules")]
     pub basic_rules: Option<bool>,
@@ -114,7 +113,6 @@ pub struct CatalogReward {
     pub reward_type: String,
     pub description: String,
     pub has_prerequisites: i32, // SQLite INTEGER for boolean
-    pub is_srd: i32, // SQLite INTEGER for boolean
     pub source: String,
     pub full_reward_json: String,
 }
@@ -126,7 +124,6 @@ pub struct NewCatalogReward {
     pub reward_type: String,
     pub description: String,
     pub has_prerequisites: i32,
-    pub is_srd: i32,
     pub source: String,
     pub full_reward_json: String,
 }
@@ -141,7 +138,6 @@ impl From<Reward> for NewCatalogReward {
             reward_type: summary.reward_type,
             description: summary.description,
             has_prerequisites: if summary.has_prerequisites { 1 } else { 0 },
-            is_srd: if reward.srd.unwrap_or(false) { 1 } else { 0 },
             source: summary.source,
             full_reward_json: json,
         }

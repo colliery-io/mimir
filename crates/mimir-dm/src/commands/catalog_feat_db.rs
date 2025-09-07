@@ -9,7 +9,6 @@ use tracing::error;
 pub async fn search_feats(
     query: Option<String>,
     sources: Option<Vec<String>>,
-    is_srd: Option<bool>,
     has_prerequisites: Option<bool>,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<serde_json::Value>, String> {
@@ -21,7 +20,6 @@ pub async fn search_feats(
     let filters = FeatFilters {
         search_pattern: query,
         sources,
-        is_srd,
         has_prerequisites,
     };
 

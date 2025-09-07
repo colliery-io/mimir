@@ -26,9 +26,6 @@ export function formatOptionalFeatureDetails(feature: any): string {
   if (feature.page) {
     html += ` p.${feature.page}`
   }
-  if (feature.srd) {
-    html += ' <span class="srd-badge">SRD</span>'
-  }
   html += '</div>'
   
   // Prerequisites

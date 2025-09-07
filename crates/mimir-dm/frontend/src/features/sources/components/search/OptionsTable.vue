@@ -22,7 +22,6 @@
             <td class="catalog-table__td catalog-table__secondary">{{ option.prerequisite_text || '—' }}</td>
             <td class="catalog-table__td catalog-table__source">
               {{ option.source }}
-              <span v-if="option.is_srd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
             </td>
           </tr>
         </tbody>

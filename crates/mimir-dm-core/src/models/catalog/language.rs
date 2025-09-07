@@ -21,7 +21,6 @@ pub struct Language {
     #[serde(rename = "basicRules")]
     pub basic_rules: Option<bool>,
     
-    pub srd: Option<bool>,
     
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
@@ -42,7 +41,6 @@ pub struct LanguageSummary {
     pub language_type: String,
     pub script: String,
     pub typical_speakers: String,
-    pub is_srd: bool,
 }
 
 impl From<&Language> for LanguageSummary {
@@ -53,7 +51,6 @@ impl From<&Language> for LanguageSummary {
             language_type: format_language_type(&lang.language_type),
             script: lang.script.clone().unwrap_or_else(|| "—".to_string()),
             typical_speakers: format_speakers(&lang.typical_speakers),
-            is_srd: lang.srd.unwrap_or(false),
         }
     }
 }
@@ -155,7 +152,6 @@ pub struct CatalogLanguage {
     pub language_type: String,
     pub script: String,
     pub typical_speakers: String,
-    pub is_srd: i32, // SQLite INTEGER for boolean
     pub source: String,
     pub full_language_json: String,
 }
@@ -167,7 +163,6 @@ pub struct NewCatalogLanguage {
     pub language_type: String,
     pub script: String,
     pub typical_speakers: String,
-    pub is_srd: i32,
     pub source: String,
     pub full_language_json: String,
 }
@@ -182,7 +177,6 @@ impl From<Language> for NewCatalogLanguage {
             language_type: summary.language_type,
             script: summary.script,
             typical_speakers: summary.typical_speakers,
-            is_srd: if summary.is_srd { 1 } else { 0 },
             source: summary.source,
             full_language_json: json,
         }

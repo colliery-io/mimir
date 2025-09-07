@@ -16,7 +16,6 @@ pub struct Deity {
     pub additional_sources: Option<Vec<SourceReference>>,
     
     pub entries: Option<Vec<serde_json::Value>>,
-    pub srd: Option<bool>,
     
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
@@ -41,7 +40,6 @@ pub struct DeitySummary {
     pub alignment: String,
     pub domains: Vec<String>,
     pub symbol: String,
-    pub is_srd: bool,
 }
 
 impl From<&Deity> for DeitySummary {
@@ -54,7 +52,6 @@ impl From<&Deity> for DeitySummary {
             alignment: format_alignment(&deity.alignment),
             domains: deity.domains.clone().unwrap_or_default(),
             symbol: deity.symbol.clone().unwrap_or_default(),
-            is_srd: deity.srd.unwrap_or(false),
         }
     }
 }

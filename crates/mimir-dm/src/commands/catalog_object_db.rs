@@ -11,7 +11,6 @@ pub async fn search_objects(
     sources: Option<Vec<String>>,
     object_types: Option<Vec<String>>,
     sizes: Option<Vec<String>>,
-    is_srd: Option<bool>,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<serde_json::Value>, String> {
     let mut conn = db_service.get_connection().map_err(|e| {
@@ -24,7 +23,6 @@ pub async fn search_objects(
         sources,
         object_types,
         sizes,
-        is_srd,
     };
 
     let results = ObjectService::search_objects(&mut conn, filters)?;

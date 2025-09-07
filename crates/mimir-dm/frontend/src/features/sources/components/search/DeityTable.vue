@@ -27,7 +27,6 @@
           >
             <td class="catalog-table__td catalog-table__name">
               {{ deity.name }}
-              <span v-if="deity.is_srd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
             </td>
             <td class="catalog-table__td catalog-table__secondary">{{ deity.title }}</td>
             <td class="catalog-table__td catalog-table__secondary">{{ deity.pantheon }}</td>

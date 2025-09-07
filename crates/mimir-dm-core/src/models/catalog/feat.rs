@@ -11,8 +11,6 @@ pub struct Feat {
     #[serde(default)]
     pub page: Option<u32>,
     #[serde(default)]
-    pub srd: Option<bool>,
-    #[serde(default)]
     pub entries: Vec<serde_json::Value>,
     #[serde(default)]
     pub prerequisite: Option<Vec<serde_json::Value>>,
@@ -156,7 +154,6 @@ pub struct CatalogFeat {
     pub name: String,
     pub prerequisites: Option<String>,
     pub brief: Option<String>,
-    pub is_srd: i32,
     pub source: String,
     pub full_feat_json: String,
     pub created_at: Option<String>,
@@ -169,7 +166,6 @@ pub struct NewCatalogFeat {
     pub name: String,
     pub prerequisites: Option<String>,
     pub brief: Option<String>,
-    pub is_srd: i32,
     pub source: String,
     pub full_feat_json: String,
 }
@@ -179,7 +175,6 @@ pub struct NewCatalogFeat {
 pub struct FeatFilters {
     pub search_pattern: Option<String>,
     pub sources: Option<Vec<String>>,
-    pub is_srd: Option<bool>,
     pub has_prerequisites: Option<bool>,
 }
 
@@ -204,7 +199,6 @@ impl From<&Feat> for NewCatalogFeat {
             name: feat.name.clone(),
             prerequisites: feat_summary.prerequisites,
             brief: feat_summary.brief,
-            is_srd: feat.srd.unwrap_or(false) as i32,
             source: feat.source.clone(),
             full_feat_json: serde_json::to_string(feat).unwrap_or_default(),
         }

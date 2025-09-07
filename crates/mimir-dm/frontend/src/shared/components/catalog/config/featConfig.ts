@@ -46,12 +46,6 @@ export const featConfig: CatalogConfig = {
     },
     {
       type: 'checkbox',
-      key: 'is_srd',
-      label: 'SRD Only',
-      tooltip: 'Show only feats from the System Reference Document'
-    },
-    {
-      type: 'checkbox',
       key: 'has_prerequisites',
       label: 'Has Prerequisites',
       tooltip: 'Show only feats that have prerequisites'

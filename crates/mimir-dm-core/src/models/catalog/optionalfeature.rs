@@ -20,7 +20,6 @@ pub struct OptionalFeature {
     #[serde(rename = "additionalSpells")]
     pub additional_spells: Option<Vec<serde_json::Value>>,
     
-    pub srd: Option<bool>,
     
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
@@ -76,7 +75,6 @@ pub struct OptionalFeatureSummary {
     pub feature_types: Vec<String>,
     pub feature_type_full: String, // Formatted display name
     pub prerequisite_text: String,
-    pub is_srd: bool,
     pub grants_spells: bool,
 }
 
@@ -88,7 +86,6 @@ impl From<&OptionalFeature> for OptionalFeatureSummary {
             feature_types: opt.feature_type.clone(),
             feature_type_full: format_feature_types(&opt.feature_type),
             prerequisite_text: format_prerequisites(&opt.prerequisite),
-            is_srd: opt.srd.unwrap_or(false),
             grants_spells: opt.additional_spells.is_some(),
         }
     }

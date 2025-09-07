@@ -38,12 +38,8 @@ export const conditionConfig: CatalogConfig = {
       key: 'source',
       label: 'Source',
       sortable: true,
-      type: 'source',
-      className: 'catalog-table__cell-source',
-      formatter: (condition: any) => ({
-        source: condition.source,
-        showSrd: condition.is_srd
-      })
+      type: 'text',
+      className: 'catalog-table__cell-source'
     }
   ],
   filters: [

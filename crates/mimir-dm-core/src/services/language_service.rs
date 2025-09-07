@@ -66,7 +66,6 @@ impl LanguageService {
                 language_type: cl.language_type,
                 script: cl.script,
                 typical_speakers: cl.typical_speakers,
-                is_srd: cl.is_srd != 0,
             })
             .collect();
         

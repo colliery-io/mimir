@@ -101,11 +101,9 @@
                 </template>
                 <template v-else-if="column.type === 'source'">
                   {{ getCellValue(item, column).source }}
-                  <span v-if="getCellValue(item, column).showSrd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
                 </template>
                 <template v-else-if="column.type === 'name-with-srd'">
                   {{ getCellValue(item, column).name }}
-                  <span v-if="getCellValue(item, column).showSrd" class="catalog-table__badge catalog-table__badge--srd">SRD</span>
                 </template>
                 <template v-else-if="column.type === 'prerequisites'">
                   <span v-if="getCellValue(item, column).hasPrerequisites" class="prereq-icon" title="Has prerequisites">

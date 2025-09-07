@@ -111,9 +111,6 @@ export function formatDeityContent(deity: Deity): string {
   html += '</div>'
   
   html += '<div class="footer-right">'
-  if (deity.srd) {
-    html += '<span class="srd-indicator">SRD</span>'
-  }
   if (deity.hasFluff) {
     html += '<span class="has-lore-indicator">📖</span>'
   }

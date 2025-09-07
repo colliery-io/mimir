@@ -14,12 +14,7 @@ export const languageConfig: CatalogConfig = {
       key: 'name',
       label: 'Name',
       sortable: true,
-      className: 'catalog-table__cell-name',
-      type: 'name-with-srd',
-      formatter: (language: any) => ({
-        name: language.name,
-        showSrd: language.is_srd
-      })
+      className: 'catalog-table__cell-name'
     },
     {
       key: 'language_type',

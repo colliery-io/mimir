@@ -120,7 +120,6 @@ diesel::table! {
         languages -> Text,
         tools -> Text,
         feature -> Text,
-        is_srd -> Integer,
         source -> Text,
         full_background_json -> Text,
         created_at -> Nullable<Text>,
@@ -133,7 +132,6 @@ diesel::table! {
         name -> Text,
         item_type -> Text,
         description -> Text,
-        is_srd -> Integer,
         source -> Text,
         full_condition_json -> Text,
     }
@@ -183,7 +181,6 @@ diesel::table! {
         language_type -> Text,
         script -> Text,
         typical_speakers -> Text,
-        is_srd -> Integer,
         source -> Text,
         full_language_json -> Text,
     }
@@ -196,7 +193,6 @@ diesel::table! {
         reward_type -> Text,
         description -> Text,
         has_prerequisites -> Integer,
-        is_srd -> Integer,
         source -> Text,
         full_reward_json -> Text,
     }
@@ -208,7 +204,6 @@ diesel::table! {
         name -> Text,
         prerequisites -> Nullable<Text>,
         brief -> Nullable<Text>,
-        is_srd -> Integer,
         source -> Text,
         full_feat_json -> Text,
         created_at -> Nullable<Text>,
@@ -237,7 +232,6 @@ diesel::table! {
         size -> Nullable<Text>,
         ac -> Nullable<Text>,
         hp -> Nullable<Text>,
-        is_srd -> Integer,
         source -> Text,
         full_object_json -> Text,
         created_at -> Nullable<Text>,

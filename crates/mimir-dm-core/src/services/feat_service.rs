@@ -33,10 +33,6 @@ impl FeatService {
             }
         }
 
-        // Apply is_srd filter
-        if let Some(is_srd) = filters.is_srd {
-            query = query.filter(catalog_feats::is_srd.eq(if is_srd { 1 } else { 0 }));
-        }
 
         // Apply has_prerequisites filter
         if let Some(has_prerequisites) = filters.has_prerequisites {

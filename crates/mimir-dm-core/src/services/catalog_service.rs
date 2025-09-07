@@ -632,7 +632,6 @@ impl CatalogService {
                 .set((
                     catalog_conditions::item_type.eq(&condition.item_type),
                     catalog_conditions::description.eq(&condition.description),
-                    catalog_conditions::is_srd.eq(&condition.is_srd),
                     catalog_conditions::full_condition_json.eq(&condition.full_condition_json),
                 ))
                 .execute(conn)
@@ -1142,7 +1141,6 @@ impl CatalogService {
                             catalog_objects::size.eq(&new_object.size),
                             catalog_objects::ac.eq(&new_object.ac),
                             catalog_objects::hp.eq(&new_object.hp),
-                            catalog_objects::is_srd.eq(&new_object.is_srd),
                             catalog_objects::full_object_json.eq(&new_object.full_object_json),
                         ))
                         .execute(conn) {

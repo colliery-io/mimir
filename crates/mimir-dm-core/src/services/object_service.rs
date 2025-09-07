@@ -47,10 +47,6 @@ impl ObjectService {
             }
         }
 
-        // Apply is_srd filter
-        if let Some(is_srd) = filters.is_srd {
-            query = query.filter(catalog_objects::is_srd.eq(if is_srd { 1 } else { 0 }));
-        }
 
         let objects = query
             .order_by(catalog_objects::name.asc())

@@ -11,7 +11,6 @@ export async function formatTrapDetails(trap: TrapOrHazard): Promise<string> {
       <h2>${trap.name}</h2>
       <div class="header-tags">
         ${trap.trap_haz_type ? `<span class="tag tag-type">${formatTrapType(trap.trap_haz_type)}</span>` : ''}
-        ${trap.srd ? '<span class="tag tag-srd">SRD</span>' : ''}
       </div>
     </div>
   `

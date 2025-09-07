@@ -278,7 +278,6 @@ export interface ConditionSummary {
   source: string
   item_type: 'Condition' | 'Disease'
   description: string
-  is_srd: boolean
 }
 
 export interface ConditionWithDetails {
@@ -303,7 +302,6 @@ export interface OptionalFeatureSummary {
   feature_types: string[]
   feature_type_full: string
   prerequisite_text: string
-  is_srd: boolean
   grants_spells: boolean
 }
 
@@ -315,7 +313,6 @@ export interface DeitySummary {
   alignment: string
   domains: string[]
   symbol: string
-  is_srd: boolean
 }
 
 export interface Deity {
@@ -341,7 +338,6 @@ export interface ObjectSummary {
   size: string
   ac: string
   hp: string
-  is_srd: boolean
 }
 
 export interface TrapSummary {
@@ -349,7 +345,6 @@ export interface TrapSummary {
   source: string
   trap_type: string
   category: string
-  is_srd: boolean
 }
 
 export interface TrapOrHazard {
@@ -369,7 +364,6 @@ export interface LanguageSummary {
   language_type: string
   script: string
   typical_speakers: string
-  is_srd: boolean
 }
 
 // Reward types
@@ -937,14 +931,12 @@ export function useCatalog() {
   async function searchFeats(params: { 
     query?: string; 
     sources?: string[];
-    is_srd?: boolean;
     has_prerequisites?: boolean;
   } = {}) {
     try {
       const results = await invoke<FeatSummary[]>('search_feats', {
         query: params.query,
         sources: params.sources,
-        is_srd: params.is_srd,
         has_prerequisites: params.has_prerequisites
       })
       return results || []
@@ -1275,7 +1267,7 @@ export function useCatalog() {
     }
   }
 
-  async function searchObjects(filters: { query?: string, sources?: string[], object_types?: string[], sizes?: string[], is_srd?: boolean }) {
+  async function searchObjects(filters: { query?: string, sources?: string[], object_types?: string[], sizes?: string[] }) {
     try {
       isLoading.value = true
       error.value = null
@@ -1284,8 +1276,7 @@ export function useCatalog() {
         search: filters.query || null,
         sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
         object_types: filters.object_types && filters.object_types.length > 0 ? filters.object_types : null,
-        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
-        is_srd: filters.is_srd !== undefined ? filters.is_srd : null
+        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null
       })
       
       return results || []
