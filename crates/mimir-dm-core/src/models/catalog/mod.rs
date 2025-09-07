@@ -78,4 +78,4 @@ pub use vehicle::{Vehicle, VehicleData, VehicleSummary, VehicleWeapon, Speed as 
 
 pub use cult::{Cult, CultData, Boon, BoonData, CultBoonSummary};
 
-pub use psionic::{Psionic, PsionicSummary, PsionicMode, PsionicCost, ConcentrationDuration};
+pub use psionic::{Psionic, PsionicSummary, PsionicMode, PsionicCost, ConcentrationDuration, CatalogPsionic, NewCatalogPsionic, PsionicFilters};

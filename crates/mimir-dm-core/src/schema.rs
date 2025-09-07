@@ -252,6 +252,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_psionics (id) {
+        id -> Integer,
+        name -> Text,
+        psionic_type -> Text,
+        psionic_order -> Nullable<Text>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_psionic_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     catalog_traps (id) {
         id -> Integer,
         name -> Text,
@@ -289,6 +302,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_feats,
     catalog_languages,
     catalog_objects,
+    catalog_psionics,
     catalog_races,
     catalog_rewards,
     catalog_spells,

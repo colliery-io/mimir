@@ -21,6 +21,7 @@ use commands::catalog_language_db::{search_languages, get_language_details, get_
 use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
 use commands::catalog_background_db::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
 use commands::catalog_feat_db::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
+use commands::catalog_psionic_db::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
 use services::llm_service::{self, LlmService, ConfirmationReceivers};
@@ -144,8 +145,7 @@ fn main() {
             
             // Cult catalog now uses database-backed system
             
-            let psionic_catalog = std::sync::Mutex::new(commands::catalog_psionic::PsionicCatalog::new());
-            app.manage(psionic_catalog);
+            // Psionic catalog now uses database-backed service (no state needed)
             
             Ok(())
         })
@@ -332,10 +332,12 @@ fn main() {
             get_cult_count,
             get_cult_types,
             get_cult_categories,
-            commands::catalog_psionic::search_psionics,
-            commands::catalog_psionic::get_psionic_details,
-            commands::catalog_psionic::get_psionic_orders,
-            commands::catalog_psionic::get_psionic_sources,
+            // Psionic catalog commands
+            search_psionics,
+            get_psionic_details,
+            get_psionic_types,
+            get_psionic_orders,
+            get_psionic_sources,
             // Context commands
             update_context,
             get_full_context,

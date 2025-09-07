@@ -31,7 +31,8 @@ pub mod catalog_variant_rule;
 pub mod catalog_vehicle;
 // pub mod catalog_cult; // Replaced by catalog_cult_db
 pub mod catalog_cult_db;
-pub mod catalog_psionic;
+// pub mod catalog_psionic; // Replaced by catalog_psionic_db
+pub mod catalog_psionic_db;
 pub mod catalog_language_db;
 pub mod catalog_reward_db;
 pub mod catalog_background_db;
