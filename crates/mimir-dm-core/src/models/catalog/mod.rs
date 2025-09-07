@@ -64,7 +64,7 @@ pub use deity::{Deity, DeityData, DeitySummary};
 
 pub use object::{DndObject, ObjectData, ObjectSummary, CatalogObject, NewCatalogObject, ObjectFilters};
 
-pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary};
+pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary, CatalogTrap, NewCatalogTrap, TrapFilters};
 
 pub use language::{Language, LanguageData, LanguageSummary, LanguageFluff, LanguageFluffData, CatalogLanguage, NewCatalogLanguage, LanguageFilters};
 

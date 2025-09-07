@@ -16,7 +16,7 @@ use commands::catalog_condition::{search_conditions, get_condition, get_conditio
 use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
 use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
 // Object catalog now uses database-backed service
-use commands::catalog_trap::{init_trap_catalog, search_traps, get_trap_details, get_trap_types};
+// Trap catalog now uses database-backed service
 use commands::catalog_language_db::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
 use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
 use commands::catalog_background_db::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
@@ -115,7 +115,7 @@ fn main() {
             let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
             let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
             // Object catalog now uses database-backed service
-            let trap_catalog = Mutex::new(commands::catalog_trap::TrapCatalog::new());
+            // Trap catalog now uses database-backed service
             // Language catalog now uses database-backed service
             app.manage(item_catalog);
             app.manage(monster_catalog);
@@ -128,7 +128,7 @@ fn main() {
             app.manage(optional_feature_catalog);
             app.manage(deity_catalog);
             // Object catalog now uses database-backed service (no state needed)
-            app.manage(trap_catalog);
+            // Trap catalog now uses database-backed service (no state needed)
             // Language catalog now uses database-backed service (no state needed)
             
             // Reward catalog now uses database-backed service (no state needed)
@@ -281,10 +281,12 @@ fn main() {
             get_object_types,
             get_object_sizes,
             // Trap catalog commands
-            init_trap_catalog,
             search_traps,
             get_trap_details,
+            get_trap_sources,
+            get_trap_count,
             get_trap_types,
+            get_trap_categories,
             // Language catalog commands
             search_languages,
             get_language_details,

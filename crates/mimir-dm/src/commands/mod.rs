@@ -22,7 +22,8 @@ pub mod catalog_optionalfeature;
 pub mod catalog_deity;
 // pub mod catalog_object; // Replaced by catalog_object_db
 pub mod catalog_object_db;
-pub mod catalog_trap;
+// pub mod catalog_trap; // Replaced by catalog_trap_db
+pub mod catalog_trap_db;
 // pub mod catalog_language; // Replaced by catalog_language_db
 // pub mod catalog_reward; // Replaced by catalog_reward_db
 pub mod catalog_table;
@@ -55,6 +56,7 @@ pub use catalog_class::*;
 // pub use catalog_race::*; // Replaced by catalog_race_db
 pub use catalog_race_db::*;
 pub use catalog_object_db::*;
+pub use catalog_trap_db::*;
 pub use context::*;
 pub use window_manager::*;
 pub use chat_sessions::*;

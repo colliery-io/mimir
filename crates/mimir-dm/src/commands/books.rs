@@ -307,6 +307,17 @@ pub async fn upload_book_archive(
                     // Don't fail the entire upload for catalog import errors
                 }
             }
+            
+            // Import traps and hazards
+            match CatalogService::import_traps_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+                Ok(trap_count) => {
+                    info!("Imported {} traps/hazards from book '{}'", trap_count, book_name);
+                }
+                Err(e) => {
+                    warn!("Book uploaded successfully but failed to import traps/hazards: {}", e);
+                    // Don't fail the entire upload for catalog import errors
+                }
+            }
         }
         Err(e) => {
             warn!("Book uploaded successfully but couldn't connect to database for catalog import: {}", e);

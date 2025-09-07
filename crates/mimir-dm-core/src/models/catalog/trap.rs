@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Trap {
@@ -89,7 +90,6 @@ pub struct TrapSummary {
     pub source: String,
     pub trap_type: String,
     pub category: String,
-    pub is_srd: bool,
 }
 
 impl From<&TrapOrHazard> for TrapSummary {
@@ -99,7 +99,6 @@ impl From<&TrapOrHazard> for TrapSummary {
             source: item.source().to_string(),
             trap_type: format_trap_type(item.trap_haz_type()),
             category: if item.is_trap() { "Trap".to_string() } else { "Hazard".to_string() },
-            is_srd: item.is_srd(),
         }
     }
 }
@@ -125,4 +124,49 @@ pub struct TrapData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HazardData {
     pub hazard: Option<Vec<Hazard>>,
+}
+
+// Database models for Diesel
+#[derive(Queryable, Selectable, Debug, Clone, Serialize)]
+#[diesel(table_name = crate::schema::catalog_traps)]
+pub struct CatalogTrap {
+    pub id: i32,
+    pub name: String,
+    pub category: String,
+    pub trap_type: Option<String>,
+    pub source: String,
+    pub full_trap_json: String,
+    #[serde(skip)]
+    pub created_at: Option<String>,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::catalog_traps)]
+pub struct NewCatalogTrap {
+    pub name: String,
+    pub category: String,
+    pub trap_type: Option<String>,
+    pub source: String,
+    pub full_trap_json: String,
+}
+
+// Filter struct for search parameters
+#[derive(Debug, Default, Deserialize)]
+pub struct TrapFilters {
+    pub search: Option<String>,
+    pub sources: Option<Vec<String>>,
+    pub categories: Option<Vec<String>>,
+    pub trap_types: Option<Vec<String>>,
+}
+
+impl From<&TrapOrHazard> for NewCatalogTrap {
+    fn from(item: &TrapOrHazard) -> Self {
+        Self {
+            name: item.name().to_string(),
+            category: if item.is_trap() { "Trap".to_string() } else { "Hazard".to_string() },
+            trap_type: item.trap_haz_type().map(|t| format_trap_type(Some(t))),
+            source: item.source().to_string(),
+            full_trap_json: serde_json::to_string(item).unwrap_or_default(),
+        }
+    }
 }

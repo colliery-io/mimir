@@ -244,6 +244,18 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_traps (id) {
+        id -> Integer,
+        name -> Text,
+        category -> Text,
+        trap_type -> Nullable<Text>,
+        source -> Text,
+        full_trap_json -> Text,
+        created_at -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -273,5 +285,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_rewards,
     catalog_spells,
     catalog_sources,
+    catalog_traps,
     uploaded_books,
 );
