@@ -1444,34 +1444,6 @@ impl CatalogService {
             }
         }
         
-        // Import Epic Boons from rewards directory
-        let rewards_dir = book_dir.join("rewards");
-        if rewards_dir.exists() {
-            info!("Found rewards directory, checking for Epic Boons: {:?}", rewards_dir);
-            let mut reward_entries = fs::read_dir(&rewards_dir)
-                .map_err(|e| format!("Failed to read rewards directory: {}", e))?;
-                
-            while let Some(entry) = reward_entries.next() {
-                let entry = entry.map_err(|e| format!("Failed to read reward directory entry: {}", e))?;
-                let path = entry.path();
-                
-                if path.extension().and_then(|e| e.to_str()) == Some("json") {
-                    debug!("Processing reward file for Epic Boons: {:?}", path.file_name().unwrap_or_default());
-                    match Self::import_epic_boons_from_rewards(conn, &path, source) {
-                        Ok(count) => {
-                            if count > 0 {
-                                info!("Imported {} Epic Boons from rewards in {:?}", count, path);
-                                total_imported += count;
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to import Epic Boons from rewards {:?}: {}", path, e);
-                            return Err(e);
-                        }
-                    }
-                }
-            }
-        }
         
         info!("Successfully imported {} total cults/boons from {}", total_imported, source);
         Ok(total_imported)
@@ -1557,74 +1529,6 @@ impl CatalogService {
         }
     }
 
-    /// Extract Epic Boons from rewards files and import them as boons to the cult catalog
-    fn import_epic_boons_from_rewards(
-        conn: &mut SqliteConnection,
-        rewards_file_path: &Path,
-        source: &str
-    ) -> Result<usize, String> {
-        debug!("Reading rewards file for Epic Boons: {:?}", rewards_file_path);
-        
-        let content = fs::read_to_string(rewards_file_path)
-            .map_err(|e| format!("Failed to read rewards file: {}", e))?;
-            
-        let reward_data: RewardData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse rewards JSON: {}", e))?;
-            
-        if let Some(rewards) = reward_data.reward {
-            // Filter rewards to only those with type "Boon" (Epic Boons)
-            let epic_boons: Vec<_> = rewards.iter()
-                .filter(|reward| {
-                    reward.reward_type.as_ref()
-                        .map(|rt| rt == "Boon")
-                        .unwrap_or(false)
-                })
-                .collect();
-            
-            if epic_boons.is_empty() {
-                return Ok(0);
-            }
-            
-            info!("Found {} Epic Boons in rewards file: {:?}", epic_boons.len(), rewards_file_path);
-            
-            // Convert Reward objects to Boon objects for the cult catalog
-            let new_boons: Vec<NewCatalogCult> = epic_boons.iter().map(|reward| {
-                let boon = Boon {
-                    name: reward.name.clone(),
-                    source: if reward.source.is_empty() {
-                        source.to_string()
-                    } else {
-                        reward.source.clone()
-                    },
-                    boon_type: reward.reward_type.clone(), // "Boon"
-                    page: reward.page,
-                    entries: reward.entries.clone(),
-                    ability: None, // Epic Boons don't have separate ability entries
-                    signature_spells: None, // May need to handle this later
-                    reprinted_as: None,
-                    other_fields: std::collections::HashMap::new(),
-                };
-                
-                NewCatalogCult::from(&boon)
-            }).collect();
-            
-            debug!("Inserting {} Epic Boons individually (SQLite limitation)", new_boons.len());
-            
-            for boon in &new_boons {
-                diesel::insert_into(catalog_cults::table)
-                    .values(boon)
-                    .on_conflict((catalog_cults::name, catalog_cults::source))
-                    .do_nothing()
-                    .execute(conn)
-                    .map_err(|e| format!("Failed to insert Epic Boon: {}", e))?;
-            }
-            
-            info!("Successfully imported {} Epic Boons from rewards into cult catalog", new_boons.len());
-            Ok(new_boons.len())
-        } else {
-            Ok(0)
-        }
-    }
 
     /// Remove all cults/boons from a specific source
     pub fn remove_cults_from_source(
