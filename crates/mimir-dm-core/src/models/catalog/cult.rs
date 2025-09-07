@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_cults;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cult {
@@ -125,6 +127,78 @@ impl From<&Boon> for CultBoonSummary {
             item_type: "boon".to_string(),
             subtype: boon.boon_type.clone(),
             page: boon.page,
+        }
+    }
+}
+
+// Database models for catalog_cults table
+#[derive(Debug, Queryable, Selectable, Serialize)]
+#[diesel(table_name = catalog_cults)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CatalogCult {
+    pub id: i32,
+    pub name: String,
+    pub category: String, // "cult" or "boon"
+    pub cult_type: Option<String>,
+    pub source: String,
+    pub page: Option<i32>,
+    pub full_cult_json: String,
+    pub created_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = catalog_cults)]
+pub struct NewCatalogCult {
+    pub name: String,
+    pub category: String,
+    pub cult_type: Option<String>,
+    pub source: String,
+    pub page: Option<i32>,
+    pub full_cult_json: String,
+}
+
+#[derive(Debug, Default)]
+pub struct CultFilters {
+    pub name: Option<String>,
+    pub category: Option<Vec<String>>, // cult, boon
+    pub cult_type: Option<Vec<String>>, // Diabolical, Demonic, Elder Evil
+    pub source: Option<Vec<String>>,
+}
+
+impl From<&Cult> for NewCatalogCult {
+    fn from(cult: &Cult) -> Self {
+        NewCatalogCult {
+            name: cult.name.clone(),
+            category: "cult".to_string(),
+            cult_type: cult.cult_type.clone(),
+            source: cult.source.clone(),
+            page: cult.page,
+            full_cult_json: serde_json::to_string(cult).unwrap_or_default(),
+        }
+    }
+}
+
+impl From<&Boon> for NewCatalogCult {
+    fn from(boon: &Boon) -> Self {
+        NewCatalogCult {
+            name: boon.name.clone(),
+            category: "boon".to_string(),
+            cult_type: boon.boon_type.clone(),
+            source: boon.source.clone(),
+            page: boon.page,
+            full_cult_json: serde_json::to_string(boon).unwrap_or_default(),
+        }
+    }
+}
+
+impl From<&CatalogCult> for CultBoonSummary {
+    fn from(catalog_cult: &CatalogCult) -> Self {
+        CultBoonSummary {
+            name: catalog_cult.name.clone(),
+            source: catalog_cult.source.clone(),
+            item_type: catalog_cult.category.clone(),
+            subtype: catalog_cult.cult_type.clone(),
+            page: catalog_cult.page,
         }
     }
 }

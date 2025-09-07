@@ -1,4 +1,17 @@
 // @generated automatically by Diesel CLI.
+
+diesel::table! {
+    catalog_cults (id) {
+        id -> Integer,
+        name -> Text,
+        category -> Text,
+        cult_type -> Nullable<Text>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_cult_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
 diesel::table! {
     campaigns (id) {
         id -> Integer,
@@ -272,6 +285,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_actions,
     catalog_backgrounds,
     catalog_conditions,
+    catalog_cults,
     catalog_feats,
     catalog_languages,
     catalog_objects,

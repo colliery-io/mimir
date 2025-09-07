@@ -1737,13 +1737,9 @@ export function useCatalog() {
         return []
       }
     },
-    // Cult & Boon catalog methods
+    // Cult & Boon catalog methods - now database-backed, no initialization needed
     initializeCultCatalog: async () => {
-      try {
-        await invoke('init_cult_catalog')
-      } catch (e) {
-        console.error(`Failed to initialize cult catalog: ${e}`)
-      }
+      // Database-backed system - no initialization required
     },
     searchCults: async (filters: {
       query?: string

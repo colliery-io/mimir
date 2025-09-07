@@ -142,8 +142,7 @@ fn main() {
             let vehicle_catalog = std::sync::Mutex::new(commands::catalog_vehicle::VehicleCatalog::new());
             app.manage(vehicle_catalog);
             
-            let cult_catalog = std::sync::Mutex::new(commands::catalog_cult::CultCatalog::new());
-            app.manage(cult_catalog);
+            // Cult catalog now uses database-backed system
             
             let psionic_catalog = std::sync::Mutex::new(commands::catalog_psionic::PsionicCatalog::new());
             app.manage(psionic_catalog);
@@ -287,6 +286,13 @@ fn main() {
             get_trap_count,
             get_trap_types,
             get_trap_categories,
+            // Cult catalog commands
+            search_cults,
+            get_cult_details,
+            get_cult_sources,
+            get_cult_count,
+            get_cult_types,
+            get_cult_categories,
             // Language catalog commands
             search_languages,
             get_language_details,
@@ -320,12 +326,12 @@ fn main() {
             commands::catalog_vehicle::get_vehicle_terrains,
             commands::catalog_vehicle::get_vehicle_sources,
             // Cult catalog commands
-            commands::catalog_cult::init_cult_catalog,
-            commands::catalog_cult::search_cults,
-            commands::catalog_cult::get_cult_details,
-            commands::catalog_cult::get_boon_details,
-            commands::catalog_cult::get_cult_types,
-            commands::catalog_cult::get_cult_sources,
+            search_cults,
+            get_cult_details,
+            get_cult_sources,
+            get_cult_count,
+            get_cult_types,
+            get_cult_categories,
             commands::catalog_psionic::search_psionics,
             commands::catalog_psionic::get_psionic_details,
             commands::catalog_psionic::get_psionic_orders,

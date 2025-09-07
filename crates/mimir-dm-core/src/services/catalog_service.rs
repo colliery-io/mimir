@@ -3,8 +3,9 @@
 //! This service handles automatic import of catalog content from uploaded books
 //! into the SQLite database for fast searching and filtering.
 
-use crate::models::catalog::{NewCatalogSpell, Spell, SpellData, NewCatalogAction, Action, NewCatalogCondition, Condition, ConditionData, Disease, DiseaseData, NewCatalogLanguage, LanguageData, NewCatalogReward, RewardData, NewCatalogBackground, BackgroundData, NewCatalogFeat, FeatData, NewCatalogRace, RaceData, NewCatalogObject, ObjectData, NewCatalogTrap, TrapData, HazardData, TrapOrHazard};
-use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats, catalog_races, catalog_objects, catalog_traps};
+use crate::models::catalog::{NewCatalogSpell, Spell, SpellData, NewCatalogAction, Action, NewCatalogCondition, Condition, ConditionData, Disease, DiseaseData, NewCatalogLanguage, LanguageData, NewCatalogReward, Reward, RewardData, NewCatalogBackground, BackgroundData, NewCatalogFeat, FeatData, NewCatalogRace, RaceData, NewCatalogObject, ObjectData, NewCatalogTrap, TrapData, HazardData, TrapOrHazard};
+use crate::models::catalog::cult::{NewCatalogCult, CultData, BoonData, Cult, Boon};
+use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats, catalog_races, catalog_objects, catalog_traps, catalog_cults};
 use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
@@ -1377,6 +1378,266 @@ impl CatalogService {
             .map_err(|e| format!("Failed to delete traps from source {}: {}", source, e))?;
         
         info!("Removed {} traps from source: {}", deleted, source);
+        Ok(deleted)
+    }
+
+    /// Import cults from a book directory
+    pub fn import_cults_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing cults from book directory: {:?} (source: {})", book_dir, source);
+        let mut total_imported = 0;
+        
+        // Import cults
+        let cults_dir = book_dir.join("cults");
+        if cults_dir.exists() {
+            info!("Found cults directory: {:?}", cults_dir);
+            let mut cult_entries = fs::read_dir(&cults_dir)
+                .map_err(|e| format!("Failed to read cults directory: {}", e))?;
+                
+            while let Some(entry) = cult_entries.next() {
+                let entry = entry.map_err(|e| format!("Failed to read cult directory entry: {}", e))?;
+                let path = entry.path();
+                
+                if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    debug!("Processing cult file: {:?}", path.file_name().unwrap_or_default());
+                    match Self::import_cults_from_file(conn, &path, source) {
+                        Ok(count) => {
+                            info!("Imported {} cults from {:?}", count, path);
+                            total_imported += count;
+                        }
+                        Err(e) => {
+                            error!("Failed to import cults from {:?}: {}", path, e);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Import boons from dedicated boons directory
+        let boons_dir = book_dir.join("boons");
+        if boons_dir.exists() {
+            info!("Found boons directory: {:?}", boons_dir);
+            let mut boon_entries = fs::read_dir(&boons_dir)
+                .map_err(|e| format!("Failed to read boons directory: {}", e))?;
+                
+            while let Some(entry) = boon_entries.next() {
+                let entry = entry.map_err(|e| format!("Failed to read boon directory entry: {}", e))?;
+                let path = entry.path();
+                
+                if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    debug!("Processing boon file: {:?}", path.file_name().unwrap_or_default());
+                    match Self::import_boons_from_file(conn, &path, source) {
+                        Ok(count) => {
+                            info!("Imported {} boons from {:?}", count, path);
+                            total_imported += count;
+                        }
+                        Err(e) => {
+                            error!("Failed to import boons from {:?}: {}", path, e);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Import Epic Boons from rewards directory
+        let rewards_dir = book_dir.join("rewards");
+        if rewards_dir.exists() {
+            info!("Found rewards directory, checking for Epic Boons: {:?}", rewards_dir);
+            let mut reward_entries = fs::read_dir(&rewards_dir)
+                .map_err(|e| format!("Failed to read rewards directory: {}", e))?;
+                
+            while let Some(entry) = reward_entries.next() {
+                let entry = entry.map_err(|e| format!("Failed to read reward directory entry: {}", e))?;
+                let path = entry.path();
+                
+                if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    debug!("Processing reward file for Epic Boons: {:?}", path.file_name().unwrap_or_default());
+                    match Self::import_epic_boons_from_rewards(conn, &path, source) {
+                        Ok(count) => {
+                            if count > 0 {
+                                info!("Imported {} Epic Boons from rewards in {:?}", count, path);
+                                total_imported += count;
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to import Epic Boons from rewards {:?}: {}", path, e);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+        }
+        
+        info!("Successfully imported {} total cults/boons from {}", total_imported, source);
+        Ok(total_imported)
+    }
+
+    fn import_cults_from_file(
+        conn: &mut SqliteConnection,
+        file_path: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        debug!("Reading cult file: {:?}", file_path);
+        
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read cult file: {}", e))?;
+            
+        let cult_data: CultData = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse cult JSON: {}", e))?;
+            
+        if let Some(cults) = cult_data.cult {
+            let new_cults: Vec<NewCatalogCult> = cults.iter().map(|cult| {
+                let mut new_cult = NewCatalogCult::from(cult);
+                if new_cult.source.is_empty() {
+                    new_cult.source = source.to_string();
+                }
+                new_cult
+            }).collect();
+            
+            debug!("Inserting {} cults individually (SQLite limitation)", new_cults.len());
+            
+            for cult in &new_cults {
+                diesel::insert_into(catalog_cults::table)
+                    .values(cult)
+                    .on_conflict((catalog_cults::name, catalog_cults::source))
+                    .do_nothing()
+                    .execute(conn)
+                    .map_err(|e| format!("Failed to insert cult: {}", e))?;
+            }
+            
+            info!("Successfully imported {} cults into database", new_cults.len());
+            Ok(new_cults.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn import_boons_from_file(
+        conn: &mut SqliteConnection,
+        file_path: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        debug!("Reading boon file: {:?}", file_path);
+        
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read boon file: {}", e))?;
+            
+        let boon_data: BoonData = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse boon JSON: {}", e))?;
+            
+        if let Some(boons) = boon_data.boon {
+            let new_boons: Vec<NewCatalogCult> = boons.iter().map(|boon| {
+                let mut new_boon = NewCatalogCult::from(boon);
+                if new_boon.source.is_empty() {
+                    new_boon.source = source.to_string();
+                }
+                new_boon
+            }).collect();
+            
+            debug!("Inserting {} boons individually (SQLite limitation)", new_boons.len());
+            
+            for boon in &new_boons {
+                diesel::insert_into(catalog_cults::table)
+                    .values(boon)
+                    .on_conflict((catalog_cults::name, catalog_cults::source))
+                    .do_nothing()
+                    .execute(conn)
+                    .map_err(|e| format!("Failed to insert boon: {}", e))?;
+            }
+            
+            info!("Successfully imported {} boons into database", new_boons.len());
+            Ok(new_boons.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Extract Epic Boons from rewards files and import them as boons to the cult catalog
+    fn import_epic_boons_from_rewards(
+        conn: &mut SqliteConnection,
+        rewards_file_path: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        debug!("Reading rewards file for Epic Boons: {:?}", rewards_file_path);
+        
+        let content = fs::read_to_string(rewards_file_path)
+            .map_err(|e| format!("Failed to read rewards file: {}", e))?;
+            
+        let reward_data: RewardData = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse rewards JSON: {}", e))?;
+            
+        if let Some(rewards) = reward_data.reward {
+            // Filter rewards to only those with type "Boon" (Epic Boons)
+            let epic_boons: Vec<_> = rewards.iter()
+                .filter(|reward| {
+                    reward.reward_type.as_ref()
+                        .map(|rt| rt == "Boon")
+                        .unwrap_or(false)
+                })
+                .collect();
+            
+            if epic_boons.is_empty() {
+                return Ok(0);
+            }
+            
+            info!("Found {} Epic Boons in rewards file: {:?}", epic_boons.len(), rewards_file_path);
+            
+            // Convert Reward objects to Boon objects for the cult catalog
+            let new_boons: Vec<NewCatalogCult> = epic_boons.iter().map(|reward| {
+                let boon = Boon {
+                    name: reward.name.clone(),
+                    source: if reward.source.is_empty() {
+                        source.to_string()
+                    } else {
+                        reward.source.clone()
+                    },
+                    boon_type: reward.reward_type.clone(), // "Boon"
+                    page: reward.page,
+                    entries: reward.entries.clone(),
+                    ability: None, // Epic Boons don't have separate ability entries
+                    signature_spells: None, // May need to handle this later
+                    reprinted_as: None,
+                    other_fields: std::collections::HashMap::new(),
+                };
+                
+                NewCatalogCult::from(&boon)
+            }).collect();
+            
+            debug!("Inserting {} Epic Boons individually (SQLite limitation)", new_boons.len());
+            
+            for boon in &new_boons {
+                diesel::insert_into(catalog_cults::table)
+                    .values(boon)
+                    .on_conflict((catalog_cults::name, catalog_cults::source))
+                    .do_nothing()
+                    .execute(conn)
+                    .map_err(|e| format!("Failed to insert Epic Boon: {}", e))?;
+            }
+            
+            info!("Successfully imported {} Epic Boons from rewards into cult catalog", new_boons.len());
+            Ok(new_boons.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Remove all cults/boons from a specific source
+    pub fn remove_cults_from_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing cults/boons from source: {}", source);
+        
+        let deleted = diesel::delete(catalog_cults::table.filter(catalog_cults::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete cults/boons from source {}: {}", source, e))?;
+        
+        info!("Removed {} cults/boons from source: {}", deleted, source);
         Ok(deleted)
     }
 

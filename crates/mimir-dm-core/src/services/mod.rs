@@ -18,6 +18,7 @@ pub mod feat_service;
 pub mod race_service;
 pub mod object_service;
 pub mod trap_service;
+pub mod cult_service;
 
 // Re-export services
 pub use campaign_service::CampaignService;
@@ -35,3 +36,4 @@ pub use feat_service::FeatService;
 pub use race_service::RaceService;
 pub use object_service::ObjectService;
 pub use trap_service::TrapService;
+pub use cult_service::CultService;

@@ -194,6 +194,7 @@
     <CultTable
       v-else-if="category === 'Cults & Boons'"
       :items="results"
+      :search-performed="searchPerformed"
       :sort-column="sortColumn"
       :sort-direction="sortDirection"
       @select="$emit('select-cult', $event)"

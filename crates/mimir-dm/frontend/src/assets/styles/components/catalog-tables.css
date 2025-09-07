@@ -131,6 +131,44 @@
   color: var(--color-text-secondary);
 }
 
+/* Cult/Boon category badges */
+.catalog-table .catalog-table__badge.cult {
+  background: rgba(156, 39, 176, 0.2);
+  color: #9c27b0;
+  border: 1px solid rgba(156, 39, 176, 0.4);
+}
+
+.catalog-table .catalog-table__badge.boon {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+/* Cult type badges */
+.catalog-table .catalog-table__badge.diabolical {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.4);
+}
+
+.catalog-table .catalog-table__badge.demonic {
+  background: rgba(255, 87, 34, 0.2);
+  color: #ff5722;
+  border: 1px solid rgba(255, 87, 34, 0.4);
+}
+
+.catalog-table .catalog-table__badge.elder-evil {
+  background: rgba(103, 58, 183, 0.2);
+  color: #673ab7;
+  border: 1px solid rgba(103, 58, 183, 0.4);
+}
+
+.catalog-table .catalog-table__badge.other {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
 /* Sortable headers */
 .catalog-table .catalog-table__th--sortable {
   cursor: pointer;

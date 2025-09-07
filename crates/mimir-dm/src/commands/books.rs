@@ -318,6 +318,17 @@ pub async fn upload_book_archive(
                     // Don't fail the entire upload for catalog import errors
                 }
             }
+            
+            // Import cults and boons
+            match CatalogService::import_cults_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+                Ok(cult_count) => {
+                    info!("Imported {} cults/boons from book '{}'", cult_count, book_name);
+                }
+                Err(e) => {
+                    warn!("Book uploaded successfully but failed to import cults/boons: {}", e);
+                    // Don't fail the entire upload for catalog import errors
+                }
+            }
         }
         Err(e) => {
             warn!("Book uploaded successfully but couldn't connect to database for catalog import: {}", e);

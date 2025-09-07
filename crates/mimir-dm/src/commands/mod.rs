@@ -29,7 +29,8 @@ pub mod catalog_trap_db;
 pub mod catalog_table;
 pub mod catalog_variant_rule;
 pub mod catalog_vehicle;
-pub mod catalog_cult;
+// pub mod catalog_cult; // Replaced by catalog_cult_db
+pub mod catalog_cult_db;
 pub mod catalog_psionic;
 pub mod catalog_language_db;
 pub mod catalog_reward_db;
@@ -57,6 +58,7 @@ pub use catalog_class::*;
 pub use catalog_race_db::*;
 pub use catalog_object_db::*;
 pub use catalog_trap_db::*;
+pub use catalog_cult_db::*;
 pub use context::*;
 pub use window_manager::*;
 pub use chat_sessions::*;
