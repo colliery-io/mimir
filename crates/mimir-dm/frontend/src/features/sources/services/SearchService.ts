@@ -202,11 +202,20 @@ class SearchServiceClass {
     sources?: string[],
     filters?: SearchFilters['equipment']
   ): Promise<ItemSummary[]> {
-    return await this.catalog.searchItems({
-      query: query || undefined,
-      sources,
-      types: filters?.type ? [filters.type] : undefined
+    const { invoke } = await import('@tauri-apps/api/core')
+    const results = await invoke<ItemSummary[]>('search_items_db', {
+      name: query,
+      sources: sources,
+      item_types: filters?.type ? [filters.type] : undefined,
+      rarities: undefined,
+      min_value: undefined,
+      max_value: undefined
     })
+    
+    // Filter out magical items (those with rarities other than 'none')
+    return results.filter(item => 
+      !item.rarity || item.rarity === 'none'
+    )
   }
   
   private async searchMagicItems(
@@ -214,14 +223,19 @@ class SearchServiceClass {
     sources?: string[],
     filters?: SearchFilters['magicItems']
   ): Promise<ItemSummary[]> {
-    const allItems = await this.catalog.searchItems({
-      query: query || undefined,
-      sources
+    const { invoke } = await import('@tauri-apps/api/core')
+    const results = await invoke<ItemSummary[]>('search_items_db', {
+      name: query,
+      sources: sources,
+      item_types: undefined,
+      rarities: filters?.rarity ? [filters.rarity] : undefined,
+      min_value: undefined,
+      max_value: undefined
     })
     
-    return allItems.filter(item => 
-      item.rarity && item.rarity !== 'none' &&
-      (!filters?.rarity || item.rarity === filters.rarity)
+    // Filter out non-magical items (those with 'none' rarity)
+    return results.filter(item => 
+      item.rarity && item.rarity !== 'none'
     )
   }
   
@@ -502,7 +516,8 @@ class SearchServiceClass {
       case 'spell':
         return await this.catalog.getSpellDetails(name, source)
       case 'item':
-        return await this.catalog.getItemDetails(name, source)
+        const { invoke } = await import('@tauri-apps/api/core')
+        return await invoke('get_item_details_db', { itemName: name, itemSource: source })
       case 'monster':
         return await this.catalog.getMonsterDetails(name, source)
       case 'class':

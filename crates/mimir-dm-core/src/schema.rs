@@ -277,6 +277,25 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_items (id) {
+        id -> Integer,
+        name -> Text,
+        item_type -> Nullable<Text>,
+        type_name -> Nullable<Text>,
+        rarity -> Nullable<Text>,
+        value -> Nullable<Double>,
+        weight -> Nullable<Double>,
+        ac -> Nullable<Integer>,
+        damage -> Nullable<Text>,
+        requires_attunement -> Nullable<Text>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_item_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     catalog_optional_features (id) {
         id -> Integer,
         name -> Text,
@@ -327,6 +346,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_conditions,
     catalog_cults,
     catalog_feats,
+    catalog_items,
     catalog_languages,
     catalog_objects,
     catalog_optional_features,

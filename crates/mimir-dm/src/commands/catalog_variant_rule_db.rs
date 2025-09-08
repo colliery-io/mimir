@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tauri::State;
 use crate::services::database::DatabaseService;
 use mimir_dm_core::services::VariantRuleService;
-use mimir_dm_core::models::catalog::variant_rule::{VariantRuleFilters, VariantRuleSummary, VariantRule};
+use mimir_dm_core::models::catalog::variant_rule::{VariantRuleFilters, VariantRule};
 
 #[tauri::command]
 pub async fn search_variant_rules(

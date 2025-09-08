@@ -2,7 +2,6 @@ use diesel::prelude::*;
 use crate::models::catalog::variant_rule::{
     CatalogVariantRule, VariantRuleSummary, VariantRuleFilters, VariantRule
 };
-use crate::schema::catalog_variant_rules;
 
 pub struct VariantRuleService<'a> {
     pub conn: &'a mut SqliteConnection,

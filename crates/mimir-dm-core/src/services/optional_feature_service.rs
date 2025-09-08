@@ -2,7 +2,6 @@ use diesel::prelude::*;
 use crate::models::catalog::optionalfeature::{
     CatalogOptionalFeature, OptionalFeatureSummary, OptionalFeatureFilters, OptionalFeature
 };
-use crate::schema::catalog_optional_features;
 
 pub struct OptionalFeatureService<'a> {
     pub conn: &'a mut SqliteConnection,

@@ -219,7 +219,6 @@ fn main() {
             get_action_count,
             initialize_item_catalog,
             search_items,
-            get_item_details,
             initialize_monster_catalog,
             search_monsters,
             get_monster_details,
@@ -265,6 +264,13 @@ fn main() {
             get_optional_feature_details,
             get_optional_feature_types,
             get_optional_feature_sources,
+            // Item catalog commands (database-backed)
+            search_items_db,
+            get_item_db,
+            get_item_details_db,
+            get_item_types_db,
+            get_item_rarities_db,
+            get_item_sources_db,
             // Deity catalog commands
             init_deity_catalog,
             search_deities,

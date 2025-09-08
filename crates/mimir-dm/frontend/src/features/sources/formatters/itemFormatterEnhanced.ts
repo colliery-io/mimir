@@ -498,28 +498,54 @@ function formatSpellcastingFocus(focusType: string): string {
 }
 
 function formatItemType(type: string): string {
+  // Handle complex type formats like "$G|DMG", "EXP|DMG", etc.
+  // Extract the base type code before any | separator
+  const baseType = type.includes('|') ? type.split('|')[0] : type
+  
+  // Handle treasure types with $ prefix - these are special and should NOT be stripped
   const typeMap: Record<string, string> = {
-    'G': 'Adventuring Gear',
-    'M': 'Melee Weapon',
-    'R': 'Ranged Weapon',
-    'A': 'Ammunition',
-    'LA': 'Light Armor',
-    'MA': 'Medium Armor', 
-    'HA': 'Heavy Armor',
-    'S': 'Shield',
-    'AT': "Artisan's Tools",
-    'TG': 'Tool',
-    'INS': 'Musical Instrument',
-    'T': "Thieves' Tools",
-    'TAH': 'Trade Goods',
-    'FD': 'Food & Drink',
-    'SCF': 'Spellcasting Focus',
-    'GS': 'Gaming Set',
-    'MNT': 'Mount',
-    'VEH': 'Vehicle',
-    '$C': 'Currency'
+    // Treasure types (with $ prefix)
+    '$': 'Treasure',                    // $ = TREASURE
+    '$A': 'Art Object',                 // $A = TREASURE_ART_OBJECT
+    '$C': 'Coinage',                    // $C = TREASURE_COINAGE  
+    '$G': 'Gemstone',                   // $G = TREASURE_GEMSTONE
+    // Regular item types (without $ prefix)
+    'A': 'Ammunition',                  // A = AMMUNITION
+    'AF': 'Futuristic Ammunition',      // AF = AMMUNITION_FUTURISTIC
+    'AIR': 'Aircraft',                  // AIR = VEHICLE_AIR
+    'AT': "Artisan's Tools",            // AT = ARTISAN_TOOL
+    'EXP': 'Explosive',                 // EXP = EXPLOSIVE
+    'FD': 'Food & Drink',               // FD = FOOD_AND_DRINK
+    'G': 'Adventuring Gear',            // G = ADVENTURING_GEAR
+    'GS': 'Gaming Set',                 // GS = GAMING_SET
+    'GV': 'Generic Variant',            // GV = GENERIC_VARIANT
+    'HA': 'Heavy Armor',                // HA = HEAVY_ARMOR
+    'IDG': 'Illegal Drug',              // IDG = ILLEGAL_DRUG
+    'INS': 'Musical Instrument',        // INS = INSTRUMENT
+    'LA': 'Light Armor',                // LA = LIGHT_ARMOR
+    'M': 'Melee Weapon',                // M = MELEE_WEAPON
+    'MA': 'Medium Armor',               // MA = MEDIUM_ARMOR
+    'MNT': 'Mount',                     // MNT = MOUNT
+    'OTH': 'Other',                     // OTH = OTHER
+    'P': 'Potion',                      // P = POTION
+    'R': 'Ranged Weapon',               // R = RANGED_WEAPON
+    'RD': 'Rod',                        // RD = ROD
+    'RG': 'Ring',                       // RG = RING
+    'S': 'Shield',                      // S = SHIELD
+    'SC': 'Scroll',                     // SC = SCROLL
+    'SCF': 'Spellcasting Focus',        // SCF = SPELLCASTING_FOCUS
+    'SHP': 'Ship',                      // SHP = VEHICLE_WATER
+    'SPC': 'Spacecraft',                // SPC = VEHICLE_SPACE
+    'T': 'Tool',                        // T = TOOL
+    'TAH': 'Tack & Harness',            // TAH = TACK_AND_HARNESS
+    'TB': 'Trade Bar',                  // TB = TRADE_BAR
+    'TG': 'Trade Good',                 // TG = TRADE_GOOD
+    'VEH': 'Vehicle (Land)',            // VEH = VEHICLE_LAND
+    'WD': 'Wand',                       // WD = WAND
+    'W': 'Wondrous Item',               // W = Not in 5etools but commonly used
   }
-  return typeMap[type] || type
+  
+  return typeMap[baseType] || type
 }
 
 function formatTier(tier: string): string {

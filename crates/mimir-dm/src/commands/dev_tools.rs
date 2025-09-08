@@ -1,12 +1,12 @@
 //! Development tools and commands
 
 use crate::{
-    embedded_test_book::{extract_all_test_books, get_embedded_test_books, is_dev_build},
+    embedded_test_book::{get_embedded_test_books, is_dev_build},
     types::ApiResponse,
     APP_PATHS,
 };
 use std::fs;
-use tracing::{info, error};
+use tracing::info;
 
 /// Check if we're in development mode
 #[tauri::command]

@@ -1,4 +1,4 @@
-use crate::models::catalog::{CatalogPsionic, NewCatalogPsionic, PsionicFilters, PsionicSummary, Psionic};
+use crate::models::catalog::{CatalogPsionic, PsionicFilters, PsionicSummary, Psionic};
 use crate::schema::catalog_psionics;
 use diesel::prelude::*;
 
