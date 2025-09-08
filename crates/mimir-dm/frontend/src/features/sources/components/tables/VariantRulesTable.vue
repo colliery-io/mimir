@@ -123,7 +123,7 @@ const sortedRules = computed(() => {
 
 async function initCatalog() {
   try {
-    await catalog.initializeVariantRuleCatalog()
+    // No initialization needed for database-backed catalog
     await loadFilters()
     await search()
   } catch (error) {

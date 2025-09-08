@@ -1620,14 +1620,7 @@ export function useCatalog() {
         return []
       }
     },
-    // Variant Rule catalog methods
-    initializeVariantRuleCatalog: async () => {
-      try {
-        await invoke('init_variant_rule_catalog')
-      } catch (e) {
-        console.error(`Failed to initialize variant rule catalog: ${e}`)
-      }
-    },
+    // Variant Rule catalog methods (database-backed)
     searchVariantRules: async (filters: {
       query?: string
       types?: string[]
@@ -1636,7 +1629,7 @@ export function useCatalog() {
       try {
         const results = await invoke<VariantRuleSummary[]>('search_variant_rules', {
           query: filters.query || null,
-          types: filters.types || null,
+          rule_types: filters.types || null,
           sources: filters.sources || null
         })
         return results || []

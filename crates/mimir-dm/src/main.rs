@@ -137,8 +137,7 @@ fn main() {
             let table_catalog = std::sync::Mutex::new(commands::catalog_table::TableCatalog::new());
             app.manage(table_catalog);
             
-            let variant_rule_catalog = std::sync::Mutex::new(commands::catalog_variant_rule::VariantRuleCatalog::new());
-            app.manage(variant_rule_catalog);
+            // Variant rule catalog now uses database-backed service (no state needed)
             
             let vehicle_catalog = std::sync::Mutex::new(commands::catalog_vehicle::VehicleCatalog::new());
             app.manage(vehicle_catalog);
@@ -204,7 +203,6 @@ fn main() {
             lookup_reference,
             // Dev tools
             is_dev_mode,
-            install_dev_test_book,
             remove_dev_test_book,
             // Catalog commands
             search_spells,
@@ -312,12 +310,12 @@ fn main() {
             commands::catalog_table::get_table_details,
             commands::catalog_table::get_table_categories,
             commands::catalog_table::get_table_sources,
-            // Variant Rule catalog commands
-            commands::catalog_variant_rule::init_variant_rule_catalog,
-            commands::catalog_variant_rule::search_variant_rules,
-            commands::catalog_variant_rule::get_variant_rule_details,
-            commands::catalog_variant_rule::get_variant_rule_types,
-            commands::catalog_variant_rule::get_variant_rule_sources,
+            // Variant Rule catalog commands (database-backed)
+            commands::catalog_variant_rule_db::search_variant_rules,
+            commands::catalog_variant_rule_db::get_variant_rule,
+            commands::catalog_variant_rule_db::get_variant_rule_details,
+            commands::catalog_variant_rule_db::get_variant_rule_types,
+            commands::catalog_variant_rule_db::get_variant_rule_sources,
             // Vehicle catalog commands
             commands::catalog_vehicle::init_vehicle_catalog,
             commands::catalog_vehicle::search_vehicles,

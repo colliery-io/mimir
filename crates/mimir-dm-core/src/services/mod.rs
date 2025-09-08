@@ -20,6 +20,7 @@ pub mod object_service;
 pub mod trap_service;
 pub mod cult_service;
 pub mod psionic_service;
+pub mod variant_rule_service;
 
 // Re-export services
 pub use campaign_service::CampaignService;
@@ -39,3 +40,4 @@ pub use object_service::ObjectService;
 pub use trap_service::TrapService;
 pub use cult_service::CultService;
 pub use psionic_service::PsionicService;
+pub use variant_rule_service::VariantRuleService;

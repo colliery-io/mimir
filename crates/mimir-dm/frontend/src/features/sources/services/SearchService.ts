@@ -113,7 +113,7 @@ class SearchServiceClass {
         await this.catalog.initializeTableCatalog()
         break
       case 'Variant Rules':
-        await this.catalog.initializeVariantRuleCatalog()
+        // No initialization needed - loaded from database
         break
       case 'Vehicles':
         await this.catalog.initializeVehicleCatalog()

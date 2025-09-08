@@ -5,7 +5,8 @@
 
 use crate::models::catalog::{NewCatalogSpell, Spell, SpellData, NewCatalogAction, Action, NewCatalogCondition, Condition, ConditionData, Disease, DiseaseData, NewCatalogLanguage, LanguageData, NewCatalogReward, Reward, RewardData, NewCatalogBackground, BackgroundData, NewCatalogFeat, FeatData, NewCatalogRace, RaceData, NewCatalogObject, ObjectData, NewCatalogTrap, TrapData, HazardData, TrapOrHazard};
 use crate::models::catalog::cult::{NewCatalogCult, CultData, BoonData, Cult, Boon};
-use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats, catalog_races, catalog_objects, catalog_traps, catalog_cults};
+use crate::models::catalog::variant_rule::{NewCatalogVariantRule, VariantRule, VariantRuleData};
+use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats, catalog_races, catalog_objects, catalog_traps, catalog_cults, catalog_variant_rules};
 use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
@@ -1542,6 +1543,119 @@ impl CatalogService {
             .map_err(|e| format!("Failed to delete cults/boons from source {}: {}", source, e))?;
         
         info!("Removed {} cults/boons from source: {}", deleted, source);
+        Ok(deleted)
+    }
+
+    /// Import all variant rule data from an uploaded book directory
+    pub fn import_variant_rules_from_book(
+        conn: &mut SqliteConnection, 
+        book_dir: &Path, 
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing variant rules from book directory: {:?} (source: {})", book_dir, source);
+        
+        let mut total_imported = 0;
+        let variant_rule_files = Self::find_variant_rule_files(book_dir)?;
+        
+        if variant_rule_files.is_empty() {
+            info!("No variant rule files found in book directory");
+            return Ok(0);
+        }
+        
+        info!("Found {} variant rule files to process", variant_rule_files.len());
+        
+        for variant_rule_file in variant_rule_files {
+            debug!("Processing variant rule file: {:?}", variant_rule_file);
+            
+            match Self::import_variant_rules_from_file(conn, &variant_rule_file, source) {
+                Ok(count) => {
+                    info!("Imported {} variant rules from {:?}", count, variant_rule_file);
+                    total_imported += count;
+                }
+                Err(e) => {
+                    error!("Failed to import variant rules from {:?}: {}", variant_rule_file, e);
+                    // Continue processing other files instead of failing completely
+                }
+            }
+        }
+        
+        info!("Successfully imported {} total variant rules from {}", total_imported, source);
+        Ok(total_imported)
+    }
+
+    fn find_variant_rule_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+        let mut files = Vec::new();
+        
+        // Look for variantrules directory
+        let variantrules_dir = book_dir.join("variantrules");
+        if variantrules_dir.exists() && variantrules_dir.is_dir() {
+            let entries = fs::read_dir(&variantrules_dir)
+                .map_err(|e| format!("Failed to read variantrules directory: {}", e))?;
+                
+            for entry in entries {
+                let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+                let path = entry.path();
+                
+                if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    files.push(path);
+                }
+            }
+        }
+        
+        Ok(files)
+    }
+
+    fn import_variant_rules_from_file(
+        conn: &mut SqliteConnection,
+        file_path: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        debug!("Reading variant rule file: {:?}", file_path);
+        
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read variant rule file: {}", e))?;
+            
+        let variant_rule_data: VariantRuleData = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse variant rule JSON: {}", e))?;
+            
+        if let Some(variant_rules) = variant_rule_data.variantrule {
+            let new_variant_rules: Vec<NewCatalogVariantRule> = variant_rules.iter().map(|rule| {
+                let mut new_rule = NewCatalogVariantRule::from(rule);
+                // Always override the source with the book source to ensure consistency
+                new_rule.source = source.to_string();
+                new_rule
+            }).collect();
+            
+            debug!("Inserting {} variant rules individually (SQLite limitation)", new_variant_rules.len());
+            
+            for rule in &new_variant_rules {
+                diesel::insert_into(catalog_variant_rules::table)
+                    .values(rule)
+                    .on_conflict((catalog_variant_rules::name, catalog_variant_rules::source))
+                    .do_nothing()
+                    .execute(conn)
+                    .map_err(|e| format!("Failed to insert variant rule: {}", e))?;
+            }
+            
+            info!("Successfully imported {} variant rules into database", new_variant_rules.len());
+            Ok(new_variant_rules.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Remove all variant rules from a specific source
+    pub fn remove_variant_rules_from_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing variant rules from source: {}", source);
+        
+        let deleted = diesel::delete(catalog_variant_rules::table.filter(catalog_variant_rules::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete variant rules from source {}: {}", source, e))?;
+        
+        info!("Removed {} variant rules from source: {}", deleted, source);
         Ok(deleted)
     }
 

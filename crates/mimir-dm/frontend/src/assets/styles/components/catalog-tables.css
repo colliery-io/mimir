@@ -213,6 +213,31 @@
   border: 1px solid rgba(103, 58, 183, 0.4);
 }
 
+/* Variant rule type badges */
+.catalog-table .catalog-table__badge.general {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.catalog-table .catalog-table__badge.action-options {
+  background: rgba(255, 87, 34, 0.2);
+  color: #ff5722;
+  border: 1px solid rgba(255, 87, 34, 0.4);
+}
+
+.catalog-table .catalog-table__badge.v {
+  background: rgba(156, 39, 176, 0.2);
+  color: #9c27b0;
+  border: 1px solid rgba(156, 39, 176, 0.4);
+}
+
+.catalog-table .catalog-table__badge.o {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+  border: 1px solid rgba(33, 150, 243, 0.4);
+}
+
 /* Sortable headers */
 .catalog-table .catalog-table__th--sortable {
   cursor: pointer;

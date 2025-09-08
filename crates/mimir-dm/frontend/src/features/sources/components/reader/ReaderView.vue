@@ -153,7 +153,6 @@ const {
   loadLibraryBooks,
   removeBook,
   selectBook,
-  installDevTestBook
 } = useBookLibrary()
 
 // Book content management
@@ -298,9 +297,6 @@ onMounted(async () => {
   // Initialize theme - exactly as in original BookApp.vue
   themeStore.applyTheme()
   await themeStore.initThemeSync()
-  
-  // Install dev test book if in dev mode
-  await installDevTestBook()
   
   // Load library books
   await loadLibraryBooks()

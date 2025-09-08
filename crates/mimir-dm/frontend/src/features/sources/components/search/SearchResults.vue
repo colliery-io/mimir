@@ -176,6 +176,7 @@
     <VariantRuleTable
       v-else-if="category === 'Variant Rules'"
       :rules="results"
+      :search-performed="searchPerformed"
       :sort-column="sortColumn"
       :sort-direction="sortDirection"
       @select="$emit('select-variant-rule', $event)"

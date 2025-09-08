@@ -14,21 +14,6 @@ export function useBookLibrary() {
   // Check for development mode
   const isDevelopment = import.meta.env.DEV
   
-  // Install dev test book if in dev mode
-  async function installDevTestBook() {
-    try {
-      const isDevMode = await invoke<boolean>('is_dev_mode')
-      
-      if (isDevMode) {
-        const response = await invoke<{ success: boolean; data?: string; message?: string }>('install_dev_test_book')
-        
-        if (response.success) {
-        } else {
-        }
-      }
-    } catch (error) {
-    }
-  }
 
   // Load library books from backend
   async function loadLibraryBooks() {
@@ -134,7 +119,6 @@ export function useBookLibrary() {
     loadLibraryBooks,
     addBook,
     removeBook,
-    selectBook,
-    installDevTestBook
+    selectBook
   }
 }

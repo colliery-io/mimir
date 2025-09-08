@@ -276,6 +276,18 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_variant_rules (id) {
+        id -> Integer,
+        name -> Text,
+        rule_type -> Nullable<Text>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_variant_rule_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -308,5 +320,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_spells,
     catalog_sources,
     catalog_traps,
+    catalog_variant_rules,
     uploaded_books,
 );
