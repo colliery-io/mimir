@@ -277,6 +277,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_optional_features (id) {
+        id -> Integer,
+        name -> Text,
+        feature_types -> Nullable<Text>,
+        feature_type_full -> Nullable<Text>,
+        prerequisite_text -> Nullable<Text>,
+        grants_spells -> Nullable<Bool>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_optional_feature_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     catalog_variant_rules (id) {
         id -> Integer,
         name -> Text,
@@ -314,6 +329,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_feats,
     catalog_languages,
     catalog_objects,
+    catalog_optional_features,
     catalog_psionics,
     catalog_races,
     catalog_rewards,

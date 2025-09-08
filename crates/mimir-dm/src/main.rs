@@ -13,7 +13,7 @@ use commands::*;
 use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
 // use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details}; // Replaced by catalog_background_db
 use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
-use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types};
+// use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types}; // Replaced by catalog_optional_feature_db
 use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
 // Object catalog now uses database-backed service
 // Trap catalog now uses database-backed service
@@ -113,7 +113,7 @@ fn main() {
             // Background catalog now uses database-backed service
             // Action catalog now uses database-backed service
             // Condition catalog now uses database-backed service
-            let optional_feature_catalog = Mutex::new(commands::catalog_optionalfeature::OptionalFeatureCatalog::new());
+            // Optional feature catalog now uses database-backed service (no state needed)
             let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
             // Object catalog now uses database-backed service
             // Trap catalog now uses database-backed service
@@ -126,7 +126,7 @@ fn main() {
             // Background catalog now uses database-backed service (no state needed)
             // Action catalog now uses database-backed service (no state needed)
             // Condition catalog now uses database-backed service (no state needed)
-            app.manage(optional_feature_catalog);
+            // Optional feature catalog now uses database-backed service (no state needed)
             app.manage(deity_catalog);
             // Object catalog now uses database-backed service (no state needed)
             // Trap catalog now uses database-backed service (no state needed)
@@ -259,11 +259,12 @@ fn main() {
             get_condition_item_types,
             get_condition_sources,
             get_condition_count,
-            // Optional feature catalog commands
-            init_optional_feature_catalog,
-            search_optional_features,
+            // Optional feature catalog commands (database-backed)
+            search_optional_features_db,
+            get_optional_feature_db,
             get_optional_feature_details,
-            get_feature_types,
+            get_optional_feature_types,
+            get_optional_feature_sources,
             // Deity catalog commands
             init_deity_catalog,
             search_deities,

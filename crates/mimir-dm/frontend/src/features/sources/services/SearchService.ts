@@ -92,7 +92,7 @@ class SearchServiceClass {
         break
       case 'Options':
       case 'Other Options & Features':
-        await this.catalog.initializeOptionalFeatureCatalog()
+        console.log('Optional features now use database-backed service (no initialization needed)')
         break
       case 'Deities':
         await this.catalog.initializeDeityCatalog()
@@ -288,9 +288,12 @@ class SearchServiceClass {
   }
   
   private async searchOptionalFeatures(query?: string, sources?: string[]): Promise<OptionalFeatureSummary[]> {
-    const results = await this.catalog.searchOptionalFeatures({
-      query: query || undefined,
-      sources: sources || undefined
+    const { invoke } = await import('@tauri-apps/api/core')
+    const results = await invoke<OptionalFeatureSummary[]>('search_optional_features_db', {
+      name: query,
+      sources: sources,
+      feature_types: undefined,
+      grants_spells: undefined
     })
     return results
   }

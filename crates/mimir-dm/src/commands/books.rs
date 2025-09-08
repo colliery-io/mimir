@@ -340,6 +340,17 @@ pub async fn upload_book_archive(
                     // Don't fail the entire upload for catalog import errors
                 }
             }
+
+            // Import optional features
+            match CatalogService::import_optional_features_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+                Ok(optional_feature_count) => {
+                    info!("Imported {} optional features from book '{}'", optional_feature_count, book_name);
+                }
+                Err(e) => {
+                    warn!("Book uploaded successfully but failed to import optional features: {}", e);
+                    // Don't fail the entire upload for catalog import errors
+                }
+            }
         }
         Err(e) => {
             warn!("Book uploaded successfully but couldn't connect to database for catalog import: {}", e);

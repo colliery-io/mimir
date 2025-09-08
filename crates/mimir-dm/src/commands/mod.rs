@@ -18,7 +18,8 @@ pub mod catalog_action;
 pub mod catalog_condition;
 // pub mod catalog_race; // Replaced by catalog_race_db
 pub mod catalog_race_db;
-pub mod catalog_optionalfeature;
+// pub mod catalog_optionalfeature; // Replaced by catalog_optional_feature_db
+pub mod catalog_optional_feature_db;
 pub mod catalog_deity;
 // pub mod catalog_object; // Replaced by catalog_object_db
 pub mod catalog_object_db;
@@ -58,6 +59,7 @@ pub use catalog_class::*;
 // pub use catalog_feat::*; // Replaced by catalog_feat_db
 // pub use catalog_race::*; // Replaced by catalog_race_db
 pub use catalog_race_db::*;
+pub use catalog_optional_feature_db::*;
 pub use catalog_object_db::*;
 pub use catalog_trap_db::*;
 pub use catalog_cult_db::*;

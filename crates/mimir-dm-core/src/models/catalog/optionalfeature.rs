@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_optional_features;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionalFeature {
@@ -179,4 +181,72 @@ fn format_prerequisites(prereqs: &Option<Vec<Prerequisite>>) -> String {
 pub struct OptionalFeatureData {
     #[serde(rename = "optionalfeature")]
     pub optional_features: Option<Vec<OptionalFeature>>,
+}
+
+// Database models
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = catalog_optional_features)]
+pub struct CatalogOptionalFeature {
+    pub id: i32,
+    pub name: String,
+    pub feature_types: Option<String>,
+    pub feature_type_full: Option<String>, 
+    pub prerequisite_text: Option<String>,
+    pub grants_spells: Option<bool>,
+    pub source: String,
+    pub page: Option<i32>,
+    pub full_optional_feature_json: String,
+    pub created_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = catalog_optional_features)]
+pub struct NewCatalogOptionalFeature {
+    pub name: String,
+    pub feature_types: Option<String>,
+    pub feature_type_full: Option<String>,
+    pub prerequisite_text: Option<String>,
+    pub grants_spells: Option<bool>,
+    pub source: String,
+    pub page: Option<i32>,
+    pub full_optional_feature_json: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OptionalFeatureFilters {
+    pub name: Option<String>,
+    pub feature_types: Option<Vec<String>>,
+    pub sources: Option<Vec<String>>,
+    pub grants_spells: Option<bool>,
+}
+
+impl From<&CatalogOptionalFeature> for OptionalFeatureSummary {
+    fn from(catalog: &CatalogOptionalFeature) -> Self {
+        Self {
+            name: catalog.name.clone(),
+            source: catalog.source.clone(),
+            feature_types: catalog.feature_types
+                .as_ref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or_default(),
+            feature_type_full: catalog.feature_type_full.clone().unwrap_or_default(),
+            prerequisite_text: catalog.prerequisite_text.clone().unwrap_or_default(),
+            grants_spells: catalog.grants_spells.unwrap_or(false),
+        }
+    }
+}
+
+impl From<&OptionalFeature> for NewCatalogOptionalFeature {
+    fn from(opt: &OptionalFeature) -> Self {
+        Self {
+            name: opt.name.clone(),
+            feature_types: serde_json::to_string(&opt.feature_type).ok(),
+            feature_type_full: Some(format_feature_types(&opt.feature_type)),
+            prerequisite_text: Some(format_prerequisites(&opt.prerequisite)),
+            grants_spells: Some(opt.additional_spells.is_some()),
+            source: opt.source.clone(),
+            page: opt.page,
+            full_optional_feature_json: serde_json::to_string(opt).unwrap_or_default(),
+        }
+    }
 }
