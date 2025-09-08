@@ -296,6 +296,25 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_monsters (id) {
+        id -> Integer,
+        name -> Text,
+        size -> Nullable<Text>,
+        creature_type -> Nullable<Text>,
+        alignment -> Nullable<Text>,
+        cr -> Nullable<Text>,
+        cr_numeric -> Nullable<Double>,
+        hp -> Nullable<Integer>,
+        ac -> Nullable<Integer>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_monster_json -> Text,
+        fluff_json -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     catalog_optional_features (id) {
         id -> Integer,
         name -> Text,
@@ -348,6 +367,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_feats,
     catalog_items,
     catalog_languages,
+    catalog_monsters,
     catalog_objects,
     catalog_optional_features,
     catalog_psionics,

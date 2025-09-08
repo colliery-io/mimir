@@ -1,6 +1,8 @@
 //! Monster catalog models
 
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_monsters;
 
 /// A D&D 5e monster/creature
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -285,6 +287,190 @@ impl From<&Monster> for MonsterSummary {
             ac,
             environment,
             description,
+        }
+    }
+}
+
+// Database models
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = catalog_monsters)]
+pub struct CatalogMonster {
+    pub id: i32,
+    pub name: String,
+    pub size: Option<String>,
+    pub creature_type: Option<String>,
+    pub alignment: Option<String>,
+    pub cr: Option<String>,
+    pub cr_numeric: Option<f64>,
+    pub hp: Option<i32>,
+    pub ac: Option<i32>,
+    pub source: String,
+    pub page: Option<i32>,
+    pub full_monster_json: String,
+    pub fluff_json: Option<String>,
+    pub created_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = catalog_monsters)]
+pub struct NewCatalogMonster {
+    pub name: String,
+    pub size: Option<String>,
+    pub creature_type: Option<String>,
+    pub alignment: Option<String>,
+    pub cr: Option<String>,
+    pub cr_numeric: Option<f64>,
+    pub hp: Option<i32>,
+    pub ac: Option<i32>,
+    pub source: String,
+    pub page: Option<i32>,
+    pub full_monster_json: String,
+    pub fluff_json: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonsterFilters {
+    pub name: Option<String>,
+    pub sizes: Option<Vec<String>>,
+    pub creature_types: Option<Vec<String>>,
+    pub alignments: Option<Vec<String>>,
+    pub sources: Option<Vec<String>>,
+    pub min_cr: Option<f64>,
+    pub max_cr: Option<f64>,
+    pub min_hp: Option<i32>,
+    pub max_hp: Option<i32>,
+    pub environment: Option<Vec<String>>,
+}
+
+impl From<&CatalogMonster> for MonsterSummary {
+    fn from(catalog: &CatalogMonster) -> Self {
+        Self {
+            name: catalog.name.clone(),
+            source: catalog.source.clone(),
+            size: catalog.size.clone().unwrap_or_else(|| "Medium".to_string()),
+            creature_type: catalog.creature_type.clone().unwrap_or_else(|| "Unknown".to_string()),
+            alignment: catalog.alignment.clone().unwrap_or_else(|| "unaligned".to_string()),
+            cr: catalog.cr.clone().unwrap_or_else(|| "0".to_string()),
+            cr_numeric: catalog.cr_numeric.unwrap_or(0.0) as f32,
+            hp: catalog.hp.unwrap_or(1) as u32,
+            ac: catalog.ac.unwrap_or(10) as u8,
+            environment: vec![], // Will be populated from JSON if needed
+            description: String::new(), // Will be populated from JSON if needed
+        }
+    }
+}
+
+impl From<&Monster> for NewCatalogMonster {
+    fn from(monster: &Monster) -> Self {
+        // Extract simplified size (first one)
+        let size = monster.size.as_ref()
+            .and_then(|s| s.first())
+            .cloned();
+        
+        // Extract simplified creature type
+        let creature_type = if let Some(ct) = &monster.creature_type {
+            match ct {
+                serde_json::Value::String(s) => Some(s.clone()),
+                serde_json::Value::Object(obj) => {
+                    obj.get("type")
+                        .and_then(|t| t.as_str())
+                        .map(|s| s.to_string())
+                },
+                _ => None,
+            }
+        } else {
+            None
+        };
+        
+        // Extract simplified alignment (first one)
+        let alignment = if let Some(al) = &monster.alignment {
+            match al {
+                serde_json::Value::Array(arr) => {
+                    arr.first()
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                },
+                serde_json::Value::String(s) => Some(s.clone()),
+                _ => None,
+            }
+        } else {
+            None
+        };
+        
+        // Extract CR and CR numeric
+        let (cr, cr_numeric) = if let Some(cr_val) = &monster.cr {
+            match cr_val {
+                serde_json::Value::String(s) => {
+                    let numeric = match s.as_str() {
+                        "1/8" => 0.125,
+                        "1/4" => 0.25,
+                        "1/2" => 0.5,
+                        _ => s.parse().unwrap_or(0.0),
+                    };
+                    (Some(s.clone()), Some(numeric))
+                },
+                serde_json::Value::Object(obj) => {
+                    let cr_str = obj.get("cr")
+                        .and_then(|c| c.as_str())
+                        .map(|s| s.to_string());
+                    let numeric = cr_str.as_ref().and_then(|s| match s.as_str() {
+                        "1/8" => Some(0.125),
+                        "1/4" => Some(0.25),
+                        "1/2" => Some(0.5),
+                        _ => s.parse().ok(),
+                    });
+                    (cr_str, numeric)
+                },
+                _ => (None, None),
+            }
+        } else {
+            (None, None)
+        };
+        
+        // Extract HP
+        let hp = if let Some(hp_val) = &monster.hp {
+            match hp_val {
+                serde_json::Value::Number(n) => n.as_u64().map(|h| h as i32),
+                serde_json::Value::Object(obj) => {
+                    obj.get("average")
+                        .and_then(|a| a.as_u64())
+                        .map(|h| h as i32)
+                },
+                _ => None,
+            }
+        } else {
+            None
+        };
+        
+        // Extract AC
+        let ac = if let Some(ac_val) = &monster.ac {
+            match ac_val {
+                serde_json::Value::Number(n) => n.as_u64().map(|a| a as i32),
+                serde_json::Value::Array(arr) => {
+                    arr.first()
+                        .and_then(|v| v.get("ac"))
+                        .and_then(|a| a.as_u64())
+                        .map(|a| a as i32)
+                },
+                _ => None,
+            }
+        } else {
+            None
+        };
+        
+        Self {
+            name: monster.name.clone(),
+            size,
+            creature_type,
+            alignment,
+            cr,
+            cr_numeric,
+            hp,
+            ac,
+            source: monster.source.clone(),
+            page: monster.page.map(|p| p as i32),
+            full_monster_json: serde_json::to_string(monster).unwrap_or_default(),
+            fluff_json: None, // Fluff data will be set separately during import
         }
     }
 }

@@ -8,7 +8,8 @@ use crate::models::catalog::cult::{NewCatalogCult, CultData, BoonData};
 use crate::models::catalog::variant_rule::{NewCatalogVariantRule, VariantRuleData};
 use crate::models::catalog::optionalfeature::{NewCatalogOptionalFeature, OptionalFeatureData};
 use crate::models::catalog::item::{NewCatalogItem, ItemData};
-use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats, catalog_races, catalog_objects, catalog_traps, catalog_cults, catalog_variant_rules, catalog_optional_features, catalog_items};
+use crate::models::catalog::monster::{NewCatalogMonster, MonsterData, MonsterFluff, MonsterFluffData};
+use crate::schema::{catalog_spells, catalog_actions, catalog_conditions, catalog_languages, catalog_rewards, catalog_backgrounds, catalog_feats, catalog_races, catalog_objects, catalog_traps, catalog_cults, catalog_variant_rules, catalog_optional_features, catalog_items, catalog_monsters};
 use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
@@ -1909,6 +1910,200 @@ impl CatalogService {
         } else {
             Ok(0)
         }
+    }
+
+    /// Import all monster data from an uploaded book directory
+    pub fn import_monsters_from_book(
+        conn: &mut SqliteConnection, 
+        book_dir: &Path, 
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing monsters from book directory: {:?} (source: {})", book_dir, source);
+        
+        let mut total_imported = 0;
+        let monster_files = Self::find_monster_files(book_dir)?;
+        
+        if monster_files.is_empty() {
+            info!("No monster files found in book directory");
+            return Ok(0);
+        }
+        
+        info!("Found {} monster files to process", monster_files.len());
+        
+        for monster_file in monster_files {
+            debug!("Processing monster file: {:?}", monster_file);
+            
+            match Self::import_monsters_from_file(conn, &monster_file, source) {
+                Ok(count) => {
+                    info!("Imported {} monsters from {:?}", count, monster_file);
+                    total_imported += count;
+                }
+                Err(e) => {
+                    error!("Failed to import monsters from {:?}: {}", monster_file, e);
+                    // Continue processing other files instead of failing completely
+                }
+            }
+        }
+        
+        info!("Total monsters imported: {}", total_imported);
+        Ok(total_imported)
+    }
+
+    /// Find monster files in a book directory (bestiary/*.json files)
+    fn find_monster_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+        let mut files = Vec::new();
+        
+        // Check the bestiary directory
+        let bestiary_dir = book_dir.join("bestiary");
+        if bestiary_dir.exists() && bestiary_dir.is_dir() {
+            let entries = fs::read_dir(&bestiary_dir)
+                .map_err(|e| format!("Failed to read bestiary directory: {}", e))?;
+                
+            for entry in entries {
+                let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+                let path = entry.path();
+                
+                if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    
+                    // Skip fluff files, index files, and foundry files
+                    if filename.starts_with("fluff-") || filename == "index.json" || filename == "foundry.json" {
+                        continue;
+                    }
+                    
+                    debug!("Found monster file: {:?}", path);
+                    files.push(path);
+                }
+            }
+        }
+        
+        Ok(files)
+    }
+
+    /// Load monster fluff data from corresponding fluff file
+    fn load_monster_fluff_data(monster_file_path: &Path) -> Option<std::collections::HashMap<String, MonsterFluff>> {
+        // Get the bestiary directory and filename
+        let bestiary_dir = monster_file_path.parent()?;
+        let filename = monster_file_path.file_name()?.to_str()?;
+        
+        // Convert bestiary-*.json to fluff-bestiary-*.json
+        if !filename.starts_with("bestiary-") {
+            return None;
+        }
+        
+        let fluff_filename = filename.replace("bestiary-", "fluff-bestiary-");
+        let fluff_file = bestiary_dir.join(&fluff_filename);
+        
+        if !fluff_file.exists() {
+            debug!("No fluff file found at: {:?}", fluff_file);
+            return None;
+        }
+        
+        debug!("Loading fluff data from: {:?}", fluff_file);
+        
+        match fs::read_to_string(&fluff_file) {
+            Ok(fluff_content) => {
+                match serde_json::from_str::<MonsterFluffData>(&fluff_content) {
+                    Ok(fluff_data) => {
+                        let mut fluff_map = std::collections::HashMap::new();
+                        
+                        for fluff in fluff_data.monster_fluff {
+                            fluff_map.insert(fluff.name.to_lowercase(), fluff);
+                        }
+                        
+                        debug!("Loaded fluff data for {} monsters", fluff_map.len());
+                        Some(fluff_map)
+                    }
+                    Err(e) => {
+                        warn!("Failed to parse fluff file {:?}: {}", fluff_file, e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Failed to read fluff file {:?}: {}", fluff_file, e);
+                None
+            }
+        }
+    }
+
+    /// Import monsters from a single JSON file
+    fn import_monsters_from_file(
+        conn: &mut SqliteConnection,
+        file_path: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        debug!("Reading monsters from file: {:?}", file_path);
+        
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+        
+        let data: MonsterData = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+        
+        // Load fluff data if available
+        let fluff_data = Self::load_monster_fluff_data(file_path);
+        
+        if !data.monster.is_empty() {
+            let new_monsters: Vec<NewCatalogMonster> = data.monster.iter().map(|monster| {
+                let mut new_monster = NewCatalogMonster::from(monster);
+                // Always override the source with the book source to ensure consistency
+                new_monster.source = source.to_string();
+                
+                // Also update the source in the full_monster_json to maintain consistency
+                if let Ok(mut monster_json) = serde_json::from_str::<serde_json::Value>(&new_monster.full_monster_json) {
+                    if let Some(obj) = monster_json.as_object_mut() {
+                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                        if let Ok(updated_json) = serde_json::to_string(&monster_json) {
+                            new_monster.full_monster_json = updated_json;
+                        }
+                    }
+                }
+                
+                // Add fluff data if available for this monster
+                if let Some(ref fluff_map) = fluff_data {
+                    let monster_name_lower = monster.name.to_lowercase();
+                    if let Some(monster_fluff) = fluff_map.get(&monster_name_lower) {
+                        if let Ok(fluff_json) = serde_json::to_string(monster_fluff) {
+                            new_monster.fluff_json = Some(fluff_json);
+                        }
+                    }
+                }
+                
+                new_monster
+            }).collect();
+            
+            debug!("Inserting {} monsters individually (SQLite limitation)", new_monsters.len());
+            
+            for monster in &new_monsters {
+                diesel::insert_into(catalog_monsters::table)
+                    .values(monster)
+                    .on_conflict((catalog_monsters::name, catalog_monsters::source))
+                    .do_nothing()
+                    .execute(conn)
+                    .map_err(|e| format!("Failed to insert monster: {}", e))?;
+            }
+            
+            info!("Successfully imported {} monsters into database", new_monsters.len());
+            Ok(new_monsters.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Remove all monsters from a specific source
+    pub fn remove_monsters_from_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing monsters from source: {}", source);
+        
+        let deleted = diesel::delete(catalog_monsters::table.filter(catalog_monsters::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete monsters from source {}: {}", source, e))?;
+        
+        info!("Removed {} monsters from source: {}", deleted, source);
+        Ok(deleted)
     }
 
     /// Remove all items from a specific source

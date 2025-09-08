@@ -271,6 +271,14 @@ fn main() {
             get_item_types_db,
             get_item_rarities_db,
             get_item_sources_db,
+            // Monster catalog commands (database-backed)
+            search_monsters_db,
+            get_monster_details_db,
+            get_monster_sizes_db,
+            get_monster_types_db,
+            get_monster_alignments_db,
+            get_monster_cr_range_db,
+            get_monster_statistics_db,
             // Deity catalog commands
             init_deity_catalog,
             search_deities,
