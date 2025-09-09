@@ -357,6 +357,24 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    catalog_vehicles (id) {
+        id -> Integer,
+        name -> Text,
+        vehicle_type -> Nullable<Text>,
+        size -> Nullable<Text>,
+        cap_crew -> Nullable<Integer>,
+        cap_passenger -> Nullable<Integer>,
+        pace -> Nullable<Integer>,
+        speed_text -> Nullable<Text>,
+        terrain_text -> Nullable<Text>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_vehicle_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
@@ -394,5 +412,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_sources,
     catalog_traps,
     catalog_variant_rules,
+    catalog_vehicles,
     uploaded_books,
 );

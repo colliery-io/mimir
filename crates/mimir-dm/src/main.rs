@@ -22,6 +22,7 @@ use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward
 use commands::catalog_background_db::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
 use commands::catalog_feat_db::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
 use commands::catalog_psionic_db::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
+use commands::catalog_vehicle_db::{search_vehicles_db, get_vehicle_details_db, get_vehicle_types_db, get_vehicle_sizes_db, get_vehicle_terrains_db, get_vehicle_statistics_db};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
 use services::llm_service::{self, LlmService, ConfirmationReceivers};
@@ -358,6 +359,13 @@ fn main() {
             get_deity_domains_db,
             get_deity_alignments_db,
             get_deity_statistics_db,
+            // Vehicle catalog commands (database-backed)
+            search_vehicles_db,
+            get_vehicle_details_db,
+            get_vehicle_types_db,
+            get_vehicle_sizes_db,
+            get_vehicle_terrains_db,
+            get_vehicle_statistics_db,
             // Context commands
             update_context,
             get_full_context,

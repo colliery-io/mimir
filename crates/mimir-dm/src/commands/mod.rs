@@ -42,6 +42,7 @@ pub mod catalog_feat_db;
 pub mod catalog_item_db;
 pub mod catalog_monster_db;
 pub mod catalog_deity_db;
+pub mod catalog_vehicle_db;
 pub mod context;
 pub mod window_manager;
 pub mod chat_sessions;
