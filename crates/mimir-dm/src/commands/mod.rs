@@ -30,7 +30,7 @@ pub mod catalog_trap_db;
 pub mod catalog_table;
 // pub mod catalog_variant_rule; // Replaced by catalog_variant_rule_db
 pub mod catalog_variant_rule_db;
-pub mod catalog_vehicle;
+// pub mod catalog_vehicle; // Replaced by catalog_vehicle_db
 // pub mod catalog_cult; // Replaced by catalog_cult_db
 pub mod catalog_cult_db;
 // pub mod catalog_psionic; // Replaced by catalog_psionic_db
@@ -67,7 +67,7 @@ pub use catalog_optional_feature_db::*;
 pub use catalog_object_db::*;
 pub use catalog_trap_db::*;
 pub use catalog_cult_db::*;
-pub use catalog_variant_rule_db::{search_variant_rules, get_variant_rule, get_variant_rule_details, get_variant_rule_types, get_variant_rule_sources};
+// Variant rule database commands are imported in main.rs directly
 pub use catalog_item_db::*;
 pub use catalog_monster_db::*;
 pub use catalog_deity_db::*;

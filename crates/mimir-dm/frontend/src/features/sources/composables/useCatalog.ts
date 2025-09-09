@@ -1669,13 +1669,9 @@ export function useCatalog() {
         return []
       }
     },
-    // Vehicle catalog methods
+    // Vehicle catalog methods (database-backed, no initialization needed)
     initializeVehicleCatalog: async () => {
-      try {
-        await invoke('init_vehicle_catalog')
-      } catch (e) {
-        console.error(`Failed to initialize vehicle catalog: ${e}`)
-      }
+      // No-op: database-backed vehicle catalog doesn't need initialization
     },
     searchVehicles: async (filters: {
       query?: string

@@ -6,8 +6,10 @@ use flate2::read::GzDecoder;
 use tracing::{info, error};
 
 /// Structure to hold embedded test book data
+#[allow(dead_code)]
 pub struct EmbeddedTestBook {
     pub name: String,
+    #[allow(dead_code)]
     pub data: &'static [u8],
 }
 
@@ -43,6 +45,7 @@ pub fn get_embedded_test_books() -> Vec<EmbeddedTestBook> {
 }
 
 /// Extract all embedded test book archives
+#[allow(dead_code)]
 pub fn extract_all_test_books(target_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
     let test_books = get_embedded_test_books();
     
@@ -59,6 +62,7 @@ pub fn extract_all_test_books(target_dir: &std::path::Path) -> Result<(), Box<dy
 }
 
 /// Extract a single test book archive
+#[allow(dead_code)]
 fn extract_single_book(book: &EmbeddedTestBook, target_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
     // Create a decoder from the embedded bytes
     let decoder = GzDecoder::new(book.data);

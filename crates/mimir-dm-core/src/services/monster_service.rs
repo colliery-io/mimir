@@ -90,12 +90,12 @@ impl<'a> MonsterService<'a> {
         
         match catalog_monster {
             Some(monster_record) => {
-                let mut parsed_monster: Monster = serde_json::from_str(&monster_record.full_monster_json)
+                let parsed_monster: Monster = serde_json::from_str(&monster_record.full_monster_json)
                     .map_err(|e| format!("Failed to parse monster JSON: {}", e))?;
                 
                 // If fluff data exists, parse and merge it with the monster
                 if let Some(fluff_json_str) = &monster_record.fluff_json {
-                    if let Ok(monster_fluff) = serde_json::from_str::<MonsterFluff>(&fluff_json_str) {
+                    if let Ok(_monster_fluff) = serde_json::from_str::<MonsterFluff>(&fluff_json_str) {
                         // Note: The Monster struct doesn't have fluff fields directly
                         // The fluff data will be handled at the formatter level
                         // For now, we'll just ensure the fluff data is available

@@ -198,21 +198,7 @@ pub async fn search_items(
     Ok(results)
 }
 
-/// Get details for a specific item
-#[tauri::command]
-pub async fn get_item_details(
-    catalog: State<'_, std::sync::Mutex<ItemCatalog>>,
-    name: String,
-    source: String,
-) -> Result<Option<Item>, String> {
-    let catalog = catalog.lock().map_err(|e| e.to_string())?;
-    
-    let item = catalog.items.iter()
-        .find(|i| i.name == name && i.source == source)
-        .cloned();
-    
-    Ok(item)
-}
+// get_item_details removed - now using database-backed system
 
 /// Monster catalog state - holds all loaded monsters in memory
 pub struct MonsterCatalog {

@@ -140,8 +140,7 @@ fn main() {
             
             // Variant rule catalog now uses database-backed service (no state needed)
             
-            let vehicle_catalog = std::sync::Mutex::new(commands::catalog_vehicle::VehicleCatalog::new());
-            app.manage(vehicle_catalog);
+            // Vehicle catalog now uses database-backed service (no state needed)
             
             // Cult catalog now uses database-backed system
             
@@ -332,13 +331,7 @@ fn main() {
             commands::catalog_variant_rule_db::get_variant_rule_details,
             commands::catalog_variant_rule_db::get_variant_rule_types,
             commands::catalog_variant_rule_db::get_variant_rule_sources,
-            // Vehicle catalog commands
-            commands::catalog_vehicle::init_vehicle_catalog,
-            commands::catalog_vehicle::search_vehicles,
-            commands::catalog_vehicle::get_vehicle_details,
-            commands::catalog_vehicle::get_vehicle_types,
-            commands::catalog_vehicle::get_vehicle_terrains,
-            commands::catalog_vehicle::get_vehicle_sources,
+            // Vehicle catalog commands (old JSON-based, replaced by database-backed)
             // Cult catalog commands
             search_cults,
             get_cult_details,
