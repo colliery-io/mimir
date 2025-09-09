@@ -321,7 +321,7 @@ export interface Deity {
   page?: number
   title?: string
   pantheon?: string
-  alignment?: string[]
+  alignment?: string[] | string
   domains?: string[]
   symbol?: string
   additionalSources?: any[]
@@ -1223,11 +1223,14 @@ export function useCatalog() {
       isLoading.value = true
       error.value = null
       
-      const results = await invoke<DeitySummary[]>('search_deities', {
-        query: filters.query || null,
-        sources: filters.sources || null,
-        pantheons: filters.pantheons || null,
-        domains: filters.domains || null
+      const results = await invoke<DeitySummary[]>('search_deities_db', {
+        filters: {
+          name: filters.query || null,
+          sources: filters.sources || null,
+          pantheons: filters.pantheons || null,
+          domains: filters.domains || null,
+          alignments: null
+        }
       })
       
       return results || []
@@ -1241,7 +1244,7 @@ export function useCatalog() {
 
   async function getDeityDetails(name: string, source: string): Promise<Deity | null> {
     try {
-      const deity = await invoke<Deity>('get_deity_details', { name, source })
+      const deity = await invoke<Deity>('get_deity_details_db', { deityName: name, deitySource: source })
       return deity
     } catch (e) {
       console.error('Failed to get deity details:', e)

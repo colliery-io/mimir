@@ -296,6 +296,22 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_deities (id) {
+        id -> Integer,
+        name -> Text,
+        title -> Nullable<Text>,
+        pantheon -> Nullable<Text>,
+        alignment -> Nullable<Text>,
+        domains -> Nullable<Text>,
+        symbol -> Nullable<Text>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_deity_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     catalog_monsters (id) {
         id -> Integer,
         name -> Text,
@@ -364,6 +380,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_backgrounds,
     catalog_conditions,
     catalog_cults,
+    catalog_deities,
     catalog_feats,
     catalog_items,
     catalog_languages,

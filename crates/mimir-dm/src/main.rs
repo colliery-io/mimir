@@ -351,6 +351,13 @@ fn main() {
             get_psionic_types,
             get_psionic_orders,
             get_psionic_sources,
+            // Deity catalog commands (database-backed)
+            search_deities_db,
+            get_deity_details_db,
+            get_deity_pantheons_db,
+            get_deity_domains_db,
+            get_deity_alignments_db,
+            get_deity_statistics_db,
             // Context commands
             update_context,
             get_full_context,

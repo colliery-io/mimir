@@ -404,7 +404,16 @@ export function formatDeityContent(deity: Deity): string {
   return html
 }
 
-function formatAlignment(alignment: string[]): string {
+function formatAlignment(alignment: string[] | string): string {
+  // Handle both array format (from JSON) and string format (from database)
+  if (typeof alignment === 'string') {
+    return alignment // Already formatted by database
+  }
+  
+  if (!Array.isArray(alignment)) {
+    return 'Unknown'
+  }
+  
   return alignment.map(a => {
     switch (a) {
       case 'L': return 'Lawful'
@@ -419,12 +428,21 @@ function formatAlignment(alignment: string[]): string {
   }).join(' ')
 }
 
-function getAlignmentClass(alignment: string[]): string {
-  const alignStr = alignment.join('').toLowerCase()
-  if (alignStr.includes('g')) return 'good'
-  if (alignStr.includes('e')) return 'evil'
-  if (alignStr.includes('l')) return 'lawful'
-  if (alignStr.includes('c')) return 'chaotic'
+function getAlignmentClass(alignment: string[] | string): string {
+  // Handle both array format (from JSON) and string format (from database)
+  let alignStr: string
+  if (typeof alignment === 'string') {
+    alignStr = alignment.toLowerCase()
+  } else if (Array.isArray(alignment)) {
+    alignStr = alignment.join('').toLowerCase()
+  } else {
+    return 'neutral'
+  }
+  
+  if (alignStr.includes('g') || alignStr.includes('good')) return 'good'
+  if (alignStr.includes('e') || alignStr.includes('evil')) return 'evil'
+  if (alignStr.includes('l') || alignStr.includes('lawful')) return 'lawful'
+  if (alignStr.includes('c') || alignStr.includes('chaotic')) return 'chaotic'
   return 'neutral'
 }
 
