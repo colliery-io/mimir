@@ -10,6 +10,10 @@ license = "MIT OR Apache-2.0"
 name = "mimir-5esplit"
 path = "src/main.rs"
 
+[[bin]]
+name = "mimir-5etest"
+path = "src/bin/load_test.rs"
+
 [dependencies]
 anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
@@ -26,6 +30,12 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 walkdir = "2.5"
 regex = "1.10"
+
+# Load tester dependencies
+mimir-dm-core = { path = "../mimir-dm-core" }
+diesel = { version = "2.1", features = ["sqlite", "chrono"] }
+diesel_migrations = "2.1"
+colored = "2.0"
 
 [dev-dependencies]
 tempdir = "0.3"

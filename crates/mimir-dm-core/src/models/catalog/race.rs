@@ -49,7 +49,7 @@ pub struct Race {
     #[serde(rename = "soundClip")]
     pub sound_clip: Option<SoundClip>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub lineage: Option<String>,
+    pub lineage: Option<serde_json::Value>, // Can be boolean true or string (source)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub race_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
