@@ -135,7 +135,72 @@ diesel::table! {
         feature -> Text,
         source -> Text,
         full_background_json -> Text,
-        created_at -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    catalog_classes (id) {
+        id -> Integer,
+        name -> Text,
+        hit_dice -> Nullable<Text>,
+        primary_ability -> Nullable<Text>,
+        proficiency -> Nullable<Text>,
+        spellcasting_ability -> Nullable<Text>,
+        subclass_title -> Nullable<Text>,
+        caster_progression -> Nullable<Text>,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_class_json -> Text,
+        fluff_json -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    catalog_subclasses (id) {
+        id -> Integer,
+        name -> Text,
+        short_name -> Nullable<Text>,
+        class_name -> Text,
+        class_source -> Text,
+        source -> Text,
+        page -> Nullable<Integer>,
+        caster_progression -> Nullable<Text>,
+        spellcasting_ability -> Nullable<Text>,
+        full_subclass_json -> Text,
+        fluff_json -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    catalog_class_features (id) {
+        id -> Integer,
+        name -> Text,
+        class_name -> Text,
+        class_source -> Text,
+        level -> Integer,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_feature_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    catalog_subclass_features (id) {
+        id -> Integer,
+        name -> Text,
+        class_name -> Text,
+        class_source -> Text,
+        subclass_short_name -> Nullable<Text>,
+        subclass_source -> Text,
+        level -> Integer,
+        source -> Text,
+        page -> Nullable<Integer>,
+        full_feature_json -> Text,
+        created_at -> Nullable<Timestamp>,
     }
 }
 
@@ -219,7 +284,7 @@ diesel::table! {
         brief -> Nullable<Text>,
         source -> Text,
         full_feat_json -> Text,
-        created_at -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
     }
 }
 
@@ -233,7 +298,7 @@ diesel::table! {
         traits_count -> Integer,
         source -> Text,
         full_race_json -> Text,
-        created_at -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
     }
 }
 
@@ -247,7 +312,7 @@ diesel::table! {
         hp -> Nullable<Text>,
         source -> Text,
         full_object_json -> Text,
-        created_at -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
     }
 }
 
@@ -272,7 +337,7 @@ diesel::table! {
         trap_type -> Nullable<Text>,
         source -> Text,
         full_trap_json -> Text,
-        created_at -> Nullable<Text>,
+        created_at -> Nullable<Timestamp>,
     }
 }
 
@@ -396,6 +461,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     documents,
     catalog_actions,
     catalog_backgrounds,
+    catalog_classes,
+    catalog_subclasses,
+    catalog_class_features,
+    catalog_subclass_features,
     catalog_conditions,
     catalog_cults,
     catalog_deities,

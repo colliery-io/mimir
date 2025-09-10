@@ -91,24 +91,31 @@ export interface ClassSummary {
   tableGroups?: any[]
   subclassTitle?: string
   description: string
+  // New fields for unified rows
+  subclassName?: string
+  rowType: string // "base" or "subclass"
 }
 
 export interface ClassFilters {
-  query?: string
-  source?: string
+  name?: string
+  sources?: string[]
+  has_spellcasting?: boolean
+  primary_abilities?: string[]
 }
 
 export interface Subclass {
   name: string
   source: string
-  class_name: string
-  class_source: string
-  short_name?: string
+  className: string
+  classSource: string
+  shortName?: string
   page?: number
-  spellcasting_ability?: string
-  caster_progression?: string
-  subclass_features?: any
-  subclass_table_groups?: any[]
+  spellcastingAbility?: string
+  casterProgression?: string
+  subclassFeatures?: any
+  subclassTableGroups?: any[]
+  fluff?: SubclassFluff
+  introDescription?: string
 }
 
 export interface ClassFeature {
@@ -607,6 +614,7 @@ export interface Class {
   classFeatures?: any[]
   multiclassing?: any
   casterProgression?: string
+  fluff?: ClassFluff
 }
 
 // Type definitions for full details
@@ -856,27 +864,10 @@ export function useCatalog() {
     }
   }
 
-  // Initialize the class catalog
+  // Initialize the class catalog (database-backed, no initialization needed)
   async function initializeClassCatalog() {
-    if (isClassesInitialized.value) return
-    
-    try {
-      isLoading.value = true
-      error.value = null
-      await invoke('initialize_class_catalog')
-      isClassesInitialized.value = true
-      
-      // Load class sources
-      try {
-        const sources = await invoke<string[]>('get_class_sources')
-        classSources.value = sources
-      } catch (e) {
-      }
-    } catch (e) {
-      error.value = `Failed to initialize class catalog: ${e}`
-    } finally {
-      isLoading.value = false
-    }
+    // No-op: database-backed class catalog doesn't need initialization
+    isClassesInitialized.value = true
   }
 
   // Search classes with filters
@@ -889,10 +880,17 @@ export function useCatalog() {
       isLoading.value = true
       error.value = null
       
-      const results = await invoke<ClassSummary[]>('search_classes', {
-        query: filters.query || null,
-        source: filters.source || null,
+      const results = await invoke<ClassSummary[]>('search_classes_db', {
+        filters: {
+          name: filters.name || null,
+          sources: filters.sources || null,
+          has_spellcasting: filters.has_spellcasting || null,
+          primary_abilities: filters.primary_abilities || null,
+        }
       })
+      
+      console.log('search_classes_db returned:', results)
+      console.log('First 5 results detail:', results.slice(0, 5))
       
       classes.value = results
       return results
@@ -907,9 +905,31 @@ export function useCatalog() {
   // Get detailed class information
   async function getClassDetails(name: string, source: string): Promise<ClassWithDetails | null> {
     try {
-      const classDetails = await invoke<ClassWithDetails>('get_class_details', { name, source })
+      console.log('getClassDetails called with:', { name, source })
+      const classDetails = await invoke<ClassWithDetails>('get_class_details_db', { 
+        className: name, 
+        classSource: source 
+      })
+      console.log('getClassDetails returned:', classDetails)
       return classDetails
     } catch (e) {
+      console.error('getClassDetails error:', e)
+      return null
+    }
+  }
+
+  async function getSubclassDetails(subclassName: string, className: string, classSource: string): Promise<Subclass | null> {
+    try {
+      console.log('getSubclassDetails called with:', { subclassName, className, classSource })
+      const subclassDetails = await invoke<Subclass>('get_subclass_details_db', {
+        subclassName: subclassName,
+        className: className,
+        classSource: classSource
+      })
+      console.log('getSubclassDetails returned:', subclassDetails)
+      return subclassDetails
+    } catch (e) {
+      console.error('getSubclassDetails error:', e)
       return null
     }
   }
@@ -917,9 +937,9 @@ export function useCatalog() {
   // Get all subclasses for a class
   async function getClassSubclasses(className: string, classSource: string): Promise<Subclass[]> {
     try {
-      const subclasses = await invoke<Subclass[]>('get_class_subclasses', { 
-        className, 
-        classSource 
+      const subclasses = await invoke<Subclass[]>('get_class_subclasses_db', { 
+        class_name: className, 
+        class_source: classSource 
       })
       return subclasses
     } catch (e) {
@@ -1375,6 +1395,7 @@ export function useCatalog() {
     getItemDetails,
     getMonsterDetails,
     getClassDetails,
+    getSubclassDetails,
     getClassSubclasses,
     searchFeats,
     getFeatDetails,

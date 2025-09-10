@@ -57,7 +57,8 @@ export interface SearchParams {
 export interface DetailFetchParams {
   name: string
   source: string
-  type: 'spell' | 'item' | 'monster' | 'class' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule' | 'vehicle' | 'cult' | 'boon' | 'psionic'
+  type: 'spell' | 'item' | 'monster' | 'class' | 'subclass' | 'feat' | 'race' | 'background' | 'action' | 'condition' | 'option' | 'deity' | 'object' | 'trap' | 'language' | 'reward' | 'table' | 'variantrule' | 'vehicle' | 'cult' | 'boon' | 'psionic'
+  subclassName?: string
 }
 
 class SearchServiceClass {
@@ -256,7 +257,7 @@ class SearchServiceClass {
   
   private async searchClasses(query?: string): Promise<ClassSummary[]> {
     return await this.catalog.searchClasses({
-      query: query || undefined
+      name: query || undefined
     })
   }
   
@@ -510,7 +511,7 @@ class SearchServiceClass {
   }
   
   async getDetails(params: DetailFetchParams): Promise<any> {
-    const { name, source, type } = params
+    const { name, source, type, subclassName } = params
     
     switch (type) {
       case 'spell':
@@ -522,6 +523,11 @@ class SearchServiceClass {
         return await this.catalog.getMonsterDetails(name, source)
       case 'class':
         return await this.catalog.getClassDetails(name, source)
+      case 'subclass':
+        if (!subclassName) {
+          throw new Error('subclassName is required for subclass details')
+        }
+        return await this.catalog.getSubclassDetails(subclassName, name, source)
       case 'feat':
         return await this.catalog.getFeatDetails(name, source)
       case 'race':

@@ -392,6 +392,16 @@ pub async fn upload_book_archive(
                     // Don't fail the entire upload for catalog import errors
                 }
             }
+            // Import classes
+            match CatalogService::import_classes_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+                Ok(class_count) => {
+                    info!("Imported {} classes from book '{}'", class_count, book_name);
+                }
+                Err(e) => {
+                    warn!("Book uploaded successfully but failed to import classes: {}", e);
+                    // Don't fail the entire upload for catalog import errors
+                }
+            }
         }
         Err(e) => {
             warn!("Book uploaded successfully but couldn't connect to database for catalog import: {}", e);
@@ -489,6 +499,7 @@ pub async fn remove_book_from_library(
                     let _ = CatalogService::remove_monsters_from_source(conn, &book_id);
                     let _ = CatalogService::remove_deities_from_source(conn, &book_id);
                     let _ = CatalogService::remove_vehicles_from_source(conn, &book_id);
+                    let _ = CatalogService::remove_classes_from_source(conn, &book_id);
                     // We don't want catalog cleanup errors to fail the book removal
                     
                     Ok(())

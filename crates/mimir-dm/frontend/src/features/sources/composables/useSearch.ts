@@ -194,16 +194,46 @@ export function useSearch(initialCategory: string, initialSources: MaybeRef<stri
   }
   
   async function selectClass(classItem: ClassSummary) {
-    const fullClass = await SearchService.getDetails({
+    console.log('selectClass called with:', {
       name: classItem.name,
+      rowType: classItem.rowType,
+      subclassName: classItem.subclassName,
       source: classItem.source,
-      type: 'class'
+      allProps: Object.keys(classItem),
+      fullObject: classItem
     })
     
-    const formattedContent = await formatClassDetails(fullClass || classItem)
+    let fullDetails
+    let title
+    
+    if (classItem.rowType === 'subclass' && classItem.subclassName) {
+      console.log('Fetching subclass details for:', classItem.subclassName)
+      // Get subclass details
+      fullDetails = await SearchService.getDetails({
+        name: classItem.name,
+        source: classItem.source,
+        type: 'subclass',
+        subclassName: classItem.subclassName
+      })
+      console.log('Subclass details received:', fullDetails)
+      title = `${classItem.name}: ${classItem.subclassName}`
+    } else {
+      console.log('Fetching base class details for:', classItem.name)
+      // Get base class details
+      fullDetails = await SearchService.getDetails({
+        name: classItem.name,
+        source: classItem.source,
+        type: 'class'
+      })
+      console.log('Class details received:', fullDetails)
+      title = classItem.name
+    }
+    
+    console.log('About to format with data:', fullDetails || classItem)
+    const formattedContent = await formatClassDetails(fullDetails || classItem)
     modalStack.value.push({
       visible: true,
-      title: classItem.name,
+      title,
       content: formattedContent
     })
   }

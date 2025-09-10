@@ -2,15 +2,28 @@ import { processFormattingTags, formatEntries } from '../utils/textFormatting'
 import { invoke } from '@tauri-apps/api/core'
 import type { Class, ClassWithDetails, ClassSummary, Subclass, ClassFeature, SubclassFeature, ClassFluff, SubclassFluff } from '../composables/useCatalog'
 
-export async function formatClassDetails(classData: ClassWithDetails | ClassSummary): Promise<string> {
-  // Handle both summary and full details
-  const isFullDetails = 'class' in classData
+export async function formatClassDetails(classData: ClassWithDetails | ClassSummary | Subclass): Promise<string> {
+  // Check what type of data we have
+  const isFullClassDetails = 'classFeatures' in classData
+  const isSubclass = 'subclassFeatures' in classData
   
-  if (!isFullDetails) {
+  console.log('formatClassDetails - data type check:', {
+    isFullClassDetails,
+    isSubclass,
+    dataKeys: Object.keys(classData),
+    data: classData
+  })
+  
+  if (isSubclass) {
+    console.log('Formatting as subclass')
+    return await formatSubclassDetails(classData as Subclass)
+  } else if (!isFullClassDetails) {
+    console.log('Formatting as class summary')
     return formatClassSummary(classData as ClassSummary)
+  } else {
+    console.log('Formatting as full class details')
+    return await formatFullClassDetails(classData as unknown as ClassWithDetails)
   }
-  
-  return await formatFullClassDetails(classData as ClassWithDetails)
 }
 
 function formatClassSummary(classSummary: ClassSummary): string {
@@ -67,7 +80,8 @@ function formatClassSummary(classSummary: ClassSummary): string {
 }
 
 async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<string> {
-  const classData = classDetails.class
+  // Handle both wrapped and direct class data
+  const classData = 'class' in classDetails ? classDetails.class : classDetails
   let html = '<div class="class-details">'
   
   // Header section
@@ -117,14 +131,14 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
   html += '</div>'
   
   // Add fluff description if available
-  if (classDetails.fluff) {
+  if (classData.fluff) {
     html += '<div class="class-fluff-section">'
     html += '<h3>Description</h3>'
     
     // Add images if present
-    if (classDetails.fluff.images && classDetails.fluff.images.length > 0) {
+    if (classData.fluff.images && classData.fluff.images.length > 0) {
       html += '<div class="class-images">'
-      for (const image of classDetails.fluff.images) {
+      for (const image of classData.fluff.images) {
         if (typeof image === 'object' && image.href && image.href.path) {
           try {
             const response = await invoke<any>('serve_book_image', {
@@ -142,9 +156,9 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
     }
     
     // Add fluff entries
-    if (classDetails.fluff.entries && classDetails.fluff.entries.length > 0) {
+    if (classData.fluff.entries && classData.fluff.entries.length > 0) {
       html += '<div class="fluff-entries">'
-      html += formatEntries(classDetails.fluff.entries)
+      html += formatEntries(classData.fluff.entries)
       html += '</div>'
     }
     html += '</div>'
@@ -178,9 +192,9 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
         const subclassSource = (f as any).subclassSource || f.subclass_source
         
         // Check if this feature belongs to this subclass
-        const nameMatch = shortName === subclass.short_name || 
+        const nameMatch = shortName === subclass.shortName || 
                          shortName === subclass.name ||
-                         (subclass.short_name && shortName?.toLowerCase() === subclass.short_name.toLowerCase()) ||
+                         (subclass.shortName && shortName?.toLowerCase() === subclass.shortName.toLowerCase()) ||
                          // Also try matching against the feature name if it's the main path description
                          (f.name === subclass.name && (f.level === 3 || f.level === 1 || f.level === 2))
         
@@ -198,7 +212,7 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
         const shortName = (f as any).subclassShortName || f.subclass_short_name
         const subclassSource = (f as any).subclassSource || f.subclass_source
         
-        return (shortName === subclass.short_name || 
+        return (shortName === subclass.shortName || 
                 shortName === subclass.name ||
                 // For Path of the Berserker, shortName might be "Berserker"
                 (subclass.name.includes(shortName) && shortName)) &&
@@ -225,6 +239,50 @@ async function formatFullClassDetails(classDetails: ClassWithDetails): Promise<s
     for (const tableGroup of classData.classTableGroups) {
       html += formatTable(tableGroup)
     }
+    html += '</div>'
+  }
+  
+  // Class Features
+  if (classData.classFeatures && classData.classFeatures.length > 0) {
+    html += '<div class="class-features-section">'
+    html += '<h3>Class Features</h3>'
+    html += '<div class="features-list">'
+    
+    // Group features by level
+    const featuresByLevel: { [key: number]: string[] } = {}
+    
+    for (const feature of classData.classFeatures) {
+      if (typeof feature === 'string') {
+        // Format: "Feature Name|Class||Level"
+        const parts = feature.split('|')
+        if (parts.length >= 4) {
+          const featureName = parts[0]
+          const level = parseInt(parts[3]) || 1
+          if (!featuresByLevel[level]) featuresByLevel[level] = []
+          featuresByLevel[level].push(featureName)
+        }
+      } else if (typeof feature === 'object' && feature.classFeature) {
+        // Handle object format
+        const parts = feature.classFeature.split('|')
+        if (parts.length >= 4) {
+          const featureName = parts[0]
+          const level = parseInt(parts[3]) || 1
+          if (!featuresByLevel[level]) featuresByLevel[level] = []
+          featuresByLevel[level].push(featureName)
+        }
+      }
+    }
+    
+    // Display features by level
+    for (let level = 1; level <= 20; level++) {
+      if (featuresByLevel[level] && featuresByLevel[level].length > 0) {
+        html += `<div class="feature-level-group">`
+        html += `<strong>Level ${level}:</strong> ${featuresByLevel[level].join(', ')}`
+        html += `</div>`
+      }
+    }
+    
+    html += '</div>'
     html += '</div>'
   }
   
@@ -274,8 +332,8 @@ async function formatSubclass(subclass: Subclass, fluff?: SubclassFluff, introFe
   html += `<h4>${subclass.name}</h4>`
   
   // Only show short_name if it exists and is different from name
-  if (subclass.short_name && subclass.short_name !== subclass.name) {
-    html += `<p class="subclass-short-name">Also known as: ${subclass.short_name}</p>`
+  if (subclass.shortName && subclass.shortName !== subclass.name) {
+    html += `<p class="subclass-short-name">Also known as: ${subclass.shortName}</p>`
   }
   
   // Add intro feature description if available
@@ -292,13 +350,13 @@ async function formatSubclass(subclass: Subclass, fluff?: SubclassFluff, introFe
   }
   
   // Add spellcasting info if present
-  if (subclass.spellcasting_ability || subclass.caster_progression) {
+  if (subclass.spellcastingAbility || subclass.casterProgression) {
     html += '<div class="subclass-spellcasting">'
-    if (subclass.spellcasting_ability) {
-      html += `<span>Spellcasting: ${formatAbilityScore(subclass.spellcasting_ability)}</span>`
+    if (subclass.spellcastingAbility) {
+      html += `<span>Spellcasting: ${formatAbilityScore(subclass.spellcastingAbility)}</span>`
     }
-    if (subclass.caster_progression) {
-      html += `<span> (${subclass.caster_progression} caster)</span>`
+    if (subclass.casterProgression) {
+      html += `<span> (${subclass.casterProgression} caster)</span>`
     }
     html += '</div>'
   }
@@ -374,10 +432,10 @@ async function formatSubclass(subclass: Subclass, fluff?: SubclassFluff, introFe
   }
   
   // Add subclass features summary if present (legacy)
-  if (subclass.subclass_features && !allSubclassFeatures) {
+  if (subclass.subclassFeatures && !allSubclassFeatures) {
     html += '<div class="subclass-features-preview">'
-    if (Array.isArray(subclass.subclass_features)) {
-      const featureCount = subclass.subclass_features.length
+    if (Array.isArray(subclass.subclassFeatures)) {
+      const featureCount = subclass.subclassFeatures.length
       html += `<p class="feature-count">${featureCount} unique feature${featureCount !== 1 ? 's' : ''}</p>`
     }
     html += '</div>'
@@ -522,6 +580,135 @@ function formatOrdinal(n: number): string {
   const suffixes = ['th', 'st', 'nd', 'rd']
   const v = n % 100
   return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0])
+}
+
+async function formatSubclassDetails(subclass: Subclass): Promise<string> {
+  let html = '<div class="subclass-details">'
+  
+  // Header section
+  html += '<div class="subclass-header-section">'
+  html += `<h2>${subclass.className}: ${subclass.name}</h2>`
+  if (subclass.shortName && subclass.shortName !== subclass.name) {
+    html += `<p class="subclass-short-name">(${subclass.shortName})</p>`
+  }
+  html += '</div>'
+  
+  // Intro description
+  if (subclass.introDescription) {
+    html += '<div class="subclass-intro-section">'
+    html += '<h3>Description</h3>'
+    html += `<p class="subclass-intro">${processFormattingTags(subclass.introDescription)}</p>`
+    html += '</div>'
+  }
+  
+  // Basic properties
+  html += '<div class="subclass-properties-grid">'
+  html += `<div class="property-item">
+    <span class="property-label">Class:</span>
+    <span class="property-value">${subclass.className}</span>
+  </div>`
+  
+  if (subclass.spellcastingAbility) {
+    html += `<div class="property-item">
+      <span class="property-label">Spellcasting Ability:</span>
+      <span class="property-value">${formatAbilityScore(subclass.spellcastingAbility)}</span>
+    </div>`
+  }
+  
+  if (subclass.casterProgression) {
+    html += `<div class="property-item">
+      <span class="property-label">Caster Progression:</span>
+      <span class="property-value">${subclass.casterProgression}</span>
+    </div>`
+  }
+  html += '</div>'
+  
+  // Subclass features
+  if (subclass.subclassFeatures && subclass.subclassFeatures.length > 0) {
+    html += '<div class="subclass-features-section">'
+    html += '<h3>Subclass Features</h3>'
+    
+    // Parse and group features by level
+    const featuresByLevel = new Map<number, string[]>()
+    
+    for (const featureRef of subclass.subclassFeatures) {
+      // Parse the feature reference: "FeatureName|ClassName||SubclassShortName||Level"
+      const parts = featureRef.split('|')
+      if (parts.length >= 6) {
+        const featureName = parts[0]
+        const level = parseInt(parts[5]) || 1
+        
+        if (!featuresByLevel.has(level)) {
+          featuresByLevel.set(level, [])
+        }
+        featuresByLevel.get(level)!.push(featureName)
+      }
+    }
+    
+    // Sort levels and display
+    const levels = Array.from(featuresByLevel.keys()).sort((a, b) => a - b)
+    
+    html += '<div class="feature-progression">'
+    for (const level of levels) {
+      const levelFeatures = featuresByLevel.get(level)!
+      html += `<div class="feature-level-group">`
+      html += `<h4>${formatOrdinal(level)} Level</h4>`
+      html += '<ul>'
+      for (const featureName of levelFeatures) {
+        html += `<li><strong>${featureName}</strong></li>`
+      }
+      html += '</ul>'
+      html += `</div>`
+    }
+    html += '</div>'
+    
+    html += '</div>'
+  }
+  
+  // Add fluff description if available
+  if (subclass.fluff) {
+    html += '<div class="subclass-fluff-section">'
+    html += '<h3>Description</h3>'
+    
+    // Add images if present
+    if (subclass.fluff.images && subclass.fluff.images.length > 0) {
+      html += '<div class="subclass-images">'
+      for (const image of subclass.fluff.images) {
+        if (typeof image === 'object' && image.href && image.href.path) {
+          try {
+            const response = await invoke<any>('serve_book_image', {
+              bookId: subclass.source,
+              imagePath: image.href.path
+            })
+            if (response && response.success && response.data) {
+              html += `<img src="${response.data}" alt="${subclass.name}" class="subclass-image" style="max-width: 400px; max-height: 400px; width: auto; height: auto; object-fit: contain; display: block; margin: 1rem auto;" />`
+            }
+          } catch (e) {
+            // Silently fail if image can't be loaded
+          }
+        }
+      }
+      html += '</div>'
+    }
+    
+    // Add fluff entries
+    if (subclass.fluff.entries && subclass.fluff.entries.length > 0) {
+      html += '<div class="fluff-entries">'
+      html += formatEntries(subclass.fluff.entries)
+      html += '</div>'
+    }
+    html += '</div>'
+  }
+  
+  // Source info
+  html += `<div class="source-info">Source: ${subclass.source}`
+  if (subclass.page) {
+    html += `, p. ${subclass.page}`
+  }
+  html += '</div>'
+  
+  html += '</div>'
+  return html
 }
 
 // Export a function to format class for modal display

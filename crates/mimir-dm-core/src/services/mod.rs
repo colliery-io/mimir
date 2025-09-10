@@ -26,6 +26,7 @@ pub mod optional_feature_service;
 pub mod psionic_service;
 pub mod variant_rule_service;
 pub mod vehicle_service;
+pub mod class_service;
 
 // Re-export services
 pub use campaign_service::CampaignService;
@@ -51,3 +52,4 @@ pub use optional_feature_service::OptionalFeatureService;
 pub use psionic_service::PsionicService;
 pub use variant_rule_service::VariantRuleService;
 pub use vehicle_service::VehicleService;
+pub use class_service::ClassService;
