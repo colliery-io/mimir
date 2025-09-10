@@ -92,14 +92,11 @@ pub fn collect_srd_content(repo_path: &Path) -> Result<SrdContent> {
     
     // Collect content from all major data files
     let data_files = [
-        "spells/spells-phb.json",
-        "spells/spells-xge.json", 
         "bestiary/bestiary-mm.json",
         "bestiary/bestiary-phb.json",
         "items/items.json",
         "items/items-base.json",
         "races.json",
-        "classes.json", 
         "backgrounds.json",
         "feats.json",
         "rewards.json",
@@ -144,6 +141,88 @@ pub fn collect_srd_content(repo_path: &Path) -> Result<SrdContent> {
                 }
                 Err(e) => {
                     eprintln!("Warning: Failed to read file {}: {}", data_file, e);
+                }
+            }
+        }
+    }
+    
+    // Collect class files from the class directory
+    let class_dir = data_dir.join("class");
+    if class_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&class_dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.is_file() && 
+                       path.extension().map_or(false, |ext| ext == "json") &&
+                       path.file_name().map_or(false, |name| 
+                           name.to_string_lossy().starts_with("class-")
+                       ) {
+                        match fs::read_to_string(&path) {
+                            Ok(file_content) => {
+                                match serde_json::from_str::<Value>(&file_content) {
+                                    Ok(data) => {
+                                        let srd_items = extract_all_srd_content(&data);
+                                        
+                                        // Merge into all_srd_content
+                                        for (content_type, items) in srd_items {
+                                            all_srd_content
+                                                .entry(content_type)
+                                                .or_insert_with(Vec::new)
+                                                .extend(items);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Warning: Failed to parse JSON from {:?}: {}", path, e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Warning: Failed to read file {:?}: {}", path, e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Collect spell files from the spells directory
+    let spells_dir = data_dir.join("spells");
+    if spells_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&spells_dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.is_file() && 
+                       path.extension().map_or(false, |ext| ext == "json") &&
+                       path.file_name().map_or(false, |name| 
+                           name.to_string_lossy().starts_with("spells-")
+                       ) {
+                        match fs::read_to_string(&path) {
+                            Ok(file_content) => {
+                                match serde_json::from_str::<Value>(&file_content) {
+                                    Ok(data) => {
+                                        let srd_items = extract_all_srd_content(&data);
+                                        
+                                        // Merge into all_srd_content
+                                        for (content_type, items) in srd_items {
+                                            all_srd_content
+                                                .entry(content_type)
+                                                .or_insert_with(Vec::new)
+                                                .extend(items);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Warning: Failed to parse JSON from {:?}: {}", path, e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Warning: Failed to read file {:?}: {}", path, e);
+                            }
+                        }
+                    }
                 }
             }
         }
