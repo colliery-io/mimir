@@ -10,12 +10,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{info, warn};
 
-pub mod implementations;
-pub mod document_tools;
-pub mod update_document_tool;
-
-#[cfg(test)]
-mod tests;
 
 /// Registry of available tools
 pub struct ToolRegistry {

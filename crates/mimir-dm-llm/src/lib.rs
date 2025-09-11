@@ -70,4 +70,8 @@ pub use traits::provider::{
 pub use traits::ToolTrait;
 
 // Re-export tools
-pub use tools::{TodoListTool, TodoItem, TodoStateManager};
+pub use tools::{
+    TodoListTool, TodoItem, TodoStateManager,
+    ReadFileTool, WriteFileTool, ListFilesTool, PathValidator,
+    SayHelloTool
+};

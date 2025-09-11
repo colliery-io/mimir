@@ -13,6 +13,7 @@ use mimir_dm_llm::{
     traits::ActionDescription,
     LlmProvider, ModelPullProgress,
     TodoListTool, TodoStateManager,
+    ReadFileTool, WriteFileTool, ListFilesTool, PathValidator, SayHelloTool,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
@@ -23,12 +24,7 @@ use tokio::sync::{oneshot, Mutex};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use super::tools::{
-    ToolRegistry, 
-    implementations::SayHelloTool,
-    document_tools::{GetDocumentTool, ListDocumentsTool},
-    update_document_tool::UpdateDocumentTool,
-};
+use super::tools::ToolRegistry;
 use super::database::DatabaseService;
 
 /// Strip thinking blocks from content for logging (simple string replacement)
@@ -125,12 +121,27 @@ impl LlmService {
         // Create todo state manager
         let todo_state_manager = TodoStateManager::new();
         
+        // Create path validator for file tools
+        let mut allowed_paths = Vec::new();
+        
+        // Allow access to entire app data directory and subdirectories
+        if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
+            allowed_paths.push(app_data_dir);
+        }
+        
+        // Add app paths data directory if available
+        if let Some(app_paths) = crate::APP_PATHS.get() {
+            allowed_paths.push(app_paths.data_dir.clone());
+        }
+        
+        let path_validator = Arc::new(PathValidator::new(allowed_paths));
+        
         // Create tool registry and register tools
         let mut tool_registry = ToolRegistry::new();
         tool_registry.register(Arc::new(SayHelloTool));
-        tool_registry.register(Arc::new(GetDocumentTool::new(db_service.clone())));
-        tool_registry.register(Arc::new(ListDocumentsTool::new(db_service.clone())));
-        tool_registry.register(Arc::new(UpdateDocumentTool::new(db_service.clone())));
+        tool_registry.register(Arc::new(ReadFileTool::new(path_validator.clone())));
+        tool_registry.register(Arc::new(WriteFileTool::new(path_validator.clone())));
+        tool_registry.register(Arc::new(ListFilesTool::new(path_validator.clone())));
         
         // Configure default todo storage path using app handle
         if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
