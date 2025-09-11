@@ -57,7 +57,7 @@ pub mod providers;
 pub mod tools;
 
 // Re-export commonly used types from config
-pub use config::{ModelConfig, EndpointType, RateLimit, RenewalPeriod, ConfigError};
+pub use config::{ModelConfig, EndpointType, RateLimit, RenewalPeriod, ConfigError, FileToolsConfig};
 
 // Re-export provider trait and types
 pub use traits::provider::{
@@ -72,6 +72,6 @@ pub use traits::ToolTrait;
 // Re-export tools
 pub use tools::{
     TodoListTool, TodoItem, TodoStateManager,
-    ReadFileTool, WriteFileTool, ListFilesTool, PathValidator,
+    ReadFileTool, WriteFileTool, ListFilesTool,
     SayHelloTool
 };

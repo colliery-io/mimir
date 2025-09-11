@@ -32,7 +32,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Supported endpoint types for models
@@ -193,5 +193,26 @@ model: llama3
 "#;
         let result = ModelConfig::from_yaml_str(invalid_yaml);
         assert!(result.is_err());
+    }
+}
+
+/// Simple configuration for file tools - just manages allowed directories
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileToolsConfig {
+    /// Directories that file tools can access
+    pub allowed_directories: Vec<PathBuf>,
+}
+
+impl FileToolsConfig {
+    /// Create a new config with the specified allowed directories
+    pub fn new(allowed_directories: Vec<PathBuf>) -> Self {
+        Self { allowed_directories }
+    }
+    
+    /// Create a config with a single root directory
+    pub fn with_root(root_directory: PathBuf) -> Self {
+        Self {
+            allowed_directories: vec![root_directory],
+        }
     }
 }

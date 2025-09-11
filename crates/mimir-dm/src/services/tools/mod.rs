@@ -92,6 +92,22 @@ impl ToolRegistry {
             );
         }
         
+        // Add file tool usage rules if file tools are available
+        if self.has_tool("read_file") && self.has_tool("write_file") && self.has_tool("list_files") {
+            if let Some(app_paths) = crate::APP_PATHS.get() {
+                rules.push(format!(
+                    "FILE TOOL USAGE RULES:\n\
+                    1. You have access to files within the application data directory: {}\n\
+                    2. Use list_files to explore directories and find available files\n\
+                    3. Use read_file to read file contents before making changes\n\
+                    4. Use write_file to create or update files (requires confirmation)\n\
+                    5. All file paths must be absolute paths within the allowed directory\n\
+                    6. Common subdirectories may include: campaigns/, modules/, documents/, templates/",
+                    app_paths.data_dir.display()
+                ));
+            }
+        }
+        
         // Add more tool-specific rules here as needed in the future
         
         rules
