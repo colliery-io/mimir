@@ -54,6 +54,7 @@
 pub mod config;
 pub mod traits;
 pub mod providers;
+pub mod tools;
 
 // Re-export commonly used types from config
 pub use config::{ModelConfig, EndpointType, RateLimit, RenewalPeriod, ConfigError};
@@ -67,3 +68,6 @@ pub use traits::provider::{
 
 // Re-export tool trait
 pub use traits::ToolTrait;
+
+// Re-export tools
+pub use tools::{TodoListTool, TodoItem, TodoStateManager};

@@ -12,12 +12,13 @@ use mimir_dm_llm::{
     providers::ollama::OllamaProvider,
     traits::ActionDescription,
     LlmProvider, ModelPullProgress,
+    TodoListTool, TodoStateManager,
 };
 use serde::{Deserialize, Serialize};
-use serde_json;
+use serde_json::{self, json};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, Mutex};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -27,10 +28,8 @@ use super::tools::{
     implementations::SayHelloTool,
     document_tools::{GetDocumentTool, ListDocumentsTool},
     update_document_tool::UpdateDocumentTool,
-    todo_list_tool::TodoListTool,
 };
 use super::database::DatabaseService;
-use crate::APP_PATHS;
 
 /// Strip thinking blocks from content for logging (simple string replacement)
 fn strip_thinking_blocks(content: &str) -> String {
@@ -112,6 +111,8 @@ pub struct LlmService {
     confirmation_receivers: ConfirmationReceivers,
     /// App handle for emitting events
     app_handle: Option<AppHandle>,
+    /// Todo state manager for ephemeral todos
+    todo_state_manager: TodoStateManager,
 }
 
 impl LlmService {
@@ -121,6 +122,9 @@ impl LlmService {
         let provider = OllamaProvider::new(config)
             .context("Failed to create Ollama provider")?;
         
+        // Create todo state manager
+        let todo_state_manager = TodoStateManager::new();
+        
         // Create tool registry and register tools
         let mut tool_registry = ToolRegistry::new();
         tool_registry.register(Arc::new(SayHelloTool));
@@ -128,15 +132,22 @@ impl LlmService {
         tool_registry.register(Arc::new(ListDocumentsTool::new(db_service.clone())));
         tool_registry.register(Arc::new(UpdateDocumentTool::new(db_service.clone())));
         
-        // Register TodoListTool with app data directory
-        if let Some(app_paths) = APP_PATHS.get() {
-            let todo_tool = TodoListTool::new(app_paths.data_dir.clone())
-                .with_app_handle(app_handle.clone());
-            tool_registry.register(Arc::new(todo_tool));
-            info!("Registered TodoListTool with data directory: {}", app_paths.data_dir.display());
+        // Configure default todo storage path using app handle
+        if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
+            let todos_dir = app_data_dir.join("todos");
+            if let Err(e) = todo_state_manager.configure_storage(todos_dir.clone()) {
+                warn!("Failed to configure default todo storage: {}", e);
+            } else {
+                info!("Configured default todo storage: {:?}", todos_dir);
+            }
         } else {
-            warn!("APP_PATHS not available, TodoListTool not registered");
+            warn!("Could not determine app data directory for todos");
         }
+        
+        // Register TodoListTool with configurable state manager
+        let todo_tool = TodoListTool::new(todo_state_manager.clone());
+        tool_registry.register(Arc::new(todo_tool));
+        info!("Registered TodoListTool with configurable state manager");
         
         Ok(Self {
             provider: Arc::new(provider),
@@ -145,6 +156,7 @@ impl LlmService {
             _db_service: db_service,
             confirmation_receivers,
             app_handle: Some(app_handle),
+            todo_state_manager,
         })
     }
     
@@ -275,6 +287,18 @@ impl LlmService {
     /// Get the model name being used
     pub fn model_name(&self) -> &str {
         &self.model_name
+    }
+    
+    /// Get todos for a session from the state manager
+    pub fn get_session_todos(&self, session_id: &str) -> Vec<mimir_dm_llm::TodoItem> {
+        self.todo_state_manager.get_todos(session_id)
+    }
+    
+    /// Configure todo storage path
+    pub fn configure_todo_storage(&self, storage_path: std::path::PathBuf) -> Result<()> {
+        self.todo_state_manager.configure_storage(storage_path)
+            .map_err(|e| anyhow!("Failed to configure todo storage: {}", e))?;
+        Ok(())
     }
     
     /// Request confirmation from the user for a tool action
@@ -680,6 +704,19 @@ pub async fn send_chat_message(
                         
                         if let Err(e) = app.emit("tool-result-message", &tool_result_msg) {
                             debug!("Failed to emit tool result message: {}", e);
+                        }
+                        
+                        // If this was a todo_write tool and successful, emit todos update
+                        if tool_name == "todo_write" && success {
+                            if let Some(session_id) = &session_id {
+                                let current_todos = llm.get_session_todos(session_id);
+                                if let Err(e) = app.emit("todos-updated", &json!({
+                                    "session_id": session_id,
+                                    "todos": current_todos
+                                })) {
+                                    debug!("Failed to emit todos update: {}", e);
+                                }
+                            }
                         }
                     }
                     

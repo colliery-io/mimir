@@ -263,37 +263,15 @@ export const useChatStore = defineStore('chat', () => {
         }
       })
       
-      // Set up event listener for task state changes
-      await listen<{task_content: string, old_status: string, new_status: string, session_id: string}>('task-state-changed', (event) => {
-        console.log('Received task state change event:', event.payload)
-        const stateChange = event.payload
+      // Set up event listener for todos updates
+      await listen<{session_id: string, todos: TodoItem[]}>('todos-updated', (event) => {
+        console.log('Received todos update event:', event.payload)
+        const update = event.payload
         
         // Only process if this is for the current session
-        if (currentSessionId.value === stateChange.session_id) {
-          // Create appropriate message based on state change
-          let content = ''
-          let success = true
-          
-          if (stateChange.old_status === 'new' && stateChange.new_status === 'pending') {
-            content = `Added task: ${stateChange.task_content}`
-          } else if (stateChange.new_status === 'in_progress') {
-            content = `Started task: ${stateChange.task_content}`
-          } else if (stateChange.new_status === 'completed') {
-            content = `Completed task: ${stateChange.task_content}`
-          } else {
-            content = `Task "${stateChange.task_content}" changed from ${stateChange.old_status} to ${stateChange.new_status}`
-          }
-          
-          const message: ChatMessage = {
-            id: `task_${Date.now()}_${Math.random()}`,
-            role: 'tool',
-            content,
-            timestamp: Date.now(),
-            toolName: 'todo_write',
-            success
-          }
-          messages.value.push(message)
-          console.log(`Added task state change message: ${stateChange.task_content} (${stateChange.old_status} → ${stateChange.new_status})`)
+        if (currentSessionId.value === update.session_id) {
+          todos.value = update.todos
+          console.log(`Updated todos for session ${update.session_id}: ${update.todos.length} items`)
         }
       })
     } catch (err) {
@@ -662,7 +640,7 @@ export const useChatStore = defineStore('chat', () => {
   const loadTodosForSession = async (sessionId: string) => {
     try {
       console.log(`Loading todos for session: ${sessionId}`)
-      const response = await invoke<{success: boolean, data?: TodoItem[], error?: string}>('get_todos', { sessionId })
+      const response = await invoke<{success: boolean, data?: TodoItem[], error?: string}>('get_session_todos', { session_id: sessionId })
       console.log('Todo API response:', response)
       if (response.success && response.data) {
         todos.value = response.data
@@ -672,6 +650,22 @@ export const useChatStore = defineStore('chat', () => {
       }
     } catch (err) {
       console.error('Failed to load todos:', err)
+    }
+  }
+  
+  const configureTodoStorage = async (storagePath: string) => {
+    try {
+      console.log(`Configuring todo storage to: ${storagePath}`)
+      const response = await invoke<{success: boolean, data?: null, error?: string}>('configure_todo_storage', { 
+        storage_path: storagePath 
+      })
+      if (response.success) {
+        console.log('Todo storage configured successfully')
+      } else {
+        console.error('Failed to configure todo storage:', response.error)
+      }
+    } catch (err) {
+      console.error('Failed to configure todo storage:', err)
     }
   }
   
@@ -750,6 +744,7 @@ export const useChatStore = defineStore('chat', () => {
     toggleTodosVisibility,
     clearTodos,
     loadTodosForSession,
-    extractTodosFromMessage
+    extractTodosFromMessage,
+    configureTodoStorage
   }
 })

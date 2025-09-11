@@ -47,7 +47,7 @@ pub mod catalog_class_db;
 pub mod context;
 pub mod window_manager;
 pub mod chat_sessions;
-pub mod todos;
+pub mod session_todos;
 
 pub use campaigns::*;
 pub use app_info::*;
@@ -75,4 +75,4 @@ pub use catalog_deity_db::*;
 pub use context::*;
 pub use window_manager::*;
 pub use chat_sessions::*;
-pub use todos::*;
+pub use session_todos::*;

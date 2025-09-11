@@ -1,16 +1,16 @@
 //! Todo List Tool for managing complex task workflows
 //!
 //! Helps the LLM track multi-step tasks and avoid context rot during long conversations.
+//! This tool manages ephemeral todos in memory for the duration of a chat session.
 
 use async_trait::async_trait;
-use mimir_dm_llm::ToolTrait;
+use crate::ToolTrait;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::error::Error;
-use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Emitter};
-use tracing::{debug, error, info};
+use std::sync::{Arc, Mutex};
+use tracing::{debug, info};
 
 /// Represents a single todo item
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,59 +21,65 @@ pub struct TodoItem {
     pub active_form: String, // Present tense form for display during execution
 }
 
-/// Event for task state changes
-#[derive(Clone, Serialize, Deserialize)]
-pub struct TaskStateChangeEvent {
-    pub task_content: String,
-    pub old_status: String,
-    pub new_status: String,
-    pub session_id: String,
+/// Manages todo state with configurable storage backend
+#[derive(Debug, Clone)]
+pub struct TodoStateManager {
+    storage_path: Arc<Mutex<Option<PathBuf>>>,
 }
 
-/// Tool for managing todo lists with JSON file persistence
-pub struct TodoListTool {
-    todos_dir: PathBuf,
-    app_handle: Option<AppHandle>,
-}
-
-impl TodoListTool {
-    pub fn new(app_data_dir: PathBuf) -> Self {
-        let todos_dir = app_data_dir.join("todos");
-        
-        // Ensure the todos directory exists
-        if let Err(e) = fs::create_dir_all(&todos_dir) {
-            error!("Failed to create todos directory: {}", e);
-        } else {
-            debug!("Todo directory initialized: {}", todos_dir.display());
-        }
-        
-        Self { 
-            todos_dir,
-            app_handle: None,
+impl TodoStateManager {
+    pub fn new() -> Self {
+        Self {
+            storage_path: Arc::new(Mutex::new(None)),
         }
     }
     
-    /// Set app handle for event emission
-    pub fn with_app_handle(mut self, app_handle: AppHandle) -> Self {
-        self.app_handle = Some(app_handle);
-        self
+    /// Configure the storage path for todos (this should be a directory path)
+    pub fn configure_storage(&self, path: PathBuf) -> Result<(), Box<dyn Error + Send + Sync>> {
+        // Ensure the directory exists (path is the directory, not a file)
+        std::fs::create_dir_all(&path)
+            .map_err(|e| format!("Failed to create todos directory: {}", e))?;
+        
+        let mut storage_path = self.storage_path.lock().unwrap();
+        *storage_path = Some(path);
+        debug!("Todo storage configured to: {:?}", storage_path.as_ref().unwrap());
+        Ok(())
     }
     
     /// Get the file path for a session's todos
-    fn get_session_file_path(&self, session_id: &str) -> PathBuf {
-        self.todos_dir.join(format!("{}.json", session_id))
+    fn get_session_file_path(&self, session_id: &str) -> Result<PathBuf, Box<dyn Error + Send + Sync>> {
+        let storage_path = self.storage_path.lock().unwrap();
+        let base_path = storage_path.as_ref()
+            .ok_or("Todo storage not configured. Call configure_storage first.")?;
+        Ok(base_path.join(format!("{}.json", session_id)))
+    }
+    
+    /// Get todos for a session
+    pub fn get_todos(&self, session_id: &str) -> Vec<TodoItem> {
+        match self.load_todos_from_file(session_id) {
+            Ok(todos) => todos,
+            Err(e) => {
+                debug!("Failed to load todos for session {}: {}", session_id, e);
+                Vec::new()
+            }
+        }
+    }
+    
+    /// Set todos for a session
+    pub fn set_todos(&self, session_id: &str, todos: Vec<TodoItem>) -> Result<(), Box<dyn Error + Send + Sync>> {
+        self.save_todos_to_file(session_id, &todos)
     }
     
     /// Load todos from file for a session
-    fn load_todos(&self, session_id: &str) -> Result<Vec<TodoItem>, Box<dyn Error + Send + Sync>> {
-        let file_path = self.get_session_file_path(session_id);
+    fn load_todos_from_file(&self, session_id: &str) -> Result<Vec<TodoItem>, Box<dyn Error + Send + Sync>> {
+        let file_path = self.get_session_file_path(session_id)?;
         
         if !file_path.exists() {
             debug!("Todo file does not exist for session {}, returning empty list", session_id);
             return Ok(Vec::new());
         }
         
-        let content = fs::read_to_string(&file_path)
+        let content = std::fs::read_to_string(&file_path)
             .map_err(|e| format!("Failed to read todo file: {}", e))?;
         
         let todos: Vec<TodoItem> = serde_json::from_str(&content)
@@ -84,17 +90,38 @@ impl TodoListTool {
     }
     
     /// Save todos to file for a session
-    fn save_todos(&self, session_id: &str, todos: &[TodoItem]) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let file_path = self.get_session_file_path(session_id);
+    fn save_todos_to_file(&self, session_id: &str, todos: &[TodoItem]) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let file_path = self.get_session_file_path(session_id)?;
         
         let json_content = serde_json::to_string_pretty(todos)
             .map_err(|e| format!("Failed to serialize todos: {}", e))?;
         
-        fs::write(&file_path, json_content)
+        std::fs::write(&file_path, json_content)
             .map_err(|e| format!("Failed to write todo file: {}", e))?;
         
         info!("Saved {} todos for session {}", todos.len(), session_id);
         Ok(())
+    }
+    
+    /// Clear todos for a session
+    pub fn clear_session(&self, session_id: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let file_path = self.get_session_file_path(session_id)?;
+        if file_path.exists() {
+            std::fs::remove_file(&file_path)
+                .map_err(|e| format!("Failed to remove todo file: {}", e))?;
+        }
+        Ok(())
+    }
+}
+
+/// Tool for managing todo lists with in-memory persistence
+pub struct TodoListTool {
+    state_manager: TodoStateManager,
+}
+
+impl TodoListTool {
+    pub fn new(state_manager: TodoStateManager) -> Self {
+        Self { state_manager }
     }
     
     /// Validate that only one task can be in_progress at a time
@@ -284,40 +311,8 @@ CRITICAL: The field name is \"status\" NOT \"state\". Different LLM models may t
             .and_then(|v| v.as_str())
             .unwrap_or("default");
         
-        // Load previous todos to detect state changes
-        let previous_todos = self.load_todos(session_id).unwrap_or_default();
-        
-        // Emit events for all state changes
-        if let Some(ref app) = self.app_handle {
-            for todo in &todos {
-                // Find the previous state of this task
-                let old_status = previous_todos
-                    .iter()
-                    .find(|prev| prev.content == todo.content)
-                    .map(|prev| prev.status.as_str())
-                    .unwrap_or("new"); // "new" for tasks that didn't exist before
-                
-                // Emit event if status changed
-                if old_status != todo.status {
-                    let state_change_event = TaskStateChangeEvent {
-                        task_content: todo.content.clone(),
-                        old_status: old_status.to_string(),
-                        new_status: todo.status.clone(),
-                        session_id: session_id.to_string(),
-                    };
-                    
-                    if let Err(e) = app.emit("task-state-changed", &state_change_event) {
-                        debug!("Failed to emit task state change event: {}", e);
-                    } else {
-                        debug!("Emitted state change event for task '{}': {} → {}", 
-                               todo.content, old_status, todo.status);
-                    }
-                }
-            }
-        }
-        
-        // Save the todos
-        self.save_todos(session_id, &todos)?;
+        // Store the todos using the configured storage
+        self.state_manager.set_todos(session_id, todos.clone())?;
         
         // Return a summary
         let pending_count = todos.iter().filter(|t| t.status == "pending").count();
@@ -341,7 +336,8 @@ CRITICAL: The field name is \"status\" NOT \"state\". Different LLM models may t
             )
         };
         
-        info!("Updated todo list: {} items total", todos.len());
+        info!("Updated todo list: {} items total for session {}", todos.len(), session_id);
+        debug!("Todo list updated: {:?}", todos);
         Ok(summary)
     }
 }
