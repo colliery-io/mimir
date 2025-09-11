@@ -95,7 +95,7 @@ mimir/
   - Multiple sourcebooks supported (PHB, DMG, MM, Xanathar's, Tasha's, etc.)
 - **Document Templates** - Pre-built Markdown templates with YAML frontmatter
 - **Local-First** - All data stored locally in SQLite, no cloud dependencies
-- **LLM Integration** - Local LLM support via Ollama for content generation
+- **LLM Integration** - Local LLM support via Ollama for content generation with configurable todo system
 - **Cross-Platform** - Native desktop app for Windows, macOS, and Linux
 - **5etools Integration** - Import and process official D&D data from 5etools
 
@@ -113,7 +113,7 @@ mimir/
 ### Core Crates
 - **[mimir-dm](crates/mimir-dm/)** - Main Tauri desktop application with Vue frontend
 - **[mimir-dm-core](crates/mimir-dm-core/)** - Business logic, database models, and services  
-- **[mimir-dm-llm](crates/mimir-dm-llm/)** - LLM provider abstraction layer (Ollama support)
+- **[mimir-dm-llm](crates/mimir-dm-llm/)** - LLM provider abstraction layer with todo system (Ollama support)
 
 ### Utility Crates
 - **[mimir-5etools-splitter](crates/mimir-5etools-splitter/)** - Data processing for 5etools repositories
@@ -139,6 +139,7 @@ mimir/
 - Install and run Ollama: [ollama.ai](https://ollama.ai/)
 - Pull a model: `ollama pull llama3`
 - Ensure Ollama is running on `http://localhost:11434`
+- Todo storage automatically configured to app data directory on startup
 
 ### Development Tips
 - Use `MIMIR_DEV=1` environment variable to force development mode
