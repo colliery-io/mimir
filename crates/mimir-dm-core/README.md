@@ -26,13 +26,13 @@ The `mimir-dm-core` crate is the heart of the Mimir D&D Campaign Assistant. It p
 
 The crate is organized into two distinct domains:
 
-### 1. Catalog Domain (`models::catalog`, `dal::catalog`)
-Static D&D reference data that doesn't change during gameplay:
-- Rule systems (D&D 5e, etc.)
-- Source books and supplements
-- Races, classes, backgrounds
-- Items, spells, feats
-- Creatures and monsters
+### 1. Catalog Domain (`models::catalog`, `services::*_service`)
+Comprehensive D&D 5e reference data with database-backed services:
+- **20+ Content Categories** - Classes, races, backgrounds, spells, items, monsters, etc.
+- **Multiple Source Books** - PHB, DMG, MM, Xanathar's, Tasha's, and more
+- **Advanced Search** - Full-text and vector similarity search
+- **Rich Metadata** - Sources, types, levels, classifications
+- **Service Layer** - Individual services for each content category
 
 ### 2. Campaign Domain (`models::campaign`, `dal::campaign`)
 Dynamic campaign management and story organization:
@@ -52,12 +52,28 @@ src/
 ├── error.rs               # Error types and Result type alias
 │
 ├── models/                # Domain models (split by domain)
-│   ├── catalog/          # D&D reference data models
-│   │   ├── spell.rs      # Spell definitions
-│   │   ├── item.rs       # Equipment and magic items
-│   │   ├── monster.rs    # Monsters and NPCs
-│   │   ├── class.rs      # Character classes and features
-│   │   └── mod.rs        # Module exports
+│   ├── catalog/          # D&D reference data models (20+ types)
+│   │   ├── action.rs          # Actions and activities
+│   │   ├── background.rs      # Character backgrounds
+│   │   ├── book.rs            # Source books and publications
+│   │   ├── class.rs           # Classes, subclasses, and features
+│   │   ├── condition.rs       # Conditions and effects
+│   │   ├── cult.rs            # Cults and organizations
+│   │   ├── deity.rs           # Deities and pantheons
+│   │   ├── feat.rs            # Feats and abilities
+│   │   ├── item.rs            # Equipment and magic items
+│   │   ├── language.rs        # Languages and scripts
+│   │   ├── monster.rs         # Monsters and NPCs
+│   │   ├── object.rs          # Objects and structures
+│   │   ├── optionalfeature.rs # Optional features and variants
+│   │   ├── psionic.rs         # Psionic abilities
+│   │   ├── race.rs            # Races and lineages
+│   │   ├── reward.rs          # Rewards and treasures
+│   │   ├── spell.rs           # Spells and magic
+│   │   ├── trap.rs            # Traps and hazards
+│   │   ├── variant_rule.rs    # Variant rules
+│   │   ├── vehicle.rs         # Vehicles and mounts
+│   │   └── mod.rs             # Module exports
 │   └── campaign/         # Campaign management models
 │       ├── campaigns.rs  # Campaign lifecycle
 │       ├── modules.rs    # Story arc management
@@ -76,9 +92,23 @@ src/
 │       ├── module_board.rs
 │       └── session_board.rs
 │
-├── services/             # Business service layer
-│   ├── campaign_service.rs  # Campaign operations
-│   └── template_service.rs  # Document generation
+├── services/             # Business service layer (26 services)
+│   ├── campaign_service.rs   # Campaign lifecycle operations
+│   ├── template_service.rs   # Document and template generation
+│   ├── catalog_service.rs    # Central catalog management
+│   ├── module_service.rs     # Module and session management
+│   ├── *_service.rs          # Individual catalog services (20+ files)
+│   │   ├── action_service.rs      # Actions and activities
+│   │   ├── background_service.rs  # Character backgrounds
+│   │   ├── class_service.rs       # Classes and subclasses
+│   │   ├── condition_service.rs   # Conditions and effects
+│   │   ├── deity_service.rs       # Deities and pantheons
+│   │   ├── feat_service.rs        # Feats and abilities
+│   │   ├── item_service.rs        # Items and equipment
+│   │   ├── language_service.rs    # Languages and scripts
+│   │   ├── monster_service.rs     # Monsters and NPCs
+│   │   ├── spell_service.rs       # Spells and magic
+│   │   └── ... (additional services)
 │
 ├── seed/                 # Data initialization
 │   ├── template_loader.rs   # Load templates from filesystem
@@ -101,11 +131,12 @@ src/
 - Connection pooling
 - Transaction support
 
-### (Planned) Search Capabilities
-- **Full-Text Search (FTS5)** for fast text queries
-- **Vector Similarity Search** via sqlite-vec for semantic search
-- Dual search strategy for optimal results
-- Embedding storage integrated with LLM providers
+### Search Capabilities
+- **Full-Text Search (FTS5)** - Fast text queries across catalog content
+- **Vector Similarity Search** - sqlite-vec integration for semantic search
+- **Hybrid Search Strategy** - Combines text and vector search for optimal results
+- **Embedding Storage** - Integrated with LLM providers for content embeddings
+- **Advanced Filtering** - Search by source, type, level, and other attributes
 
 ### Workflow System
 - Board definitions for campaigns, modules, and sessions

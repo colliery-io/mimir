@@ -36,13 +36,17 @@ The crate uses a trait-based provider system where each LLM provider implements 
 
 ```
 src/
-├── lib.rs           # Crate root with public API
-├── provider.rs      # Core trait and response types
-├── config.rs        # Configuration structures
-├── providers/       # Provider implementations
-│   ├── mod.rs      
-│   └── ollama.rs    # Ollama provider implementation
-└── embeddings.rs    # Embedding-specific utilities (if any)
+├── lib.rs           # Crate root with public API and re-exports
+├── config.rs        # Configuration structures and YAML parsing
+├── embeddings.rs    # Embedding-specific utilities
+├── traits/          # Core trait definitions
+│   ├── mod.rs      # Trait module exports
+│   ├── provider.rs  # LlmProvider trait and response types
+│   ├── context.rs   # Context management traits
+│   └── tool.rs      # Tool integration trait (ToolTrait)
+└── providers/       # Provider implementations
+    ├── mod.rs      # Provider module exports
+    └── ollama.rs    # Ollama provider implementation
 ```
 
 ## Key Features
@@ -215,13 +219,13 @@ cargo test -p mimir-dm-llm --features integration-tests
 5. **Type Safe**: Strong typing for all API interactions
 6. **Async Native**: Built on tokio for concurrent operations
 
-## Future Enhancements
+## Current Capabilities
 
-- [ ] Streaming response support
-- [ ] Response caching layer
-- [ ] Retry logic with exponential backoff
-- [ ] Provider health checks
-- [ ] Token counting utilities
-- [ ] Prompt template management
-- [ ] Model capability detection
-- [ ] Cost tracking per provider
+- **Provider Abstraction** - Unified interface supporting multiple LLM providers
+- **Rate Limiting** - Token bucket algorithm with configurable limits
+- **Multiple Endpoints** - Chat, completion, and embedding support
+- **Ollama Integration** - Complete support for local Ollama deployments
+- **Tool Support** - ToolTrait for function calling integration
+- **Error Handling** - Comprehensive error types and graceful failure
+- **Configuration** - YAML-based model and provider configuration
+- **Async Design** - Full tokio async/await support

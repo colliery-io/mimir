@@ -3,7 +3,6 @@ members = [
     "crates/mimir-dm",
     "crates/mimir-dm-core", 
     "crates/mimir-dm-llm",
-    "crates/mimir-dm-agents",
     "crates/mimir-5etools-splitter"
 ]
 resolver = "2"
