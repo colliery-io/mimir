@@ -329,12 +329,24 @@
 }
 
 .chat-session-item--active {
-  background-color: var(--color-primary-50);
+  background-color: var(--color-surface-variant);
   border-color: var(--color-primary-400);
+  position: relative;
+}
+
+.chat-session-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--color-primary-500);
+  border-radius: 0 2px 2px 0;
 }
 
 .theme-dark .chat-session-item--active {
-  background-color: var(--color-primary-900);
+  background-color: var(--color-surface-elevated);
 }
 
 .chat-session-title {

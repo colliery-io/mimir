@@ -48,7 +48,55 @@ export interface ChatResponseWithUsage {
 export interface ActionDescription {
   title: string
   description: string
-  changes: string[]
+  changes: ChangeDetail
+}
+
+export type ChangeDetail = 
+  | FileEditDetail
+  | FileWriteDetail
+  | FileReadDetail
+  | GenericDetail
+
+export interface FileEditDetail {
+  type: 'FileEdit'
+  file_path: string
+  edits: LineEdit[]
+  total_lines_affected: number
+  total_lines_in_file: number
+}
+
+export interface FileWriteDetail {
+  type: 'FileWrite'
+  file_path: string
+  content_length: number
+  diff_preview?: DiffPreview
+}
+
+export interface FileReadDetail {
+  type: 'FileRead'
+  file_path: string
+  file_size: number
+}
+
+export interface GenericDetail {
+  type: 'Generic'
+  items: string[]
+}
+
+export interface LineEdit {
+  operation: 'replace' | 'insert' | 'delete'
+  start_line: number
+  end_line: number
+  old_content: string[]
+  new_content: string[]
+  context_before?: string
+  context_after?: string
+}
+
+export interface DiffPreview {
+  added_lines: number
+  removed_lines: number
+  preview: string
 }
 
 export interface ToolConfirmationRequest {
