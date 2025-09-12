@@ -72,6 +72,6 @@ pub use traits::ToolTrait;
 // Re-export tools
 pub use tools::{
     TodoListTool, TodoItem, TodoStateManager,
-    ReadFileTool, WriteFileTool, ListFilesTool,
+    ReadFileTool, WriteFileTool, ListFilesTool, EditFileTool,
     SayHelloTool
 };

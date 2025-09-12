@@ -6,7 +6,7 @@ use mimir_dm_core::run_migrations;
 use std::fs;
 use std::path::PathBuf;
 use tracing::{info, warn};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 pub struct AppPaths {
     pub app_dir: PathBuf,
@@ -155,9 +155,13 @@ fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
     // Create daily rotating file appender (blocking)
     let file_appender = tracing_appender::rolling::daily(logs_dir, "mimir.log");
 
+    // Create separate filters for console and file
+    let file_filter = env_filter;
+    // Console filter excludes file_only target logs
+    let console_filter = EnvFilter::new("info,mimir_dm=info,mimir_dm_llm=warn,mimir_dm_core=warn,file_only=off");
+
     // Build the subscriber with both console and file outputs
     tracing_subscriber::registry()
-        .with(env_filter)
         .with(
             tracing_subscriber::fmt::layer()
                 .with_writer(file_appender)
@@ -166,6 +170,7 @@ fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
                 .with_thread_ids(true)
                 .with_line_number(true)
                 .with_file(true)
+                .with_filter(file_filter) // Full logging to file
         )
         .with(
             tracing_subscriber::fmt::layer()
@@ -175,6 +180,7 @@ fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
                 .with_thread_ids(false)
                 .with_line_number(false)
                 .with_file(false)
+                .with_filter(console_filter) // Truncated logging to console
         )
         .init();
 

@@ -51,6 +51,7 @@ struct OllamaChatRequest {
     options: Option<OllamaOptions>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tools: Option<Vec<Tool>>,
+    think: bool,
 }
 
 /// Ollama completion request  
@@ -176,13 +177,14 @@ pub struct OllamaProvider {
 impl OllamaProvider {
     /// Create a new Ollama provider
     pub fn new(config: ModelConfig) -> Result<Self, LlmError> {
-        // Get base_url from config
+        // Get base_url from config and normalize it (remove trailing slash)
         let base_url = config
             .config
             .as_ref()
             .and_then(|c| c.get("base_url"))
             .ok_or_else(|| LlmError::ConfigError("Missing base_url in config".to_string()))?
-            .clone();
+            .trim_end_matches('/')
+            .to_string();
 
         // Validate URL
         let _url = Url::parse(&base_url)
@@ -273,12 +275,14 @@ impl LlmProvider for OllamaProvider {
             stream: false,
             options,
             tools,
+            think: false,
         };
 
-        debug!("Ollama API request: model={} messages={} tools={}", 
+        debug!("Ollama API request: model={} messages={} tools={} think={}", 
             request.model, 
             request.messages.len(), 
-            request.tools.as_ref().map_or(0, |t| t.len())
+            request.tools.as_ref().map_or(0, |t| t.len()),
+            request.think
         );
 
         let response = self

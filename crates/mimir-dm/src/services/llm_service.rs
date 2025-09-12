@@ -13,7 +13,7 @@ use mimir_dm_llm::{
     traits::ActionDescription,
     LlmProvider, ModelPullProgress,
     TodoListTool, TodoStateManager,
-    ReadFileTool, WriteFileTool, ListFilesTool, FileToolsConfig, SayHelloTool,
+    ReadFileTool, WriteFileTool, ListFilesTool, EditFileTool, FileToolsConfig, SayHelloTool,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
@@ -22,6 +22,38 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, Mutex};
 use tracing::{debug, error, info, warn};
+
+/// Helper macro for bifurcated logging - full content to file, truncated to console
+macro_rules! debug_content {
+    ($msg:expr, $full_content:expr, $truncate_at:expr) => {
+        // Full content to file (debug level)
+        debug!(target: "file_only", "{}: {}", $msg, $full_content);
+        // Truncated content to console (debug level, but with default target)
+        if $full_content.len() > $truncate_at {
+            debug!("{}: {}... [truncated from {} chars]", $msg, 
+                &$full_content.chars().take($truncate_at).collect::<String>(), 
+                $full_content.len());
+        } else {
+            debug!("{}: {}", $msg, $full_content);
+        }
+    };
+}
+
+/// Helper macro for bifurcated info logging
+macro_rules! info_content {
+    ($msg:expr, $full_content:expr, $truncate_at:expr) => {
+        // Full content to file
+        info!(target: "file_only", "{}: {}", $msg, $full_content);
+        // Truncated content to console
+        if $full_content.len() > $truncate_at {
+            info!("{}: {}... [truncated from {} chars]", $msg, 
+                &$full_content.chars().take($truncate_at).collect::<String>(), 
+                $full_content.len());
+        } else {
+            info!("{}: {}", $msg, $full_content);
+        }
+    };
+}
 use uuid::Uuid;
 
 use super::tools::ToolRegistry;
@@ -53,7 +85,7 @@ fn strip_thinking_blocks(content: &str) -> String {
 }
 
 /// The model we want to use for the DM assistant
-const REQUIRED_MODEL: &str = "qwen3:8b";
+const REQUIRED_MODEL: &str = "qwen3:30b";
 const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -114,7 +146,7 @@ pub struct LlmService {
 impl LlmService {
     /// Create a new LLM service instance with shared confirmation receivers
     pub fn new(db_service: Arc<DatabaseService>, confirmation_receivers: ConfirmationReceivers, app_handle: AppHandle) -> Result<Self> {
-        let config = Self::create_config(REQUIRED_MODEL);
+        let config = Self::create_config(REQUIRED_MODEL, None);
         let provider = OllamaProvider::new(config)
             .context("Failed to create Ollama provider")?;
         
@@ -134,6 +166,7 @@ impl LlmService {
         tool_registry.register(Arc::new(ReadFileTool::new(file_config.clone())));
         tool_registry.register(Arc::new(WriteFileTool::new(file_config.clone())));
         tool_registry.register(Arc::new(ListFilesTool::new(file_config.clone())));
+        tool_registry.register(Arc::new(EditFileTool::new(file_config.clone())));
         
         // Configure default todo storage path using app handle
         if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
@@ -166,9 +199,9 @@ impl LlmService {
     
     
     /// Create the model configuration
-    fn create_config(model: &str) -> ModelConfig {
+    fn create_config(model: &str, base_url: Option<&str>) -> ModelConfig {
         let mut config_map = HashMap::new();
-        config_map.insert("base_url".to_string(), OLLAMA_BASE_URL.to_string());
+        config_map.insert("base_url".to_string(), base_url.unwrap_or(OLLAMA_BASE_URL).to_string());
         
         ModelConfig {
             name: format!("{}-dm", model),
@@ -285,6 +318,20 @@ impl LlmService {
     /// Get the provider for direct LLM operations
     pub fn provider(&self) -> Arc<OllamaProvider> {
         Arc::clone(&self.provider)
+    }
+    
+    /// Get or create a provider with a specific endpoint
+    fn get_provider_with_endpoint(&self, endpoint: Option<&str>) -> Result<Arc<OllamaProvider>> {
+        // If no custom endpoint provided, use the default provider
+        if endpoint.is_none() || endpoint == Some(OLLAMA_BASE_URL) {
+            return Ok(self.provider.clone());
+        }
+        
+        // Create a new provider with the custom endpoint
+        let config = Self::create_config(REQUIRED_MODEL, endpoint);
+        let provider = OllamaProvider::new(config)
+            .context("Failed to create Ollama provider with custom endpoint")?;
+        Ok(Arc::new(provider))
     }
     
     /// Get the model name being used
@@ -421,7 +468,7 @@ pub async fn send_chat_message(
     enable_tools: Option<bool>,
     session_id: Option<String>,
     _model_name: Option<String>,
-    _ollama_url: Option<String>,
+    ollama_url: Option<String>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = service.lock().await;
     
@@ -452,16 +499,20 @@ pub async fn send_chat_message(
     
     // Inject system rules if tools are enabled
     if tools.is_some() {
-        let system_rules = llm.tool_registry.generate_system_rules();
+        let system_rules = llm.tool_registry.generate_system_rules(session_id.as_deref());
         if !system_rules.is_empty() {
             // Check if there's already a system message, or create one
             let system_content = system_rules.join("\n\n");
             
-            // If the first message is a system message, append to it
+            info!("Generated {} system rules for LLM context", system_rules.len());
+            debug_content!("System rules content", system_content, 200);
+            
+            // If the first message is a system message, prepend critical rules to the beginning
             if let Some(first_msg) = provider_messages.first_mut() {
                 if first_msg.role == "system" {
-                    first_msg.content.push_str("\n\n");
-                    first_msg.content.push_str(&system_content);
+                    // Put critical file path info at the very beginning
+                    let original_content = first_msg.content.clone();
+                    first_msg.content = format!("{}\n\n{}", system_content, original_content);
                 } else {
                     // Insert system message at the beginning
                     provider_messages.insert(0, mimir_dm_llm::Message {
@@ -511,7 +562,14 @@ pub async fn send_chat_message(
             if content_without_thinking.len() < 300 {
                 debug!("    Content: {}", content_without_thinking);
             } else {
-                debug!("    Content preview: {}...", &content_without_thinking[..300]);
+                // Safe UTF-8 truncation to avoid panics on character boundaries
+                let truncated = content_without_thinking
+                    .char_indices()
+                    .take_while(|(i, _)| *i < 300)
+                    .last()
+                    .map(|(i, c)| i + c.len_utf8())
+                    .unwrap_or(0);
+                debug!("    Content preview: {}...", &content_without_thinking[..truncated]);
             }
             
             // Show if thinking blocks were present
@@ -521,8 +579,24 @@ pub async fn send_chat_message(
             }
         }
         
+        // Get the appropriate provider (with custom endpoint if specified)
+        let provider = llm.get_provider_with_endpoint(ollama_url.as_deref())
+            .map_err(|e| {
+                error!("Failed to get provider with endpoint: {}", e);
+                error!("Endpoint: {}", ollama_url.as_deref().unwrap_or(OLLAMA_BASE_URL));
+                format!("Failed to get provider with endpoint: {}", e)
+            })?;
+        
+        // Log the request details before making the call
+        info!("Making LLM request: endpoint={}, model={}, messages={}, tools={}", 
+            ollama_url.as_deref().unwrap_or(OLLAMA_BASE_URL), 
+            REQUIRED_MODEL,
+            provider_messages.len(),
+            tools.as_ref().map_or(0, |t| t.len())
+        );
+        
         // Call the provider's chat method
-        let response = llm.provider()
+        let response = provider
             .chat(
                 provider_messages.clone(),
                 tools.clone(),
@@ -533,18 +607,33 @@ pub async fn send_chat_message(
                 None,                          // extra config
             )
             .await
-            .map_err(|e| format!("Chat request failed: {}", e))?;
+            .map_err(|e| {
+                error!("Chat request failed: {}", e);
+                error!("Request details: endpoint={}, model={}, messages={}, tools={}", 
+                    ollama_url.as_deref().unwrap_or(OLLAMA_BASE_URL), 
+                    REQUIRED_MODEL,
+                    provider_messages.len(),
+                    tools.as_ref().map_or(0, |t| t.len())
+                );
+                format!("Chat request failed: {}", e)
+            })?;
         
-        // Log response structure
-        info!("LLM Response: content_length={}, tool_calls={}", 
+        // Log response structure and check for thinking blocks
+        let has_thinking = response.content.contains("<think>") || response.content.contains("<thinking>");
+        info!("LLM Response: content_length={}, tool_calls={}, has_thinking_blocks={}", 
             response.content.len(),
-            response.tool_calls.as_ref().map_or(0, |tc| tc.len())
+            response.tool_calls.as_ref().map_or(0, |tc| tc.len()),
+            has_thinking
         );
+        
+        if has_thinking {
+            warn!("LLM response contains thinking blocks despite think=false parameter");
+            debug_content!("Response preview", response.content, 200);
+        }
         
         debug!("Response details:");
         let response_without_thinking = strip_thinking_blocks(&response.content);
-        debug!("  Content preview: {}...", 
-            if response_without_thinking.len() > 300 { &response_without_thinking[..300] } else { &response_without_thinking });
+        debug_content!("Content preview", response_without_thinking, 150);
         if response_without_thinking.len() != response.content.len() {
             debug!("  [Response thinking blocks removed: {} chars -> {} chars]", 
                 response.content.len(), response_without_thinking.len());
@@ -604,9 +693,14 @@ pub async fn send_chat_message(
                 });
                 
                 // Execute each tool call
+                info!("=== Processing {} tool calls ===", tool_calls.len());
                 for (idx, tool_call) in tool_calls.iter().enumerate() {
                     let tool_name = &tool_call.function.name;
                     let mut tool_args = tool_call.function.arguments.clone();
+                    
+                    info!("Processing tool call {}/{}: {}", idx + 1, tool_calls.len(), tool_name);
+                    let args_json = serde_json::to_string_pretty(&tool_args).unwrap_or_else(|_| "Invalid JSON".to_string());
+                    debug_content!("Tool arguments", args_json, 300);
                     
                     // Inject session_id for todo_write tool if session_id is provided
                     if tool_name == "todo_write" && session_id.is_some() {
@@ -667,14 +761,19 @@ pub async fn send_chat_message(
                     }
                     
                     // Execute the tool (either no confirmation needed or user confirmed)
+                    info!("Executing tool: {} with {} bytes of arguments", tool_name, serde_json::to_string(&tool_args).unwrap_or_default().len());
+                    
                     // Try up to 2 times if it fails
                     let mut tool_result = None;
                     for attempt in 1..=2 {
+                        info!("Tool {} execution attempt {}/2", tool_name, attempt);
                         match llm.tool_registry.execute_tool(tool_name, tool_args.clone()).await {
                             Ok(result) => {
+                                info!("Tool {} succeeded on attempt {} - result length: {} chars", 
+                                    tool_name, attempt, result.len());
                                 tool_result = Some(result);
                                 if attempt > 1 {
-                                    info!("Tool {} succeeded on retry attempt {}", tool_name, attempt);
+                                    info!("Tool {} recovered after retry", tool_name);
                                 }
                                 break;
                             }
@@ -682,9 +781,11 @@ pub async fn send_chat_message(
                                 error!("Tool {} execution failed on attempt {}: {}", tool_name, attempt, e);
                                 if attempt == 2 {
                                     // Final attempt failed
-                                    tool_result = Some(format!("Tool execution failed after {} attempts: {}", attempt, e));
+                                    let error_msg = format!("Tool execution failed after {} attempts: {}", attempt, e);
+                                    error!("FINAL FAILURE for tool {}: {}", tool_name, error_msg);
+                                    tool_result = Some(error_msg);
                                 } else {
-                                    // Wait a bit before retry
+                                    warn!("Tool {} failed on attempt {}, retrying in 100ms", tool_name, attempt);
                                     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                                 }
                             }
@@ -731,6 +832,13 @@ pub async fn send_chat_message(
                     };
                     
                     // Add tool response to messages
+                    let is_error = tool_result.contains("Tool execution failed") || tool_result.contains("error");
+                    info!("Adding tool result to conversation: {} (error: {})", tool_name, is_error);
+                    if is_error {
+                        warn!("Tool error being added to LLM context: {}", tool_result);
+                    }
+                    debug_content!("Tool result content", tool_result, 200);
+                    
                     provider_messages.push(mimir_dm_llm::Message {
                         role: "tool".to_string(),
                         content: tool_result.clone(),
@@ -757,6 +865,11 @@ pub async fn send_chat_message(
                 
                 // Continue loop to get next response
                 info!("=== Continuing loop for next LLM call ===");
+                info!("Current conversation has {} messages", provider_messages.len());
+                info!("Last message role: {}, content length: {} chars", 
+                    provider_messages.last().map(|m| m.role.as_str()).unwrap_or("none"),
+                    provider_messages.last().map(|m| m.content.len()).unwrap_or(0)
+                );
                 continue;
             }
         }

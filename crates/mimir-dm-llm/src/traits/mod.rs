@@ -14,5 +14,5 @@ pub use provider::{
     Tool, ToolFunction, ToolCall, ToolCallFunction
 };
 
-pub use tool::{Tool as ToolTrait, ActionDescription, RiskLevel};
+pub use tool::{Tool as ToolTrait, ActionDescription, RiskLevel, ToolCall as ToolCallContext, ChangeDetail, LineEdit, EditOperation};
 pub use context::ToolContext;

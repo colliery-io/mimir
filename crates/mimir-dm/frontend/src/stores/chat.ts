@@ -29,6 +29,7 @@ export interface SystemMessageConfig {
   customInstructions?: string
   temperature?: number
   maxTokens?: number
+  llmEndpoint?: string
 }
 
 export interface ModelInfo {
@@ -177,7 +178,8 @@ export const useChatStore = defineStore('chat', () => {
     tools: [],
     customInstructions: '',
     temperature: 0.3,  // Lower temperature for more deterministic tool calling
-    maxTokens: 16384   // Increased to allow room for thinking blocks and tool calls
+    maxTokens: 16384,  // Increased to allow room for thinking blocks and tool calls
+    llmEndpoint: 'http://localhost:11434'  // Default Ollama endpoint
   })
   
   // Computed
@@ -414,7 +416,8 @@ export const useChatStore = defineStore('chat', () => {
         maxTokens: systemConfig.value.maxTokens || maxResponseTokens.value,
         temperature: systemConfig.value.temperature,
         enableTools: true,  // Enable tools for testing
-        sessionId: currentSessionId.value
+        sessionId: currentSessionId.value,
+        ollamaUrl: systemConfig.value.llmEndpoint
       })
       
       // Add assistant response
@@ -514,6 +517,11 @@ export const useChatStore = defineStore('chat', () => {
   
   const resetToDefaultPrompt = () => {
     systemConfig.value.baseInstructions = DEFAULT_SYSTEM_PROMPT
+    saveSystemConfig()
+  }
+  
+  const setLlmEndpoint = (endpoint: string) => {
+    systemConfig.value.llmEndpoint = endpoint
     saveSystemConfig()
   }
   
@@ -773,6 +781,7 @@ export const useChatStore = defineStore('chat', () => {
     setSystemInstructions,
     setCustomInstructions,
     resetToDefaultPrompt,
+    setLlmEndpoint,
     buildSystemMessage,
     
     // Tool confirmation methods

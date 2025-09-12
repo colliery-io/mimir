@@ -6,8 +6,17 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::error::Error;
+use std::time::Instant;
 
 use super::provider::{Tool as LlmTool, ToolFunction};
+
+/// Represents a recent tool call for context
+#[derive(Debug, Clone)]
+pub struct ToolCall {
+    pub name: String,
+    pub timestamp: Instant,
+    pub file_path: Option<String>,
+}
 
 /// Risk level for tool actions that modify state
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -28,8 +37,74 @@ pub struct ActionDescription {
     pub title: String,
     /// Detailed description of what will happen
     pub description: String,
-    /// List of specific changes that will be made
-    pub changes: Vec<String>,
+    /// Structured changes that will be made
+    pub changes: ChangeDetail,
+}
+
+/// Structured representation of changes for frontend rendering
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ChangeDetail {
+    /// File editing with line-number based changes
+    FileEdit {
+        file_path: String,
+        edits: Vec<LineEdit>,
+        total_lines_affected: usize,
+        total_lines_in_file: usize,
+    },
+    /// File writing with diff preview
+    FileWrite {
+        file_path: String,
+        content_length: usize,
+        diff_preview: Option<DiffPreview>,
+        /// Content to write (truncated if too long for preview)
+        content_preview: Option<String>,
+    },
+    /// File reading
+    FileRead {
+        file_path: String,
+        file_size: usize,
+    },
+    /// Generic changes (fallback)
+    Generic {
+        items: Vec<String>,
+    }
+}
+
+/// Individual line-based edit operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LineEdit {
+    /// Type of edit operation
+    pub operation: EditOperation,
+    /// Starting line number (1-indexed)
+    pub start_line: usize,
+    /// Ending line number (1-indexed, inclusive)
+    pub end_line: usize,
+    /// Original content being replaced
+    pub old_content: Vec<String>,
+    /// New content to insert
+    pub new_content: Vec<String>,
+    /// Multiple context lines before the edit (for preview)
+    pub context_before: Vec<String>,
+    /// Multiple context lines after the edit (for preview)
+    pub context_after: Vec<String>,
+}
+
+/// Type of edit operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EditOperation {
+    Replace,
+    Insert,
+    Delete,
+}
+
+/// Diff preview information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffPreview {
+    pub added_lines: usize,
+    pub removed_lines: usize,
+    pub preview: String,
 }
 
 /// Trait that all callable tools must implement
@@ -61,6 +136,16 @@ pub trait Tool: Send + Sync {
     
     /// Execute the tool with the given arguments
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>>;
+    
+    /// Execute with access to recent tool calls (default delegates to execute)
+    async fn execute_with_context(
+        &self,
+        arguments: Value,
+        _recent_calls: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<ToolCall>>>
+    ) -> Result<String, Box<dyn Error + Send + Sync>> {
+        // Default implementation ignores context
+        self.execute(arguments).await
+    }
     
     /// Convert to LLM tool definition
     fn to_llm_tool(&self) -> LlmTool {

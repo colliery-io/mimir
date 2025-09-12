@@ -39,6 +39,14 @@
                   System Prompt
                 </button>
               </li>
+              <li>
+                <button 
+                  @click="activeSection = 'llm-endpoint'"
+                  :class="['nav-item', { active: activeSection === 'llm-endpoint' }]"
+                >
+                  LLM Serving Location
+                </button>
+              </li>
             </ul>
           </div>
           
@@ -67,6 +75,27 @@
               :model-value="chatStore.systemConfig.baseInstructions || ''"
               @update:model-value="chatStore.setSystemInstructions"
             />
+          </div>
+          
+          <!-- LLM Endpoint -->
+          <div v-else-if="activeSection === 'llm-endpoint'" class="content-section">
+            <h2 class="content-title">LLM Serving Location</h2>
+            <p class="content-description">Configure where the AI assistant connects for processing requests</p>
+            <div class="form-group">
+              <label for="llm-endpoint-input" class="form-label">Endpoint URL</label>
+              <input
+                id="llm-endpoint-input"
+                type="url"
+                class="form-input"
+                :value="chatStore.systemConfig.llmEndpoint || 'http://localhost:11434'"
+                @input="handleEndpointChange"
+                placeholder="http://localhost:11434"
+              />
+              <p class="input-help">
+                Enter the full URL of your LLM service. For local Ollama installations, use <code>http://localhost:11434</code>. 
+                For remote services, include the full URL (e.g., <code>https://your-server.com:11434</code>).
+              </p>
+            </div>
           </div>
           
           <!-- Theme -->
@@ -128,6 +157,11 @@ const handleBookModalClose = () => {
 const handleCampaignModalClose = () => {
   showCampaignManagementModal.value = false
   activeSection.value = 'theme'
+}
+
+const handleEndpointChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  chatStore.setLlmEndpoint(target.value)
 }
 
 </script>
@@ -324,6 +358,25 @@ const handleCampaignModalClose = () => {
 }
 
 .theme-dark .button-secondary:hover {
+  background-color: var(--color-gray-700);
+}
+
+.input-help {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-sm);
+  line-height: 1.4;
+}
+
+.input-help code {
+  background-color: var(--color-gray-100);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.8125rem;
+}
+
+.theme-dark .input-help code {
   background-color: var(--color-gray-700);
 }
 </style>
