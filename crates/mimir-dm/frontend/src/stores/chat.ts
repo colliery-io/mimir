@@ -70,6 +70,7 @@ export interface FileWriteDetail {
   file_path: string
   content_length: number
   diff_preview?: DiffPreview
+  content_preview?: string
 }
 
 export interface FileReadDetail {
@@ -89,8 +90,8 @@ export interface LineEdit {
   end_line: number
   old_content: string[]
   new_content: string[]
-  context_before?: string
-  context_after?: string
+  context_before: string[]
+  context_after: string[]
 }
 
 export interface DiffPreview {

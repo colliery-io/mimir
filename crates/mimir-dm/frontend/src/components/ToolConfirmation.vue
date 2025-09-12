@@ -38,9 +38,14 @@
             
             <div class="edit-content">
               <!-- Context before -->
-              <div v-if="edit.context_before" class="context-line">
+              <div 
+                v-for="(line, idx) in edit.context_before" 
+                :key="`before-${idx}`" 
+                class="context-line"
+              >
+                <span class="line-number">{{ edit.start_line - edit.context_before.length + idx }}</span>
                 <span class="line-prefix context">  </span>
-                <span class="line-content context">{{ edit.context_before }}</span>
+                <span class="line-content context">{{ line }}</span>
               </div>
               
               <!-- Old content (for replace/delete) -->
@@ -49,6 +54,7 @@
                 :key="`old-${idx}`" 
                 class="content-line removed"
               >
+                <span class="line-number">{{ edit.start_line + idx }}</span>
                 <span class="line-prefix removed">- </span>
                 <span class="line-content">{{ line || '(empty line)' }}</span>
               </div>
@@ -59,14 +65,20 @@
                 :key="`new-${idx}`" 
                 class="content-line added"
               >
+                <span class="line-number">{{ edit.start_line + idx }}</span>
                 <span class="line-prefix added">+ </span>
                 <span class="line-content">{{ line || '(empty line)' }}</span>
               </div>
               
               <!-- Context after -->
-              <div v-if="edit.context_after" class="context-line">
+              <div 
+                v-for="(line, idx) in edit.context_after" 
+                :key="`after-${idx}`" 
+                class="context-line"
+              >
+                <span class="line-number">{{ edit.end_line + 1 + idx }}</span>
                 <span class="line-prefix context">  </span>
-                <span class="line-content context">{{ edit.context_after }}</span>
+                <span class="line-content context">{{ line }}</span>
               </div>
             </div>
           </div>
@@ -86,6 +98,12 @@
             <span class="removed">-{{ confirmation.request.action.changes.diff_preview.removed_lines }}</span>
           </div>
           <pre class="diff-content">{{ confirmation.request.action.changes.diff_preview.preview }}</pre>
+        </div>
+        
+        <!-- Show content preview for new files (when no diff available) -->
+        <div v-else-if="confirmation.request.action.changes.content_preview" class="content-preview">
+          <div class="preview-header">New file content:</div>
+          <pre class="new-file-content">{{ confirmation.request.action.changes.content_preview }}</pre>
         </div>
       </div>
 
@@ -432,6 +450,19 @@ const handleReject = async (event: Event) => {
   min-height: 20px;
 }
 
+.line-number {
+  flex-shrink: 0;
+  width: 50px;
+  text-align: right;
+  padding-right: 10px;
+  color: var(--color-text-tertiary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  user-select: none;
+  border-right: 1px solid var(--color-border-light, rgba(255, 255, 255, 0.1));
+  margin-right: 8px;
+}
+
 .line-prefix {
   flex-shrink: 0;
   width: 24px;
@@ -507,5 +538,30 @@ const handleReject = async (event: Event) => {
   line-height: 1.5 !important;
   max-height: 400px;
   overflow-y: auto;
+}
+
+/* Content preview styles */
+.content-preview {
+  margin-top: 12px;
+}
+
+.preview-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
+}
+
+.new-file-content {
+  background: var(--color-surface-darker, rgba(0, 0, 0, 0.3)) !important;
+  border: 1px solid var(--color-success, #10b981) !important;
+  border-left: 3px solid var(--color-success, #10b981) !important;
+  padding: 12px !important;
+  border-radius: 6px !important;
+  font-size: 0.82rem !important;
+  line-height: 1.5 !important;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 </style>
