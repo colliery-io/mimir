@@ -275,7 +275,7 @@ impl LlmProvider for OllamaProvider {
             stream: false,
             options,
             tools,
-            think: false,
+            think: true,
         };
 
         debug!("Ollama API request: model={} messages={} tools={} think={}", 

@@ -9,6 +9,7 @@ pub mod modules;
 pub mod sessions;
 pub mod books;
 pub mod dev_tools;
+pub mod logs;
 pub mod catalog;
 pub mod catalog_spell;
 pub mod catalog_class;

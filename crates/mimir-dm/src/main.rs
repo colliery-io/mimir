@@ -9,7 +9,7 @@ mod services;
 mod types;
 
 use app_init::{initialize_app, AppPaths};
-use commands::*;
+use commands::{logs, *};
 use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
 // use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details}; // Replaced by catalog_background_db
 use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
@@ -379,6 +379,7 @@ fn main() {
             // Window management commands
             open_context_debug_window,
             open_chat_window,
+            open_log_viewer_window,
             // LLM commands
             llm_service::check_llm_status,
             llm_service::get_llm_model_info,
@@ -394,7 +395,11 @@ fn main() {
             delete_chat_session,
             // Session todo commands
             get_session_todos,
-            configure_todo_storage
+            configure_todo_storage,
+            // Log management commands
+            logs::list_log_files,
+            logs::read_log_file,
+            logs::tail_log_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

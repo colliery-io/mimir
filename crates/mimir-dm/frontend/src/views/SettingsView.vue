@@ -25,6 +25,14 @@
                   Import Books
                 </button>
               </li>
+              <li>
+                <button 
+                  @click="activeSection = 'logs'"
+                  :class="['nav-item', { active: activeSection === 'logs' }]"
+                >
+                  Logs
+                </button>
+              </li>
             </ul>
           </div>
           
@@ -107,6 +115,13 @@
             </div>
           </div>
           
+          <!-- Logs -->
+          <div v-else-if="activeSection === 'logs'" class="content-section">
+            <h2 class="content-title">Application Logs</h2>
+            <p class="content-description">View and monitor application log files</p>
+            <LogsSection />
+          </div>
+          
         </main>
       </div>
     </div>
@@ -132,6 +147,7 @@ import ThemeSelector from '../shared/components/ui/ThemeSelector.vue'
 import SystemPromptEditor from '@/components/SystemPromptEditor.vue'
 import BookManagementModal from '@/components/BookManagementModal.vue'
 import CampaignManagementModal from '@/components/CampaignManagementModal.vue'
+import LogsSection from '@/components/LogsSection.vue'
 import { useChatStore } from '@/stores/chat'
 
 const chatStore = useChatStore()

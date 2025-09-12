@@ -157,8 +157,15 @@ fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
 
     // Create separate filters for console and file
     let file_filter = env_filter;
-    // Console filter excludes file_only target logs
-    let console_filter = EnvFilter::new("info,mimir_dm=info,mimir_dm_llm=warn,mimir_dm_core=warn,file_only=off");
+    // Console filter has same levels but excludes file_only target logs
+    let console_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| {
+            // Same filter as file but with file_only=off
+            EnvFilter::new(format!(
+                "{}={},mimir_dm=debug,mimir_dm_llm=debug,mimir_dm_core=debug,file_only=off",
+                default_level, default_level
+            ))
+        });
 
     // Build the subscriber with both console and file outputs
     tracing_subscriber::registry()

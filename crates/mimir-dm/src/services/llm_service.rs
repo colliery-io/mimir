@@ -84,8 +84,8 @@ fn strip_thinking_blocks(content: &str) -> String {
     result.trim().to_string()
 }
 
-/// The model we want to use for the DM assistant
-const REQUIRED_MODEL: &str = "qwen3:30b";
+/// The model we want to use for the DM assistantcd 
+const REQUIRED_MODEL: &str = "qwen3:8b";
 const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -618,18 +618,11 @@ pub async fn send_chat_message(
                 format!("Chat request failed: {}", e)
             })?;
         
-        // Log response structure and check for thinking blocks
-        let has_thinking = response.content.contains("<think>") || response.content.contains("<thinking>");
-        info!("LLM Response: content_length={}, tool_calls={}, has_thinking_blocks={}", 
+        // Log response structure
+        info!("LLM Response: content_length={}, tool_calls={}", 
             response.content.len(),
-            response.tool_calls.as_ref().map_or(0, |tc| tc.len()),
-            has_thinking
+            response.tool_calls.as_ref().map_or(0, |tc| tc.len())
         );
-        
-        if has_thinking {
-            warn!("LLM response contains thinking blocks despite think=false parameter");
-            debug_content!("Response preview", response.content, 200);
-        }
         
         debug!("Response details:");
         let response_without_thinking = strip_thinking_blocks(&response.content);
