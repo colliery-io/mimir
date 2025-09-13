@@ -527,10 +527,9 @@ Best Practices:
 - Combine with read_file to explore files of interest
 
 Common Patterns:
-- list_files('/app/data', '*.json') - Find all JSON configuration files
-- list_files('/app/templates') - Browse available templates
-- list_files('/app/campaigns') - See all campaign directories
-- list_files('/app/modules', '*_config.*') - Find module configuration files"
+- list_files() - List files in the application data directory
+- list_files(directory_path, '*.json') - Find JSON files in a specific directory
+- list_files(directory_path, '*_config.*') - Find configuration files"
     }
     
     fn parameters_schema(&self) -> Value {

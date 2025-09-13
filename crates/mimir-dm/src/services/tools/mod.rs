@@ -139,23 +139,14 @@ impl ToolRegistry {
                     \n\
                     **REQUIRED DIRECTORY**: {}\n\
                     \n\
-                    ### Correct Usage\n\
-                    - **CORRECT**: `{}/your_filename.txt`\n\
-                    - **WRONG**: `/app/data/your_filename.txt` (will fail)\n\
-                    - **WRONG**: `/private/tmp/your_filename.txt` (will fail)\n\
-                    - **WRONG**: `/tmp/your_filename.txt` (will fail)\n\
-                    \n\
-                    ### Critical Rules\n\
-                    1. **Use the complete full path** shown above - never abbreviate\n\
-                    2. **Do not shorten** to /app/data/ or any other form\n\
-                    3. **Copy the exact path**: {}\n\
-                    4. **Any other path will fail** with 'Path not within allowed directories' error\n\
+                    ### Usage Guidelines\n\
+                    - Always use the complete path: `{}/your_filename.txt`\n\
+                    - Use the full path for all file operations\n\
+                    - If uncertain about structure, run list_files first\n\
                     \n\
                     ### When Taking Action\n\
-                    - **IMMEDIATELY use the correct path** - do not hesitate or ask for clarification\n\
-                    - **If uncertain about structure**, run list_files first\n\
-                    - **Take direct action** when given clear file operation instructions",
-                    app_paths.data_dir.display(),
+                    - Use the exact path shown above for ALL file operations\n\
+                    - Take direct action when given clear file operation instructions",
                     app_paths.data_dir.display(),
                     app_paths.data_dir.display()
                 ));
@@ -163,22 +154,10 @@ impl ToolRegistry {
                 rules.push(
                     "## FILE OPERATIONS - DISCOVERY REQUIRED\n\
                     \n\
-                    ### Immediate Action Required\n\
-                    1. **FIRST STEP**: Run `list_files` with no arguments to discover the allowed directory\n\
-                    2. **Expected result**: Path like `/Users/username/Library/Application Support/app/data/`\n\
-                    \n\
-                    ### Forbidden Paths\n\
-                    - **Never use**: /tmp, /private/tmp, /var/tmp, ~/ or any system directories\n\
-                    - **Never guess**: Paths like `/private/tmp/test_file.txt` will always fail\n\
-                    \n\
                     ### Required Workflow\n\
-                    1. Run: `list_files()` (no arguments)\n\
-                    2. Observe the directory path returned\n\
-                    3. Use that exact path for all file operations\n\
-                    \n\
-                    ### Direct Action\n\
-                    - **Take immediate action** - run list_files now if you need to perform file operations\n\
-                    - **Do not explain or hesitate** - execute the required workflow".to_string()
+                    1. Run: `list_files()` (no arguments) to discover the allowed directory\n\
+                    2. Use the exact path returned for all file operations\n\
+                    3. Take immediate action when file operations are needed\n".to_string()
                 );
                 warn!("APP_PATHS is None when generating file tool rules");
             }
@@ -204,10 +183,9 @@ impl ToolRegistry {
         // Add file directory first - this is critical for LLM to know
         if let Some(app_paths) = APP_PATHS.get() {
             context.push_str(&format!(
-                "**CRITICAL: FILE OPERATIONS DIRECTORY**\n\
+                "**FILE OPERATIONS DIRECTORY**\n\
                 - **REQUIRED PATH**: {}\n\
-                - **DO NOT USE**: /app/data/, /private/tmp/, or any abbreviated paths\n\
-                - **ACTION REQUIRED**: Use the exact full path shown above for ALL file operations\n\n",
+                - **ALL file operations must use this exact path**\n\n",
                 app_paths.data_dir.display()
             ));
         }
