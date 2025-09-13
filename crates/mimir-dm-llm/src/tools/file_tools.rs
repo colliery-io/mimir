@@ -79,10 +79,20 @@ impl PathValidator {
                         // since WriteFileTool creates them. Just validate the path structure.
                         let _canonical_root = self.allowed_prefixes.iter()
                             .find(|prefix| path.starts_with(prefix))
-                            .ok_or_else(|| std::io::Error::new(
-                                std::io::ErrorKind::PermissionDenied, 
-                                format!("Path is outside allowed directories: {}", path.display())
-                            ))?;
+                            .ok_or_else(|| {
+                                let allowed_dirs: Vec<String> = self.allowed_prefixes.iter()
+                                    .map(|p| p.display().to_string())
+                                    .collect();
+                                std::io::Error::new(
+                                    std::io::ErrorKind::PermissionDenied, 
+                                    format!(
+                                        "Path '{}' is outside allowed directories. Use absolute paths starting with: {}. Example: '{}/your_filename.txt'",
+                                        path.display(),
+                                        allowed_dirs.join(" or "),
+                                        allowed_dirs.get(0).unwrap_or(&"[no allowed dirs]".to_string())
+                                    )
+                                )
+                            })?;
                         
                         // Return the path as-is if it's within allowed directories
                         // The parent directory will be created by the tool if needed
@@ -108,7 +118,15 @@ impl PathValidator {
         });
         
         if !is_allowed {
-            return Err(format!("Path not within allowed directories: {}", canonical_path.display()).into());
+            let allowed_dirs: Vec<String> = self.allowed_prefixes.iter()
+                .map(|p| p.display().to_string())
+                .collect();
+            return Err(format!(
+                "Path '{}' is not within allowed directories. Use absolute paths starting with: {}. Example: '{}/your_filename.txt'",
+                canonical_path.display(),
+                allowed_dirs.join(" or "),
+                allowed_dirs.get(0).unwrap_or(&"[no allowed dirs]".to_string())
+            ).into());
         }
         
         Ok(canonical_path)
@@ -184,12 +202,27 @@ impl ToolTrait for ReadFileTool {
     }
     
     fn description(&self) -> &str {
-        "Read the contents of a file and return it with line numbers for easy editing and reference.
+        // Static fallback description
+        "Read the contents of a file and return it with line numbers for easy editing and reference. Use to_llm_tool() for dynamic path-aware description."
+    }
+    
+    fn to_llm_tool(&self) -> crate::traits::provider::Tool {
+        let base_path = self.config.allowed_directories.get(0)
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "[no allowed directories configured]".to_string());
+            
+        let dynamic_description = format!(
+            "Read the contents of a file and return it with line numbers for easy editing and reference.
+
+**CRITICAL PATH REQUIREMENT:**
+- ALL file paths MUST be absolute paths starting with: {}
+- Example: '{}/your_filename.txt'
+- NEVER use relative paths like 'filename.txt' - they will always fail
+- If you get a path validation error, retry this same tool with the corrected absolute path
 
 Usage:
-- File path must be absolute and within allowed application directories
 - Returns content formatted with line numbers (e.g., '  1→line content')
-- Line numbering starts at 1 and uses the format: '  {line_number}→{content}'
+- Line numbering starts at 1 and uses the format: '  {{line_number}}→{{content}}'
 - Essential prerequisite before using edit_file tool
 - Use this to understand file structure, check existing content, and locate specific lines
 - Handles text files of any size, but very large files may be truncated in display
@@ -222,7 +255,18 @@ Use Cases:
 Best Practices:
 - Always read before editing to avoid conflicts and understand context
 - Use the line numbers from output when specifying edit operations
-- Check file size - very large files may need special handling"
+- Check file size - very large files may need special handling",
+            base_path, base_path
+        );
+        
+        crate::traits::provider::Tool {
+            tool_type: "function".to_string(),
+            function: crate::traits::provider::ToolFunction {
+                name: self.name().to_string(),
+                description: dynamic_description,
+                parameters: self.parameters_schema(),
+            },
+        }
     }
     
     fn parameters_schema(&self) -> Value {
@@ -311,18 +355,33 @@ impl ToolTrait for WriteFileTool {
     }
     
     fn description(&self) -> &str {
-        "Write content to a file, creating a new file or completely replacing existing file content.
+        // Static fallback description
+        "Write content to a file, creating a new file or completely replacing existing file content. Use to_llm_tool() for dynamic path-aware description."
+    }
+    
+    fn to_llm_tool(&self) -> crate::traits::provider::Tool {
+        let base_path = self.config.allowed_directories.get(0)
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "[no allowed directories configured]".to_string());
+            
+        let dynamic_description = format!(
+            "Write content to a file, creating a new file or completely replacing existing file content.
+
+**CRITICAL PATH REQUIREMENT:**
+- ALL file paths MUST be absolute paths starting with: {}
+- Example: '{}/your_filename.txt'
+- NEVER use relative paths like 'filename.txt' - they will always fail
+- If you get a path validation error, retry this same tool with the corrected absolute path
 
 Usage:
 - This tool OVERWRITES the entire file content with the provided content
 - ALWAYS use read_file first to check if the file exists and understand its current content
-- File path must be absolute and within allowed application directories
 - Requires user confirmation before execution due to potential data loss
 - Use this for creating new files or when you need to replace entire file content
 - For incremental changes to existing files, prefer edit_file instead
 - Content should be properly formatted with correct line endings for the target platform
 - Empty content will create an empty file (this is valid)
-- If the directory doesn't exist, the operation will fail
+- Creates parent directories if they don't exist
 - File permissions will be set to standard read/write permissions
 
 Security:
@@ -334,7 +393,18 @@ Best Practices:
 - Read the file first to understand existing structure and content
 - Provide complete, well-formatted content
 - Include appropriate file headers, imports, or metadata as needed
-- Consider the impact on other parts of the application that might depend on the file"
+- Consider the impact on other parts of the application that might depend on the file",
+            base_path, base_path
+        );
+        
+        crate::traits::provider::Tool {
+            tool_type: "function".to_string(),
+            function: crate::traits::provider::ToolFunction {
+                name: self.name().to_string(),
+                description: dynamic_description,
+                parameters: self.parameters_schema(),
+            },
+        }
     }
     
     fn parameters_schema(&self) -> Value {
@@ -851,7 +921,23 @@ impl ToolTrait for EditFileTool {
     }
     
     fn description(&self) -> &str {
-        "Edit a file using precise line-number based operations for safe, incremental changes.
+        // Static fallback description
+        "Edit a file using precise line-number based operations for safe, incremental changes. Use to_llm_tool() for dynamic path-aware description."
+    }
+    
+    fn to_llm_tool(&self) -> crate::traits::provider::Tool {
+        let base_path = self.config.allowed_directories.get(0)
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "[no allowed directories configured]".to_string());
+            
+        let dynamic_description = format!(
+            "Edit a file using precise line-number based operations for safe, incremental changes.
+
+**CRITICAL PATH REQUIREMENT:**
+- ALL file paths MUST be absolute paths starting with: {}
+- Example: '{}/your_filename.txt'
+- NEVER use relative paths like 'filename.txt' - they will always fail
+- If you get a path validation error, retry this same tool with the corrected absolute path
 
 Usage:
 - MANDATORY: You MUST call read_file first to get current content with line numbers
@@ -902,7 +988,18 @@ Best Practices:
 Error Recovery:
 - If you haven't read the file recently, the tool provides guidance instead of failing
 - Invalid line numbers or malformed edits provide clear error messages
-- Failed edits don't modify the file - it's safe to retry with corrections"
+- Failed edits don't modify the file - it's safe to retry with corrections",
+            base_path, base_path
+        );
+        
+        crate::traits::provider::Tool {
+            tool_type: "function".to_string(),
+            function: crate::traits::provider::ToolFunction {
+                name: self.name().to_string(),
+                description: dynamic_description,
+                parameters: self.parameters_schema(),
+            },
+        }
     }
     
     fn parameters_schema(&self) -> Value {

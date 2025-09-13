@@ -51,7 +51,6 @@ struct OllamaChatRequest {
     options: Option<OllamaOptions>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tools: Option<Vec<Tool>>,
-    think: bool,
 }
 
 /// Ollama completion request  
@@ -80,6 +79,8 @@ struct OllamaOptions {
     num_predict: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     stop: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    think: Option<bool>,
 }
 
 /// Ollama chat response
@@ -259,15 +260,12 @@ impl LlmProvider for OllamaProvider {
             })
             .collect();
 
-        let options = if temperature.is_some() || max_tokens.is_some() || stop.is_some() {
-            Some(OllamaOptions {
-                temperature,
-                num_predict: max_tokens.map(|t| t as i32),
-                stop,
-            })
-        } else {
-            None
-        };
+        let options = Some(OllamaOptions {
+            temperature,
+            num_predict: max_tokens.map(|t| t as i32),
+            stop,
+            think: Some(true),
+        });
 
         let request = OllamaChatRequest {
             model: self.config.model.clone(),
@@ -275,14 +273,13 @@ impl LlmProvider for OllamaProvider {
             stream: false,
             options,
             tools,
-            think: true,
         };
 
         debug!("Ollama API request: model={} messages={} tools={} think={}", 
             request.model, 
             request.messages.len(), 
             request.tools.as_ref().map_or(0, |t| t.len()),
-            request.think
+            request.options.as_ref().and_then(|o| o.think).unwrap_or(false)
         );
 
         let response = self
@@ -391,6 +388,7 @@ impl LlmProvider for OllamaProvider {
                 temperature,
                 num_predict: max_tokens.map(|t| t as i32),
                 stop,
+                think: None, // Not used for completion endpoint
             })
         } else {
             None

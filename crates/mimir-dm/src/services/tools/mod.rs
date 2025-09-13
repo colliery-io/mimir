@@ -241,18 +241,12 @@ impl ToolRegistry {
             tool_names.join(", ")
         ));
         
-        // Add session management and action guidance notes
+        // Add session management notes  
         context.push_str(
             "- **Session Management**: Persistent session where previous context and actions may influence current behavior\n\
             - **Tool State**: Some tools maintain state across calls (e.g., todo_write tracks progress per session)\n\
             - **File Operations**: All file operations are sandboxed to the application directory for security\n\
-            - **Path Requirements**: ALWAYS use fully qualified (absolute) paths for all file operations\n\
-            \n\
-            ### Action Guidelines\n\
-            - **When given clear instructions**: Take immediate action without explanation or hesitation\n\
-            - **Use tools directly**: Do not explain what you will do - just do it\n\
-            - **Be decisive**: Follow instructions promptly and execute the requested operations\n\
-            - **Complete tasks**: Execute all requested steps in sequence\n"
+            - **Path Requirements**: ALWAYS use fully qualified (absolute) paths for all file operations\n"
         );
         
         context

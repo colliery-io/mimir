@@ -85,7 +85,7 @@ fn strip_thinking_blocks(content: &str) -> String {
 }
 
 /// The model we want to use for the DM assistantcd 
-const REQUIRED_MODEL: &str = "qwen3:8b";
+const REQUIRED_MODEL: &str = "qwen3:30b";
 const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -507,12 +507,12 @@ pub async fn send_chat_message(
             info!("Generated {} system rules for LLM context", system_rules.len());
             debug_content!("System rules content", system_content, 200);
             
-            // If the first message is a system message, prepend critical rules to the beginning
+            // If the first message is a system message, append contextual rules to the end
             if let Some(first_msg) = provider_messages.first_mut() {
                 if first_msg.role == "system" {
-                    // Put critical file path info at the very beginning
+                    // Put contextual info at the end after static prompt
                     let original_content = first_msg.content.clone();
-                    first_msg.content = format!("{}\n\n{}", system_content, original_content);
+                    first_msg.content = format!("{}\n\n{}", original_content, system_content);
                 } else {
                     // Insert system message at the beginning
                     provider_messages.insert(0, mimir_dm_llm::Message {
@@ -756,35 +756,18 @@ pub async fn send_chat_message(
                     // Execute the tool (either no confirmation needed or user confirmed)
                     info!("Executing tool: {} with {} bytes of arguments", tool_name, serde_json::to_string(&tool_args).unwrap_or_default().len());
                     
-                    // Try up to 2 times if it fails
-                    let mut tool_result = None;
-                    for attempt in 1..=2 {
-                        info!("Tool {} execution attempt {}/2", tool_name, attempt);
-                        match llm.tool_registry.execute_tool(tool_name, tool_args.clone()).await {
-                            Ok(result) => {
-                                info!("Tool {} succeeded on attempt {} - result length: {} chars", 
-                                    tool_name, attempt, result.len());
-                                tool_result = Some(result);
-                                if attempt > 1 {
-                                    info!("Tool {} recovered after retry", tool_name);
-                                }
-                                break;
-                            }
-                            Err(e) => {
-                                error!("Tool {} execution failed on attempt {}: {}", tool_name, attempt, e);
-                                if attempt == 2 {
-                                    // Final attempt failed
-                                    let error_msg = format!("Tool execution failed after {} attempts: {}", attempt, e);
-                                    error!("FINAL FAILURE for tool {}: {}", tool_name, error_msg);
-                                    tool_result = Some(error_msg);
-                                } else {
-                                    warn!("Tool {} failed on attempt {}, retrying in 100ms", tool_name, attempt);
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                                }
-                            }
+                    // Execute tool once - let LLM handle errors and make corrections
+                    let tool_result = match llm.tool_registry.execute_tool(tool_name, tool_args.clone()).await {
+                        Ok(result) => {
+                            info!("Tool {} succeeded - result length: {} chars", tool_name, result.len());
+                            result
                         }
-                    }
-                    let tool_result = tool_result.unwrap();
+                        Err(e) => {
+                            error!("Tool {} execution failed: {}", tool_name, e);
+                            // Return error immediately to LLM so it can make corrections
+                            format!("Tool execution failed: {}", e)
+                        }
+                    };
                     
                     info!("Tool {} result: {} chars", tool_name, tool_result.len());
                     
@@ -837,23 +820,8 @@ pub async fn send_chat_message(
                         content: tool_result.clone(),
                     });
                     
-                    // If this was a successful update action and it's the only/last tool call,
-                    // we can short-circuit and return a simple success message
-                    if is_success_response && idx == tool_calls.len() - 1 {
-                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&tool_result) {
-                            if let Some(message) = parsed.get("message").and_then(|m| m.as_str()) {
-                                warn!("=== EARLY EXIT: Tool {} returned success, short-circuiting ===", tool_name);
-                                info!("Success message: {}", message);
-                                // Return early with a simple success message
-                                return Ok(ChatResponseWithUsage {
-                                    content: message.to_string(),
-                                    prompt_tokens: 0,  // We didn't make another LLM call
-                                    completion_tokens: 0,
-                                    total_tokens: 0,
-                                });
-                            }
-                        }
-                    }
+                    // Let the LLM see all tool results and decide if more work is needed
+                    // Removed short-circuiting logic to support multi-step tasks
                 }
                 
                 // Continue loop to get next response
