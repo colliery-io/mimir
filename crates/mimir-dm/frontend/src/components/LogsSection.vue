@@ -17,7 +17,7 @@
     <!-- Log files list -->
     <div v-else class="logs-container">
       <div class="logs-header">
-        <h3 class="logs-title">Available Log Files</h3>
+        <h3 class="logs-title">Log Files</h3>
         <button @click="refreshLogFiles" class="refresh-button" title="Refresh">
           <svg 
             class="refresh-icon"
@@ -37,36 +37,75 @@
         </button>
       </div>
       
-      <div v-if="logFiles.length === 0" class="no-logs">
-        <p>No log files found</p>
-      </div>
-      
-      <div v-else class="log-files-list">
-        <div 
-          v-for="file in logFiles" 
-          :key="file.name"
-          class="log-file-item"
-        >
-          <div class="file-info">
-            <div class="file-name">
-              {{ file.name }}
-              <span v-if="file.is_current" class="current-badge">Current</span>
+      <!-- Application Logs Section -->
+      <div class="log-section">
+        <h4 class="section-title">Application Logs</h4>
+        <div v-if="applicationLogs.length === 0" class="no-logs">
+          <p>No application log files found</p>
+        </div>
+        <div v-else class="log-files-list">
+          <div 
+            v-for="file in applicationLogs" 
+            :key="file.name"
+            class="log-file-item"
+          >
+            <div class="file-info">
+              <div class="file-name">
+                {{ file.name }}
+                <span v-if="file.is_current" class="current-badge">Current</span>
+              </div>
+              <div class="file-path">
+                <span class="path-text">{{ file.full_path }}</span>
+                <button @click="copyPath(file.full_path)" class="copy-path-button" title="Copy path">
+                  📋
+                </button>
+              </div>
+              <div class="file-details">
+                <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                <span class="file-modified">{{ file.modified }}</span>
+              </div>
             </div>
-            <div class="file-path">
-              <span class="path-text">{{ file.full_path }}</span>
-              <button @click="copyPath(file.full_path)" class="copy-path-button" title="Copy path">
-                📋
+            <div class="file-actions">
+              <button @click="openLogViewer(file.name)" class="view-button">
+                View
               </button>
             </div>
-            <div class="file-details">
-              <span class="file-size">{{ formatFileSize(file.size) }}</span>
-              <span class="file-modified">{{ file.modified }}</span>
-            </div>
           </div>
-          <div class="file-actions">
-            <button @click="openLogViewer(file.name)" class="view-button">
-              View
-            </button>
+        </div>
+      </div>
+      
+      <!-- Chat Logs Section -->
+      <div class="log-section">
+        <h4 class="section-title">Chat Logs</h4>
+        <div v-if="chatLogs.length === 0" class="no-logs">
+          <p>No chat log files found</p>
+        </div>
+        <div v-else class="log-files-list">
+          <div 
+            v-for="file in chatLogs" 
+            :key="file.name"
+            class="log-file-item"
+          >
+            <div class="file-info">
+              <div class="file-name">
+                {{ file.name }}
+              </div>
+              <div class="file-path">
+                <span class="path-text">{{ file.full_path }}</span>
+                <button @click="copyPath(file.full_path)" class="copy-path-button" title="Copy path">
+                  📋
+                </button>
+              </div>
+              <div class="file-details">
+                <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                <span class="file-modified">{{ file.modified }}</span>
+              </div>
+            </div>
+            <div class="file-actions">
+              <button @click="openLogViewer(file.name)" class="view-button">
+                View
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -86,14 +125,20 @@ interface LogFileInfo {
   is_current: boolean
 }
 
+interface LogFilesData {
+  application_logs: LogFileInfo[]
+  chat_logs: LogFileInfo[]
+}
+
 interface LogFilesResponse {
   success: boolean
-  data?: LogFileInfo[]
+  data?: LogFilesData
   error?: string
 }
 
 // Component state
-const logFiles = ref<LogFileInfo[]>([])
+const applicationLogs = ref<LogFileInfo[]>([])
+const chatLogs = ref<LogFileInfo[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
@@ -111,7 +156,8 @@ const loadLogFiles = async () => {
     const response = await invoke<LogFilesResponse>('list_log_files')
     
     if (response.success && response.data) {
-      logFiles.value = response.data
+      applicationLogs.value = response.data.application_logs
+      chatLogs.value = response.data.chat_logs
     } else {
       error.value = response.error || 'Failed to load log files'
     }
@@ -225,6 +271,23 @@ const formatFileSize = (bytes: number): string => {
   width: 100%;
 }
 
+.log-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.log-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-md) 0;
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
 .logs-header {
   display: flex;
   align-items: center;
@@ -280,12 +343,13 @@ const formatFileSize = (bytes: number): string => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md);
+  padding: var(--spacing-lg);
   background: var(--color-surface-variant);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
+  min-height: 80px;
 }
 
 .log-file-item:hover {
@@ -308,14 +372,15 @@ const formatFileSize = (bytes: number): string => {
   gap: var(--spacing-sm);
   font-weight: 500;
   color: var(--color-text);
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.95rem;
 }
 
 .file-path {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
 }
 
 .path-text {

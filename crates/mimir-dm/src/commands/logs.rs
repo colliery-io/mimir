@@ -21,6 +21,12 @@ pub struct LogFileInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct LogFilesResponse {
+    pub application_logs: Vec<LogFileInfo>,
+    pub chat_logs: Vec<LogFileInfo>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LogContent {
     pub lines: Vec<String>,
     pub total_lines: usize,
@@ -33,9 +39,9 @@ pub struct LogTailResponse {
     pub new_position: u64,
 }
 
-/// List all available log files in the logs directory
+/// List all available log files in both application and chat directories
 #[tauri::command]
-pub async fn list_log_files() -> Result<ApiResponse<Vec<LogFileInfo>>, String> {
+pub async fn list_log_files() -> Result<ApiResponse<LogFilesResponse>, String> {
     info!("Listing log files");
     
     // Get app paths
@@ -43,56 +49,102 @@ pub async fn list_log_files() -> Result<ApiResponse<Vec<LogFileInfo>>, String> {
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
     let logs_dir = &app_paths.logs_dir;
+    let chat_logs_dir = logs_dir.join("chat_sessions");
     
-    if !logs_dir.exists() {
-        info!("Logs directory does not exist: {:?}", logs_dir);
-        return Ok(ApiResponse::success(vec![]));
-    }
+    let mut application_logs = Vec::new();
+    let mut chat_logs = Vec::new();
     
-    let mut log_files = Vec::new();
-    
-    // Read directory entries
-    let entries = fs::read_dir(logs_dir)
-        .map_err(|e| format!("Failed to read logs directory: {}", e))?;
-    
-    for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
-        let path = entry.path();
+    // Read application log files
+    if logs_dir.exists() {
+        let entries = fs::read_dir(logs_dir)
+            .map_err(|e| format!("Failed to read logs directory: {}", e))?;
         
-        if path.is_file() {
-            let filename = path.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .to_string();
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
             
-            // Only include mimir.log files
-            if filename.starts_with("mimir.log") {
-                let metadata = entry.metadata()
-                    .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+            if path.is_file() {
+                let filename = path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
                 
-                let size = metadata.len();
-                let modified = metadata.modified()
-                    .map_err(|e| format!("Failed to read modification time: {}", e))?;
-                
-                let modified_dt: DateTime<Utc> = modified.into();
-                let is_current = filename == "mimir.log";
-                
-                log_files.push(LogFileInfo {
-                    name: filename.clone(),
-                    full_path: path.to_string_lossy().to_string(),
-                    size,
-                    modified: modified_dt.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
-                    is_current,
-                });
+                // Only include mimir.log files
+                if filename.starts_with("mimir.log") {
+                    let metadata = entry.metadata()
+                        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+                    
+                    let size = metadata.len();
+                    let modified = metadata.modified()
+                        .map_err(|e| format!("Failed to read modification time: {}", e))?;
+                    
+                    let modified_dt: DateTime<Utc> = modified.into();
+                    let is_current = filename == "mimir.log";
+                    
+                    application_logs.push(LogFileInfo {
+                        name: filename.clone(),
+                        full_path: path.to_string_lossy().to_string(),
+                        size,
+                        modified: modified_dt.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+                        is_current,
+                    });
+                }
             }
         }
+        
+        // Sort application logs by modification time (newest first)
+        application_logs.sort_by(|a, b| b.modified.cmp(&a.modified));
     }
     
-    // Sort by modification time (newest first)
-    log_files.sort_by(|a, b| b.modified.cmp(&a.modified));
+    // Read chat log files
+    if chat_logs_dir.exists() {
+        let entries = fs::read_dir(&chat_logs_dir)
+            .map_err(|e| format!("Failed to read chat logs directory: {}", e))?;
+        
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+            
+            if path.is_file() {
+                let filename = path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                
+                // Only include .log files
+                if filename.ends_with(".log") {
+                    let metadata = entry.metadata()
+                        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+                    
+                    let size = metadata.len();
+                    let modified = metadata.modified()
+                        .map_err(|e| format!("Failed to read modification time: {}", e))?;
+                    
+                    let modified_dt: DateTime<Utc> = modified.into();
+                    
+                    chat_logs.push(LogFileInfo {
+                        name: filename.clone(),
+                        full_path: path.to_string_lossy().to_string(),
+                        size,
+                        modified: modified_dt.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+                        is_current: false, // Chat logs don't have a "current" concept
+                    });
+                }
+            }
+        }
+        
+        // Sort chat logs by modification time (newest first)
+        chat_logs.sort_by(|a, b| b.modified.cmp(&a.modified));
+    }
     
-    info!("Found {} log files", log_files.len());
-    Ok(ApiResponse::success(log_files))
+    info!("Found {} application log files and {} chat log files", application_logs.len(), chat_logs.len());
+    
+    let response = LogFilesResponse {
+        application_logs,
+        chat_logs,
+    };
+    
+    Ok(ApiResponse::success(response))
 }
 
 /// Read content from a log file with pagination
@@ -109,15 +161,18 @@ pub async fn read_log_file(
         return Ok(ApiResponse::error("Invalid file name".to_string()));
     }
     
-    if !file_name.starts_with("mimir.log") {
-        return Ok(ApiResponse::error("Only mimir log files are allowed".to_string()));
-    }
-    
     // Get app paths
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
-    let file_path = app_paths.logs_dir.join(&file_name);
+    // Determine file path - check application logs first, then chat logs
+    let file_path = if file_name.starts_with("mimir.log") {
+        app_paths.logs_dir.join(&file_name)
+    } else if file_name.ends_with(".log") {
+        app_paths.logs_dir.join("chat_sessions").join(&file_name)
+    } else {
+        return Ok(ApiResponse::error("Invalid log file type".to_string()));
+    };
     
     if !file_path.exists() {
         return Ok(ApiResponse::error(format!("Log file not found: {}", file_name)));
@@ -163,15 +218,18 @@ pub async fn tail_log_file(
         return Ok(ApiResponse::error("Invalid file name".to_string()));
     }
     
-    if !file_name.starts_with("mimir.log") {
-        return Ok(ApiResponse::error("Only mimir log files are allowed".to_string()));
-    }
-    
     // Get app paths
     let app_paths = APP_PATHS.get()
         .ok_or_else(|| "App paths not initialized".to_string())?;
     
-    let file_path = app_paths.logs_dir.join(&file_name);
+    // Determine file path - check application logs first, then chat logs
+    let file_path = if file_name.starts_with("mimir.log") {
+        app_paths.logs_dir.join(&file_name)
+    } else if file_name.ends_with(".log") {
+        app_paths.logs_dir.join("chat_sessions").join(&file_name)
+    } else {
+        return Ok(ApiResponse::error("Invalid log file type".to_string()));
+    };
     
     if !file_path.exists() {
         return Ok(ApiResponse::error(format!("Log file not found: {}", file_name)));

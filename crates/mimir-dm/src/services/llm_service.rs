@@ -19,9 +19,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, Mutex};
 use tracing::{debug, error, info, warn};
+
+use crate::services::chat_logger::{ChatLogger, ChatTokenUsage};
+use crate::APP_PATHS;
 
 /// Helper macro for bifurcated logging - full content to file, truncated to console
 macro_rules! debug_content {
@@ -141,6 +145,8 @@ pub struct LlmService {
     app_handle: Option<AppHandle>,
     /// Todo state manager for ephemeral todos
     todo_state_manager: TodoStateManager,
+    /// Chat loggers by session ID
+    chat_loggers: Arc<Mutex<HashMap<String, Arc<ChatLogger>>>>,
 }
 
 impl LlmService {
@@ -193,6 +199,7 @@ impl LlmService {
             confirmation_receivers,
             app_handle: Some(app_handle),
             todo_state_manager,
+            chat_loggers: Arc::new(Mutex::new(HashMap::new())),
         })
     }
     
@@ -351,6 +358,28 @@ impl LlmService {
         Ok(())
     }
     
+    /// Get or create a chat logger for a session
+    async fn get_chat_logger(&self, session_id: &str) -> Result<Arc<ChatLogger>> {
+        let mut loggers = self.chat_loggers.lock().await;
+        
+        if let Some(logger) = loggers.get(session_id) {
+            return Ok(Arc::clone(logger));
+        }
+        
+        // Create new logger
+        let app_paths = crate::APP_PATHS.get()
+            .ok_or_else(|| anyhow!("App paths not initialized"))?;
+        
+        let logger = ChatLogger::new(session_id.to_string(), &app_paths.logs_dir)
+            .context("Failed to create chat logger")?;
+        let logger_arc = Arc::new(logger);
+        
+        loggers.insert(session_id.to_string(), Arc::clone(&logger_arc));
+        info!("Created chat logger for session: {}", session_id);
+        
+        Ok(logger_arc)
+    }
+    
     /// Request confirmation from the user for a tool action
     async fn request_confirmation(
         &self,
@@ -475,6 +504,33 @@ pub async fn send_chat_message(
     let llm = service.as_ref()
         .ok_or_else(|| "LLM service not initialized".to_string())?;
     
+    // Create chat logger if session_id is provided
+    let chat_logger = if let Some(ref session_id) = session_id {
+        match llm.get_chat_logger(session_id).await {
+            Ok(logger) => {
+                logger.log_session_info("chat_started", json!({
+                    "enable_tools": enable_tools.unwrap_or(false),
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "model": llm.model_name(),
+                    "message_count": messages.len()
+                }));
+                Some(logger)
+            }
+            Err(e) => {
+                error!("Failed to create chat logger: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+    
+    // Log user message if available
+    if let (Some(ref logger), Some(user_msg)) = (&chat_logger, messages.iter().find(|m| m.role == "user")) {
+        logger.log_user_message(&user_msg.content, None);
+    }
+    
     // Convert to provider messages
     let mut provider_messages: Vec<mimir_dm_llm::Message> = messages
         .into_iter()
@@ -544,6 +600,16 @@ pub async fn send_chat_message(
             provider_messages.len(),
             provider_messages.iter().map(|m| m.role.as_str()).collect::<Vec<_>>().join(", ")
         );
+        
+        // Log LLM call to chat logger
+        if let Some(ref logger) = chat_logger {
+            logger.log_llm_call(
+                tool_call_count + 1,
+                provider_messages.len(),
+                tools.is_some(),
+                llm.model_name()
+            );
+        }
         
         debug!("Request parameters:");
         debug!("  Temperature: {:?}", temperature.or(Some(0.3)));
@@ -615,6 +681,16 @@ pub async fn send_chat_message(
                     provider_messages.len(),
                     tools.as_ref().map_or(0, |t| t.len())
                 );
+                
+                // Log error to chat logger
+                if let Some(ref logger) = chat_logger {
+                    logger.log_error(
+                        "llm_request_failed",
+                        &format!("Chat request failed: {}", e),
+                        "RequestError"
+                    );
+                }
+                
                 format!("Chat request failed: {}", e)
             })?;
         
@@ -623,6 +699,20 @@ pub async fn send_chat_message(
             response.content.len(),
             response.tool_calls.as_ref().map_or(0, |tc| tc.len())
         );
+        
+        // Log LLM response to chat logger
+        if let Some(ref logger) = chat_logger {
+            let token_usage = response.usage.as_ref().map(|u| ChatTokenUsage {
+                prompt: u.prompt_tokens,
+                completion: u.completion_tokens,
+                total: u.total_tokens,
+            });
+            logger.log_llm_response(
+                &response.content,
+                token_usage,
+                response.tool_calls.as_ref().map_or(0, |tc| tc.len())
+            );
+        }
         
         debug!("Response details:");
         let response_without_thinking = strip_thinking_blocks(&response.content);
@@ -756,6 +846,8 @@ pub async fn send_chat_message(
                     // Execute the tool (either no confirmation needed or user confirmed)
                     info!("Executing tool: {} with {} bytes of arguments", tool_name, serde_json::to_string(&tool_args).unwrap_or_default().len());
                     
+                    let execution_start = Instant::now();
+                    
                     // Execute tool once - let LLM handle errors and make corrections
                     let tool_result = match llm.tool_registry.execute_tool(tool_name, tool_args.clone()).await {
                         Ok(result) => {
@@ -768,6 +860,20 @@ pub async fn send_chat_message(
                             format!("Tool execution failed: {}", e)
                         }
                     };
+                    
+                    let execution_time_ms = execution_start.elapsed().as_millis() as u64;
+                    
+                    // Log tool execution to chat logger
+                    if let Some(ref logger) = chat_logger {
+                        let success = !tool_result.contains("Tool execution failed");
+                        logger.log_tool_call(
+                            tool_name,
+                            &tool_args,
+                            success,
+                            &tool_result,
+                            Some(execution_time_ms)
+                        );
+                    }
                     
                     info!("Tool {} result: {} chars", tool_name, tool_result.len());
                     
@@ -843,6 +949,15 @@ pub async fn send_chat_message(
     
     if tool_call_count >= MAX_TOOL_ITERATIONS {
         warn!("Reached maximum tool iterations ({})", MAX_TOOL_ITERATIONS);
+        
+        // Log warning to chat logger
+        if let Some(ref logger) = chat_logger {
+            logger.log_error(
+                "max_iterations_reached",
+                &format!("Reached maximum tool iterations: {}", MAX_TOOL_ITERATIONS),
+                "IterationLimitError"
+            );
+        }
     }
     
     let response = final_response
@@ -857,6 +972,19 @@ pub async fn send_chat_message(
     
     // Apply thinking block size limit to prevent future token issues
     let limited_content = limit_thinking_block_size(&response.content, 12000); // ~3k tokens worth of thinking
+    
+    // Log completion to chat logger
+    if let Some(ref logger) = chat_logger {
+        logger.log_session_info("chat_completed", json!({
+            "tool_iterations": tool_call_count,
+            "final_content_length": limited_content.len(),
+            "token_usage": {
+                "prompt": usage.prompt_tokens,
+                "completion": usage.completion_tokens,
+                "total": usage.total_tokens
+            }
+        }));
+    }
     
     Ok(ChatResponseWithUsage {
         content: limited_content,

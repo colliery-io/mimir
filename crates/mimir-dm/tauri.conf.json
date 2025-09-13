@@ -31,6 +31,8 @@
             "core:webview:allow-create-webview-window",
             "core:event:allow-emit",
             "core:event:allow-listen",
+            "core:path:allow-resolve-directory",
+            "core:path:default",
             "dialog:allow-open",
             "dialog:allow-message",
             "dialog:allow-confirm"

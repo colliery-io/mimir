@@ -57,7 +57,7 @@
         </button>
       </div>
       
-      <div class="log-level-filters">
+      <div v-if="!isChatLog" class="log-level-filters">
         <button
           v-for="level in logLevels"
           :key="level"
@@ -162,6 +162,11 @@ let pollInterval: number | null = null
 // Theme support
 const themeStore = useThemeStore()
 const currentTheme = computed(() => `theme-${themeStore.currentTheme}`)
+
+// Detect if this is a chat log (ends with .log and is not mimir.log)
+const isChatLog = computed(() => {
+  return currentFileName.value.endsWith('.log') && !currentFileName.value.startsWith('mimir.log')
+})
 
 // Get current window and parse filename from label
 onMounted(async () => {
@@ -330,8 +335,8 @@ const processedLines = computed<LogLine[]>(() => {
 const filteredLines = computed<LogLine[]>(() => {
   let lines = processedLines.value
   
-  // Filter by log levels
-  if (activeLevels.value.size < logLevels.length) {
+  // Filter by log levels (only for non-chat logs)
+  if (!isChatLog.value && activeLevels.value.size < logLevels.length) {
     lines = lines.filter(line => {
       return Array.from(activeLevels.value).some(level => 
         line.content.includes(`[${level}]`) || 

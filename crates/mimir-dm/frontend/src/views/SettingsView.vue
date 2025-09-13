@@ -286,7 +286,8 @@ const handleEndpointChange = (event: Event) => {
 }
 
 .content-section {
-  max-width: 600px;
+  max-width: 1200px;
+  width: 100%;
 }
 
 .content-title {

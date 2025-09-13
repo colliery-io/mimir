@@ -53,6 +53,11 @@ impl AppPaths {
         
         fs::create_dir_all(&logs_dir)
             .with_context(|| format!("Failed to create logs directory: {}", logs_dir.display()))?;
+        
+        // Create chat sessions log subdirectory
+        let chat_logs_dir = logs_dir.join("chat_sessions");
+        fs::create_dir_all(&chat_logs_dir)
+            .with_context(|| format!("Failed to create chat logs directory: {}", chat_logs_dir.display()))?;
 
         Ok(AppPaths {
             app_dir,
