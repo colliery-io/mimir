@@ -38,6 +38,33 @@
               <span class="session-date">{{ formatDate(session.updated_at) }}</span>
               <span class="session-count">{{ session.message_count }} messages</span>
             </div>
+            <div class="session-id-row">
+              <code class="session-id-badge" :title="session.id">{{ session.id.slice(0, 8) }}...</code>
+              <div class="session-actions">
+                <button 
+                  @click.stop="copySessionId(session.id)"
+                  class="session-action-btn copy-btn"
+                  :class="{ 'copy-btn--copied': copiedSessionId === session.id }"
+                  title="Copy session ID"
+                >
+                  <svg v-if="copiedSessionId !== session.id" width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  </svg>
+                  <svg v-else width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </button>
+                <button 
+                  @click.stop="openSessionLogs(session.id)"
+                  class="session-action-btn logs-btn"
+                  title="Open session logs"
+                >
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
           <button
             @click.stop="deleteSessionHandler(session.id)"
@@ -89,6 +116,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { useChatStore } from '@/stores/chat'
 
 const chatStore = useChatStore()
@@ -97,6 +125,7 @@ const chatStore = useChatStore()
 const showDeleteModal = ref(false)
 const sessionToDelete = ref<string | null>(null)
 const deleteError = ref<string | null>(null)
+const copiedSessionId = ref<string | null>(null)
 
 // Computed
 const sessions = computed(() => chatStore.sessions)
@@ -153,6 +182,83 @@ const formatDate = (timestamp: number) => {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
   }
 }
+
+// Session ID functionality
+const copySessionId = async (sessionId: string) => {
+  try {
+    await navigator.clipboard.writeText(sessionId)
+    copiedSessionId.value = sessionId
+    setTimeout(() => {
+      copiedSessionId.value = null
+    }, 2000)
+  } catch (error) {
+    console.error('Failed to copy session ID:', error)
+  }
+}
+
+const openSessionLogs = async (sessionId: string) => {
+  try {
+    // Use the existing log viewer window command with the session's log filename
+    const filename = `${sessionId}.log`
+    await invoke('open_log_viewer_window', { fileName: filename })
+  } catch (error) {
+    console.error('Failed to open log viewer:', error)
+  }
+}
 </script>
 
-<!-- All styling now handled by consolidated CSS classes in components/chat.css and base-modal.css -->
+<style scoped>
+/* Session ID Row Styles */
+.session-id-row {
+  @apply flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-700;
+  opacity: 0.8;
+}
+
+.session-id-badge {
+  @apply font-mono text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-1 rounded;
+  font-size: 10px;
+}
+
+.session-actions {
+  @apply flex items-center gap-1;
+}
+
+.session-action-btn {
+  @apply p-1 rounded transition-all duration-200 opacity-70 hover:opacity-100;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.session-action-btn:hover {
+  @apply bg-gray-100 dark:bg-gray-700;
+}
+
+.copy-btn {
+  @apply text-gray-500 dark:text-gray-400;
+}
+
+.copy-btn--copied {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.logs-btn {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Show session actions only on hover for non-active items */
+.chat-session-item:not(.chat-session-item--active) .session-actions {
+  @apply opacity-0 transition-opacity duration-200;
+}
+
+.chat-session-item:not(.chat-session-item--active):hover .session-actions {
+  @apply opacity-100;
+}
+
+/* Always show for active session */
+.chat-session-item--active .session-actions {
+  @apply opacity-100;
+}
+</style>
+
+<!-- Main styling handled by consolidated CSS classes -->

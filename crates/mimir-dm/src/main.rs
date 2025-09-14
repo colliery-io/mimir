@@ -402,7 +402,8 @@ fn main() {
             // Log management commands
             logs::list_log_files,
             logs::read_log_file,
-            logs::tail_log_file
+            logs::tail_log_file,
+            logs::open_logs_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

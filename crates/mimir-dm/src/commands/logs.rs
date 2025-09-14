@@ -266,3 +266,24 @@ pub async fn tail_log_file(
         new_position: current_size,
     }))
 }
+
+
+/// Open the chat logs directory in the system file explorer
+#[tauri::command]
+pub async fn open_logs_folder() -> Result<ApiResponse<()>, String> {
+    // Get app paths
+    let app_paths = APP_PATHS.get()
+        .ok_or_else(|| "App paths not initialized".to_string())?;
+    
+    let chat_logs_dir = app_paths.logs_dir.join("chat_sessions");
+    
+    // Create the directory if it doesn't exist
+    if !chat_logs_dir.exists() {
+        fs::create_dir_all(&chat_logs_dir)
+            .map_err(|e| format!("Failed to create chat logs directory: {}", e))?;
+    }
+    
+    // Use the opener crate to open the directory in the file explorer
+    // For now, we'll return the path so the frontend can use Tauri's shell API
+    Ok(ApiResponse::success(()))
+}

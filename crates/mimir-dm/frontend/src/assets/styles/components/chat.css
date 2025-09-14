@@ -281,7 +281,7 @@
 
 /* Chat Sidebar */
 .chat-sidebar {
-  width: 300px;
+  width: 330px;
   background-color: var(--color-surface);
   border-left: 1px solid var(--color-border);
   display: flex;
@@ -292,7 +292,7 @@
 .chat-sidebar__header {
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-surface-variant);
+  background-color: var(--color-surface);
   flex-shrink: 0;
 }
 

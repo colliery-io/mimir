@@ -14,6 +14,7 @@
         <ChatHistory
           :messages="messages"
           :is-loading="isLoading"
+          :current-session-id="currentSessionId"
         />
         
         <!-- Token Usage Bar -->
@@ -63,6 +64,7 @@ const isCancelling = computed(() => chatStore.isCancelling)
 const error = computed(() => chatStore.error)
 const conversationTokens = computed(() => chatStore.conversationTokens)
 const maxContextTokens = computed(() => chatStore.modelInfo?.contextLength || 262144)
+const currentSessionId = computed(() => chatStore.currentSessionId)
 
 // Calculate last message tokens
 const lastMessageTokens = computed(() => {
