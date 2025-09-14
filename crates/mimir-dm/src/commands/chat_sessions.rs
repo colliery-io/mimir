@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::State;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -313,13 +314,36 @@ pub async fn save_chat_session(
 #[tauri::command]
 pub async fn create_chat_session(
     session_manager: SessionManagerState<'_>,
+    llm_service: tauri::State<'_, Arc<tokio::sync::Mutex<Option<crate::services::llm_service::LlmService>>>>,
 ) -> Result<ChatSession, String> {
-    session_manager
+    let session = session_manager
         .create_session()
         .map_err(|e| {
             error!("Failed to create chat session: {}", e);
             format!("Failed to create session: {}", e)
-        })
+        })?;
+    
+    // Initialize chat logger for this session
+    if let Some(llm) = llm_service.lock().await.as_ref() {
+        match llm.get_chat_logger(&session.id).await {
+            Ok(logger) => {
+                logger.log_session_info("session_created", serde_json::json!({
+                    "session_id": session.id,
+                    "created_at": session.created_at,
+                    "title": session.title
+                }));
+                info!("Initialized chat logger for session: {}", session.id);
+            }
+            Err(e) => {
+                error!("Failed to initialize chat logger for session {}: {}", session.id, e);
+                // Don't fail session creation if logging fails
+            }
+        }
+    } else {
+        info!("LLM service not initialized, skipping chat logger setup for session: {}", session.id);
+    }
+    
+    Ok(session)
 }
 
 /// Tauri command: Delete a chat session

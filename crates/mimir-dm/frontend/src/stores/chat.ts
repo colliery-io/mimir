@@ -405,6 +405,13 @@ export const useChatStore = defineStore('chat', () => {
   const sendMessage = async (content: string): Promise<void> => {
     if (!content.trim() || isLoading.value) return
     
+    // Ensure we have a valid session before sending
+    if (!currentSessionId.value) {
+      console.error('Cannot send message: no active session')
+      error.value = 'No active chat session. Please refresh the page.'
+      return
+    }
+    
     error.value = null
     isCancelling.value = false
     isLoading.value = true
@@ -417,6 +424,15 @@ export const useChatStore = defineStore('chat', () => {
       timestamp: Date.now()
     }
     messages.value.push(userMessage)
+    
+    // Immediately save user message to session file
+    try {
+      await saveCurrentSession()
+      console.log('User message saved to session immediately')
+    } catch (saveError) {
+      console.warn('Failed to save user message immediately:', saveError)
+      // Continue with LLM call even if save fails
+    }
     
     try {
       // Build system message with current context
@@ -459,6 +475,14 @@ export const useChatStore = defineStore('chat', () => {
       
       messages.value.push(assistantMessage)
       
+      // Immediately save assistant message to session file
+      try {
+        await saveCurrentSession()
+        console.log('Assistant message saved to session immediately')
+      } catch (saveError) {
+        console.warn('Failed to save assistant message immediately:', saveError)
+      }
+      
       // Note: The token counts from the API reflect what was actually sent/received
       // (without thinking blocks in the history). This is accurate for billing
       // and context window tracking since thinking blocks are stripped from the API calls.
@@ -474,18 +498,15 @@ export const useChatStore = defineStore('chat', () => {
         console.warn('No current session ID available for todo refresh')
       }
       
-      // Auto-save current session
-      await saveCurrentSession()
+      // Session is already saved incrementally after each message
       
     } catch (err) {
       console.error('Failed to send message:', err)
       error.value = String(err)
       
-      // Remove the user message if the request failed
-      const idx = messages.value.findIndex(m => m.id === userMessage.id)
-      if (idx !== -1) {
-        messages.value.splice(idx, 1)
-      }
+      // Don't remove user message - it's already been saved to the session file
+      // User should see their message was sent even if LLM fails to respond
+      console.log('User message preserved in UI despite LLM error')
     } finally {
       isLoading.value = false
     }

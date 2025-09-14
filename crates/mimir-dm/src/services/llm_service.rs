@@ -360,7 +360,7 @@ impl LlmService {
     }
     
     /// Get or create a chat logger for a session
-    async fn get_chat_logger(&self, session_id: &str) -> Result<Arc<ChatLogger>> {
+    pub async fn get_chat_logger(&self, session_id: &str) -> Result<Arc<ChatLogger>> {
         let mut loggers = self.chat_loggers.lock().await;
         
         if let Some(logger) = loggers.get(session_id) {
@@ -506,11 +506,14 @@ pub async fn send_chat_message(
     let llm = service.as_ref()
         .ok_or_else(|| "LLM service not initialized".to_string())?;
     
+    // Require a valid session ID for all chat messages
+    let session_id = session_id.ok_or_else(|| "Session ID is required for chat messages".to_string())?;
+    
     // Create and register cancellation token for this session
     let cancellation_token = CancellationToken::new();
     let session_id_for_cleanup = session_id.clone();
     
-    if let Some(ref session_id) = session_id {
+    {
         let mut tokens = cancellation_tokens.lock().await;
         tokens.insert(session_id.clone(), cancellation_token.clone());
     }
@@ -520,36 +523,31 @@ pub async fn send_chat_message(
     let cleanup_token = {
         let session_id_copy = session_id_for_cleanup.clone();
         move || {
-            if let Some(session_id) = session_id_copy {
-                let tokens = tokens_for_cleanup.clone();
-                tokio::spawn(async move {
-                    let mut tokens = tokens.lock().await;
-                    tokens.remove(&session_id);
-                });
-            }
+            let tokens = tokens_for_cleanup.clone();
+            let session_id = session_id_copy.clone();
+            tokio::spawn(async move {
+                let mut tokens = tokens.lock().await;
+                tokens.remove(&session_id);
+            });
         }
     };
     
-    // Create chat logger if session_id is provided
-    let chat_logger = if let Some(ref session_id) = session_id {
-        match llm.get_chat_logger(session_id).await {
-            Ok(logger) => {
-                logger.log_session_info("chat_started", json!({
-                    "enable_tools": enable_tools.unwrap_or(false),
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                    "model": llm.model_name(),
-                    "message_count": messages.len()
-                }));
-                Some(logger)
-            }
-            Err(e) => {
-                error!("Failed to create chat logger: {}", e);
-                None
-            }
+    // Create chat logger (session_id is guaranteed to be valid at this point)
+    let chat_logger = match llm.get_chat_logger(&session_id).await {
+        Ok(logger) => {
+            logger.log_session_info("chat_started", json!({
+                "enable_tools": enable_tools.unwrap_or(false),
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "model": llm.model_name(),
+                "message_count": messages.len()
+            }));
+            Some(logger)
         }
-    } else {
-        None
+        Err(e) => {
+            error!("Failed to create chat logger: {}", e);
+            None
+        }
     };
     
     // Log user message if available
@@ -581,7 +579,7 @@ pub async fn send_chat_message(
     
     // Inject system rules if tools are enabled
     if tools.is_some() {
-        let system_rules = llm.tool_registry.generate_system_rules(session_id.as_deref());
+        let system_rules = llm.tool_registry.generate_system_rules(Some(&session_id));
         if !system_rules.is_empty() {
             // Check if there's already a system message, or create one
             let system_content = system_rules.join("\n\n");
@@ -809,7 +807,7 @@ pub async fn send_chat_message(
                         content: response.content.clone(),
                         tool_calls: tool_names,
                         iteration: tool_call_count,
-                        session_id: session_id.clone(),
+                        session_id: Some(session_id.clone()),
                     };
                     
                     if let Err(e) = app.emit("llm-intermediate-message", &intermediate_msg) {
@@ -834,14 +832,13 @@ pub async fn send_chat_message(
                     debug_content!("Tool arguments", args_json, 300);
                     
                     // Inject session_id for todo_write tool if session_id is provided
-                    if tool_name == "todo_write" && session_id.is_some() {
-                        if let Some(ref session_id_value) = session_id {
-                            tool_args.as_object_mut().unwrap().insert(
-                                "session_id".to_string(), 
-                                serde_json::Value::String(session_id_value.clone())
-                            );
-                            debug!("Injected session_id '{}' into todo_write tool", session_id_value);
-                        }
+                    if tool_name == "todo_write" {
+                        let session_id_value = &session_id;
+                        tool_args.as_object_mut().unwrap().insert(
+                            "session_id".to_string(), 
+                            serde_json::Value::String(session_id_value.clone())
+                        );
+                        debug!("Injected session_id '{}' into todo_write tool", session_id_value);
                     }
                     
                     // Extract key parameters for logging
@@ -933,7 +930,7 @@ pub async fn send_chat_message(
                             result: tool_result.clone(),
                             success,
                             iteration: tool_call_count,
-                            session_id: session_id.clone(),
+                            session_id: Some(session_id.clone()),
                         };
                         
                         if let Err(e) = app.emit("tool-result-message", &tool_result_msg) {
@@ -942,7 +939,8 @@ pub async fn send_chat_message(
                         
                         // If this was a todo_write tool and successful, emit todos update
                         if tool_name == "todo_write" && success {
-                            if let Some(session_id) = &session_id {
+                            {
+                                let session_id = &session_id;
                                 let current_todos = llm.get_session_todos(session_id);
                                 if let Err(e) = app.emit("todos-updated", &json!({
                                     "session_id": session_id,
