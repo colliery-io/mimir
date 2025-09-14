@@ -718,6 +718,7 @@ pub async fn send_chat_message(
                 max_tokens.or(Some(16384)),    // max_tokens (default to 16384 for thinking models)
                 None,                          // stop sequences
                 None,                          // extra config
+                Some(cancellation_token.clone()), // cancellation token
             )
             .await
             .map_err(|e| {

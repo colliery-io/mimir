@@ -22,6 +22,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 use url::Url;
 
@@ -244,6 +245,7 @@ impl LlmProvider for OllamaProvider {
         max_tokens: Option<u32>,
         stop: Option<Vec<String>>,
         _extra_config: Option<HashMap<String, String>>,
+        cancellation_token: Option<CancellationToken>,
     ) -> Result<ChatResponse, LlmError> {
         if !self.supports_endpoint(EndpointType::Chat) {
             return Err(LlmError::UnsupportedEndpoint("chat".to_string()));
@@ -282,13 +284,28 @@ impl LlmProvider for OllamaProvider {
             request.options.as_ref().and_then(|o| o.think).unwrap_or(false)
         );
 
-        let response = self
+        // Create the HTTP request future
+        let request_future = self
             .client
             .post(&format!("{}/api/chat", self.base_url))
             .json(&request)
-            .send()
-            .await
-            .map_err(|e| LlmError::ProviderError(format!("HTTP request failed: {}", e)))?;
+            .send();
+
+        // Race between request and cancellation
+        let response = if let Some(ref token) = cancellation_token {
+            tokio::select! {
+                result = request_future => {
+                    result.map_err(|e| LlmError::ProviderError(format!("HTTP request failed: {}", e)))?
+                }
+                _ = token.cancelled() => {
+                    debug!("Chat request cancelled");
+                    return Err(LlmError::Cancelled);
+                }
+            }
+        } else {
+            request_future.await
+                .map_err(|e| LlmError::ProviderError(format!("HTTP request failed: {}", e)))?
+        };
 
         if !response.status().is_success() {
             return Err(LlmError::ProviderError(format!(
@@ -298,10 +315,21 @@ impl LlmProvider for OllamaProvider {
         }
 
         // Get the response text to log its size before parsing
-        let response_text = response
-            .text()
-            .await
-            .map_err(|e| LlmError::ProviderError(format!("Failed to read response text: {}", e)))?;
+        // Also check for cancellation during response reading
+        let response_text = if let Some(token) = &cancellation_token {
+            tokio::select! {
+                result = response.text() => {
+                    result.map_err(|e| LlmError::ProviderError(format!("Failed to read response text: {}", e)))?
+                }
+                _ = token.cancelled() => {
+                    debug!("Chat response reading cancelled");
+                    return Err(LlmError::Cancelled);
+                }
+            }
+        } else {
+            response.text().await
+                .map_err(|e| LlmError::ProviderError(format!("Failed to read response text: {}", e)))?
+        };
         
         debug!("Raw response size: {} bytes", response_text.len());
 

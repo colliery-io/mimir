@@ -24,6 +24,7 @@ use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
+use tokio_util::sync::CancellationToken;
 
 use crate::config::{EndpointType, ModelConfig, RateLimit, RenewalPeriod};
 
@@ -159,6 +160,8 @@ pub enum LlmError {
     ModelPullFailed(String),
     #[error("Operation not supported")]
     NotSupported,
+    #[error("Request was cancelled")]
+    Cancelled,
 }
 
 /// Basic model information
@@ -292,7 +295,8 @@ pub trait LlmProvider: Send + Sync {
         _temperature: Option<f32>,
         _max_tokens: Option<u32>,
         _stop: Option<Vec<String>>,
-        _extra_config: Option<HashMap<String, String>>
+        _extra_config: Option<HashMap<String, String>>,
+        _cancellation_token: Option<CancellationToken>,
     ) -> Result<ChatResponse, LlmError> {
         if !self.supports_endpoint(EndpointType::Chat) {
             return Err(LlmError::UnsupportedEndpoint("chat".to_string()));
