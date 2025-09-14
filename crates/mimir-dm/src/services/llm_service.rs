@@ -13,7 +13,7 @@ use mimir_dm_llm::{
     traits::ActionDescription,
     LlmProvider, ModelPullProgress,
     TodoListTool, TodoStateManager,
-    ReadFileTool, WriteFileTool, ListFilesTool, EditFileTool, FileToolsConfig, SayHelloTool,
+    ReadFileTool, WriteFileTool, ListFilesTool, EditFileTool, FileToolsConfig,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
@@ -22,6 +22,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, Mutex};
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
 use crate::services::chat_logger::{ChatLogger, ChatTokenUsage};
@@ -89,7 +90,7 @@ fn strip_thinking_blocks(content: &str) -> String {
 }
 
 /// The model we want to use for the DM assistantcd 
-const REQUIRED_MODEL: &str = "qwen3:30b";
+const REQUIRED_MODEL: &str = "gpt-oss:20b";
 const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -132,6 +133,7 @@ pub struct ToolResultMessage {
 
 /// Global confirmation state that can be shared across the app
 pub type ConfirmationReceivers = Arc<Mutex<HashMap<Uuid, oneshot::Sender<bool>>>>;
+pub type CancellationTokens = Arc<Mutex<HashMap<String, CancellationToken>>>;
 
 /// LLM Service state
 pub struct LlmService {
@@ -168,7 +170,6 @@ impl LlmService {
         
         // Create tool registry and register tools
         let mut tool_registry = ToolRegistry::new();
-        tool_registry.register(Arc::new(SayHelloTool));
         tool_registry.register(Arc::new(ReadFileTool::new(file_config.clone())));
         tool_registry.register(Arc::new(WriteFileTool::new(file_config.clone())));
         tool_registry.register(Arc::new(ListFilesTool::new(file_config.clone())));
@@ -491,6 +492,7 @@ pub struct ChatResponseWithUsage {
 #[tauri::command]
 pub async fn send_chat_message(
     service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
+    cancellation_tokens: tauri::State<'_, CancellationTokens>,
     messages: Vec<ChatMessage>,
     max_tokens: Option<u32>,
     temperature: Option<f32>,
@@ -503,6 +505,30 @@ pub async fn send_chat_message(
     
     let llm = service.as_ref()
         .ok_or_else(|| "LLM service not initialized".to_string())?;
+    
+    // Create and register cancellation token for this session
+    let cancellation_token = CancellationToken::new();
+    let session_id_for_cleanup = session_id.clone();
+    
+    if let Some(ref session_id) = session_id {
+        let mut tokens = cancellation_tokens.lock().await;
+        tokens.insert(session_id.clone(), cancellation_token.clone());
+    }
+    
+    // Create cleanup helper that captures the needed values
+    let tokens_for_cleanup = cancellation_tokens.inner().clone();
+    let cleanup_token = {
+        let session_id_copy = session_id_for_cleanup.clone();
+        move || {
+            if let Some(session_id) = session_id_copy {
+                let tokens = tokens_for_cleanup.clone();
+                tokio::spawn(async move {
+                    let mut tokens = tokens.lock().await;
+                    tokens.remove(&session_id);
+                });
+            }
+        }
+    };
     
     // Create chat logger if session_id is provided
     let chat_logger = if let Some(ref session_id) = session_id {
@@ -573,18 +599,23 @@ pub async fn send_chat_message(
                     // Insert system message at the beginning
                     provider_messages.insert(0, mimir_dm_llm::Message {
                         role: "system".to_string(),
-                        content: system_content,
+                        content: system_content.clone(),
                     });
                 }
             } else {
                 // No messages yet, add system message
                 provider_messages.push(mimir_dm_llm::Message {
                     role: "system".to_string(),
-                    content: system_content,
+                    content: system_content.clone(),
                 });
             }
             
             info!("Injected {} system rules for tool guidance", system_rules.len());
+            
+            // Log the complete system prompt to chat logger
+            if let Some(ref logger) = chat_logger {
+                logger.log_system_prompt(&system_content, "tool_guidance_rules");
+            }
         }
     }
     
@@ -594,6 +625,12 @@ pub async fn send_chat_message(
     let mut final_response = None;
     
     while tool_call_count < MAX_TOOL_ITERATIONS {
+        // Check for cancellation
+        if cancellation_token.is_cancelled() {
+            info!("Cancellation detected, stopping LLM execution loop");
+            cleanup_token();
+            return Err("Chat message was cancelled".to_string());
+        }
         // Log message flow before LLM call
         info!("=== LLM Call {} ===", tool_call_count + 1);
         info!("Sending {} messages to LLM ({})", 
@@ -608,6 +645,16 @@ pub async fn send_chat_message(
                 provider_messages.len(),
                 tools.is_some(),
                 llm.model_name()
+            );
+            
+            // Log complete conversation context being sent to LLM
+            logger.log_full_conversation_context(
+                tool_call_count + 1,
+                &provider_messages,
+                temperature,
+                max_tokens,
+                tools.is_some(),
+                tools.as_ref().map_or(0, |t| t.len())
             );
         }
         
@@ -986,6 +1033,8 @@ pub async fn send_chat_message(
         }));
     }
     
+    cleanup_token();
+    
     Ok(ChatResponseWithUsage {
         content: limited_content,
         prompt_tokens: usage.prompt_tokens,
@@ -1004,7 +1053,7 @@ pub async fn get_model_context_info(
     let llm = service.as_ref()
         .ok_or_else(|| "LLM service not initialized".to_string())?;
     
-    // For now, return hardcoded info for qwen3:30b
+    // For now, return hardcoded info for gpt-oss:20b
     // In the future, we could query this from Ollama
     Ok(serde_json::json!({
         "model": llm.model_name(),
@@ -1142,5 +1191,29 @@ pub async fn list_available_models() -> Result<Vec<serde_json::Value>, String> {
             }
         }
         Err(e) => Err(format!("Failed to connect to Ollama: {}", e))
+    }
+}
+
+/// Tauri command to cancel an ongoing chat message
+#[tauri::command]
+pub async fn cancel_chat_message(
+    cancellation_tokens: tauri::State<'_, CancellationTokens>,
+    session_id: Option<String>,
+) -> Result<(), String> {
+    info!("cancel_chat_message called with session_id: {:?}", session_id);
+    if let Some(session_id) = session_id {
+        let mut tokens = cancellation_tokens.lock().await;
+        info!("Current active tokens: {:?}", tokens.keys().collect::<Vec<_>>());
+        if let Some(token) = tokens.remove(&session_id) {
+            token.cancel();
+            info!("Successfully cancelled chat message for session: {}", session_id);
+            Ok(())
+        } else {
+            warn!("No active request found for session: {} (available: {:?})", session_id, tokens.keys().collect::<Vec<_>>());
+            Err("No active request found for this session".to_string())
+        }
+    } else {
+        error!("Session ID is required for cancellation but was None");
+        Err("Session ID is required for cancellation".to_string())
     }
 }

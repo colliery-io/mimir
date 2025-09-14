@@ -7,7 +7,7 @@
         @keydown="handleKeyDown"
         @input="adjustHeight"
         :disabled="disabled"
-        placeholder="Type your message... (Ctrl+Enter to send)"
+        :placeholder="textareaPlaceholder"
         class="form-textarea"
         :style="{ height: textareaHeight }"
       />
@@ -16,7 +16,8 @@
         :disabled="!canSend"
         class="btn btn-primary chat-send-btn"
       >
-        <span v-if="!isLoading">Send</span>
+        <span v-if="!isLoading && !isCancelling">Send</span>
+        <span v-else-if="isCancelling">Cancelling...</span>
         <span v-else>...</span>
       </button>
     </div>
@@ -32,6 +33,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 const props = defineProps<{
   disabled?: boolean
   isLoading?: boolean
+  isCancelling?: boolean
   error?: string | null
 }>()
 
@@ -46,7 +48,17 @@ const textareaHeight = ref('60px')
 
 // Computed
 const canSend = computed(() => {
-  return message.value.trim().length > 0 && !props.disabled && !props.isLoading
+  return message.value.trim().length > 0 && !props.disabled && !props.isLoading && !props.isCancelling
+})
+
+const textareaPlaceholder = computed(() => {
+  if (props.isCancelling) {
+    return 'Cancelling request... Press Escape to cancel'
+  } else if (props.isLoading) {
+    return 'AI is thinking... Press Escape to cancel'
+  } else {
+    return 'Type your message... (Ctrl+Enter to send, Escape to cancel)'
+  }
 })
 
 // Methods

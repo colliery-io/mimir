@@ -163,7 +163,8 @@ impl ToolRegistry {
             }
         }
         
-        // Add more tool-specific rules here as needed in the future
+        // Add tool awareness and relationship guidance
+        rules.push(self.generate_tool_awareness_guidance());
         
         // Debug: Log what rules we generated
         info!("Generated {} system rules total", rules.len());
@@ -250,6 +251,38 @@ impl ToolRegistry {
         );
         
         context
+    }
+    
+    /// Generate tool awareness and relationship guidance
+    fn generate_tool_awareness_guidance(&self) -> String {
+        let mut guidance = String::from("## TOOL AWARENESS\n\n");
+        
+        guidance.push_str("### Available Tools\n");
+        let tool_names: Vec<&str> = self.tools.keys().map(|s| s.as_str()).collect();
+        guidance.push_str(&format!("You have access to these tools: {}\n\n", tool_names.join(", ")));
+        
+        guidance.push_str("### Tool Workflow Guidance\n");
+        
+        // Collect workflow guidance from each tool
+        let mut has_guidance = false;
+        for (name, tool) in &self.tools {
+            if let Some(tool_guidance) = tool.workflow_guidance() {
+                guidance.push_str(&format!("**{}:**\n{}\n\n", name, tool_guidance));
+                has_guidance = true;
+            }
+        }
+        
+        if !has_guidance {
+            guidance.push_str("- Tools are independent and can be used as needed\n");
+            guidance.push_str("- Follow tool descriptions for specific usage patterns\n\n");
+        }
+        
+        guidance.push_str("### General Action Patterns\n");
+        guidance.push_str("- Take direct action when user requests clear operations\n");
+        guidance.push_str("- Use tools in logical sequence based on their guidance\n");
+        guidance.push_str("- Always complete requested actions rather than just explaining them\n");
+        
+        guidance
     }
 }
 

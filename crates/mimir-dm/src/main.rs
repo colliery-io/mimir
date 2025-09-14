@@ -26,7 +26,7 @@ use commands::catalog_vehicle_db::{search_vehicles_db, get_vehicle_details_db, g
 use commands::catalog_class_db::{search_classes_db, get_class_details_db, get_subclass_details_db, get_class_subclasses_db, get_class_sources_db, get_class_primary_abilities_db, get_class_statistics_db};
 use services::database::DatabaseService;
 use services::context_service::ContextState;
-use services::llm_service::{self, LlmService, ConfirmationReceivers};
+use services::llm_service::{self, LlmService, ConfirmationReceivers, CancellationTokens};
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, Mutex};
 use tauri::Manager;
@@ -79,8 +79,10 @@ fn main() {
             
             // Create shared confirmation receivers for LLM tools
             let confirmation_receivers: ConfirmationReceivers = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+            let cancellation_tokens: CancellationTokens = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
             let confirmation_receivers_clone = Arc::clone(&confirmation_receivers);
             app.manage(confirmation_receivers);
+            app.manage(cancellation_tokens);
             
             // Initialize LLM service
             let app_handle = app.handle().clone();
@@ -384,6 +386,7 @@ fn main() {
             llm_service::check_llm_status,
             llm_service::get_llm_model_info,
             llm_service::send_chat_message,
+            llm_service::cancel_chat_message,
             llm_service::get_model_context_info,
             llm_service::confirm_tool_action,
             llm_service::list_available_models,

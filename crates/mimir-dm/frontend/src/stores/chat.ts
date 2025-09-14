@@ -156,6 +156,7 @@ export const useChatStore = defineStore('chat', () => {
   // State
   const messages = ref<ChatMessage[]>([])
   const isLoading = ref(false)
+  const isCancelling = ref(false)
   const error = ref<string | null>(null)
   const modelInfo = ref<ModelInfo | null>(null)
   const totalTokensUsed = ref(0)
@@ -379,10 +380,33 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
   
+  const cancelMessage = async (): Promise<void> => {
+    console.log('cancelMessage called, isLoading:', isLoading.value, 'sessionId:', currentSessionId.value)
+    if (!isLoading.value) {
+      console.log('Not loading, cancellation skipped')
+      return
+    }
+    
+    isCancelling.value = true
+    try {
+      console.log('Sending cancel_chat_message to backend...')
+      await invoke('cancel_chat_message', {
+        sessionId: currentSessionId.value
+      })
+      console.log('Cancel request completed successfully')
+    } catch (err) {
+      console.error('Failed to cancel message:', err)
+    } finally {
+      isCancelling.value = false
+      isLoading.value = false
+    }
+  }
+
   const sendMessage = async (content: string): Promise<void> => {
     if (!content.trim() || isLoading.value) return
     
     error.value = null
+    isCancelling.value = false
     isLoading.value = true
     
     // Add user message
@@ -744,6 +768,7 @@ export const useChatStore = defineStore('chat', () => {
     // State
     messages,
     isLoading,
+    isCancelling,
     error,
     modelInfo,
     totalTokensUsed,
@@ -771,6 +796,7 @@ export const useChatStore = defineStore('chat', () => {
     // Actions
     initialize,
     sendMessage,
+    cancelMessage,
     clearHistory,
     deleteMessage,
     setMaxResponseTokens,

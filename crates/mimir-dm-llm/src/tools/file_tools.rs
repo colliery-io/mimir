@@ -206,6 +206,10 @@ impl ToolTrait for ReadFileTool {
         "Read the contents of a file and return it with line numbers for easy editing and reference. Use to_llm_tool() for dynamic path-aware description."
     }
     
+    fn workflow_guidance(&self) -> Option<String> {
+        Some("ALWAYS use read_file before edit_file to understand current content and structure".to_string())
+    }
+    
     fn to_llm_tool(&self) -> crate::traits::provider::Tool {
         let base_path = self.config.allowed_directories.get(0)
             .map(|p| p.display().to_string())
@@ -214,48 +218,24 @@ impl ToolTrait for ReadFileTool {
         let dynamic_description = format!(
             "Read the contents of a file and return it with line numbers for easy editing and reference.
 
-**CRITICAL PATH REQUIREMENT:**
-- ALL file paths MUST be absolute paths starting with: {}
-- Example: '{}/your_filename.txt'
-- NEVER use relative paths like 'filename.txt' - they will always fail
-- If you get a path validation error, retry this same tool with the corrected absolute path
-
 Usage:
-- Returns content formatted with line numbers (e.g., '  1→line content')
-- Line numbering starts at 1 and uses the format: '  {{line_number}}→{{content}}'
+- File paths MUST be absolute paths starting with: {}
+- Example: '{}/your_filename.txt'
+- Returns content in line-numbered format (e.g., '  1→content')
 - Essential prerequisite before using edit_file tool
-- Use this to understand file structure, check existing content, and locate specific lines
-- Handles text files of any size, but very large files may be truncated in display
+- Handles text files; binary files may produce garbled output
 - Empty files return '(empty file)' message
-- Binary files may produce garbled output - use only on text files
 
-Output Format:
-- Each line is prefixed with line numbers for precise editing
-- Line numbers are right-padded for consistent alignment
-- Example output:
-    1→import json
-    2→import sys
-    3→
-    4→def main():
-    5→    print('Hello World')
+When to use:
+- Before any edit operation to understand current content
+- To examine file structure and locate specific lines
+- For code review with clear line references
 
-Security:
-- All file paths are validated against allowed directories
-- Cannot read files outside the application's data directory
-- Cannot access system files or sensitive locations
-- Will error if the path points to a directory instead of a file
+When NOT to use:
+- If you know the file doesn't exist (will return an error)
+- For binary files (use specialized tools instead)
 
-Use Cases:
-- Before editing: Always read first to understand current content and structure
-- Code review: Examine source files with clear line references
-- Configuration: Check current settings before making changes
-- Debugging: Inspect file contents to understand application state
-- Template inspection: Review template files before customization
-
-Best Practices:
-- Always read before editing to avoid conflicts and understand context
-- Use the line numbers from output when specifying edit operations
-- Check file size - very large files may need special handling",
+Security: All file operations restricted to application data directory",
             base_path, base_path
         );
         
@@ -365,35 +345,31 @@ impl ToolTrait for WriteFileTool {
             .unwrap_or_else(|| "[no allowed directories configured]".to_string());
             
         let dynamic_description = format!(
-            "Write content to a file, creating a new file or completely replacing existing file content.
-
-**CRITICAL PATH REQUIREMENT:**
-- ALL file paths MUST be absolute paths starting with: {}
-- Example: '{}/your_filename.txt'
-- NEVER use relative paths like 'filename.txt' - they will always fail
-- If you get a path validation error, retry this same tool with the corrected absolute path
+            "Write content to a file, creating new or completely replacing existing file content.
 
 Usage:
-- This tool OVERWRITES the entire file content with the provided content
-- ALWAYS use read_file first to check if the file exists and understand its current content
-- Requires user confirmation before execution due to potential data loss
-- Use this for creating new files or when you need to replace entire file content
-- For incremental changes to existing files, prefer edit_file instead
-- Content should be properly formatted with correct line endings for the target platform
-- Empty content will create an empty file (this is valid)
-- Creates parent directories if they don't exist
-- File permissions will be set to standard read/write permissions
+- File paths MUST be absolute paths starting with: {}
+- Example: '{}/your_filename.txt'
+- OVERWRITES entire file content - use edit_file for partial changes
+- ALWAYS read file first if it exists to understand current content
+- Creates parent directories automatically
+- Requires user confirmation before execution
 
-Security:
-- All file paths are validated against allowed directories
-- Cannot write outside the application's data directory
-- Cannot overwrite system files or files outside the sandbox
+When to use:
+- Creating new files
+- Completely replacing file content
+- When edit_file operations would be too complex
 
-Best Practices:
-- Read the file first to understand existing structure and content
+When NOT to use:
+- Making small changes to existing files (use edit_file instead)
+- When you haven't read the existing file first
+
+Best practices:
 - Provide complete, well-formatted content
-- Include appropriate file headers, imports, or metadata as needed
-- Consider the impact on other parts of the application that might depend on the file",
+- Consider impact on dependent files
+- Include appropriate headers/imports as needed
+
+Security: Restricted to application data directory, requires confirmation",
             base_path, base_path
         );
         
@@ -549,57 +525,32 @@ impl ToolTrait for ListFilesTool {
     }
     
     fn description(&self) -> &str {
-        "List files and directories in a specified path with optional pattern filtering and metadata.
+        "List files and directories in a specified path with optional pattern filtering.
 
 Usage:
 - Directory path must be absolute and within allowed application directories
-- Returns detailed information about each file and subdirectory
-- Supports optional pattern filtering to find specific files
-- Essential for exploring the application's file structure
-- Use this before reading or editing files to understand the layout
-- Provides file sizes, modification times, and type information
-- Non-recursive by default - only shows immediate contents
+- Returns detailed information about files and subdirectories
+- Supports glob pattern filtering (e.g., '*.json', 'config.*')
+- Non-recursive by default - shows immediate directory contents only
+- Essential for exploring application file structure
 
-Pattern Filtering:
-- Optional pattern parameter supports glob-style wildcards
-- Examples: '*.json', 'config.*', 'template_*', '*.md'
-- Case-sensitive matching
-- Empty or null pattern returns all files
-- Pattern applies to filenames only, not full paths
+When to use:
+- Before read/edit operations to understand directory layout
+- Finding specific files by pattern (configuration, templates, etc.)
+- Exploring unknown directory structure
+- Confirming file existence and getting exact names
 
-Output Information:
-For each file/directory:
-- Name: The filename or directory name
-- Type: 'file' or 'directory'
-- Size: File size in bytes (0 for directories)
-- Modified: Last modification timestamp
-- Path: Full path to the item (for reference)
+When NOT to use:
+- If you already know the exact file path (use read_file directly)
+- For system directories (restricted to application data)
 
-Security:
-- All paths are validated against allowed directories
-- Cannot list files outside the application's data directory
-- Cannot access system directories or sensitive locations
-- Directory traversal attacks are prevented
+Output: Each entry includes name, size, modification time, and full path
 
-Use Cases:
-- Project exploration: Understanding application structure and organization
-- File discovery: Finding configuration files, templates, or data files
-- Before file operations: Confirming file existence and getting exact names
-- Backup verification: Checking what files exist before modifications
-- Template selection: Browsing available templates or resources
-- Data analysis: Understanding data file organization and sizes
-
-Best Practices:
-- Start with root directory listing to understand overall structure
-- Use pattern filtering to narrow down results for large directories
-- Check file sizes before attempting to read very large files
-- Use the exact filenames returned for subsequent read/write operations
-- Combine with read_file to explore files of interest
-
-Common Patterns:
-- list_files() - List files in the application data directory
-- list_files(directory_path, '*.json') - Find JSON files in a specific directory
-- list_files(directory_path, '*_config.*') - Find configuration files"
+Security: Restricted to application data directory, prevents directory traversal"
+    }
+    
+    fn workflow_guidance(&self) -> Option<String> {
+        Some("Use list_files first to discover directory structure and available files before other file operations".to_string())
     }
     
     fn parameters_schema(&self) -> Value {
@@ -925,6 +876,10 @@ impl ToolTrait for EditFileTool {
         "Edit a file using precise line-number based operations for safe, incremental changes. Use to_llm_tool() for dynamic path-aware description."
     }
     
+    fn workflow_guidance(&self) -> Option<String> {
+        Some("MANDATORY: Call read_file first to get current content with line numbers before using edit_file".to_string())
+    }
+    
     fn to_llm_tool(&self) -> crate::traits::provider::Tool {
         let base_path = self.config.allowed_directories.get(0)
             .map(|p| p.display().to_string())
@@ -933,62 +888,38 @@ impl ToolTrait for EditFileTool {
         let dynamic_description = format!(
             "Edit a file using precise line-number based operations for safe, incremental changes.
 
-**CRITICAL PATH REQUIREMENT:**
-- ALL file paths MUST be absolute paths starting with: {}
-- Example: '{}/your_filename.txt'
-- NEVER use relative paths like 'filename.txt' - they will always fail
-- If you get a path validation error, retry this same tool with the corrected absolute path
-
 Usage:
-- MANDATORY: You MUST call read_file first to get current content with line numbers
-- This tool will guide you to read the file first if you haven't done so recently
-- Supports three edit operations: replace, insert, delete
-- All line numbers are 1-indexed and must match the read_file output exactly
-- Multiple edits can be applied in a single operation
-- Requires user confirmation before execution due to potential data modification
-- Safer than write_file for incremental changes - preserves file structure
+- File paths MUST be absolute paths starting with: {}
+- Example: '{}/your_filename.txt'
+- MANDATORY: Call read_file first to get current content with line numbers
+- Supports: replace, insert, delete operations
+- Line numbers must match read_file output exactly (1-indexed)
+- All edits atomic - succeed together or fail together
+- Requires user confirmation before execution
 
 Edit Operations:
-1. REPLACE: Replace content on specific lines
-   - Use start_line and end_line to define the range
-   - new_content replaces everything between (and including) those lines
+1. REPLACE: Change lines start_line to end_line
+   - new_content replaces everything between (inclusive)
    - Can replace single line (start_line = end_line) or multiple lines
-   
-2. INSERT: Add new content at a specific position
-   - Use start_line to specify where to insert (content goes BEFORE this line)
-   - new_content is inserted as new lines
-   - Original content at start_line and beyond shifts down
-   
-3. DELETE: Remove lines from the file
-   - Use start_line and end_line to define range to delete
-   - All lines between (and including) those lines are removed
-   - new_content should be empty for delete operations
 
-Line Number Rules:
-- Line numbers must exactly match those from read_file output
-- start_line must be <= end_line for replace and delete operations
-- For insert operations, start_line indicates insertion point
-- Line numbers are validated against current file content
-- Invalid line numbers will cause the operation to fail
+2. INSERT: Add content before start_line  
+   - new_content inserted as new lines
+   - Original content shifts down
 
-Security:
-- All file paths are validated against allowed directories
-- Cannot edit files outside the application's data directory
-- Atomic operation - either all edits succeed or none are applied
-- Original file is backed up during the edit process
+3. DELETE: Remove lines start_line to end_line
+   - All lines between (inclusive) are removed
+   - new_content should be empty
 
-Best Practices:
-- Always read the file first to get current line numbers and content
-- Plan your edits carefully - line numbers change after insertions/deletions
-- Apply related edits in a single operation when possible
-- Provide meaningful context in new_content for replace operations
-- Test with small changes first for complex files
-- Consider the impact on file structure and dependencies
+When to use:
+- Preferred over write_file for existing files
+- Making incremental changes while preserving structure
+- When you need precise line-based control
 
-Error Recovery:
-- If you haven't read the file recently, the tool provides guidance instead of failing
-- Invalid line numbers or malformed edits provide clear error messages
-- Failed edits don't modify the file - it's safe to retry with corrections",
+When NOT to use:
+- Creating new files (use write_file)
+- Without reading file first (will be guided to read_file)
+
+Security: Restricted to application data directory, atomic operations",
             base_path, base_path
         );
         

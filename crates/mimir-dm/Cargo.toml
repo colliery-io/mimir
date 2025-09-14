@@ -37,6 +37,7 @@ chrono = { workspace = true }
 tera = "1.19"
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-util = "0.7"
 base64 = "0.22.1"
 tar = "0.4"
 flate2 = "1.0"

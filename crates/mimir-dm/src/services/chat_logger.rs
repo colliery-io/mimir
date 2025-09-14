@@ -67,6 +67,15 @@ pub enum ChatLogEvent {
         action: String,
         details: Value,
     },
+    /// Complete conversation context sent to LLM
+    FullConversationContext {
+        iteration: usize,
+        messages: Vec<Value>,
+        temperature: Option<f32>,
+        max_tokens: Option<u32>,
+        tools_enabled: bool,
+        tools_count: usize,
+    },
 }
 
 /// Structured chat log entry
@@ -202,6 +211,34 @@ impl ChatLogger {
         self.log_event(ChatLogEvent::SessionInfo {
             action: action.to_string(),
             details,
+        });
+    }
+    
+    /// Log complete conversation context sent to LLM
+    pub fn log_full_conversation_context(
+        &self,
+        iteration: usize,
+        messages: &[mimir_dm_llm::Message],
+        temperature: Option<f32>,
+        max_tokens: Option<u32>,
+        tools_enabled: bool,
+        tools_count: usize,
+    ) {
+        let message_values: Vec<Value> = messages
+            .iter()
+            .map(|msg| serde_json::json!({
+                "role": msg.role,
+                "content": msg.content
+            }))
+            .collect();
+            
+        self.log_event(ChatLogEvent::FullConversationContext {
+            iteration,
+            messages: message_values,
+            temperature,
+            max_tokens,
+            tools_enabled,
+            tools_count,
         });
     }
     

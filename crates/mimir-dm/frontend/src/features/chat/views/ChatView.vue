@@ -27,6 +27,7 @@
         <ChatInput
           :disabled="!isReady"
           :is-loading="isLoading"
+          :is-cancelling="isCancelling"
           :error="error"
           @send="handleSendMessage"
         />
@@ -37,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useSharedContextStore } from '@/stores/sharedContext'
 import { useThemeStore } from '@/stores/theme'
@@ -58,6 +59,7 @@ const isReady = ref(false)
 // Computed from chat store
 const messages = computed(() => chatStore.messages)
 const isLoading = computed(() => chatStore.isLoading)
+const isCancelling = computed(() => chatStore.isCancelling)
 const error = computed(() => chatStore.error)
 const conversationTokens = computed(() => chatStore.conversationTokens)
 const maxContextTokens = computed(() => chatStore.modelInfo?.contextLength || 262144)
@@ -76,11 +78,29 @@ const handleSendMessage = async (content: string) => {
   await chatStore.sendMessage(content)
 }
 
+// Keyboard event handler for escape key cancellation
+const handleKeyDown = async (event: KeyboardEvent) => {
+  console.log('Key pressed:', event.key, 'isLoading:', chatStore.isLoading, 'isCancelling:', chatStore.isCancelling)
+  if (event.key === 'Escape' && chatStore.isLoading && !chatStore.isCancelling) {
+    console.log('Attempting to cancel message...')
+    event.preventDefault()
+    try {
+      await chatStore.cancelMessage()
+      console.log('Cancel request sent successfully')
+    } catch (error) {
+      console.error('Failed to cancel message:', error)
+    }
+  }
+}
+
 
 // Initialize on mount
 onMounted(async () => {
   // Set window ID for this window
   (window as any).__TAURI_WINDOW_ID__ = 'chat'
+  
+  // Add global escape key handler
+  document.addEventListener('keydown', handleKeyDown)
   
   // Initialize theme store first
   await themeStore.loadThemes()
@@ -100,15 +120,16 @@ onMounted(async () => {
   await chatStore.initialize()
   
   isReady.value = true
-  
-  // Clean up on unmount
-  onUnmounted(() => {
-    themeStore.cleanup()
-    contextStore.unregisterWindow('chat')
-  })
 })
 
-import { onUnmounted } from 'vue'
+// Clean up on unmount
+onUnmounted(() => {
+  // Remove global escape key handler
+  document.removeEventListener('keydown', handleKeyDown)
+  
+  themeStore.cleanup()
+  contextStore.unregisterWindow('chat')
+})
 </script>
 
 <style scoped>

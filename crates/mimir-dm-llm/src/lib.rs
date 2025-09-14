@@ -73,5 +73,4 @@ pub use traits::ToolTrait;
 pub use tools::{
     TodoListTool, TodoItem, TodoStateManager,
     ReadFileTool, WriteFileTool, ListFilesTool, EditFileTool,
-    SayHelloTool
 };

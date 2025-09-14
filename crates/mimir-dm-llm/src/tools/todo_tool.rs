@@ -145,85 +145,42 @@ impl ToolTrait for TodoListTool {
     }
     
     fn description(&self) -> &str {
-        "Use this tool to create and manage a structured task list for your current coding session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
-It also helps the user understand the progress of the task and overall progress of their requests.
+        "Create and manage structured task lists for complex coding sessions. Tracks progress, organizes multi-step tasks, and demonstrates thoroughness to users.
 
-## When to Use This Tool
-Use this tool proactively in these scenarios:
+Usage:
+- Use for complex tasks requiring 3+ distinct steps or multiple operations
+- Mark tasks in_progress BEFORE beginning work (exactly ONE at a time)
+- Mark completed IMMEDIATELY after finishing (don't batch)
+- Create specific, actionable items with clear descriptions
 
-1. Complex multi-step tasks - When a task requires 3 or more distinct steps or actions
-2. Non-trivial and complex tasks - Tasks that require careful planning or multiple operations
-3. User explicitly requests todo list - When the user directly asks you to use the todo list
-4. User provides multiple tasks - When users provide a list of things to be done (numbered or comma-separated)
-5. After receiving new instructions - Immediately capture user requirements as todos
-6. When you start working on a task - Mark it as in_progress BEFORE beginning work. Ideally you should only have one todo as in_progress at a time
-7. After completing a task - Mark it as completed and add any new follow-up tasks discovered during implementation
+When to use:
+- Complex multi-step tasks requiring careful planning
+- User provides multiple tasks or numbered lists
+- Non-trivial tasks needing progress tracking
+- When starting work on any task (mark in_progress first)
 
-## When NOT to Use This Tool
+When NOT to use:
+- Single straightforward tasks
+- Trivial tasks with <3 steps
+- Purely conversational or informational requests
 
-Skip using this tool when:
-1. There is only a single, straightforward task
-2. The task is trivial and tracking it provides no organizational benefit
-3. The task can be completed in less than 3 trivial steps
-4. The task is purely conversational or informational
+Task states:
+- pending: Not yet started
+- in_progress: Currently working (limit ONE task)
+- completed: Finished successfully
 
-NOTE that you should not use this tool if there is only one trivial task to do. In this case you are better off just doing the task directly.
+Required format:
+- content: Imperative form (\"Run tests\", \"Fix bug\")  
+- activeForm: Present continuous (\"Running tests\", \"Fixing bug\")
+- status: Must be \"status\" field, NOT \"state\"
 
-## Task States and Management
+Example: {\"todos\": [{\"content\": \"Fix auth\", \"status\": \"pending\", \"activeForm\": \"Fixing auth\"}]}
 
-1. **Task States**: Use these states to track progress:
-   - pending: Task not yet started
-   - in_progress: Currently working on (limit to ONE task at a time)
-   - completed: Task finished successfully
-
-   **IMPORTANT**: Task descriptions must have two forms:
-   - content: The imperative form describing what needs to be done (e.g., \"Run tests\", \"Build the project\")
-   - activeForm: The present continuous form shown during execution (e.g., \"Running tests\", \"Building the project\")
-
-2. **Task Management**:
-   - Update task status in real-time as you work
-   - Mark tasks complete IMMEDIATELY after finishing (don't batch completions)
-   - Exactly ONE task must be in_progress at any time (not less, not more)
-   - Complete current tasks before starting new ones
-   - Remove tasks that are no longer relevant from the list entirely
-
-3. **Task Completion Requirements**:
-   - ONLY mark a task as completed when you have FULLY accomplished it
-   - If you encounter errors, blockers, or cannot finish, keep the task as in_progress
-   - When blocked, create a new task describing what needs to be resolved
-   - Never mark a task as completed if:
-     - Tests are failing
-     - Implementation is partial
-     - You encountered unresolved errors
-     - You couldn't find necessary files or dependencies
-
-4. **Task Breakdown**:
-   - Create specific, actionable items
-   - Break complex tasks into smaller, manageable steps
-   - Use clear, descriptive task names
-   - Always provide both forms:
-     - content: \"Fix authentication bug\"
-     - activeForm: \"Fixing authentication bug\"
-
-When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.
-
-## Example JSON Structure
-When calling this tool, use EXACTLY this format:
-{
-  \"todos\": [
-    {
-      \"content\": \"Implement login feature\",
-      \"status\": \"pending\",
-      \"activeForm\": \"Implementing login feature\"
-    },
-    {
-      \"content\": \"Write unit tests\", 
-      \"status\": \"in_progress\",
-      \"activeForm\": \"Writing unit tests\"
+Task management: Update status real-time, complete current before starting new, remove irrelevant tasks entirely."
     }
-  ]
-}
-CRITICAL: The field name is \"status\" NOT \"state\". Different LLM models may try to use \"state\" - this will cause errors."
+    
+    fn workflow_guidance(&self) -> Option<String> {
+        Some("Use for complex multi-step tasks (3+ steps). Mark ONE task in_progress before starting work, mark completed immediately after finishing.".to_string())
     }
     
     fn parameters_schema(&self) -> Value {

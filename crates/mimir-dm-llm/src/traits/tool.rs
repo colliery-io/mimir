@@ -147,6 +147,14 @@ pub trait Tool: Send + Sync {
         self.execute(arguments).await
     }
     
+    /// Get workflow guidance for this tool (relationships, dependencies, usage patterns)
+    /// 
+    /// Default implementation returns None. Tools should override this to provide
+    /// guidance about how they interact with other tools.
+    fn workflow_guidance(&self) -> Option<String> {
+        None
+    }
+    
     /// Convert to LLM tool definition
     fn to_llm_tool(&self) -> LlmTool {
         LlmTool {
