@@ -160,9 +160,12 @@ const handleSelectDocument = async (document: any) => {
   selectedDocument.value = document
   
   // Update context with current document
-  if (document) {
+  if (document && campaign.value) {
     await contextStore.updateCampaign({
-      ...contextStore.campaign,
+      id: campaign.value.id.toString(),
+      name: campaign.value.name,
+      currentStage: campaign.value.status || undefined,
+      directory_path: campaign.value.directory_path || undefined,
       currentDocument: document.title || document.name
     })
   }
