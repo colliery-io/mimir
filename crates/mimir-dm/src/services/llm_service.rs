@@ -161,19 +161,9 @@ impl LlmService {
         // Create todo state manager
         let todo_state_manager = TodoStateManager::new();
         
-        // Create file tools configuration
-        let app_paths = crate::APP_PATHS.get()
-            .ok_or_else(|| anyhow!("App paths not initialized"))?;
-        
-        let file_config = Arc::new(FileToolsConfig::with_root(app_paths.data_dir.clone()));
-        info!("Configured file tool access to: {}", app_paths.data_dir.display());
-        
-        // Create tool registry and register tools
+        // Create tool registry - file tools will be added dynamically when campaign directory is provided
         let mut tool_registry = ToolRegistry::new();
-        tool_registry.register(Arc::new(ReadFileTool::new(file_config.clone())));
-        tool_registry.register(Arc::new(WriteFileTool::new(file_config.clone())));
-        tool_registry.register(Arc::new(ListFilesTool::new(file_config.clone())));
-        tool_registry.register(Arc::new(EditFileTool::new(file_config.clone())));
+        info!("Tool registry created - file tools will be configured per campaign");
         
         // Configure default todo storage path using app handle
         if let Ok(app_data_dir) = app_handle.path().app_data_dir() {

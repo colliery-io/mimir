@@ -11,6 +11,8 @@ use std::collections::{HashMap, VecDeque};
 use crate::APP_PATHS;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use std::path::Path;
+use std::fs;
 use tracing::{info, warn};
 
 
@@ -116,11 +118,16 @@ impl ToolRegistry {
     pub fn generate_system_rules_with_directory(&self, session_id: Option<&str>, custom_directory: Option<&str>) -> Vec<String> {
         let mut rules = Vec::new();
         
-        // Debug: Check if APP_PATHS is available
-        if let Some(app_paths) = APP_PATHS.get() {
-            info!("APP_PATHS is available: data_dir = {}", app_paths.data_dir.display());
+        // When campaign directory is provided, we work exclusively with that directory
+        if let Some(campaign_dir) = custom_directory {
+            info!("Using campaign directory for file operations: {}", campaign_dir);
         } else {
-            warn!("APP_PATHS is None in generate_system_rules!");
+            // Only check APP_PATHS when no campaign directory is provided
+            if let Some(app_paths) = APP_PATHS.get() {
+                info!("APP_PATHS is available: data_dir = {}", app_paths.data_dir.display());
+            } else {
+                warn!("APP_PATHS is None in generate_system_rules!");
+            }
         }
         
         // Add general context information
@@ -141,54 +148,39 @@ impl ToolRegistry {
         // Add file tool usage rules if file tools are available
         if self.has_tool("read_file") && self.has_tool("write_file") && self.has_tool("list_files") {
             if let Some(custom_dir) = custom_directory {
-                // Use custom directory (e.g., campaign directory)
+                // Use campaign directory exclusively - no fallback to data directory
                 rules.push(format!(
                     "## FILE PATH REQUIREMENTS\n\
                     \n\
-                    **REQUIRED DIRECTORY**: {}\n\
+                    **CAMPAIGN DIRECTORY**: {}\n\
                     \n\
                     ### Usage Guidelines\n\
+                    - ALL file operations must use this campaign directory\n\
                     - Always use the complete path: `{}/your_filename.txt`\n\
-                    - Use the full path for all file operations\n\
                     - If uncertain about structure, run list_files first\n\
                     \n\
-                    ### When Taking Action\n\
-                    - Use the exact path shown above for ALL file operations\n\
-                    - Take direct action when given clear file operation instructions\n\
-                    \n\
-                    ### Campaign Context\n\
+                    ### Campaign Structure\n\
                     - You are working within a campaign directory structure\n\
-                    - Files will be created in the campaign's organized folder structure",
+                    - Standard subdirectories: session_zero/, world/, modules/, sessions/, characters/, npcs/, resources/, templates/\n\
+                    - Templates are in the templates/ subdirectory\n\
+                    \n\
+                    ### When Taking Action\n\
+                    - Use the exact campaign path for ALL file operations\n\
+                    - Take direct action when given clear file operation instructions",
                     custom_dir,
                     custom_dir
                 ));
-            } else if let Some(app_paths) = APP_PATHS.get() {
-                rules.push(format!(
-                    "## FILE PATH REQUIREMENTS\n\
-                    \n\
-                    **REQUIRED DIRECTORY**: {}\n\
-                    \n\
-                    ### Usage Guidelines\n\
-                    - Always use the complete path: `{}/your_filename.txt`\n\
-                    - Use the full path for all file operations\n\
-                    - If uncertain about structure, run list_files first\n\
-                    \n\
-                    ### When Taking Action\n\
-                    - Use the exact path shown above for ALL file operations\n\
-                    - Take direct action when given clear file operation instructions",
-                    app_paths.data_dir.display(),
-                    app_paths.data_dir.display()
-                ));
             } else {
+                // When no campaign directory is provided, require discovery
                 rules.push(
-                    "## FILE OPERATIONS - DISCOVERY REQUIRED\n\
+                    "## FILE OPERATIONS - CAMPAIGN REQUIRED\n\
                     \n\
                     ### Required Workflow\n\
-                    1. Run: `list_files()` (no arguments) to discover the allowed directory\n\
-                    2. Use the exact path returned for all file operations\n\
-                    3. Take immediate action when file operations are needed\n".to_string()
+                    1. A campaign must be selected before file operations can be performed\n\
+                    2. File operations are only available within campaign context\n\
+                    3. Use list_files() only after campaign context is established\n".to_string()
                 );
-                warn!("APP_PATHS is None when generating file tool rules");
+                warn!("No campaign directory provided - file operations limited");
             }
         }
         
@@ -210,22 +202,21 @@ impl ToolRegistry {
     fn generate_context_information(&self, session_id: Option<&str>, custom_directory: Option<&str>) -> String {
         let mut context = String::from("## Session Context\n");
         
-        // Add file directory first - this is critical for LLM to know
+        // Add campaign directory information - this is critical for LLM to know
         if let Some(custom_dir) = custom_directory {
             context.push_str(&format!(
-                "**FILE OPERATIONS DIRECTORY**\n\
-                - **REQUIRED PATH**: {}\n\
-                - **ALL file operations must use this exact path**\n\
-                - **CONTEXT**: Campaign directory - files will be created in organized campaign structure\n\n",
+                "**CAMPAIGN DIRECTORY**\n\
+                - **PATH**: {}\n\
+                - **ALL file operations must use this campaign directory**\n\
+                - **CONTEXT**: Active campaign - files will be created in organized campaign structure\n\n",
                 custom_dir
             ));
-        } else if let Some(app_paths) = APP_PATHS.get() {
-            context.push_str(&format!(
-                "**FILE OPERATIONS DIRECTORY**\n\
-                - **REQUIRED PATH**: {}\n\
-                - **ALL file operations must use this exact path**\n\n",
-                app_paths.data_dir.display()
-            ));
+        } else {
+            context.push_str(
+                "**FILE OPERATIONS**\n\
+                - **STATUS**: No campaign selected\n\
+                - **REQUIREMENT**: Campaign must be selected for file operations\n\n"
+            );
         }
         
         // Add session ID if available
@@ -233,50 +224,37 @@ impl ToolRegistry {
             context.push_str(&format!("- Session ID: {}\n", session_id));
         }
         
-        // Add application directory information
+        // Add campaign directory structure information
         if let Some(custom_dir) = custom_directory {
+            // Get available files in the campaign directory
+            let available_files = self.get_campaign_files(custom_dir);
+            
             context.push_str(&format!(
-                "- **File Directory**: {}\n\
-                - **Context**: Campaign directory with organized structure\n\
-                - **Available subdirectories**: session_zero/, world/, modules/, sessions/, characters/, npcs/, resources/\n\
+                "- **Campaign Path**: {}\n\
+                - **Structure**: Organized campaign directory with standard subdirectories\n\
+                - **Templates**: Available in templates/ subdirectory for structured content creation\n\
                 - **Path Requirement**: ALL file operations must use paths starting with: {}\n",
                 custom_dir,
                 custom_dir
             ));
-        } else if let Some(app_paths) = APP_PATHS.get() {
-            context.push_str(&format!(
-                "- **File Directory**: {}\n\
-                - **Database Location**: {}\n\
-                - **Configuration Directory**: {}\n\
-                - **Available subdirectories**: campaigns/, modules/, documents/, templates/\n\
-                - **Path Requirement**: ALL file operations must use paths starting with: {}\n",
-                app_paths.data_dir.display(),
-                if app_paths.is_memory_db {
-                    "In-memory (temporary)".to_string()
-                } else {
-                    app_paths.database_path.display().to_string()
-                },
-                app_paths.config_dir.display(),
-                app_paths.data_dir.display()
-            ));
-        } else {
-            // Fallback: try to get directory info from file tools configuration
-            let mut found_directories = false;
-            if let Some(read_tool) = self.tools.get("read_file") {
-                // Try to extract directory information from tool configuration
-                let empty_args = serde_json::json!({});
-                if let Some(action_desc) = read_tool.describe_action(&empty_args) {
-                    if action_desc.description.contains("allowed directories") {
-                        context.push_str("- Application Data Directory: [Available through file tools]\n");
-                        found_directories = true;
-                    }
-                }
-            }
             
-            if !found_directories {
-                context.push_str("- Application Data Directory: [Use list_files to discover]\n");
-                warn!("APP_PATHS is None when generating context information - LLM will need to use list_files");
+            if !available_files.is_empty() {
+                context.push_str("- **Available Files**:\n");
+                for file in available_files.iter().take(20) { // Limit to 20 files to avoid overwhelming
+                    context.push_str(&format!("  - {}\n", file));
+                }
+                if available_files.len() > 20 {
+                    context.push_str(&format!("  - ... and {} more files\n", available_files.len() - 20));
+                }
+            } else {
+                context.push_str("- **Available Files**: No files found - this appears to be a new campaign\n");
             }
+        } else {
+            context.push_str(
+                "- **Campaign Status**: No active campaign\n\
+                - **File Operations**: Unavailable - campaign selection required\n\
+                - **Next Step**: Select or create a campaign to enable file operations\n"
+            );
         }
         
         // Add tool availability context
@@ -329,6 +307,59 @@ impl ToolRegistry {
         guidance.push_str("- Always complete requested actions rather than just explaining them\n");
         
         guidance
+    }
+    
+    /// Get list of files in a campaign directory
+    fn get_campaign_files(&self, campaign_dir: &str) -> Vec<String> {
+        let campaign_path = Path::new(campaign_dir);
+        let mut files = Vec::new();
+        
+        if !campaign_path.exists() {
+            warn!("Campaign directory does not exist: {}", campaign_dir);
+            return files;
+        }
+        
+        // Recursively walk the directory and collect file paths
+        if let Ok(entries) = self.walk_directory(campaign_path, campaign_path) {
+            files = entries;
+        }
+        
+        // Sort files for consistent display
+        files.sort();
+        files
+    }
+    
+    /// Recursively walk a directory and return relative file paths
+    fn walk_directory(&self, dir: &Path, base_path: &Path) -> Result<Vec<String>, std::io::Error> {
+        let mut files = Vec::new();
+        
+        let entries = fs::read_dir(dir)?;
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                // Skip hidden directories and common ignore patterns
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if dir_name.starts_with('.') || dir_name == "node_modules" || dir_name == "target" {
+                        continue;
+                    }
+                }
+                
+                // Recursively process subdirectory
+                let mut sub_files = self.walk_directory(&path, base_path)?;
+                files.append(&mut sub_files);
+            } else {
+                // Add file with relative path
+                if let Ok(relative_path) = path.strip_prefix(base_path) {
+                    if let Some(path_str) = relative_path.to_str() {
+                        files.push(path_str.to_string());
+                    }
+                }
+            }
+        }
+        
+        Ok(files)
     }
 }
 
