@@ -107,6 +107,13 @@ impl ToolRegistry {
     /// This method examines the available tools and generates guidance rules
     /// that help the LLM understand tool dependencies and proper usage patterns.
     pub fn generate_system_rules(&self, session_id: Option<&str>) -> Vec<String> {
+        self.generate_system_rules_with_directory(session_id, None)
+    }
+    
+    /// Generate system prompt rules with optional custom directory override
+    /// 
+    /// This method allows overriding the directory path for campaign-specific operations
+    pub fn generate_system_rules_with_directory(&self, session_id: Option<&str>, custom_directory: Option<&str>) -> Vec<String> {
         let mut rules = Vec::new();
         
         // Debug: Check if APP_PATHS is available
@@ -117,7 +124,7 @@ impl ToolRegistry {
         }
         
         // Add general context information
-        rules.push(self.generate_context_information(session_id));
+        rules.push(self.generate_context_information(session_id, custom_directory));
         
         // Check if both get_document and update_document are available
         if self.has_tool("get_document") && self.has_tool("update_document") {
@@ -133,7 +140,29 @@ impl ToolRegistry {
         
         // Add file tool usage rules if file tools are available
         if self.has_tool("read_file") && self.has_tool("write_file") && self.has_tool("list_files") {
-            if let Some(app_paths) = APP_PATHS.get() {
+            if let Some(custom_dir) = custom_directory {
+                // Use custom directory (e.g., campaign directory)
+                rules.push(format!(
+                    "## FILE PATH REQUIREMENTS\n\
+                    \n\
+                    **REQUIRED DIRECTORY**: {}\n\
+                    \n\
+                    ### Usage Guidelines\n\
+                    - Always use the complete path: `{}/your_filename.txt`\n\
+                    - Use the full path for all file operations\n\
+                    - If uncertain about structure, run list_files first\n\
+                    \n\
+                    ### When Taking Action\n\
+                    - Use the exact path shown above for ALL file operations\n\
+                    - Take direct action when given clear file operation instructions\n\
+                    \n\
+                    ### Campaign Context\n\
+                    - You are working within a campaign directory structure\n\
+                    - Files will be created in the campaign's organized folder structure",
+                    custom_dir,
+                    custom_dir
+                ));
+            } else if let Some(app_paths) = APP_PATHS.get() {
                 rules.push(format!(
                     "## FILE PATH REQUIREMENTS\n\
                     \n\
@@ -178,11 +207,19 @@ impl ToolRegistry {
     }
     
     /// Generate context information for the LLM session
-    fn generate_context_information(&self, session_id: Option<&str>) -> String {
+    fn generate_context_information(&self, session_id: Option<&str>, custom_directory: Option<&str>) -> String {
         let mut context = String::from("## Session Context\n");
         
         // Add file directory first - this is critical for LLM to know
-        if let Some(app_paths) = APP_PATHS.get() {
+        if let Some(custom_dir) = custom_directory {
+            context.push_str(&format!(
+                "**FILE OPERATIONS DIRECTORY**\n\
+                - **REQUIRED PATH**: {}\n\
+                - **ALL file operations must use this exact path**\n\
+                - **CONTEXT**: Campaign directory - files will be created in organized campaign structure\n\n",
+                custom_dir
+            ));
+        } else if let Some(app_paths) = APP_PATHS.get() {
             context.push_str(&format!(
                 "**FILE OPERATIONS DIRECTORY**\n\
                 - **REQUIRED PATH**: {}\n\
@@ -197,7 +234,16 @@ impl ToolRegistry {
         }
         
         // Add application directory information
-        if let Some(app_paths) = APP_PATHS.get() {
+        if let Some(custom_dir) = custom_directory {
+            context.push_str(&format!(
+                "- **File Directory**: {}\n\
+                - **Context**: Campaign directory with organized structure\n\
+                - **Available subdirectories**: session_zero/, world/, modules/, sessions/, characters/, npcs/, resources/\n\
+                - **Path Requirement**: ALL file operations must use paths starting with: {}\n",
+                custom_dir,
+                custom_dir
+            ));
+        } else if let Some(app_paths) = APP_PATHS.get() {
             context.push_str(&format!(
                 "- **File Directory**: {}\n\
                 - **Database Location**: {}\n\

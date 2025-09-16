@@ -111,7 +111,8 @@ async function selectCampaign(campaignId: number) {
     await contextStore.updateCampaign({
       id: campaign.id.toString(),
       name: campaign.name,
-      currentStage: campaign.status
+      currentStage: campaign.status,
+      directory_path: campaign.directory_path
     })
   }
   
@@ -147,7 +148,8 @@ onMounted(async () => {
         await contextStore.updateCampaign({
           id: campaign.id.toString(),
           name: campaign.name,
-          currentStage: campaign.status
+          currentStage: campaign.status,
+          directory_path: campaign.directory_path
         })
       }
     }
@@ -161,7 +163,8 @@ onMounted(async () => {
       await contextStore.updateCampaign({
         id: campaign.id.toString(),
         name: campaign.name,
-        currentStage: campaign.status
+        currentStage: campaign.status,
+        directory_path: campaign.directory_path
       })
     }
   }

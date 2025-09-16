@@ -500,6 +500,7 @@ pub async fn send_chat_message(
     session_id: Option<String>,
     _model_name: Option<String>,
     ollama_url: Option<String>,
+    campaign_directory_path: Option<String>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = service.lock().await;
     
@@ -564,9 +565,30 @@ pub async fn send_chat_message(
         })
         .collect();
     
-    // Get tools if enabled
+    // Get tools if enabled, potentially with campaign-specific configuration
     let tools = if enable_tools.unwrap_or(false) {
-        let tool_definitions = llm.tool_registry.get_tool_definitions();
+        let tool_definitions = if let Some(ref campaign_dir) = campaign_directory_path {
+            // Create campaign-specific file tools
+            info!("Configuring file tools for campaign directory: {}", campaign_dir);
+            let campaign_file_config = Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(campaign_dir)));
+            
+            // Create a temporary tool registry with campaign-specific tools
+            let mut campaign_tool_registry = ToolRegistry::new();
+            campaign_tool_registry.register(Arc::new(ReadFileTool::new(campaign_file_config.clone())));
+            campaign_tool_registry.register(Arc::new(WriteFileTool::new(campaign_file_config.clone())));
+            campaign_tool_registry.register(Arc::new(ListFilesTool::new(campaign_file_config.clone())));
+            campaign_tool_registry.register(Arc::new(EditFileTool::new(campaign_file_config.clone())));
+            
+            // Register TodoListTool with the same state manager as the main service
+            let todo_tool = TodoListTool::new(llm.todo_state_manager.clone());
+            campaign_tool_registry.register(Arc::new(todo_tool));
+            
+            campaign_tool_registry.get_tool_definitions()
+        } else {
+            // Use default tools from the main registry
+            llm.tool_registry.get_tool_definitions()
+        };
+        
         debug!("Tools enabled: {} tools available", tool_definitions.len());
         for tool in &tool_definitions {
             debug!("  Tool: {}", tool.function.name);
@@ -579,7 +601,22 @@ pub async fn send_chat_message(
     
     // Inject system rules if tools are enabled
     if tools.is_some() {
-        let system_rules = llm.tool_registry.generate_system_rules(Some(&session_id));
+        let system_rules = if let Some(ref campaign_dir) = campaign_directory_path {
+            // Generate system rules for campaign-specific tools
+            let campaign_file_config = Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(campaign_dir)));
+            let mut campaign_tool_registry = ToolRegistry::new();
+            campaign_tool_registry.register(Arc::new(ReadFileTool::new(campaign_file_config.clone())));
+            campaign_tool_registry.register(Arc::new(WriteFileTool::new(campaign_file_config.clone())));
+            campaign_tool_registry.register(Arc::new(ListFilesTool::new(campaign_file_config.clone())));
+            campaign_tool_registry.register(Arc::new(EditFileTool::new(campaign_file_config.clone())));
+            
+            let todo_tool = TodoListTool::new(llm.todo_state_manager.clone());
+            campaign_tool_registry.register(Arc::new(todo_tool));
+            
+            campaign_tool_registry.generate_system_rules_with_directory(Some(&session_id), Some(campaign_dir))
+        } else {
+            llm.tool_registry.generate_system_rules(Some(&session_id))
+        };
         if !system_rules.is_empty() {
             // Check if there's already a system message, or create one
             let system_content = system_rules.join("\n\n");
@@ -850,9 +887,26 @@ pub async fn send_chat_message(
                     );
                     
                     // Check if tool requires confirmation
-                    if llm.tool_registry.requires_confirmation(tool_name) {
+                    let (requires_confirmation, action_desc) = if let Some(ref campaign_dir) = campaign_directory_path {
+                        // Use campaign-specific tools for confirmation check
+                        let campaign_file_config = Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(campaign_dir)));
+                        let mut campaign_tool_registry = ToolRegistry::new();
+                        campaign_tool_registry.register(Arc::new(ReadFileTool::new(campaign_file_config.clone())));
+                        campaign_tool_registry.register(Arc::new(WriteFileTool::new(campaign_file_config.clone())));
+                        campaign_tool_registry.register(Arc::new(ListFilesTool::new(campaign_file_config.clone())));
+                        campaign_tool_registry.register(Arc::new(EditFileTool::new(campaign_file_config.clone())));
+                        
+                        let todo_tool = TodoListTool::new(llm.todo_state_manager.clone());
+                        campaign_tool_registry.register(Arc::new(todo_tool));
+                        
+                        (campaign_tool_registry.requires_confirmation(tool_name), campaign_tool_registry.get_action_description(tool_name, &tool_args))
+                    } else {
+                        (llm.tool_registry.requires_confirmation(tool_name), llm.tool_registry.get_action_description(tool_name, &tool_args))
+                    };
+                    
+                    if requires_confirmation {
                         // Get action description
-                        if let Some(action_desc) = llm.tool_registry.get_action_description(tool_name, &tool_args) {
+                        if let Some(action_desc) = action_desc {
                             info!("Tool {} requires confirmation, requesting from user", tool_name);
                             
                             // Request confirmation from user
@@ -894,15 +948,41 @@ pub async fn send_chat_message(
                     let execution_start = Instant::now();
                     
                     // Execute tool once - let LLM handle errors and make corrections
-                    let tool_result = match llm.tool_registry.execute_tool(tool_name, tool_args.clone()).await {
-                        Ok(result) => {
-                            info!("Tool {} succeeded - result length: {} chars", tool_name, result.len());
-                            result
+                    let tool_result = if let Some(ref campaign_dir) = campaign_directory_path {
+                        // Use campaign-specific tools for execution
+                        let campaign_file_config = Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(campaign_dir)));
+                        let mut campaign_tool_registry = ToolRegistry::new();
+                        campaign_tool_registry.register(Arc::new(ReadFileTool::new(campaign_file_config.clone())));
+                        campaign_tool_registry.register(Arc::new(WriteFileTool::new(campaign_file_config.clone())));
+                        campaign_tool_registry.register(Arc::new(ListFilesTool::new(campaign_file_config.clone())));
+                        campaign_tool_registry.register(Arc::new(EditFileTool::new(campaign_file_config.clone())));
+                        
+                        let todo_tool = TodoListTool::new(llm.todo_state_manager.clone());
+                        campaign_tool_registry.register(Arc::new(todo_tool));
+                        
+                        match campaign_tool_registry.execute_tool(tool_name, tool_args.clone()).await {
+                            Ok(result) => {
+                                info!("Tool {} succeeded - result length: {} chars", tool_name, result.len());
+                                result
+                            }
+                            Err(e) => {
+                                error!("Tool {} execution failed: {}", tool_name, e);
+                                // Return error immediately to LLM so it can make corrections
+                                format!("Tool execution failed: {}", e)
+                            }
                         }
-                        Err(e) => {
-                            error!("Tool {} execution failed: {}", tool_name, e);
-                            // Return error immediately to LLM so it can make corrections
-                            format!("Tool execution failed: {}", e)
+                    } else {
+                        // Use default tools
+                        match llm.tool_registry.execute_tool(tool_name, tool_args.clone()).await {
+                            Ok(result) => {
+                                info!("Tool {} succeeded - result length: {} chars", tool_name, result.len());
+                                result
+                            }
+                            Err(e) => {
+                                error!("Tool {} execution failed: {}", tool_name, e);
+                                // Return error immediately to LLM so it can make corrections
+                                format!("Tool execution failed: {}", e)
+                            }
                         }
                     };
                     

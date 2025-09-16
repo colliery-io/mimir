@@ -23,6 +23,7 @@ export interface CampaignContext {
   name?: string
   currentStage?: string
   currentDocument?: string
+  directory_path?: string
   modules?: Array<{
     id: string
     name: string

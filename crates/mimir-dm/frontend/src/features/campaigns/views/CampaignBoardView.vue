@@ -116,7 +116,8 @@ const loadCampaign = async () => {
       id: campaign.value.id.toString(),
       name: campaign.value.name,
       currentStage: campaign.value.status || undefined,
-      currentDocument: selectedDocument.value?.title || undefined
+      currentDocument: selectedDocument.value?.title || undefined,
+      directory_path: campaign.value.directory_path || undefined
     })
     
     // Clear module/session context when on campaign board

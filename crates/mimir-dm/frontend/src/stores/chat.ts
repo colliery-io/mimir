@@ -450,6 +450,10 @@ export const useChatStore = defineStore('chat', () => {
         ...conversationMessages
       ]
       
+      // Extract campaign directory from context if available
+      const contextStore = useSharedContextStore()
+      const campaignDirectoryPath = contextStore.campaign?.directory_path || null
+      
       // Send to backend
       const response = await invoke<ChatResponseWithUsage>('send_chat_message', {
         messages: apiMessages,
@@ -457,7 +461,8 @@ export const useChatStore = defineStore('chat', () => {
         temperature: systemConfig.value.temperature,
         enableTools: true,  // Enable tools for testing
         sessionId: currentSessionId.value,
-        ollamaUrl: systemConfig.value.llmEndpoint
+        ollamaUrl: systemConfig.value.llmEndpoint,
+        campaignDirectoryPath: campaignDirectoryPath
       })
       
       // Add assistant response
