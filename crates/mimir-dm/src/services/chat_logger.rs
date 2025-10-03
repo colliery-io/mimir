@@ -8,8 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use std::fs::OpenOptions;
 use std::io::Write;
 
@@ -243,11 +242,13 @@ impl ChatLogger {
     }
     
     /// Get the session ID
+    #[allow(dead_code)]
     pub fn session_id(&self) -> &str {
         &self.session_id
     }
-    
+
     /// Get the log file path
+    #[allow(dead_code)]
     pub fn log_file_path(&self) -> &Path {
         &self.log_file_path
     }

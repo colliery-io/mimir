@@ -5,9 +5,8 @@ use crate::{
     APP_PATHS,
 };
 use std::fs;
-use std::path::Path;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
-use tracing::{error, info, debug};
+use tracing::{info, debug};
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 

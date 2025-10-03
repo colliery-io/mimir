@@ -23,7 +23,7 @@ use commands::catalog_background_db::{search_backgrounds, get_background_details
 use commands::catalog_feat_db::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
 use commands::catalog_psionic_db::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
 use commands::catalog_vehicle_db::{search_vehicles_db, get_vehicle_details_db, get_vehicle_types_db, get_vehicle_sizes_db, get_vehicle_terrains_db, get_vehicle_statistics_db};
-use commands::catalog_class_db::{search_classes_db, get_class_details_db, get_subclass_details_db, get_class_subclasses_db, get_class_sources_db, get_class_primary_abilities_db, get_class_statistics_db};
+use commands::catalog_class_db::*;
 use services::database::DatabaseService;
 use services::context_service::ContextState;
 use services::llm_service::{self, LlmService, ConfirmationReceivers, CancellationTokens};

@@ -188,7 +188,7 @@ impl<'a> ClassService<'a> {
     }
 
     /// Get subclass by subclass name, class name and source
-    pub fn get_subclass_by_name(&mut self, subclass_name: &str, class_name: &str, class_source: &str) -> Result<Option<Subclass>, String> {
+    pub fn get_subclass_by_name(&mut self, subclass_name: &str, _class_name: &str, _class_source: &str) -> Result<Option<Subclass>, String> {
         use crate::schema::catalog_subclasses::dsl::*;
         
         let subclass_record = catalog_subclasses

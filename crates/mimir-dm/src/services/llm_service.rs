@@ -26,7 +26,6 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
 use crate::services::chat_logger::{ChatLogger, ChatTokenUsage};
-use crate::APP_PATHS;
 
 /// Helper macro for bifurcated logging - full content to file, truncated to console
 macro_rules! debug_content {
@@ -45,6 +44,7 @@ macro_rules! debug_content {
 }
 
 /// Helper macro for bifurcated info logging
+#[allow(unused_macros)]
 macro_rules! info_content {
     ($msg:expr, $full_content:expr, $truncate_at:expr) => {
         // Full content to file
@@ -314,6 +314,7 @@ impl LlmService {
     }
     
     /// Get the provider for direct LLM operations
+    #[allow(dead_code)]
     pub fn provider(&self) -> Arc<OllamaProvider> {
         Arc::clone(&self.provider)
     }
@@ -1023,7 +1024,7 @@ pub async fn send_chat_message(
                     }
                     
                     // Check if this is a structured success response
-                    let is_success_response = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&tool_result) {
+                    let _is_success_response = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&tool_result) {
                         parsed.get("status").and_then(|s| s.as_str()) == Some("success")
                     } else {
                         false

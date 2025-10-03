@@ -14,23 +14,34 @@ pub struct EmbeddedTestBook {
 }
 
 /// Macro to include all test books from the assets/dev directory
-/// This is expanded at compile time
+/// Only includes files that exist (checked by build.rs setting cfg flags)
 macro_rules! include_test_books {
     () => {{
-        vec![
-            EmbeddedTestBook {
-                name: "PHB".to_string(),
-                data: include_bytes!("../assets/dev/phb.tar.gz"),
-            },
-            EmbeddedTestBook {
-                name: "MM".to_string(),
-                data: include_bytes!("../assets/dev/mm.tar.gz"),
-            },
-            EmbeddedTestBook {
-                name: "DMG".to_string(),
-                data: include_bytes!("../assets/dev/dmg.tar.gz"),
-            },
-        ]
+        #[allow(unused_mut)]
+        let mut books = Vec::new();
+
+        // PHB - only included if build.rs detected the file exists
+        #[cfg(has_dev_phb)]
+        books.push(EmbeddedTestBook {
+            name: "PHB".to_string(),
+            data: include_bytes!("../assets/dev/phb.tar.gz"),
+        });
+
+        // MM - only included if build.rs detected the file exists
+        #[cfg(has_dev_mm)]
+        books.push(EmbeddedTestBook {
+            name: "MM".to_string(),
+            data: include_bytes!("../assets/dev/mm.tar.gz"),
+        });
+
+        // DMG - only included if build.rs detected the file exists
+        #[cfg(has_dev_dmg)]
+        books.push(EmbeddedTestBook {
+            name: "DMG".to_string(),
+            data: include_bytes!("../assets/dev/dmg.tar.gz"),
+        });
+
+        books
     }};
 }
 

@@ -23,12 +23,14 @@ pub async fn search_classes_db(
 #[tauri::command]
 pub async fn get_class_details_db(
     db_service: State<'_, Arc<DatabaseService>>,
+    #[allow(non_snake_case)]
     className: String,
+    #[allow(non_snake_case)]
     classSource: String,
 ) -> Result<Option<Class>, String> {
     let mut conn = db_service.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let mut class_service = ClassService::new(&mut conn);
     class_service.get_class_by_name_and_source(&className, &classSource)
 }
@@ -37,13 +39,16 @@ pub async fn get_class_details_db(
 #[tauri::command]
 pub async fn get_subclass_details_db(
     db_service: State<'_, Arc<DatabaseService>>,
+    #[allow(non_snake_case)]
     subclassName: String,
+    #[allow(non_snake_case)]
     className: String,
+    #[allow(non_snake_case)]
     classSource: String,
 ) -> Result<Option<Subclass>, String> {
     let mut conn = db_service.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let mut class_service = ClassService::new(&mut conn);
     class_service.get_subclass_by_name(&subclassName, &className, &classSource)
 }
@@ -52,12 +57,14 @@ pub async fn get_subclass_details_db(
 #[tauri::command]
 pub async fn get_class_subclasses_db(
     db_service: State<'_, Arc<DatabaseService>>,
+    #[allow(non_snake_case)]
     className: String,
+    #[allow(non_snake_case)]
     classSource: String,
 ) -> Result<Vec<Subclass>, String> {
     let mut conn = db_service.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let mut class_service = ClassService::new(&mut conn);
     class_service.get_subclasses_for_class(&className, &classSource)
 }

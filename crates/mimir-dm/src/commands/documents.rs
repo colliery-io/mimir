@@ -319,6 +319,7 @@ pub async fn save_document_file(
 }
 
 #[derive(Serialize, Debug)]
+#[allow(dead_code)]
 pub struct StageCompletionStatus {
     pub current_stage: String,
     pub total_documents: usize,
