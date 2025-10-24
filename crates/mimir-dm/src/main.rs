@@ -203,14 +203,6 @@ fn main() {
             get_background_details,
             get_background_sources,
             get_background_count,
-            // Feat catalog commands
-            search_feats,
-            get_feat_details,
-            get_feat_sources,
-            get_feat_count,
-            // Action catalog commands
-            search_actions,
-            get_action,
             // Condition catalog commands
             search_conditions,
             get_condition,
@@ -278,14 +270,6 @@ fn main() {
             commands::catalog_variant_rule_db::get_variant_rule_details,
             commands::catalog_variant_rule_db::get_variant_rule_types,
             commands::catalog_variant_rule_db::get_variant_rule_sources,
-            // Vehicle catalog commands (old JSON-based, replaced by database-backed)
-            // Cult catalog commands
-            search_cults,
-            get_cult_details,
-            get_cult_sources,
-            get_cult_count,
-            get_cult_types,
-            get_cult_categories,
             // Psionic catalog commands
             search_psionics,
             get_psionic_details,

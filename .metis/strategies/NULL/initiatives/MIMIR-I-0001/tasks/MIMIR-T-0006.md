@@ -4,14 +4,14 @@ level: task
 title: "Create DB-backed catalog for Item entities"
 short_code: "MIMIR-T-0006"
 created_at: 2025-10-24T11:53:34.861610+00:00
-updated_at: 2025-10-24T11:53:34.861610+00:00
+updated_at: 2025-10-24T13:14:23.492873+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -64,6 +64,10 @@ initiative_id: MIMIR-I-0001
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
