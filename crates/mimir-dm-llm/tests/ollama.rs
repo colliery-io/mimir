@@ -68,7 +68,7 @@ async fn test_ollama_chat() {
 
     println!("Sending chat request with messages: {:?}", messages);
     let response = provider
-        .chat(messages, None, None, None, None, None)
+        .chat(messages, None, None, None, None, None, None, None)
         .await;
     println!("Got response: {:?}", response);
     let response = response.unwrap();
@@ -151,7 +151,7 @@ async fn test_ollama_unsupported_endpoint() {
         content: "What is the capital of France?".to_string(),
     }];
 
-    let response = provider.chat(messages, None, None, None, None, None).await;
+    let response = provider.chat(messages, None, None, None, None, None, None, None).await;
     assert!(response.is_err());
     assert!(response.unwrap_err().to_string().contains("Unsupported endpoint"));
 }
@@ -363,7 +363,7 @@ async fn test_ollama_multiple_messages_chat() {
     ];
 
     let response = provider
-        .chat(messages, None, None, None, None, None)
+        .chat(messages, None, None, None, None, None, None, None)
         .await
         .expect("Failed to get chat response");
 

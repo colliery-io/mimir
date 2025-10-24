@@ -249,7 +249,7 @@ impl LoadTester {
                 }
                 Err(e) => {
                     error!("Failed to test archive {:?}: {}", archive_path, e);
-                    let mut result = TestResult {
+                    let result = TestResult {
                         archive_name: archive_path
                             .file_name()
                             .and_then(|n| n.to_str())

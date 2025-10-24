@@ -2,9 +2,8 @@
 id: mimir
 level: vision
 title: "mimir"
-short_code: "MIMIR-V-0001"
-created_at: 2025-10-24T11:47:20.429412+00:00
-updated_at: 2025-10-24T11:59:51.812336+00:00
+created_at: 2025-07-30T00:26:32.977033+00:00
+updated_at: 2025-07-30T01:48:38.152156+00:00
 archived: false
 
 tags:
@@ -13,8 +12,6 @@ tags:
 
 
 exit_criteria_met: false
-strategy_id: NULL
-initiative_id: NULL
 ---
 
 # mimir Vision
@@ -35,31 +32,6 @@ DMs currently juggle multiple tools, books, notes, and applications to run their
 - Balancing encounters and managing game mechanics
 
 This cognitive overload often leads to inconsistencies, forgotten plot threads, and DM burnout.
-
-## Progress to Date
-
-Mimir has completed foundational work establishing the core data and infrastructure capabilities:
-
-**Data Foundation (Completed)**
-- Phase 0 delivered a complete D&D 5e data ingestion pipeline from 5etools JSON
-- Denormalized SQLite database design optimized for read-heavy queries
-- Multi-ruleset architecture supporting 5e 2014, 5e 2024, and future systems
-- JSON storage strategy for complex nested game data
-- Sub-second query performance for all rules lookups
-
-**Technical Decisions (Documented)**
-- ADR-001: Denormalized Database Design for maximum query performance
-- ADR-002: Multi-Ruleset Architecture for supporting multiple game systems
-- ADR-003: JSON Storage Strategy for complex D&D data structures
-
-**Infrastructure Established**
-- Rust-based import pipeline processing 13+ core 5etools entity types
-- Campaign management foundation with database schema
-- Desktop application framework using Tauri + Vue 3
-- Local-first SQLite storage with migration support
-
-**Current Focus**
-The project is currently implementing character creation integration (MIMIR-I-0002), which will complete the campaign-to-player workflow by enabling DMs to create and manage player characters with full rules validation and character sheet generation.
 
 ## Future State
 

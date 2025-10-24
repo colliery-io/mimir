@@ -206,6 +206,7 @@ mod tests {
                 completion_message: Some("Great!".to_string()),
                 transition_prompt: Some("Ready?".to_string()),
                 help_text: Some("Help".to_string()),
+                content: None,
             },
         };
         

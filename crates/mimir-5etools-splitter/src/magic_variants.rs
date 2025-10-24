@@ -443,6 +443,8 @@ mod tests {
             excludes: None,
             inherits: None,
             entries: None,
+            ammo: None,
+            has_fluff_images: None,
         };
         
         assert!(item_matches_variant(&weapon_item, &weapon_variant));
@@ -470,6 +472,8 @@ mod tests {
             excludes: Some(json!({"net": true})),
             inherits: None,
             entries: None,
+            ammo: None,
+            has_fluff_images: None,
         };
         
         assert!(!item_matches_variant(&net_item, &weapon_variant));
