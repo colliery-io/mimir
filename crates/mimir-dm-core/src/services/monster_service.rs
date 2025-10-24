@@ -96,10 +96,11 @@ impl<'a> MonsterService<'a> {
                 // If fluff data exists, parse and merge it with the monster
                 if let Some(fluff_json_str) = &monster_record.fluff_json {
                     if let Ok(_monster_fluff) = serde_json::from_str::<MonsterFluff>(&fluff_json_str) {
-                        // Note: The Monster struct doesn't have fluff fields directly
-                        // The fluff data will be handled at the formatter level
-                        // For now, we'll just ensure the fluff data is available
-                        // TODO: Consider adding fluff fields to Monster struct or handling differently
+                        // Architectural Decision: Fluff data is stored separately and not merged into Monster struct
+                        // Rationale: Keeps the core Monster struct focused on game mechanics, while fluff
+                        // (lore, images, etc.) is handled at the formatting/presentation layer.
+                        // The fluff_json field in the database ensures the data is preserved and accessible
+                        // when needed for display purposes.
                     }
                 }
                 

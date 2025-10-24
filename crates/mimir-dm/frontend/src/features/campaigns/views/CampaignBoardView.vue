@@ -173,7 +173,9 @@ const handleSelectDocument = async (document: any) => {
 
 // Handle create document from sidebar
 const handleCreateDocument = () => {
-  // TODO: Open document creation dialog
+  // Feature not yet implemented: Should open a document creation dialog
+  // allowing users to create a new document from scratch with custom fields
+  console.warn('Document creation from sidebar not yet implemented')
 }
 
 // Handle create document from template (from StageLandingView)
