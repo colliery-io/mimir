@@ -9,7 +9,7 @@ use colored::*;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use flate2::read::GzDecoder;
-use mimir_dm_core::{run_migrations, services::CatalogService};
+use mimir_dm_core::{run_migrations, services::{CatalogService, ActionService, ConditionService}};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -355,13 +355,13 @@ impl LoadTester {
         self.test_catalog_import(
             &mut results,
             "actions",
-            || CatalogService::import_actions_from_book(&mut conn, book_dir, source),
+            || ActionService::import_actions_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "conditions",
-            || CatalogService::import_conditions_from_book(&mut conn, book_dir, source),
+            || ConditionService::import_conditions_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(

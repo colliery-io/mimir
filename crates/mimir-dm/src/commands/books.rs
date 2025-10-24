@@ -15,7 +15,7 @@ use serde_json::Value;
 use diesel::prelude::*;
 use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
-use mimir_dm_core::services::CatalogService;
+use mimir_dm_core::services::{CatalogService, ActionService, ConditionService};
 use chrono::Utc;
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit)
@@ -221,7 +221,7 @@ pub async fn upload_book_archive(
             }
             
             // Import actions
-            match CatalogService::import_actions_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match ActionService::import_actions_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(action_count) => {
                     info!("Imported {} actions from book '{}'", action_count, book_name);
                 }
@@ -232,7 +232,7 @@ pub async fn upload_book_archive(
             }
             
             // Import conditions
-            match CatalogService::import_conditions_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match ConditionService::import_conditions_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(condition_count) => {
                     info!("Imported {} conditions from book '{}'", condition_count, book_name);
                 }
@@ -488,8 +488,8 @@ pub async fn remove_book_from_library(
                     
                     // Delete related catalog data
                     let _ = CatalogService::remove_spells_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_actions_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_conditions_by_source(conn, &book_id);
+                    let _ = ActionService::remove_actions_by_source(conn, &book_id);
+                    let _ = ConditionService::remove_conditions_by_source(conn, &book_id);
                     let _ = CatalogService::remove_languages_by_source(conn, &book_id);
                     let _ = CatalogService::remove_rewards_by_source(conn, &book_id);
                     let _ = CatalogService::remove_backgrounds_by_source(conn, &book_id);
