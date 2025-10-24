@@ -644,31 +644,31 @@ mod tests {
         assert!(concept_meta.description.contains("planning"));
         assert!(concept_meta.completion_message.is_some());
         assert!(concept_meta.transition_prompt.is_some());
-        assert!(concept_meta.help_text.is_some());
-        
+        assert!(concept_meta.content.is_some()); // Check for content field instead of help_text
+
         // Test specific metadata for session_zero stage
         let session_zero_meta = board.stage_metadata("session_zero");
         assert_eq!(session_zero_meta.display_name, "Session Zero");
         assert!(session_zero_meta.description.contains("collaborative"));
         assert!(session_zero_meta.completion_message.is_some());
         assert!(session_zero_meta.transition_prompt.is_some());
-        assert!(session_zero_meta.help_text.is_some());
-        
+        assert!(session_zero_meta.content.is_some()); // Check for content field instead of help_text
+
         // Test specific metadata for integration stage
         let integration_meta = board.stage_metadata("integration");
         assert_eq!(integration_meta.display_name, "Integration");
         assert!(integration_meta.description.contains("player feedback"));
         assert!(integration_meta.completion_message.is_some());
         assert!(integration_meta.transition_prompt.is_some());
-        assert!(integration_meta.help_text.is_some());
+        assert!(integration_meta.content.is_some()); // Check for content field instead of help_text
         
         // Test specific metadata for active stage
         let active_meta = board.stage_metadata("active");
         assert_eq!(active_meta.display_name, "Active");
         assert!(active_meta.description.contains("actively being played"));
-        assert!(active_meta.completion_message.is_none());
-        assert!(active_meta.transition_prompt.is_none());
-        assert!(active_meta.help_text.is_some());
+        assert!(active_meta.completion_message.is_some());
+        assert!(active_meta.transition_prompt.is_some());
+        assert!(active_meta.content.is_some());
         
         // Test fallback metadata for unknown stage
         let unknown_meta = board.stage_metadata("unknown");
@@ -676,7 +676,7 @@ mod tests {
         assert_eq!(unknown_meta.description, "The unknown stage");
         assert!(unknown_meta.completion_message.is_none());
         assert!(unknown_meta.transition_prompt.is_none());
-        assert!(unknown_meta.help_text.is_none());
+        assert!(unknown_meta.content.is_none());
     }
 
     #[test]

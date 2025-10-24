@@ -14,7 +14,7 @@ use commands::catalog_action::{search_actions, get_action, get_action_time_types
 // use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details}; // Replaced by catalog_background_db
 use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
 // use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types}; // Replaced by catalog_optional_feature_db
-use commands::catalog_deity::{init_deity_catalog, search_deities, get_deity_details, get_pantheons, get_domains};
+// Deity catalog now uses database-backed commands only
 // Object catalog now uses database-backed service
 // Trap catalog now uses database-backed service
 use commands::catalog_language_db::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
@@ -23,12 +23,12 @@ use commands::catalog_background_db::{search_backgrounds, get_background_details
 use commands::catalog_feat_db::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
 use commands::catalog_psionic_db::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
 use commands::catalog_vehicle_db::{search_vehicles_db, get_vehicle_details_db, get_vehicle_types_db, get_vehicle_sizes_db, get_vehicle_terrains_db, get_vehicle_statistics_db};
-use commands::catalog_class_db::*;
+// Class catalog now uses database-backed commands only
 use services::database::DatabaseService;
 use services::context_service::ContextState;
 use services::llm_service::{self, LlmService, ConfirmationReceivers, CancellationTokens};
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock, Mutex};
+use std::sync::{Arc, OnceLock};
 use tauri::Manager;
 use tracing::{error, info, warn};
 
@@ -107,41 +107,8 @@ fn main() {
             });
             
             app.manage(llm_service);
-            
-            // Initialize catalogs
-            let item_catalog = Mutex::new(commands::catalog::ItemCatalog::new());
-            let monster_catalog = Mutex::new(commands::catalog::MonsterCatalog::new());
-            let class_catalog = Mutex::new(commands::catalog_class::ClassCatalog::new());
-            // Feat catalog now uses database-backed service
-            // Race catalog now uses database-backed service
-            // Background catalog now uses database-backed service
-            // Action catalog now uses database-backed service
-            // Condition catalog now uses database-backed service
-            // Optional feature catalog now uses database-backed service (no state needed)
-            let deity_catalog = Mutex::new(commands::catalog_deity::DeityCatalog::new());
-            // Object catalog now uses database-backed service
-            // Trap catalog now uses database-backed service
-            // Language catalog now uses database-backed service
-            app.manage(item_catalog);
-            app.manage(monster_catalog);
-            app.manage(class_catalog);
-            // Feat catalog now uses database-backed service (no state needed)
-            // Race catalog now uses database-backed service (no state needed)
-            // Background catalog now uses database-backed service (no state needed)
-            // Action catalog now uses database-backed service (no state needed)
-            // Condition catalog now uses database-backed service (no state needed)
-            // Optional feature catalog now uses database-backed service (no state needed)
-            app.manage(deity_catalog);
-            // Object catalog now uses database-backed service (no state needed)
-            // Trap catalog now uses database-backed service (no state needed)
-            // Language catalog now uses database-backed service (no state needed)
-            
-            // Reward catalog now uses database-backed service (no state needed)
-            
-            let table_catalog = std::sync::Mutex::new(commands::catalog_table::TableCatalog::new());
-            app.manage(table_catalog);
-            
-            // Variant rule catalog now uses database-backed service (no state needed)
+
+            // All catalogs now use database-backed services (no in-memory state needed)
             
             // Vehicle catalog now uses database-backed service (no state needed)
             
@@ -220,17 +187,6 @@ fn main() {
             get_action_time_types,
             get_action_sources,
             get_action_count,
-            initialize_item_catalog,
-            search_items,
-            initialize_monster_catalog,
-            search_monsters,
-            get_monster_details,
-            // Class catalog commands
-            initialize_class_catalog,
-            search_classes,
-            get_class_details,
-            get_class_subclasses,
-            get_class_sources,
             // Feat catalog commands
             search_feats,
             get_feat_details,
@@ -282,12 +238,6 @@ fn main() {
             get_monster_alignments_db,
             get_monster_cr_range_db,
             get_monster_statistics_db,
-            // Deity catalog commands
-            init_deity_catalog,
-            search_deities,
-            get_deity_details,
-            get_pantheons,
-            get_domains,
             // Object catalog commands
             search_objects,
             get_object_details,
@@ -322,12 +272,6 @@ fn main() {
             get_reward_types,
             get_reward_sources,
             get_reward_count,
-            // Table catalog commands
-            commands::catalog_table::init_table_catalog,
-            commands::catalog_table::search_tables,
-            commands::catalog_table::get_table_details,
-            commands::catalog_table::get_table_categories,
-            commands::catalog_table::get_table_sources,
             // Variant Rule catalog commands (database-backed)
             commands::catalog_variant_rule_db::search_variant_rules,
             commands::catalog_variant_rule_db::get_variant_rule,

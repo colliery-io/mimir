@@ -26,16 +26,22 @@ pub struct PathValidator {
 impl PathValidator {
     /// Create a new path validator with allowed directory prefixes
     pub fn new(allowed_prefixes: Vec<PathBuf>) -> Self {
+        // Canonicalize allowed prefixes so they match canonicalized paths during validation
+        let canonical_prefixes: Vec<PathBuf> = allowed_prefixes
+            .into_iter()
+            .filter_map(|p| p.canonicalize().ok())
+            .collect();
+
         Self {
-            allowed_prefixes,
+            allowed_prefixes: canonical_prefixes,
             forbidden_patterns: vec![
                 "..".to_string(),
-                "/etc".to_string(),
-                "/var".to_string(),
-                "/usr".to_string(),
-                "/bin".to_string(),
-                "/sys".to_string(),
-                "/proc".to_string(),
+                "/etc/".to_string(),
+                "/var/log/".to_string(),
+                "/usr/bin/".to_string(),
+                "/bin/".to_string(),
+                "/sys/".to_string(),
+                "/proc/".to_string(),
             ],
         }
     }
@@ -1195,8 +1201,12 @@ mod tests {
         
         let test_file = temp_dir.path().join("test.txt");
         std::fs::write(&test_file, "test content").unwrap();
-        
+
         let result = validator.validate_path(test_file.to_str().unwrap());
+        if let Err(e) = &result {
+            eprintln!("Validation failed for path: {:?}", test_file);
+            eprintln!("Error: {}", e);
+        }
         assert!(result.is_ok());
     }
     

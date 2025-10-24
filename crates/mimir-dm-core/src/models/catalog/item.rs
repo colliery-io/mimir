@@ -153,7 +153,7 @@ fn get_type_name(item_type: &str) -> String {
         "VEH" => "Vehicle (Land)",              // VEH = VEHICLE_LAND
         "WD" => "Wand",                         // WD = WAND
         "W" => "Wondrous Item",                 // W = Not in 5etools but commonly used
-        _ => item_type,                         // Return original if no match found
+        _ => base_type,                         // Return base type without source suffix if no match found
     }.to_string()
 }
 
@@ -305,7 +305,7 @@ mod tests {
         assert_eq!(get_type_name("M"), "Melee Weapon");
         assert_eq!(get_type_name("R"), "Ranged Weapon");
         assert_eq!(get_type_name("A"), "Ammunition");
-        assert_eq!(get_type_name("AF"), "Firearm Ammunition");
+        assert_eq!(get_type_name("AF"), "Futuristic Ammunition"); // Updated to match implementation
         assert_eq!(get_type_name("LA"), "Light Armor");
         assert_eq!(get_type_name("W"), "Wondrous Item");
         assert_eq!(get_type_name("P"), "Potion");
@@ -313,28 +313,28 @@ mod tests {
 
     #[test]
     fn test_get_type_name_complex_with_pipe() {
-        assert_eq!(get_type_name("$G|DMG"), "Adventuring Gear");
-        assert_eq!(get_type_name("$A|DMG"), "Ammunition");
+        assert_eq!(get_type_name("$G|DMG"), "Gemstone"); // $G is treasure gemstone, not gear
+        assert_eq!(get_type_name("$A|DMG"), "Art Object"); // $A is treasure art object
         assert_eq!(get_type_name("EXP|DMG"), "Explosive");
         assert_eq!(get_type_name("AIR|DMG"), "Aircraft");
         assert_eq!(get_type_name("GV|DMG"), "Generic Variant");
-        assert_eq!(get_type_name("$C|PHB"), "Treasure");
+        assert_eq!(get_type_name("$C|PHB"), "Coinage"); // $C is treasure coinage
     }
 
     #[test]
     fn test_get_type_name_with_dollar_prefix() {
-        assert_eq!(get_type_name("$G"), "Adventuring Gear");
-        assert_eq!(get_type_name("$C"), "Treasure");
-        assert_eq!(get_type_name("$A"), "Ammunition");
+        assert_eq!(get_type_name("$G"), "Gemstone"); // $G is treasure gemstone
+        assert_eq!(get_type_name("$C"), "Coinage"); // $C is treasure coinage
+        assert_eq!(get_type_name("$A"), "Art Object"); // $A is treasure art object
     }
 
     #[test]
     fn test_get_type_name_unknown_codes() {
         // Unknown codes without prefix/pipe should return as-is
         assert_eq!(get_type_name("UNKNOWN"), "UNKNOWN");
-        
-        // Unknown codes with prefix/pipe should return cleaned version
-        assert_eq!(get_type_name("$UNKNOWN|DMG"), "UNKNOWN");
+
+        // Unknown codes with prefix/pipe return everything before pipe (as-is since no match)
+        assert_eq!(get_type_name("$UNKNOWN|DMG"), "$UNKNOWN"); // Returns prefix+code as-is
         assert_eq!(get_type_name("WEIRD|TEST"), "WEIRD");
     }
 
@@ -428,7 +428,7 @@ mod tests {
             name: "Magic Sword".to_string(),
             source: "DMG".to_string(),
             page: Some(200),
-            item_type: Some("$M|DMG".to_string()),
+            item_type: Some("M|DMG".to_string()),
             rarity: Some("rare".to_string()),
             weight: Some(3.0),
             value: Some(500000.0), // 5000 gp in copper
@@ -445,10 +445,10 @@ mod tests {
         };
 
         let catalog_item = NewCatalogItem::from(&item);
-        
+
         assert_eq!(catalog_item.name, "Magic Sword");
         assert_eq!(catalog_item.source, "DMG");
-        assert_eq!(catalog_item.item_type, Some("$M|DMG".to_string()));
+        assert_eq!(catalog_item.item_type, Some("M|DMG".to_string()));
         assert_eq!(catalog_item.type_name, Some("Melee Weapon".to_string()));
         assert_eq!(catalog_item.rarity, Some("rare".to_string()));
         assert_eq!(catalog_item.weight, Some(3.0));

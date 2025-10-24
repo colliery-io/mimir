@@ -248,6 +248,7 @@ mod tests {
         
         // Verify files exist on disk
         let module_dir = std::path::PathBuf::from(&dir_path)
+            .join("modules")
             .join(format!("module_{:02}", module.module_number));
         assert!(module_dir.join("module-overview.md").exists());
         
@@ -269,10 +270,9 @@ mod tests {
             "Test Module".to_string(),
             4,
         ).unwrap();
-        
-        // Transition to planning
-        service.transition_module_stage(module.id, "planning").unwrap();
-        
+
+        // Module starts in planning state by default
+
         // Check completion before documents
         let status = service.check_module_completion(module.id).unwrap();
         assert_eq!(status.current_stage, "planning");
@@ -348,9 +348,8 @@ mod tests {
             "Active Module".to_string(),
             5, // Expected 5 sessions
         ).unwrap();
-        
-        // Make it active
-        service.transition_module_stage(module.id, "planning").unwrap();
+
+        // Module starts in planning state, transition to active
         service.transition_module_stage(module.id, "development").unwrap();
         service.transition_module_stage(module.id, "ready").unwrap();
         service.transition_module_stage(module.id, "active").unwrap();

@@ -154,19 +154,24 @@ mod tests {
         crate::run_migrations(&mut conn).unwrap();
         seed_templates(&mut conn).unwrap();
         
+        // Create temp directory for test
+        let temp_dir = tempfile::tempdir().unwrap();
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
         // Create test campaign and module data
         use crate::schema::{campaigns, modules};
         use diesel::prelude::*;
-        
+
         diesel::insert_into(campaigns::table)
             .values((
                 campaigns::name.eq("Test Campaign"),
                 campaigns::status.eq("active"),
+                campaigns::directory_path.eq(campaign_dir),
                 campaigns::created_at.eq(chrono::Utc::now().to_rfc3339()),
             ))
             .execute(&mut conn)
             .unwrap();
-            
+
         diesel::insert_into(modules::table)
             .values((
                 modules::campaign_id.eq(1),
@@ -180,10 +185,6 @@ mod tests {
             .execute(&mut conn)
             .unwrap();
         
-        // Create temp directory for test
-        let temp_dir = tempfile::tempdir().unwrap();
-        let campaign_dir = temp_dir.path().to_str().unwrap();
-        
         // Create session
         let session = SessionService::create_session(
             &mut conn,
@@ -194,7 +195,7 @@ mod tests {
         ).unwrap();
         
         assert_eq!(session.session_number, 1);
-        assert_eq!(session.status, "planning");
+        assert_eq!(session.status, "next_week");
         assert_eq!(session.module_id, Some(1));
         
         // Check session folder exists

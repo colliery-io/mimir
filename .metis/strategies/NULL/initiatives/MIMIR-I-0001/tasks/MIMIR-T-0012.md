@@ -4,14 +4,14 @@ level: task
 title: "Delete old in-memory catalog implementation files"
 short_code: "MIMIR-T-0012"
 created_at: 2025-10-24T11:53:35.960946+00:00
-updated_at: 2025-10-24T11:53:35.960946+00:00
+updated_at: 2025-10-24T12:51:09.773574+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -64,6 +64,10 @@ initiative_id: MIMIR-I-0001
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
