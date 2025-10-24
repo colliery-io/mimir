@@ -15,7 +15,7 @@ use serde_json::Value;
 use diesel::prelude::*;
 use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
-use mimir_dm_core::services::{CatalogService, ActionService, ConditionService};
+use mimir_dm_core::services::{CatalogService, ActionService, ConditionService, LanguageService};
 use chrono::Utc;
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit)
@@ -243,7 +243,7 @@ pub async fn upload_book_archive(
             }
             
             // Import languages
-            match CatalogService::import_languages_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match LanguageService::import_languages_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(language_count) => {
                     info!("Imported {} languages from book '{}'", language_count, book_name);
                 }
@@ -490,7 +490,7 @@ pub async fn remove_book_from_library(
                     let _ = CatalogService::remove_spells_by_source(conn, &book_id);
                     let _ = ActionService::remove_actions_by_source(conn, &book_id);
                     let _ = ConditionService::remove_conditions_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_languages_by_source(conn, &book_id);
+                    let _ = LanguageService::remove_languages_by_source(conn, &book_id);
                     let _ = CatalogService::remove_rewards_by_source(conn, &book_id);
                     let _ = CatalogService::remove_backgrounds_by_source(conn, &book_id);
                     let _ = CatalogService::remove_feats_by_source(conn, &book_id);

@@ -9,7 +9,7 @@ use colored::*;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use flate2::read::GzDecoder;
-use mimir_dm_core::{run_migrations, services::{CatalogService, ActionService, ConditionService}};
+use mimir_dm_core::{run_migrations, services::{CatalogService, ActionService, ConditionService, LanguageService}};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -367,7 +367,7 @@ impl LoadTester {
         self.test_catalog_import(
             &mut results,
             "languages",
-            || CatalogService::import_languages_from_book(&mut conn, book_dir, source),
+            || LanguageService::import_languages_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(

@@ -4,14 +4,14 @@ level: task
 title: "Verify all catalog commands use database services correctly"
 short_code: "MIMIR-T-0013"
 created_at: 2025-10-24T11:53:36.219257+00:00
-updated_at: 2025-10-24T11:53:36.219257+00:00
+updated_at: 2025-10-24T13:31:34.850557+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -64,6 +64,10 @@ initiative_id: MIMIR-I-0001
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

@@ -1,7 +1,9 @@
 use diesel::prelude::*;
-use tracing::{debug, error};
-use crate::models::catalog::{CatalogLanguage, LanguageFilters, LanguageSummary, Language};
+use tracing::{debug, error, info};
+use crate::models::catalog::{CatalogLanguage, LanguageFilters, LanguageSummary, Language, NewCatalogLanguage, LanguageData};
 use crate::schema::catalog_languages;
+use std::fs;
+use std::path::Path;
 
 pub struct LanguageService;
 
@@ -180,12 +182,96 @@ impl LanguageService {
     /// Get total count of languages
     pub fn get_language_count(conn: &mut SqliteConnection) -> Result<i64, String> {
         debug!("Getting language count");
-        
+
         let count: i64 = catalog_languages::table
             .count()
             .get_result(conn)
             .map_err(|e| format!("Database error: {}", e))?;
-        
+
         Ok(count)
+    }
+
+    /// Import all language data from an uploaded book directory
+    pub fn import_languages_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str,
+    ) -> Result<usize, String> {
+        info!("Importing languages from book directory: {:?} (source: {})", book_dir, source);
+
+        let languages_dir = book_dir.join("languages");
+        if !languages_dir.exists() || !languages_dir.is_dir() {
+            debug!("No languages directory found in book: {:?}", book_dir);
+            return Ok(0);
+        }
+
+        let mut imported_count = 0;
+
+        // Read all JSON files in the languages directory
+        let entries = fs::read_dir(&languages_dir)
+            .map_err(|e| format!("Failed to read languages directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+
+            // Skip fluff files and non-JSON files
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                if Self::matches_pattern(filename, &["fluff"]) || !filename.ends_with(".json") {
+                    continue;
+                }
+            }
+
+            debug!("Processing language file: {:?}", path);
+
+            let content = fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read file {:?}: {}", path, e))?;
+
+            let language_data: LanguageData = serde_json::from_str(&content)
+                .map_err(|e| format!("Failed to parse language data from {:?}: {}", path, e))?;
+
+            if let Some(languages) = language_data.language {
+                let new_languages: Vec<NewCatalogLanguage> = languages
+                    .into_iter()
+                    .map(|mut lang| {
+                        lang.source = source.to_string();
+                        NewCatalogLanguage::from(lang)
+                    })
+                    .collect();
+
+                if !new_languages.is_empty() {
+                    let inserted = diesel::insert_into(catalog_languages::table)
+                        .values(&new_languages)
+                        .execute(conn)
+                        .map_err(|e| format!("Failed to insert languages: {}", e))?;
+
+                    imported_count += inserted;
+                    info!("Imported {} languages from {:?}", inserted, path);
+                }
+            }
+        }
+
+        info!("Successfully imported {} languages from source: {}", imported_count, source);
+        Ok(imported_count)
+    }
+
+    /// Remove all languages from a specific source
+    pub fn remove_languages_by_source(
+        conn: &mut SqliteConnection,
+        source: &str,
+    ) -> Result<usize, String> {
+        info!("Removing languages from source: {}", source);
+
+        let deleted = diesel::delete(catalog_languages::table.filter(catalog_languages::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete languages from source {}: {}", source, e))?;
+
+        info!("Removed {} languages from source: {}", deleted, source);
+        Ok(deleted)
+    }
+
+    /// Helper function to check if a filename matches any of the given patterns
+    fn matches_pattern(filename: &str, patterns: &[&str]) -> bool {
+        patterns.iter().any(|pattern| filename.starts_with(pattern))
     }
 }
