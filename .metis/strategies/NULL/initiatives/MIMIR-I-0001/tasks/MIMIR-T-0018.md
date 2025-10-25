@@ -29,108 +29,90 @@ initiative_id: MIMIR-I-0001
 
 ## Objective **[REQUIRED]**
 
-{Clear statement of what this task accomplishes}
+Split the monolithic chat store (860 lines) into three focused stores organized by concern: messages (message handling and display), session (session CRUD operations), and tokens (token tracking and system configuration). This improves code navigability, maintainability, and follows the separation of concerns principle.
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+### Technical Debt Impact
 
-{Delete this section when task is assigned to an initiative}
-
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
-
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
-
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
-
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
-
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+- **Current Problems**: 
+  - 860-line monolithic store file is difficult to navigate
+  - Three distinct concerns (messages, sessions, tokens) mixed together
+  - Hard to locate specific functionality
+  - Violates separation of concerns principle
+  
+- **Benefits of Fixing**: 
+  - Each store under 300 lines, easier to understand
+  - Clear boundaries between message, session, and token concerns
+  - Improved code discoverability and maintainability
+  - Follows established patterns from previous refactoring tasks
+  
+- **Risk Assessment**: 
+  - Low risk - stores are well-tested through UI usage
+  - No functional changes, pure refactoring
+  - TypeScript will catch any import/reference issues
 
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+- [ ] Created stores/chat/ directory with three store files: messages.ts, session.ts, tokens.ts
+- [ ] Each store file is under 300 lines
+- [ ] Created index.ts that exports all three stores with backwards-compatible API
+- [ ] All imports updated throughout the codebase
+- [ ] Original chat.ts deleted
+- [ ] Application builds successfully with no TypeScript errors
+- [ ] All chat functionality works as before (no functional changes)
 
-## Test Cases **[CONDITIONAL: Testing Task]**
 
-{Delete unless this is a testing task}
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
+## Implementation Notes
 
 ### Technical Approach
-{How this will be implemented}
+
+Split stores/chat.ts into three focused store files within a new stores/chat/ directory:
+
+**1. messages.ts** (~300 lines)
+- Types: ChatMessage, ChatResponseWithUsage, ActionDescription, ChangeDetail, LineEdit, DiffPreview, etc.
+- State: messages, isLoading, isCancelling, error, pendingConfirmations
+- Computed: lastMessage
+- Actions: sendMessage, cancelMessage, deleteMessage, buildSystemMessage
+- Tool confirmation: confirmToolAction, rejectToolAction, getConfirmationForMessage
+- Event listeners: llm-intermediate-message, tool-result-message, tool-confirmation-request
+- Todos: updateTodos, todos state, todoProgress, currentTodo, hasTodos, toggleTodosVisibility, clearTodos, loadTodosForSession, extractTodosFromMessage, configureTodoStorage
+
+**2. session.ts** (~250 lines)
+- Types: ChatSession, ChatSessionMetadata
+- State: currentSessionId, sessions, sessionsLoading
+- Actions: loadSessions, loadSession, saveCurrentSession, createNewSession, deleteSession, switchToSession, clearHistory
+- Session persistence and CRUD operations
+
+**3. tokens.ts** (~200 lines)
+- Types: ModelInfo, SystemMessageConfig
+- State: modelInfo, totalTokensUsed, maxResponseTokens, systemConfig
+- Computed: conversationTokens, contextUsagePercentage
+- Actions: setMaxResponseTokens, updateSystemConfig, toggleContext, setSystemInstructions, setCustomInstructions, resetToDefaultPrompt, setLlmEndpoint
+- Configuration: saveSystemConfig, loadSystemConfig
+
+**4. index.ts** (~50 lines)
+- Main useChatStore that composes all three stores
+- Provides backwards-compatible API
+- Coordinates initialization across all three stores
+
+### File Organization
+```
+stores/chat/
+├── index.ts (main store that composes others)
+├── messages.ts (message handling)
+├── session.ts (session management)
+└── tokens.ts (token tracking and config)
+```
 
 ### Dependencies
-{Other tasks or systems this depends on}
+- Follows the pattern from MIMIR-T-0017 (useCatalog split)
+- Uses Pinia's defineStore for each concern
+- May need to use storeToRefs for cross-store reactivity
 
 ### Risk Considerations
-{Technical risks and mitigation strategies}
+- Need to maintain cross-store dependencies (e.g., messages need currentSessionId from session)
+- Event listeners in initialize() need to coordinate across stores
+- Must preserve all existing functionality and API surface
 
 ## Status Updates **[REQUIRED]**
 

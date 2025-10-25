@@ -4,14 +4,14 @@ level: task
 title: "Split useCatalog.ts composable by entity type"
 short_code: "MIMIR-T-0017"
 created_at: 2025-10-24T11:53:49.767337+00:00
-updated_at: 2025-10-24T11:53:49.767337+00:00
+updated_at: 2025-10-25T09:17:15.403742+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -52,6 +52,10 @@ Refactor the monolithic useCatalog.ts composable (1,873 lines) by splitting it i
   - Low risk - composables are self-contained with clear interfaces
   - All usages can be updated to import from new locations
   - No runtime behavior changes, only file organization
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
