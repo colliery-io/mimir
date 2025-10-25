@@ -4,14 +4,14 @@ level: task
 title: "Split chat store by concern (messages, session, tokens)"
 short_code: "MIMIR-T-0018"
 created_at: 2025-10-24T11:53:49.959380+00:00
-updated_at: 2025-10-24T11:53:49.959380+00:00
+updated_at: 2025-10-25T09:39:47.814990+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -49,6 +49,10 @@ Split the monolithic chat store (860 lines) into three focused stores organized 
   - Low risk - stores are well-tested through UI usage
   - No functional changes, pure refactoring
   - TypeScript will catch any import/reference issues
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

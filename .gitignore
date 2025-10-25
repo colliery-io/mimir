@@ -34,3 +34,4 @@ data/
 
 # Development assets
 crates/mimir-dm/assets/dev/
+crates/mimir-dm/assets/*
