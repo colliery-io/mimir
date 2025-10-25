@@ -1,7 +1,9 @@
 use diesel::prelude::*;
-use tracing::{debug, error};
-use crate::models::catalog::{BackgroundFilters, BackgroundSummary, CatalogBackground};
+use tracing::{debug, error, info};
+use crate::models::catalog::{BackgroundFilters, BackgroundSummary, CatalogBackground, NewCatalogBackground, BackgroundData};
 use crate::schema::catalog_backgrounds;
+use std::fs;
+use std::path::Path;
 
 pub struct BackgroundService;
 
@@ -94,5 +96,82 @@ impl BackgroundService {
                 error!("Failed to get background count: {}", e);
                 format!("Failed to get background count: {}", e)
             })
+    }
+
+    /// Import all background data from an uploaded book directory
+    pub fn import_backgrounds_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing backgrounds from book directory: {:?} (source: {})", book_dir, source);
+        let mut imported_count = 0;
+
+        let backgrounds_dir = book_dir.join("backgrounds");
+        if !backgrounds_dir.exists() || !backgrounds_dir.is_dir() {
+            debug!("No backgrounds directory found in book: {:?}", book_dir);
+            return Ok(0);
+        }
+
+        info!("Found backgrounds directory: {:?}", backgrounds_dir);
+
+        // Read all JSON files in the backgrounds directory
+        let entries = fs::read_dir(&backgrounds_dir)
+            .map_err(|e| format!("Failed to read backgrounds directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let path = entry.path();
+
+            if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+
+            debug!("Processing background file: {:?}", path);
+
+            let content = fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read background file {:?}: {}", path, e))?;
+
+            let background_data: BackgroundData = serde_json::from_str(&content)
+                .map_err(|e| format!("Failed to parse background data from {:?}: {}", path, e))?;
+
+            if let Some(backgrounds) = background_data.background {
+                let new_backgrounds: Vec<NewCatalogBackground> = backgrounds
+                    .into_iter()
+                    .map(|mut background| {
+                        background.source = source.to_string();
+                        NewCatalogBackground::from(&background)
+                    })
+                    .collect();
+
+                if !new_backgrounds.is_empty() {
+                    let inserted = diesel::insert_into(catalog_backgrounds::table)
+                        .values(&new_backgrounds)
+                        .execute(conn)
+                        .map_err(|e| format!("Failed to insert backgrounds: {}", e))?;
+
+                    imported_count += inserted;
+                    info!("Imported {} backgrounds from {:?}", inserted, path);
+                }
+            }
+        }
+
+        info!("Successfully imported {} backgrounds from source: {}", imported_count, source);
+        Ok(imported_count)
+    }
+
+    /// Remove all backgrounds from a specific source
+    pub fn remove_backgrounds_by_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing backgrounds from source: {}", source);
+
+        let deleted = diesel::delete(catalog_backgrounds::table.filter(catalog_backgrounds::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete backgrounds from source {}: {}", source, e))?;
+
+        info!("Removed {} backgrounds from source: {}", deleted, source);
+        Ok(deleted)
     }
 }

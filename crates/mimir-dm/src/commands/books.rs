@@ -15,7 +15,7 @@ use serde_json::Value;
 use diesel::prelude::*;
 use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
-use mimir_dm_core::services::{CatalogService, ActionService, ConditionService, LanguageService, RewardService, BackgroundService, FeatService, RaceService, ObjectService, TrapService};
+use mimir_dm_core::services::{SpellService, ActionService, ConditionService, LanguageService, RewardService, BackgroundService, FeatService, RaceService, ObjectService, TrapService, CultService, VariantRuleService, OptionalFeatureService, ItemService, MonsterService, DeityService, VehicleService, ClassService};
 use chrono::Utc;
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit)
@@ -210,7 +210,7 @@ pub async fn upload_book_archive(
     match crate::db_connection::get_connection() {
         Ok(mut catalog_conn) => {
             // Import spells
-            match CatalogService::import_spells_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match SpellService::import_spells_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(spell_count) => {
                     info!("Imported {} spells from book '{}'", spell_count, book_name);
                 }
@@ -320,7 +320,7 @@ pub async fn upload_book_archive(
             }
             
             // Import cults and boons
-            match CatalogService::import_cults_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match CultService::import_cults_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(cult_count) => {
                     info!("Imported {} cults/boons from book '{}'", cult_count, book_name);
                 }
@@ -331,7 +331,7 @@ pub async fn upload_book_archive(
             }
 
             // Import variant rules
-            match CatalogService::import_variant_rules_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match VariantRuleService::import_variant_rules_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(variant_rule_count) => {
                     info!("Imported {} variant rules from book '{}'", variant_rule_count, book_name);
                 }
@@ -342,7 +342,7 @@ pub async fn upload_book_archive(
             }
 
             // Import optional features
-            match CatalogService::import_optional_features_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match OptionalFeatureService::import_optional_features_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(optional_feature_count) => {
                     info!("Imported {} optional features from book '{}'", optional_feature_count, book_name);
                 }
@@ -353,7 +353,7 @@ pub async fn upload_book_archive(
             }
 
             // Import items
-            match CatalogService::import_items_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match ItemService::import_items_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(item_count) => {
                     info!("Imported {} items from book '{}'", item_count, book_name);
                 }
@@ -363,7 +363,7 @@ pub async fn upload_book_archive(
                 }
             }
             // Import monsters
-            match CatalogService::import_monsters_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match MonsterService::import_monsters_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(monster_count) => {
                     info!("Imported {} monsters from book '{}'", monster_count, book_name);
                 }
@@ -373,7 +373,7 @@ pub async fn upload_book_archive(
                 }
             }
             // Import deities
-            match CatalogService::import_deities_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match DeityService::import_deities_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(deity_count) => {
                     info!("Imported {} deities from book '{}'", deity_count, book_name);
                 }
@@ -383,7 +383,7 @@ pub async fn upload_book_archive(
                 }
             }
             // Import vehicles
-            match CatalogService::import_vehicles_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match VehicleService::import_vehicles_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(vehicle_count) => {
                     info!("Imported {} vehicles from book '{}'", vehicle_count, book_name);
                 }
@@ -393,7 +393,7 @@ pub async fn upload_book_archive(
                 }
             }
             // Import classes
-            match CatalogService::import_classes_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match ClassService::import_classes_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(class_count) => {
                     info!("Imported {} classes from book '{}'", class_count, book_name);
                 }
@@ -487,7 +487,7 @@ pub async fn remove_book_from_library(
                         .execute(conn)?;
                     
                     // Delete related catalog data
-                    let _ = CatalogService::remove_spells_by_source(conn, &book_id);
+                    let _ = SpellService::remove_spells_by_source(conn, &book_id);
                     let _ = ActionService::remove_actions_by_source(conn, &book_id);
                     let _ = ConditionService::remove_conditions_by_source(conn, &book_id);
                     let _ = LanguageService::remove_languages_by_source(conn, &book_id);
@@ -497,10 +497,11 @@ pub async fn remove_book_from_library(
                     let _ = RaceService::remove_races_by_source(conn, &book_id);
                     let _ = ObjectService::remove_objects_by_source(conn, &book_id);
                     let _ = TrapService::remove_traps_from_source(conn, &book_id);
-                    let _ = CatalogService::remove_monsters_from_source(conn, &book_id);
-                    let _ = CatalogService::remove_deities_from_source(conn, &book_id);
-                    let _ = CatalogService::remove_vehicles_from_source(conn, &book_id);
-                    let _ = CatalogService::remove_classes_from_source(conn, &book_id);
+                    let _ = ItemService::remove_items_from_source(conn, &book_id);
+                    let _ = MonsterService::remove_monsters_from_source(conn, &book_id);
+                    let _ = DeityService::remove_deities_from_source(conn, &book_id);
+                    let _ = VehicleService::remove_vehicles_from_source(conn, &book_id);
+                    let _ = ClassService::remove_classes_from_source(conn, &book_id);
                     // We don't want catalog cleanup errors to fail the book removal
                     
                     Ok(())

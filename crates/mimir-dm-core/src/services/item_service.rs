@@ -1,7 +1,11 @@
 use diesel::prelude::*;
 use crate::models::catalog::item::{
-    CatalogItem, ItemSummary, ItemFilters, Item
+    CatalogItem, ItemSummary, ItemFilters, Item, NewCatalogItem, ItemData
 };
+use crate::schema::catalog_items;
+use std::fs;
+use std::path::Path;
+use tracing::{error, info, debug};
 
 pub struct ItemService<'a> {
     pub conn: &'a mut SqliteConnection,
@@ -129,12 +133,146 @@ impl<'a> ItemService<'a> {
 
     pub fn get_item_sources(&mut self) -> QueryResult<Vec<String>> {
         use crate::schema::catalog_items::dsl::*;
-        
+
         let mut sources: Vec<String> = catalog_items
             .select(source)
             .distinct()
             .load(self.conn)?;
         sources.sort();
         Ok(sources)
+    }
+
+    /// Import all item data from an uploaded book directory
+    pub fn import_items_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing items from book directory: {:?} (source: {})", book_dir, source);
+
+        let mut total_imported = 0;
+        let item_files = Self::find_item_files(book_dir)?;
+
+        if item_files.is_empty() {
+            info!("No item files found in book directory");
+            return Ok(0);
+        }
+
+        info!("Found {} item files to process", item_files.len());
+
+        for item_file in item_files {
+            debug!("Processing item file: {:?}", item_file);
+
+            match Self::import_items_from_file(conn, &item_file, source) {
+                Ok(count) => {
+                    info!("Imported {} items from {:?}", count, item_file);
+                    total_imported += count;
+                }
+                Err(e) => {
+                    error!("Failed to import items from {:?}: {}", item_file, e);
+                    // Continue processing other files instead of failing completely
+                }
+            }
+        }
+
+        info!("Total items imported: {}", total_imported);
+        Ok(total_imported)
+    }
+
+    /// Find item files in a book directory (reusing existing logic from catalog.rs)
+    fn find_item_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+        let mut files = Vec::new();
+
+        // Check the items directory
+        let items_dir = book_dir.join("items");
+        if items_dir.exists() && items_dir.is_dir() {
+            let entries = fs::read_dir(&items_dir)
+                .map_err(|e| format!("Failed to read items directory: {}", e))?;
+
+            for entry in entries {
+                let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+                let path = entry.path();
+
+                if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+                    // Skip fluff files, index files, and foundry files
+                    if filename.starts_with("fluff-") || filename == "index.json" || filename == "foundry.json" {
+                        continue;
+                    }
+
+                    debug!("Found item file: {:?}", path);
+                    files.push(path);
+                }
+            }
+        }
+
+        Ok(files)
+    }
+
+    /// Import items from a single JSON file
+    fn import_items_from_file(
+        conn: &mut SqliteConnection,
+        file_path: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        debug!("Reading items from file: {:?}", file_path);
+
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+
+        let data: ItemData = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+
+        if !data.item.is_empty() {
+            let new_items: Vec<NewCatalogItem> = data.item.iter().map(|item| {
+                let mut new_item = NewCatalogItem::from(item);
+                // Always override the source with the book source to ensure consistency
+                new_item.source = source.to_string();
+
+                // Also update the source in the full_item_json to maintain consistency
+                if let Ok(mut item_json) = serde_json::from_str::<serde_json::Value>(&new_item.full_item_json) {
+                    if let Some(obj) = item_json.as_object_mut() {
+                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                        if let Ok(updated_json) = serde_json::to_string(&item_json) {
+                            new_item.full_item_json = updated_json;
+                        }
+                    }
+                }
+
+                new_item
+            }).collect();
+
+            debug!("Inserting {} items individually (SQLite limitation)", new_items.len());
+
+            for item in &new_items {
+                diesel::insert_into(catalog_items::table)
+                    .values(item)
+                    .on_conflict((catalog_items::name, catalog_items::source))
+                    .do_nothing()
+                    .execute(conn)
+                    .map_err(|e| format!("Failed to insert item: {}", e))?;
+            }
+
+            info!("Successfully imported {} items into database", new_items.len());
+            Ok(new_items.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Remove all items from a specific source
+    pub fn remove_items_from_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing items from source: {}", source);
+
+        let deleted = diesel::delete(catalog_items::table.filter(catalog_items::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete items from source {}: {}", source, e))?;
+
+        info!("Removed {} items from source: {}", deleted, source);
+        Ok(deleted)
     }
 }

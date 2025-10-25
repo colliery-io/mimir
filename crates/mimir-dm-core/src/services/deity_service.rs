@@ -1,7 +1,11 @@
 use diesel::prelude::*;
 use crate::models::catalog::deity::{
-    CatalogDeity, DeitySummary, DeityFilters, Deity
+    CatalogDeity, DeitySummary, DeityFilters, Deity, NewCatalogDeity, DeityData
 };
+use crate::schema::catalog_deities;
+use std::fs;
+use std::path::Path;
+use tracing::{error, info, debug};
 
 pub struct DeityService<'a> {
     pub conn: &'a mut SqliteConnection,
@@ -159,13 +163,151 @@ impl<'a> DeityService<'a> {
     /// Get deity statistics by source
     pub fn get_deity_count_by_source(&mut self) -> Result<Vec<(String, i64)>, String> {
         use crate::schema::catalog_deities::dsl::*;
-        
+
         let counts = catalog_deities
             .group_by(source)
             .select((source, diesel::dsl::count_star()))
             .load::<(String, i64)>(self.conn)
             .map_err(|e| format!("Failed to get deity counts: {}", e))?;
-        
+
         Ok(counts)
+    }
+
+    /// Import all deity data from an uploaded book directory
+    pub fn import_deities_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing deities from book directory: {:?} (source: {})", book_dir, source);
+
+        let mut total_imported = 0;
+        let deity_files = Self::find_deity_files(book_dir)?;
+
+        if deity_files.is_empty() {
+            info!("No deity files found in book directory");
+            return Ok(0);
+        }
+
+        info!("Found {} deity files to process", deity_files.len());
+
+        for deity_file in deity_files {
+            debug!("Processing deity file: {:?}", deity_file);
+
+            match Self::import_deities_from_file(conn, &deity_file, source) {
+                Ok(count) => {
+                    info!("Imported {} deities from {:?}", count, deity_file);
+                    total_imported += count;
+                }
+                Err(e) => {
+                    error!("Failed to import deities from {:?}: {}", deity_file, e);
+                    // Continue processing other files instead of failing completely
+                }
+            }
+        }
+
+        info!("Total deities imported: {}", total_imported);
+        Ok(total_imported)
+    }
+
+    /// Find deity files in a book directory (deities/*.json files)
+    fn find_deity_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+        let mut files = Vec::new();
+
+        // Check the deities directory
+        let deities_dir = book_dir.join("deities");
+        if deities_dir.exists() && deities_dir.is_dir() {
+            let entries = fs::read_dir(&deities_dir)
+                .map_err(|e| format!("Failed to read deities directory: {}", e))?;
+
+            for entry in entries {
+                let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+                let path = entry.path();
+
+                if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+                    // Skip index files and foundry files
+                    if filename == "index.json" || filename == "foundry.json" {
+                        continue;
+                    }
+
+                    debug!("Found deity file: {:?}", path);
+                    files.push(path);
+                }
+            }
+        }
+
+        Ok(files)
+    }
+
+    /// Import deities from a single JSON file
+    fn import_deities_from_file(
+        conn: &mut SqliteConnection,
+        file_path: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        debug!("Reading deities from file: {:?}", file_path);
+
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+
+        let data: DeityData = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+
+        if let Some(deities) = data.deity {
+            if !deities.is_empty() {
+                let new_deities: Vec<NewCatalogDeity> = deities.iter().map(|deity| {
+                    let mut new_deity = NewCatalogDeity::from(deity);
+                    // Always override the source with the book source to ensure consistency
+                    new_deity.source = source.to_string();
+
+                    // Also update the source in the full_deity_json to maintain consistency
+                    if let Ok(mut deity_json) = serde_json::from_str::<serde_json::Value>(&new_deity.full_deity_json) {
+                        if let Some(obj) = deity_json.as_object_mut() {
+                            obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                            if let Ok(updated_json) = serde_json::to_string(&deity_json) {
+                                new_deity.full_deity_json = updated_json;
+                            }
+                        }
+                    }
+
+                    new_deity
+                }).collect();
+
+                debug!("Inserting {} deities individually (SQLite limitation)", new_deities.len());
+
+                for deity in &new_deities {
+                    diesel::insert_into(catalog_deities::table)
+                        .values(deity)
+                        .on_conflict((catalog_deities::name, catalog_deities::source))
+                        .do_nothing()
+                        .execute(conn)
+                        .map_err(|e| format!("Failed to insert deity: {}", e))?;
+                }
+
+                info!("Successfully imported {} deities into database", new_deities.len());
+                Ok(new_deities.len())
+            } else {
+                Ok(0)
+            }
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Remove all deities from a specific source
+    pub fn remove_deities_from_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing deities from source: {}", source);
+
+        let deleted = diesel::delete(catalog_deities::table.filter(catalog_deities::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete deities from source {}: {}", source, e))?;
+
+        info!("Removed {} deities from source: {}", deleted, source);
+        Ok(deleted)
     }
 }

@@ -1,7 +1,9 @@
 use diesel::prelude::*;
-use tracing::{debug, error};
-use crate::models::catalog::{CatalogReward, RewardFilters, RewardSummary, Reward};
+use tracing::{debug, error, info};
+use crate::models::catalog::{CatalogReward, RewardFilters, RewardSummary, Reward, NewCatalogReward, RewardData};
 use crate::schema::catalog_rewards;
+use std::fs;
+use std::path::Path;
 
 pub struct RewardService;
 
@@ -163,12 +165,91 @@ impl RewardService {
     /// Get total count of rewards
     pub fn get_reward_count(conn: &mut SqliteConnection) -> Result<i64, String> {
         debug!("Getting reward count");
-        
+
         let count: i64 = catalog_rewards::table
             .count()
             .get_result(conn)
             .map_err(|e| format!("Database error: {}", e))?;
-        
+
         Ok(count)
+    }
+
+    /// Import all reward data from an uploaded book directory
+    pub fn import_rewards_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str,
+    ) -> Result<usize, String> {
+        info!("Importing rewards from book directory: {:?} (source: {})", book_dir, source);
+
+        let rewards_dir = book_dir.join("rewards");
+        if !rewards_dir.exists() || !rewards_dir.is_dir() {
+            debug!("No rewards directory found in book: {:?}", book_dir);
+            return Ok(0);
+        }
+
+        let mut imported_count = 0;
+
+        // Read all JSON files in the rewards directory
+        let entries = fs::read_dir(&rewards_dir)
+            .map_err(|e| format!("Failed to read rewards directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+
+            // Skip fluff files and non-JSON files
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                if filename.starts_with("fluff") || !filename.ends_with(".json") {
+                    continue;
+                }
+            }
+
+            debug!("Processing reward file: {:?}", path);
+
+            let content = fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read file {:?}: {}", path, e))?;
+
+            let reward_data: RewardData = serde_json::from_str(&content)
+                .map_err(|e| format!("Failed to parse reward data from {:?}: {}", path, e))?;
+
+            if let Some(rewards) = reward_data.reward {
+                let new_rewards: Vec<NewCatalogReward> = rewards
+                    .into_iter()
+                    .map(|mut reward| {
+                        reward.source = source.to_string();
+                        NewCatalogReward::from(reward)
+                    })
+                    .collect();
+
+                if !new_rewards.is_empty() {
+                    let inserted = diesel::insert_into(catalog_rewards::table)
+                        .values(&new_rewards)
+                        .execute(conn)
+                        .map_err(|e| format!("Failed to insert rewards: {}", e))?;
+
+                    imported_count += inserted;
+                    info!("Imported {} rewards from {:?}", inserted, path);
+                }
+            }
+        }
+
+        info!("Successfully imported {} rewards from source: {}", imported_count, source);
+        Ok(imported_count)
+    }
+
+    /// Remove all rewards from a specific source
+    pub fn remove_rewards_by_source(
+        conn: &mut SqliteConnection,
+        source: &str,
+    ) -> Result<usize, String> {
+        info!("Removing rewards from source: {}", source);
+
+        let deleted = diesel::delete(catalog_rewards::table.filter(catalog_rewards::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete rewards from source {}: {}", source, e))?;
+
+        info!("Removed {} rewards from source: {}", deleted, source);
+        Ok(deleted)
     }
 }

@@ -1,7 +1,9 @@
 use diesel::prelude::*;
-use tracing::{debug, error};
-use crate::models::catalog::{FeatFilters, FeatSummary, CatalogFeat};
+use tracing::{debug, error, info};
+use crate::models::catalog::{FeatFilters, FeatSummary, CatalogFeat, NewCatalogFeat, FeatData};
 use crate::schema::catalog_feats;
+use std::fs;
+use std::path::Path;
 
 pub struct FeatService;
 
@@ -92,5 +94,83 @@ impl FeatService {
                 error!("Failed to get feat count: {}", e);
                 format!("Failed to get feat count: {}", e)
             })
+    }
+
+    /// Import all feat data from an uploaded book directory
+    pub fn import_feats_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Importing feats from book directory: {:?} (source: {})", book_dir, source);
+        let mut imported_count = 0;
+
+        let feats_dir = book_dir.join("feats");
+        if !feats_dir.exists() || !feats_dir.is_dir() {
+            debug!("No feats directory found in book: {:?}", book_dir);
+            return Ok(0);
+        }
+
+        info!("Found feats directory: {:?}", feats_dir);
+
+        // Read all JSON files in the feats directory
+        let entries = fs::read_dir(&feats_dir)
+            .map_err(|e| format!("Failed to read feats directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let path = entry.path();
+
+            if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+
+            debug!("Processing feat file: {:?}", path);
+
+            let content = fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read feat file {:?}: {}", path, e))?;
+
+            let feat_data: FeatData = serde_json::from_str(&content)
+                .map_err(|e| format!("Failed to parse feat data from {:?}: {}", path, e))?;
+
+            if let Some(feats) = feat_data.feat {
+                let new_feats: Vec<NewCatalogFeat> = feats
+                    .into_iter()
+                    .map(|mut feat| {
+                        feat.source = source.to_string();
+                        NewCatalogFeat::from(&feat)
+                    })
+                    .collect();
+
+                if !new_feats.is_empty() {
+                    let inserted = diesel::insert_into(catalog_feats::table)
+                        .values(&new_feats)
+                        .execute(conn)
+                        .map_err(|e| format!("Failed to insert feats: {}", e))?;
+
+                    imported_count += inserted;
+                    info!("Imported {} feats from {:?}", inserted, path);
+                }
+            }
+        }
+
+        info!("Successfully imported {} feats from source: {}", imported_count, source);
+        Ok(imported_count)
+    }
+
+    /// Remove all feats from a specific source
+    pub fn remove_feats_by_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        info!("Removing feats from source: {}", source);
+
+        let deleted = diesel::delete(catalog_feats::table)
+            .filter(catalog_feats::source.eq(source))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete feats: {}", e))?;
+
+        info!("Removed {} feats from source: {}", deleted, source);
+        Ok(deleted)
     }
 }

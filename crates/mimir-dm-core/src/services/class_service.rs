@@ -1,8 +1,13 @@
 use diesel::prelude::*;
 use crate::models::catalog::class::{
     CatalogClass, CatalogSubclass,
-    ClassSummary, ClassFilters, Class, Subclass, ClassFluff, SubclassFluff
+    ClassSummary, ClassFilters, Class, Subclass, ClassFluff, SubclassFluff,
+    ClassData, ClassFluffData, ClassFeatureData,
+    NewCatalogClass, NewCatalogSubclass, NewCatalogClassFeature, NewCatalogSubclassFeature
 };
+use std::fs;
+use std::path::Path;
+use tracing::{info, warn, debug};
 
 pub struct ClassService<'a> {
     pub conn: &'a mut SqliteConnection,
@@ -345,5 +350,437 @@ impl<'a> ClassService<'a> {
         }
         
         Ok(())
+    }
+
+    /// Load class fluff data from corresponding fluff file
+    fn load_class_fluff_data(book_dir: &Path, source: &str) -> Option<std::collections::HashMap<String, ClassFluff>> {
+        // Look for fluff files in class directory
+        let search_paths = [
+            book_dir.join("class").join(format!("fluff-{}.json", source.to_lowercase())),
+            book_dir.join("classes").join(format!("fluff-{}.json", source.to_lowercase())),
+            book_dir.join("class").join(format!("fluff-class-{}.json", source.to_lowercase())),
+            book_dir.join("classes").join(format!("fluff-class-{}.json", source.to_lowercase())),
+        ];
+
+        for fluff_file in &search_paths {
+            if !fluff_file.exists() {
+                continue;
+            }
+
+            debug!("Loading class fluff data from: {:?}", fluff_file);
+
+            match fs::read_to_string(&fluff_file) {
+                Ok(fluff_content) => {
+                    match serde_json::from_str::<ClassFluffData>(&fluff_content) {
+                        Ok(fluff_data) => {
+                            let mut fluff_map = std::collections::HashMap::new();
+
+                            if let Some(class_fluff) = fluff_data.class_fluff {
+                                for fluff in class_fluff {
+                                    fluff_map.insert(fluff.name.to_lowercase(), fluff);
+                                }
+                            }
+
+                            debug!("Loaded class fluff data for {} classes", fluff_map.len());
+                            return Some(fluff_map);
+                        }
+                        Err(e) => {
+                            warn!("Failed to parse class fluff file {:?}: {}", fluff_file, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to read class fluff file {:?}: {}", fluff_file, e);
+                }
+            }
+        }
+
+        debug!("No class fluff data found for source: {}", source);
+        None
+    }
+
+    /// Load subclass fluff data from corresponding fluff file
+    fn load_subclass_fluff_data(book_dir: &Path, source: &str) -> Option<std::collections::HashMap<String, SubclassFluff>> {
+        // Look for subclass fluff files in class directory
+        let search_paths = [
+            book_dir.join("class").join(format!("subclass-fluff-{}.json", source.to_lowercase())),
+            book_dir.join("classes").join(format!("subclass-fluff-{}.json", source.to_lowercase())),
+            book_dir.join("class").join(format!("fluff-{}.json", source.to_lowercase())),
+            book_dir.join("classes").join(format!("fluff-{}.json", source.to_lowercase())),
+        ];
+
+        for fluff_file in &search_paths {
+            if !fluff_file.exists() {
+                continue;
+            }
+
+            debug!("Loading subclass fluff data from: {:?}", fluff_file);
+
+            match fs::read_to_string(&fluff_file) {
+                Ok(fluff_content) => {
+                    match serde_json::from_str::<ClassFluffData>(&fluff_content) {
+                        Ok(fluff_data) => {
+                            let mut fluff_map = std::collections::HashMap::new();
+
+                            if let Some(subclass_fluff) = fluff_data.subclass_fluff {
+                                for fluff in subclass_fluff {
+                                    let key = format!("{}|{}", fluff.class_name.to_lowercase(), fluff.name.to_lowercase());
+                                    fluff_map.insert(key, fluff);
+                                }
+                            }
+
+                            debug!("Loaded subclass fluff data for {} subclasses", fluff_map.len());
+                            return Some(fluff_map);
+                        }
+                        Err(e) => {
+                            warn!("Failed to parse subclass fluff file {:?}: {}", fluff_file, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to read subclass fluff file {:?}: {}", fluff_file, e);
+                }
+            }
+        }
+
+        debug!("No subclass fluff data found for source: {}", source);
+        None
+    }
+
+    /// Import classes from a book directory
+    pub fn import_classes_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str
+    ) -> Result<usize, String> {
+        use crate::schema::{catalog_classes, catalog_subclasses, catalog_class_features, catalog_subclass_features};
+
+        info!("Importing classes from book: {}", source);
+
+        // Load fluff data for classes and subclasses
+        let class_fluff_data = Self::load_class_fluff_data(book_dir, source);
+        let subclass_fluff_data = Self::load_subclass_fluff_data(book_dir, source);
+
+        let mut total_imported = 0;
+
+        // Search for class files in multiple possible locations
+        let search_dirs = [
+            book_dir.join("class"),
+            book_dir.join("classes"),
+            book_dir.join("data"),
+            book_dir.to_path_buf(),
+        ];
+
+        for search_dir in &search_dirs {
+            if !search_dir.exists() {
+                continue;
+            }
+
+            debug!("Searching for class files in: {:?}", search_dir);
+
+            let entries = fs::read_dir(search_dir)
+                .map_err(|e| format!("Failed to read directory {:?}: {}", search_dir, e))?;
+
+            for entry in entries.flatten() {
+                let path = entry.path();
+
+                // Skip if not a JSON file
+                if !path.extension().map_or(false, |ext| ext == "json") {
+                    continue;
+                }
+
+                let filename = entry.file_name();
+                let filename_str = filename.to_string_lossy();
+
+                // Check if this might be a class file based on naming patterns
+                let is_main_class_file = search_dir.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n == "class" || n == "classes")
+                    .unwrap_or(false) &&
+                    !filename_str.contains("fluff") &&
+                    !filename_str.contains("feature");
+
+                let is_class_named_file = filename_str.contains("class") &&
+                                  !filename_str.contains("fluff") &&
+                                  !filename_str.contains("feature") &&
+                                  !filename_str.contains("subclass-feature");
+
+                let is_main_book_file = filename_str == format!("{}.json", source.to_lowercase());
+
+                if is_main_class_file || is_class_named_file || is_main_book_file {
+                    debug!("Processing class file: {:?}", path);
+
+                    let content = fs::read_to_string(&path)
+                        .map_err(|e| format!("Failed to read file {:?}: {}", path, e))?;
+
+                    // Try to parse as ClassData structure first
+                    if let Ok(class_data) = serde_json::from_str::<ClassData>(&content) {
+                        // Import classes
+                        if !class_data.classes.is_empty() {
+                            for class in &class_data.classes {
+                                let mut new_class = NewCatalogClass::from(class);
+                                new_class.source = source.to_string();
+
+                                // Update source in JSON
+                                if let Ok(mut class_json) = serde_json::from_str::<serde_json::Value>(&new_class.full_class_json) {
+                                    if let Some(obj) = class_json.as_object_mut() {
+                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                        if let Ok(updated_json) = serde_json::to_string(&class_json) {
+                                            new_class.full_class_json = updated_json;
+                                        }
+                                    }
+                                }
+
+                                // Add fluff data if available
+                                if let Some(ref class_fluff_map) = class_fluff_data {
+                                    let class_name_lower = class.name.to_lowercase();
+                                    if let Some(class_fluff) = class_fluff_map.get(&class_name_lower) {
+                                        if let Ok(fluff_json) = serde_json::to_string(class_fluff) {
+                                            new_class.fluff_json = Some(fluff_json);
+                                        }
+                                    }
+                                }
+
+                                diesel::insert_into(catalog_classes::table)
+                                    .values(&new_class)
+                                    .on_conflict((catalog_classes::name, catalog_classes::source))
+                                    .do_nothing()
+                                    .execute(conn)
+                                    .map_err(|e| format!("Failed to insert class: {}", e))?;
+
+                                total_imported += 1;
+                                debug!("Imported class: {} ({})", class.name, source);
+                            }
+                        }
+
+                        // Import subclasses
+                        if let Some(subclasses) = &class_data.subclass {
+                            for subclass in subclasses {
+                                let mut new_subclass = NewCatalogSubclass::from(subclass);
+                                new_subclass.source = source.to_string();
+
+                                // Update source in JSON
+                                if let Ok(mut subclass_json) = serde_json::from_str::<serde_json::Value>(&new_subclass.full_subclass_json) {
+                                    if let Some(obj) = subclass_json.as_object_mut() {
+                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                        if let Ok(updated_json) = serde_json::to_string(&subclass_json) {
+                                            new_subclass.full_subclass_json = updated_json;
+                                        }
+                                    }
+                                }
+
+                                // Add fluff data if available
+                                if let Some(ref subclass_fluff_map) = subclass_fluff_data {
+                                    let subclass_key = format!("{}|{}", subclass.class_name.to_lowercase(), subclass.name.to_lowercase());
+                                    if let Some(subclass_fluff) = subclass_fluff_map.get(&subclass_key) {
+                                        if let Ok(fluff_json) = serde_json::to_string(subclass_fluff) {
+                                            new_subclass.fluff_json = Some(fluff_json);
+                                        }
+                                    }
+                                }
+
+                                diesel::insert_into(catalog_subclasses::table)
+                                    .values(&new_subclass)
+                                    .on_conflict((catalog_subclasses::name, catalog_subclasses::class_name, catalog_subclasses::source))
+                                    .do_nothing()
+                                    .execute(conn)
+                                    .map_err(|e| format!("Failed to insert subclass: {}", e))?;
+
+                                debug!("Imported subclass: {} ({})", subclass.name, source);
+                            }
+                        }
+
+                        // Import class features
+                        if let Some(features) = &class_data.class_features {
+                            for feature in features {
+                                let mut new_feature = NewCatalogClassFeature::from(feature);
+                                new_feature.source = source.to_string();
+
+                                // Update source in JSON
+                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                    if let Some(obj) = feature_json.as_object_mut() {
+                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                            new_feature.full_feature_json = updated_json;
+                                        }
+                                    }
+                                }
+
+                                diesel::insert_into(catalog_class_features::table)
+                                    .values(&new_feature)
+                                    .on_conflict_do_nothing()
+                                    .execute(conn)
+                                    .map_err(|e| format!("Failed to insert class feature: {}", e))?;
+
+                                debug!("Imported class feature: {} ({})", feature.name, source);
+                            }
+                        }
+
+                        // Import subclass features
+                        if let Some(subclass_features) = &class_data.subclass_features {
+                            for feature in subclass_features {
+                                let mut new_feature = NewCatalogSubclassFeature::from(feature);
+                                new_feature.source = source.to_string();
+
+                                // Update source in JSON
+                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                    if let Some(obj) = feature_json.as_object_mut() {
+                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                            new_feature.full_feature_json = updated_json;
+                                        }
+                                    }
+                                }
+
+                                diesel::insert_into(catalog_subclass_features::table)
+                                    .values(&new_feature)
+                                    .on_conflict_do_nothing()
+                                    .execute(conn)
+                                    .map_err(|e| format!("Failed to insert subclass feature: {}", e))?;
+
+                                debug!("Imported subclass feature: {} ({})", feature.name, source);
+                            }
+                        }
+                    } else if let Ok(classes) = serde_json::from_str::<Vec<Class>>(&content) {
+                        // Handle direct array of classes
+                        for class in &classes {
+                            let mut new_class = NewCatalogClass::from(class);
+                            new_class.source = source.to_string();
+
+                            // Update source in JSON
+                            if let Ok(mut class_json) = serde_json::from_str::<serde_json::Value>(&new_class.full_class_json) {
+                                if let Some(obj) = class_json.as_object_mut() {
+                                    obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                    if let Ok(updated_json) = serde_json::to_string(&class_json) {
+                                        new_class.full_class_json = updated_json;
+                                    }
+                                }
+                            }
+
+                            diesel::insert_into(catalog_classes::table)
+                                .values(&new_class)
+                                .on_conflict((catalog_classes::name, catalog_classes::source))
+                                .do_nothing()
+                                .execute(conn)
+                                .map_err(|e| format!("Failed to insert class: {}", e))?;
+
+                            total_imported += 1;
+                            debug!("Imported class: {} ({})", class.name, source);
+                        }
+                    }
+                }
+
+                // Check for separate feature files
+                let is_feature_file = filename_str.starts_with("features-") ||
+                                     filename_str.starts_with("class-features-") ||
+                                     (filename_str.contains("feature") &&
+                                      !filename_str.contains("fluff") &&
+                                      !filename_str.starts_with("subclass-features"));
+
+                let is_subclass_feature_file = filename_str.starts_with("subclass-features-");
+
+                if is_feature_file {
+                    debug!("Processing class feature file: {:?}", path);
+
+                    let content = fs::read_to_string(&path)
+                        .map_err(|e| format!("Failed to read feature file {:?}: {}", path, e))?;
+
+                    if let Ok(feature_data) = serde_json::from_str::<ClassFeatureData>(&content) {
+                        if let Some(features) = &feature_data.class_feature {
+                            for feature in features {
+                                let mut new_feature = NewCatalogClassFeature::from(feature);
+                                new_feature.source = source.to_string();
+
+                                // Update source in JSON
+                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                    if let Some(obj) = feature_json.as_object_mut() {
+                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                            new_feature.full_feature_json = updated_json;
+                                        }
+                                    }
+                                }
+
+                                diesel::insert_into(catalog_class_features::table)
+                                    .values(&new_feature)
+                                    .on_conflict_do_nothing()
+                                    .execute(conn)
+                                    .map_err(|e| format!("Failed to insert class feature: {}", e))?;
+
+                                debug!("Imported class feature: {} ({})", feature.name, source);
+                            }
+                        }
+                    }
+                }
+
+                if is_subclass_feature_file {
+                    debug!("Processing subclass feature file: {:?}", path);
+
+                    let content = fs::read_to_string(&path)
+                        .map_err(|e| format!("Failed to read subclass feature file {:?}: {}", path, e))?;
+
+                    if let Ok(feature_data) = serde_json::from_str::<ClassFeatureData>(&content) {
+                        if let Some(subclass_features) = &feature_data.subclass_feature {
+                            for feature in subclass_features {
+                                let mut new_feature = NewCatalogSubclassFeature::from(feature);
+                                new_feature.source = source.to_string();
+
+                                // Update source in JSON
+                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                    if let Some(obj) = feature_json.as_object_mut() {
+                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                            new_feature.full_feature_json = updated_json;
+                                        }
+                                    }
+                                }
+
+                                diesel::insert_into(catalog_subclass_features::table)
+                                    .values(&new_feature)
+                                    .on_conflict_do_nothing()
+                                    .execute(conn)
+                                    .map_err(|e| format!("Failed to insert subclass feature: {}", e))?;
+
+                                debug!("Imported subclass feature: {} ({})", feature.name, source);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        info!("Successfully imported {} total class-related items from source: {}", total_imported, source);
+        Ok(total_imported)
+    }
+
+    /// Remove all classes and related data from a specific source
+    pub fn remove_classes_from_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize, String> {
+        use crate::schema::{catalog_classes, catalog_subclasses, catalog_class_features, catalog_subclass_features};
+
+        info!("Removing classes from source: {}", source);
+
+        // Delete in reverse dependency order
+        let subclass_features_deleted = diesel::delete(catalog_subclass_features::table.filter(catalog_subclass_features::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete subclass features from source {}: {}", source, e))?;
+
+        let class_features_deleted = diesel::delete(catalog_class_features::table.filter(catalog_class_features::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete class features from source {}: {}", source, e))?;
+
+        let subclasses_deleted = diesel::delete(catalog_subclasses::table.filter(catalog_subclasses::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete subclasses from source {}: {}", source, e))?;
+
+        let classes_deleted = diesel::delete(catalog_classes::table.filter(catalog_classes::source.eq(source)))
+            .execute(conn)
+            .map_err(|e| format!("Failed to delete classes from source {}: {}", source, e))?;
+
+        let total_deleted = classes_deleted + subclasses_deleted + class_features_deleted + subclass_features_deleted;
+        info!("Removed {} total class-related items from source: {}", total_deleted, source);
+        Ok(total_deleted)
     }
 }

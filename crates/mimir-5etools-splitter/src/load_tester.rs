@@ -9,7 +9,7 @@ use colored::*;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use flate2::read::GzDecoder;
-use mimir_dm_core::{run_migrations, services::{CatalogService, ActionService, ConditionService, LanguageService, RewardService, BackgroundService, FeatService, RaceService, ObjectService, TrapService}};
+use mimir_dm_core::{run_migrations, services::{SpellService, ActionService, ConditionService, LanguageService, RewardService, BackgroundService, FeatService, RaceService, ObjectService, TrapService, CultService, VariantRuleService, OptionalFeatureService, ItemService, MonsterService, DeityService, VehicleService, ClassService}};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -349,7 +349,7 @@ impl LoadTester {
         self.test_catalog_import(
             &mut results,
             "spells",
-            || CatalogService::import_spells_from_book(&mut conn, book_dir, source),
+            || SpellService::import_spells_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
@@ -409,49 +409,49 @@ impl LoadTester {
         self.test_catalog_import(
             &mut results,
             "cults",
-            || CatalogService::import_cults_from_book(&mut conn, book_dir, source),
+            || CultService::import_cults_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "variant_rules",
-            || CatalogService::import_variant_rules_from_book(&mut conn, book_dir, source),
+            || VariantRuleService::import_variant_rules_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "optional_features",
-            || CatalogService::import_optional_features_from_book(&mut conn, book_dir, source),
+            || OptionalFeatureService::import_optional_features_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "items",
-            || CatalogService::import_items_from_book(&mut conn, book_dir, source),
+            || ItemService::import_items_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "monsters",
-            || CatalogService::import_monsters_from_book(&mut conn, book_dir, source),
+            || MonsterService::import_monsters_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "deities",
-            || CatalogService::import_deities_from_book(&mut conn, book_dir, source),
+            || DeityService::import_deities_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "vehicles",
-            || CatalogService::import_vehicles_from_book(&mut conn, book_dir, source),
+            || VehicleService::import_vehicles_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "classes",
-            || CatalogService::import_classes_from_book(&mut conn, book_dir, source),
+            || ClassService::import_classes_from_book(&mut conn, book_dir, source),
         );
 
         Ok(results)
