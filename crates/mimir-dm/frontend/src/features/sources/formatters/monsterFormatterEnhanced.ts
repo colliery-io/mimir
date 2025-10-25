@@ -1,4 +1,4 @@
-import type { MonsterSummary } from '../composables/useCatalog'
+import type { MonsterSummary } from '../composables/catalog'
 import { formatEntries } from '../utils/textFormatting'
 import { invoke } from '@tauri-apps/api/core'
 

@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CultBoonSummary } from '../../composables/useCatalog'
+import type { CultBoonSummary } from '../../composables/catalog'
 import CatalogTable from '../../../../shared/components/catalog/CatalogTable.vue'
 import { cultConfig } from '../../../../shared/components/catalog/config/cultConfig'
 

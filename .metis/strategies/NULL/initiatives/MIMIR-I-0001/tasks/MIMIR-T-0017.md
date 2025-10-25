@@ -29,108 +29,79 @@ initiative_id: MIMIR-I-0001
 
 ## Objective **[REQUIRED]**
 
-{Clear statement of what this task accomplishes}
+Refactor the monolithic useCatalog.ts composable (1,873 lines) by splitting it into entity-specific composable files organized in a catalog/ subdirectory. This improves code navigability, maintainability, and follows the established pattern from previous refactoring tasks (T-0014, T-0015, T-0016).
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+## Type
+- [x] Tech Debt - Code improvement or refactoring
 
-{Delete this section when task is assigned to an initiative}
+## Technical Debt Impact
+- **Current Problems**: 
+  - Single 1,873-line file is difficult to navigate
+  - Unrelated entity types are coupled in one file
+  - Finding specific catalog functionality requires scrolling through entire file
+  - Difficult to understand which parts of the catalog are being used
+  
+- **Benefits of Fixing**: 
+  - Each entity type has its own focused file (<200 lines each)
+  - Easier to find and modify specific catalog functionality
+  - Clear separation of concerns by entity type
+  - Consistent with other refactoring work in the codebase
+  - Better developer experience when working with catalogs
 
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
-
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
-
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
-
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
-
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+- **Risk Assessment**: 
+  - Low risk - composables are self-contained with clear interfaces
+  - All usages can be updated to import from new locations
+  - No runtime behavior changes, only file organization
 
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
-
-## Test Cases **[CONDITIONAL: Testing Task]**
-
-{Delete unless this is a testing task}
-
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
+- [ ] Create composables/catalog/ directory structure
+- [ ] Split useCatalog.ts into entity-specific files (useSpells.ts, useItems.ts, useMonsters.ts, etc.)
+- [ ] Create index.ts that re-exports all catalog composables for backwards compatibility
+- [ ] Update all imports throughout codebase to use new structure
+- [ ] All entity-specific files are under 300 lines
+- [ ] Application builds successfully without errors
+- [ ] All catalog functionality works as before (no regressions)
 
 ## Implementation Notes **[CONDITIONAL: Technical Task]**
 
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
 ### Technical Approach
-{How this will be implemented}
+
+Following the pattern from previous refactoring tasks:
+
+1. Create `composables/catalog/` directory
+2. Split by entity type into separate files:
+   - useSpells.ts - Spell catalog types and methods
+   - useItems.ts - Item catalog types and methods
+   - useMonsters.ts - Monster catalog types and methods
+   - useClasses.ts - Class/Subclass catalog types and methods
+   - useRaces.ts - Race/Subrace catalog types and methods
+   - useFeats.ts - Feat catalog types and methods
+   - useBackgrounds.ts - Background catalog types and methods
+   - useActions.ts - Action catalog types and methods
+   - useConditions.ts - Condition catalog types and methods
+   - useOptionalFeatures.ts - Optional Feature catalog types and methods
+   - useDeities.ts - Deity catalog types and methods
+   - useObjects.ts - Object catalog types and methods
+   - useTraps.ts - Trap catalog types and methods
+   - useLanguages.ts - Language catalog types and methods
+   - useRewards.ts - Reward catalog types and methods
+   - useTables.ts - Table catalog types and methods
+   - useVariantRules.ts - Variant Rule catalog types and methods
+   - useVehicles.ts - Vehicle catalog types and methods
+   - useCults.ts - Cult/Boon catalog types and methods
+   - usePsionics.ts - Psionic catalog types and methods
+3. Create index.ts to re-export everything
+4. Update imports in components/views that use catalog functionality
 
 ### Dependencies
-{Other tasks or systems this depends on}
+- Must maintain compatibility with all existing components that use useCatalog
+- No changes to Rust backend required
 
 ### Risk Considerations
-{Technical risks and mitigation strategies}
+- Medium refactor scope but clear boundaries between entity types
+- TypeScript compiler will catch any import issues
+- Can verify no regressions by testing catalog functionality in UI
 
 ## Status Updates **[REQUIRED]**
 

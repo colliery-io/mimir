@@ -1,4 +1,4 @@
-import type { Language } from '../composables/useCatalog'
+import type { Language } from '../composables/catalog'
 import { processFormattingTags } from '../utils/textFormatting'
 
 export async function formatLanguageDetails(language: Language): Promise<string> {

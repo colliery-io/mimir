@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import type { BackgroundSummary } from '../../composables/useCatalog'
+import type { BackgroundSummary } from '../../composables/catalog'
 import CatalogTable from '../../../../shared/components/catalog/CatalogTable.vue'
 import { backgroundConfig } from '../../../../shared/components/catalog/config/backgroundConfig'
 

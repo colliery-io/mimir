@@ -1,4 +1,4 @@
-import type { Reward } from '../composables/useCatalog'
+import type { Reward } from '../composables/catalog'
 import { processFormattingTags } from '../utils/textFormatting'
 
 export async function formatRewardDetails(reward: Reward): Promise<string> {

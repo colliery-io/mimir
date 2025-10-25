@@ -1,27 +1,46 @@
-import { useCatalog } from '../composables/useCatalog'
-import type { 
-  SpellSummary, 
-  ItemSummary, 
-  MonsterSummary,
-  ClassSummary,
-  FeatSummary,
-  RaceSummary,
-  BackgroundSummary,
-  ActionSummary,
-  ConditionSummary,
-  ConditionWithDetails,
-  OptionalFeatureSummary,
-  DeitySummary,
-  ObjectSummary,
-  TrapSummary,
-  TrapOrHazard,
-  LanguageSummary,
-  Language,
-  RewardSummary,
-  Reward,
-  TableSummary,
-  Table
-} from '../composables/useCatalog'
+import {
+  useSpells,
+  useItems,
+  useMonsters,
+  useClasses,
+  useRaces,
+  useFeats,
+  useBackgrounds,
+  useActions,
+  useConditions,
+  useOptionalFeatures,
+  useDeities,
+  useObjects,
+  useTraps,
+  useLanguages,
+  useRewards,
+  useTables,
+  useVariantRules,
+  useVehicles,
+  useCults,
+  usePsionics,
+  type SpellSummary,
+  type ItemSummary,
+  type MonsterSummary,
+  type ClassSummary,
+  type FeatSummary,
+  type RaceSummary,
+  type BackgroundSummary,
+  type ActionSummary,
+  type ConditionSummary,
+  type ConditionWithDetails,
+  type OptionalFeatureSummary,
+  type DeitySummary,
+  type ObjectSummary,
+  type TrapSummary,
+  type TrapOrHazard,
+  type LanguageSummary,
+  type Language,
+  type RewardSummary,
+  type Reward,
+  type TableSummary,
+  type Table
+} from '../composables/catalog'
 
 export type { BackgroundSummary, ActionSummary, ConditionSummary, ConditionWithDetails, OptionalFeatureSummary }
 
@@ -62,65 +81,84 @@ export interface DetailFetchParams {
 }
 
 class SearchServiceClass {
-  private catalog = useCatalog()
-  
+  private spells = useSpells()
+  private items = useItems()
+  private monsters = useMonsters()
+  private classes = useClasses()
+  private races = useRaces()
+  private feats = useFeats()
+  private backgrounds = useBackgrounds()
+  private actions = useActions()
+  private conditions = useConditions()
+  private optionalFeatures = useOptionalFeatures()
+  private deities = useDeities()
+  private objects = useObjects()
+  private traps = useTraps()
+  private languages = useLanguages()
+  private rewards = useRewards()
+  private tables = useTables()
+  private variantRules = useVariantRules()
+  private vehicles = useVehicles()
+  private cults = useCults()
+  private psionics = usePsionics()
+
   async initialize(category: string): Promise<void> {
     switch (category) {
       case 'Spells':
-        await this.catalog.initializeCatalog()
+        await this.spells.initializeCatalog()
         break
       case 'Equipment':
       case 'Magic Items':
-        await this.catalog.initializeItemCatalog()
+        await this.items.initializeItemCatalog()
         break
       case 'Monsters':
-        await this.catalog.initializeMonsterCatalog()
+        await this.monsters.initializeMonsterCatalog()
         break
       case 'Classes':
-        await this.catalog.initializeClassCatalog()
+        await this.classes.initializeClassCatalog()
         break
       case 'Races':
         console.log('Races now use database-backed service (no initialization needed)')
         break
       case 'Backgrounds':
-        await this.catalog.initializeBackgroundCatalog()
+        await this.backgrounds.initializeBackgroundCatalog()
         break
       case 'Actions':
-        await this.catalog.initializeActionCatalog()
+        await this.actions.initializeActionCatalog()
         break
       case 'Conditions':
-        await this.catalog.initializeConditionCatalog()
+        await this.conditions.initializeConditionCatalog()
         break
       case 'Options':
       case 'Other Options & Features':
         console.log('Optional features now use database-backed service (no initialization needed)')
         break
       case 'Deities':
-        await this.catalog.initializeDeityCatalog()
+        await this.deities.initializeDeityCatalog()
         break
       case 'Objects':
         console.log('Objects now use database-backed service (no initialization needed)')
         break
       case 'Traps & Hazards':
-        await this.catalog.initializeTrapCatalog()
+        await this.traps.initializeTrapCatalog()
         break
       case 'Languages':
-        await this.catalog.initializeLanguageCatalog()
+        await this.languages.initializeLanguageCatalog()
         break
       case 'Rewards':
-        await this.catalog.initializeRewardCatalog()
+        await this.rewards.initializeRewardCatalog()
         break
       case 'Tables':
-        await this.catalog.initializeTableCatalog()
+        await this.tables.initializeTableCatalog()
         break
       case 'Variant Rules':
         // No initialization needed - loaded from database
         break
       case 'Vehicles':
-        await this.catalog.initializeVehicleCatalog()
+        await this.vehicles.initializeVehicleCatalog()
         break
       case 'Cults & Boons':
-        await this.catalog.initializeCultCatalog()
+        await this.cults.initializeCultCatalog()
         break
       case 'Psionics':
         // No initialization needed - loaded from single file
@@ -184,11 +222,11 @@ class SearchServiceClass {
   }
   
   private async searchSpells(
-    query?: string, 
-    sources?: string[], 
+    query?: string,
+    sources?: string[],
     filters?: SearchFilters['spells']
   ): Promise<SpellSummary[]> {
-    return await this.catalog.searchSpells({
+    return await this.spells.searchSpells({
       query: query || undefined,
       sources,
       schools: filters?.school ? [filters.school] : undefined,
@@ -245,7 +283,7 @@ class SearchServiceClass {
     sources?: string[],
     filters?: SearchFilters['monsters']
   ): Promise<MonsterSummary[]> {
-    return await this.catalog.searchMonsters({
+    return await this.monsters.searchMonsters({
       query: query || undefined,
       sources,
       sizes: filters?.sizes?.length ? filters.sizes : undefined,
@@ -256,13 +294,13 @@ class SearchServiceClass {
   }
   
   private async searchClasses(query?: string): Promise<ClassSummary[]> {
-    return await this.catalog.searchClasses({
+    return await this.classes.searchClasses({
       name: query || undefined
     })
   }
   
   private async searchFeats(query?: string, sources?: string[]): Promise<FeatSummary[]> {
-    return await this.catalog.searchFeats({
+    return await this.feats.searchFeats({
       query: query || undefined,
       sources: sources || undefined
     })
@@ -270,7 +308,7 @@ class SearchServiceClass {
   
   private async searchRaces(query?: string, sources?: string[]): Promise<RaceSummary[]> {
     console.log('SearchService.searchRaces called with:', { query, sources })
-    const results = await this.catalog.searchRaces({
+    const results = await this.races.searchRaces({
       query: query || undefined,
       sources: sources || undefined
     })
@@ -279,7 +317,7 @@ class SearchServiceClass {
   }
   
   private async searchBackgrounds(query?: string, sources?: string[]): Promise<BackgroundSummary[]> {
-    const results = await this.catalog.searchBackgrounds({
+    const results = await this.backgrounds.searchBackgrounds({
       query: query || undefined,
       sources: sources || undefined
     })
@@ -287,7 +325,7 @@ class SearchServiceClass {
   }
   
   private async searchActions(query?: string, sources?: string[]): Promise<ActionSummary[]> {
-    const results = await this.catalog.searchActions({
+    const results = await this.actions.searchActions({
       query: query || undefined,
       sources: sources || undefined
     })
@@ -295,7 +333,7 @@ class SearchServiceClass {
   }
   
   private async searchConditions(query?: string, sources?: string[]): Promise<ConditionSummary[]> {
-    const results = await this.catalog.searchConditions({
+    const results = await this.conditions.searchConditions({
       query: query || undefined,
       sources: sources || undefined
     })
@@ -314,7 +352,7 @@ class SearchServiceClass {
   }
   
   private async searchDeities(query?: string, sources?: string[]): Promise<DeitySummary[]> {
-    const results = await this.catalog.searchDeities({
+    const results = await this.deities.searchDeities({
       query: query || undefined,
       sources: sources || undefined
     })
@@ -322,7 +360,7 @@ class SearchServiceClass {
   }
   
   private async searchObjects(query?: string, sources?: string[]): Promise<ObjectSummary[]> {
-    const results = await this.catalog.searchObjects({
+    const results = await this.objects.searchObjects({
       query: query || undefined,
       sources: sources || undefined
     })
@@ -335,62 +373,62 @@ class SearchServiceClass {
     categories?: string[]
     trap_types?: string[]
   }): Promise<TrapSummary[]> {
-    const results = await this.catalog.searchTraps(params)
+    const results = await this.traps.searchTraps(params)
     return results
   }
-  
+
   async getTrapDetails(name: string, source: string): Promise<TrapOrHazard | null> {
-    return await this.catalog.getTrapDetails(name, source)
+    return await this.traps.getTrapDetails(name, source)
   }
-  
+
   async getTrapTypes(): Promise<string[]> {
-    return await this.catalog.getTrapTypes()
+    return await this.traps.getTrapTypes()
   }
-  
+
   async searchLanguages(params: {
     query?: string
     sources?: string[]
     types?: string[]
     scripts?: string[]
   }): Promise<LanguageSummary[]> {
-    const results = await this.catalog.searchLanguages(params)
+    const results = await this.languages.searchLanguages(params)
     return results
   }
-  
+
   async getLanguageDetails(name: string, source: string): Promise<Language | null> {
-    return await this.catalog.getLanguageDetails(name, source)
+    return await this.languages.getLanguageDetails(name, source)
   }
-  
+
   async getLanguageTypes(): Promise<string[]> {
-    return await this.catalog.getLanguageTypes()
+    return await this.languages.getLanguageTypes()
   }
-  
+
   async getLanguageScripts(): Promise<string[]> {
-    return await this.catalog.getLanguageScripts()
+    return await this.languages.getLanguageScripts()
   }
-  
+
   async searchRewards(params: {
     query?: string
     sources?: string[]
     reward_types?: string[]
     has_prerequisites?: boolean
   }): Promise<RewardSummary[]> {
-    const results = await this.catalog.searchRewards(params)
+    const results = await this.rewards.searchRewards(params)
     return results
   }
-  
+
   async getRewardDetails(name: string, source: string): Promise<Reward | null> {
-    return await this.catalog.getRewardDetails(name, source)
+    return await this.rewards.getRewardDetails(name, source)
   }
-  
+
   async getRewardTypes(): Promise<string[]> {
-    return await this.catalog.getRewardTypes()
+    return await this.rewards.getRewardTypes()
   }
-  
+
   async getRewardSources(): Promise<string[]> {
-    return await this.catalog.getRewardSources()
+    return await this.rewards.getRewardSources()
   }
-  
+
   async searchTables(params: {
     query?: string
     sources?: string[]
@@ -398,43 +436,43 @@ class SearchServiceClass {
     min_rows?: number
     max_rows?: number
   }): Promise<TableSummary[]> {
-    const results = await this.catalog.searchTables(params)
+    const results = await this.tables.searchTables(params)
     return results
   }
-  
+
   async getTableDetails(name: string, source: string): Promise<Table | null> {
-    return await this.catalog.getTableDetails(name, source)
+    return await this.tables.getTableDetails(name, source)
   }
-  
+
   async getTableCategories(): Promise<string[]> {
-    return await this.catalog.getTableCategories()
+    return await this.tables.getTableCategories()
   }
-  
+
   async getTableSources(): Promise<string[]> {
-    return await this.catalog.getTableSources()
+    return await this.tables.getTableSources()
   }
-  
+
   async searchVariantRules(params: {
     query?: string
     types?: string[]
     sources?: string[]
   }): Promise<any[]> {
-    const results = await this.catalog.searchVariantRules(params)
+    const results = await this.variantRules.searchVariantRules(params)
     return results
   }
-  
+
   async getVariantRuleDetails(name: string, source: string): Promise<any> {
-    return await this.catalog.getVariantRuleDetails(name, source)
+    return await this.variantRules.getVariantRuleDetails(name, source)
   }
-  
+
   async getVariantRuleTypes(): Promise<string[]> {
-    return await this.catalog.getVariantRuleTypes()
+    return await this.variantRules.getVariantRuleTypes()
   }
-  
+
   async getVariantRuleSources(): Promise<string[]> {
-    return await this.catalog.getVariantRuleSources()
+    return await this.variantRules.getVariantRuleSources()
   }
-  
+
   async searchVehicles(params: {
     query?: string
     types?: string[]
@@ -442,140 +480,140 @@ class SearchServiceClass {
     terrains?: string[]
     sizes?: string[]
   }): Promise<any[]> {
-    const results = await this.catalog.searchVehicles(params)
+    const results = await this.vehicles.searchVehicles(params)
     return results
   }
-  
+
   async getVehicleDetails(name: string, source: string): Promise<any> {
-    return await this.catalog.getVehicleDetails(name, source)
+    return await this.vehicles.getVehicleDetails(name, source)
   }
-  
+
   async getVehicleTypes(): Promise<string[]> {
-    return await this.catalog.getVehicleTypes()
+    return await this.vehicles.getVehicleTypes()
   }
-  
+
   async getVehicleTerrains(): Promise<string[]> {
-    return await this.catalog.getVehicleTerrains()
+    return await this.vehicles.getVehicleTerrains()
   }
-  
+
   async getVehicleSources(): Promise<string[]> {
-    return await this.catalog.getVehicleSources()
+    return await this.vehicles.getVehicleSources()
   }
-  
+
   async searchCults(params: {
     query?: string
     item_types?: string[]
     subtypes?: string[]
     sources?: string[]
   }): Promise<any[]> {
-    const results = await this.catalog.searchCults(params)
+    const results = await this.cults.searchCults(params)
     return results
   }
-  
+
   async getCultDetails(name: string, source: string): Promise<any> {
-    return await this.catalog.getCultDetails(name, source)
+    return await this.cults.getCultDetails(name, source)
   }
-  
+
   async getBoonDetails(name: string, source: string): Promise<any> {
-    return await this.catalog.getBoonDetails(name, source)
+    return await this.cults.getBoonDetails(name, source)
   }
-  
+
   async getCultTypes(): Promise<string[]> {
-    return await this.catalog.getCultTypes()
+    return await this.cults.getCultTypes()
   }
-  
+
   async getCultSources(): Promise<string[]> {
-    return await this.catalog.getCultSources()
+    return await this.cults.getCultSources()
   }
-  
+
   async searchPsionics(params: {
     query?: string
     psionic_types?: string[]
     orders?: string[]
     sources?: string[]
   }): Promise<any[]> {
-    const results = await this.catalog.searchPsionics(params)
+    const results = await this.psionics.searchPsionics(params)
     return results
   }
-  
+
   async getPsionicDetails(name: string, source: string): Promise<any> {
-    return await this.catalog.getPsionicDetails(name, source)
+    return await this.psionics.getPsionicDetails(name, source)
   }
-  
+
   async getPsionicOrders(): Promise<string[]> {
-    return await this.catalog.getPsionicOrders()
+    return await this.psionics.getPsionicOrders()
   }
-  
+
   async getPsionicSources(): Promise<string[]> {
-    return await this.catalog.getPsionicSources()
+    return await this.psionics.getPsionicSources()
   }
   
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type, subclassName } = params
-    
+
     switch (type) {
       case 'spell':
-        return await this.catalog.getSpellDetails(name, source)
+        return await this.spells.getSpellDetails(name, source)
       case 'item':
         const { invoke } = await import('@tauri-apps/api/core')
         return await invoke('get_item_details_db', { itemName: name, itemSource: source })
       case 'monster':
-        return await this.catalog.getMonsterDetails(name, source)
+        return await this.monsters.getMonsterDetails(name, source)
       case 'class':
-        return await this.catalog.getClassDetails(name, source)
+        return await this.classes.getClassDetails(name, source)
       case 'subclass':
         if (!subclassName) {
           throw new Error('subclassName is required for subclass details')
         }
-        return await this.catalog.getSubclassDetails(subclassName, name, source)
+        return await this.classes.getSubclassDetails(subclassName, name, source)
       case 'feat':
-        return await this.catalog.getFeatDetails(name, source)
+        return await this.feats.getFeatDetails(name, source)
       case 'race':
-        return await this.catalog.getRaceDetails(name, source)
+        return await this.races.getRaceDetails(name, source)
       case 'background':
-        return await this.catalog.getBackgroundDetails(name, source)
+        return await this.backgrounds.getBackgroundDetails(name, source)
       case 'action':
-        return await this.catalog.getActionDetails(name, source)
+        return await this.actions.getActionDetails(name, source)
       case 'condition':
-        return await this.catalog.getConditionDetails(name, source)
+        return await this.conditions.getConditionDetails(name, source)
       case 'option':
-        return await this.catalog.getOptionalFeatureDetails(name, source)
+        return await this.optionalFeatures.getOptionalFeatureDetails(name, source)
       case 'deity':
-        return await this.catalog.getDeityDetails(name, source)
+        return await this.deities.getDeityDetails(name, source)
       case 'object':
-        return await this.catalog.getObjectDetails(name, source)
+        return await this.objects.getObjectDetails(name, source)
       case 'trap':
-        return await this.catalog.getTrapDetails(name, source)
+        return await this.traps.getTrapDetails(name, source)
       case 'language':
-        return await this.catalog.getLanguageDetails(name, source)
+        return await this.languages.getLanguageDetails(name, source)
       case 'reward':
-        return await this.catalog.getRewardDetails(name, source)
+        return await this.rewards.getRewardDetails(name, source)
       case 'table':
-        return await this.catalog.getTableDetails(name, source)
+        return await this.tables.getTableDetails(name, source)
       case 'variantrule':
-        return await this.catalog.getVariantRuleDetails(name, source)
+        return await this.variantRules.getVariantRuleDetails(name, source)
       case 'vehicle':
-        return await this.catalog.getVehicleDetails(name, source)
+        return await this.vehicles.getVehicleDetails(name, source)
       case 'cult':
-        return await this.catalog.getCultDetails(name, source)
+        return await this.cults.getCultDetails(name, source)
       case 'boon':
-        return await this.catalog.getBoonDetails(name, source)
+        return await this.cults.getBoonDetails(name, source)
       case 'psionic':
-        return await this.catalog.getPsionicDetails(name, source)
+        return await this.psionics.getPsionicDetails(name, source)
       default:
         return null
     }
   }
-  
+
   mapBookIdsToSources(bookIds: string[]): string[] {
     return bookIds.map(id => {
       const parts = id.split('-')
       return parts[parts.length - 1].toUpperCase()
     })
   }
-  
+
   getClassSources(): string[] {
-    return this.catalog.classSources.value
+    return this.classes.classSources.value
   }
 }
 

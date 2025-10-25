@@ -258,7 +258,7 @@ import type {
   RewardSummary,
   TableSummary,
   PsionicSummary
-} from '../../composables/useCatalog'
+} from '../../composables/catalog'
 
 interface Props {
   category: string

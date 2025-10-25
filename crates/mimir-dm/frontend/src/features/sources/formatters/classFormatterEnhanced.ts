@@ -1,6 +1,6 @@
 import { processFormattingTags, formatEntries } from '../utils/textFormatting'
 import { invoke } from '@tauri-apps/api/core'
-import type { Class, ClassWithDetails, ClassSummary, Subclass, ClassFeature, SubclassFeature, ClassFluff, SubclassFluff } from '../composables/useCatalog'
+import type { Class, ClassWithDetails, ClassSummary, Subclass, ClassFeature, SubclassFeature, ClassFluff, SubclassFluff } from '../composables/catalog'
 
 export async function formatClassDetails(classData: ClassWithDetails | ClassSummary | Subclass): Promise<string> {
   // Check what type of data we have

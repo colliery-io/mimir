@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import CatalogTable from '@/shared/components/catalog/CatalogTable.vue'
 import { itemConfig } from '@/shared/components/catalog/config/itemConfig'
-import type { ItemSummary } from '../../composables/useCatalog'
+import type { ItemSummary } from '../../composables/catalog'
 
 interface Props {
   items: ItemSummary[]

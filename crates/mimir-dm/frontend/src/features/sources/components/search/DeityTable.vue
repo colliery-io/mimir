@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import CatalogTable from '@/shared/components/catalog/CatalogTable.vue'
 import { deityConfig } from '@/shared/components/catalog/config/deityConfig'
-import type { DeitySummary } from '../../composables/useCatalog'
+import type { DeitySummary } from '../../composables/catalog'
 
 interface Props {
   deities: DeitySummary[]

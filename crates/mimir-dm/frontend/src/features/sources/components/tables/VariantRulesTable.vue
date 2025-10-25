@@ -81,13 +81,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useCatalog, type VariantRuleSummary } from '../../composables/useCatalog'
+import { useVariantRules, type VariantRuleSummary } from '../../composables/catalog'
 
 const emit = defineEmits<{
   select: [rule: VariantRuleSummary]
 }>()
 
-const catalog = useCatalog()
+const catalog = useVariantRules()
 const rules = ref<VariantRuleSummary[]>([])
 const loading = ref(false)
 const searchQuery = ref('')

@@ -1,9 +1,9 @@
 import { ref, computed, watch, toRef, isRef, type Ref, type MaybeRef } from 'vue'
 import { SearchService, type SearchFilters } from '../services/SearchService'
 import { useSharedContextStore } from '@/stores/sharedContext'
-import type { 
-  SpellSummary, 
-  ItemSummary, 
+import type {
+  SpellSummary,
+  ItemSummary,
   MonsterSummary,
   ClassSummary,
   FeatSummary,
@@ -24,7 +24,7 @@ import type {
   TableSummary,
   Table,
   PsionicSummary
-} from './useCatalog'
+} from './catalog'
 import { formatSpellDetails } from '../formatters/spellFormatterEnhanced'
 import { formatItemDetails } from '../formatters/itemFormatterEnhanced'
 import { formatMonsterDetails } from '../formatters/monsterFormatterEnhanced'

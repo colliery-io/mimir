@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import CatalogTable from '@/shared/components/catalog/CatalogTable.vue'
 import { classConfig } from '@/shared/components/catalog/config/classConfig'
-import type { ClassSummary } from '../../composables/useCatalog'
+import type { ClassSummary } from '../../composables/catalog'
 
 interface Props {
   classes: ClassSummary[]

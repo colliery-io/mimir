@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TableSummary } from '../../composables/useCatalog'
+import type { TableSummary } from '../../composables/catalog'
 
 defineProps<{
   tables: TableSummary[]

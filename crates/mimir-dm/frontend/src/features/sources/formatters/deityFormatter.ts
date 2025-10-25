@@ -1,4 +1,4 @@
-import type { Deity } from '../composables/useCatalog'
+import type { Deity } from '../composables/catalog'
 import { formatEntries } from '../utils/textFormatting'
 
 export function formatDeityContent(deity: Deity): string {

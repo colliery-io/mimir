@@ -1,10 +1,10 @@
 import { ref, computed } from 'vue'
-import { useCatalog } from './useCatalog'
-import type { 
-  SpellSummary, 
-  ItemSummary, 
-  MonsterSummary 
-} from './useCatalog'
+import { useSpells, useItems, useMonsters } from './catalog'
+import type {
+  SpellSummary,
+  ItemSummary,
+  MonsterSummary
+} from './catalog'
 
 /**
  * Composable for searching across source content
@@ -16,41 +16,36 @@ export function useSourceSearch() {
   const searchQuery = ref('')
   const selectedContentType = ref<'all' | 'spells' | 'items' | 'monsters' | 'magic-items'>('all')
   const hasSearched = ref(false)
-  
+
   // Results
   const spellResults = ref<SpellSummary[]>([])
   const itemResults = ref<ItemSummary[]>([])
   const monsterResults = ref<MonsterSummary[]>([])
-  
-  // Use existing catalog functionality during transition
-  const {
-    searchSpells,
-    searchItems,
-    searchMonsters,
-    initializeCatalog,
-    initializeItemCatalog,
-    initializeMonsterCatalog
-  } = useCatalog()
+
+  // Use individual composables
+  const spells = useSpells()
+  const items = useItems()
+  const monsters = useMonsters()
   
   // Initialize catalogs based on content type
   async function initializeForContentType() {
     switch (selectedContentType.value) {
       case 'spells':
-        await initializeCatalog()
+        await spells.initializeCatalog()
         break
       case 'items':
       case 'magic-items':
-        await initializeItemCatalog()
+        await items.initializeItemCatalog()
         break
       case 'monsters':
-        await initializeMonsterCatalog()
+        await monsters.initializeMonsterCatalog()
         break
       case 'all':
         // Initialize all catalogs for combined search
         await Promise.all([
-          initializeCatalog(),
-          initializeItemCatalog(),
-          initializeMonsterCatalog()
+          spells.initializeCatalog(),
+          items.initializeItemCatalog(),
+          monsters.initializeMonsterCatalog()
         ])
         break
     }
@@ -74,45 +69,45 @@ export function useSourceSearch() {
     // Perform searches based on content type
     switch (selectedContentType.value) {
       case 'spells':
-        spellResults.value = await searchSpells({
+        spellResults.value = await spells.searchSpells({
           query,
           sources: sources.length > 0 ? sources : undefined
         })
         break
-        
+
       case 'items':
-        itemResults.value = await searchItems({
+        itemResults.value = await items.searchItems({
           query,
           sources: sources.length > 0 ? sources : undefined,
           rarities: ['none', 'common'] // Non-magic items
         })
         break
-        
+
       case 'magic-items':
-        itemResults.value = await searchItems({
+        itemResults.value = await items.searchItems({
           query,
           sources: sources.length > 0 ? sources : undefined,
           rarities: ['uncommon', 'rare', 'very rare', 'legendary', 'artifact']
         })
         break
-        
+
       case 'monsters':
-        monsterResults.value = await searchMonsters({
+        monsterResults.value = await monsters.searchMonsters({
           query,
           sources: sources.length > 0 ? sources : undefined
         })
         break
-        
+
       case 'all':
         // Search all content types in parallel
-        const [spells, items, monsters] = await Promise.all([
-          searchSpells({ query, sources: sources.length > 0 ? sources : undefined }),
-          searchItems({ query, sources: sources.length > 0 ? sources : undefined }),
-          searchMonsters({ query, sources: sources.length > 0 ? sources : undefined })
+        const [spellsResults, itemsResults, monstersResults] = await Promise.all([
+          spells.searchSpells({ query, sources: sources.length > 0 ? sources : undefined }),
+          items.searchItems({ query, sources: sources.length > 0 ? sources : undefined }),
+          monsters.searchMonsters({ query, sources: sources.length > 0 ? sources : undefined })
         ])
-        spellResults.value = spells
-        itemResults.value = items
-        monsterResults.value = monsters
+        spellResults.value = spellsResults
+        itemResults.value = itemsResults
+        monsterResults.value = monstersResults
         break
     }
   }
@@ -128,15 +123,13 @@ export function useSourceSearch() {
   
   // Get specific content details (for modal display)
   async function getContentDetails(type: string, name: string, source: string) {
-    const { getSpellDetails, getItemDetails, getMonsterDetails } = useCatalog()
-    
     switch (type) {
       case 'spell':
-        return await getSpellDetails(name, source)
+        return await spells.getSpellDetails(name, source)
       case 'item':
-        return await getItemDetails(name, source)
+        return await items.getItemDetails(name, source)
       case 'monster':
-        return await getMonsterDetails(name, source)
+        return await monsters.getMonsterDetails(name, source)
       default:
         return null
     }

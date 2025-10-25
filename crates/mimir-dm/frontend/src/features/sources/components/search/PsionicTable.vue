@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import CatalogTable from '@/shared/components/catalog/CatalogTable.vue'
 import { psionicConfig } from '@/shared/components/catalog/config/psionicConfig'
-import type { PsionicSummary } from '../../composables/useCatalog'
+import type { PsionicSummary } from '../../composables/catalog'
 
 // Props
 defineProps<{

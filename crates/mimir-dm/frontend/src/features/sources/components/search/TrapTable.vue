@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TrapSummary } from '../../composables/useCatalog'
+import type { TrapSummary } from '../../composables/catalog'
 import CatalogTable from '../../../../shared/components/catalog/CatalogTable.vue'
 import { trapConfig } from '../../../../shared/components/catalog/config/trapConfig'
 

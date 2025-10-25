@@ -1,4 +1,4 @@
-import type { Feat, FeatSummary } from '../composables/useCatalog'
+import type { Feat, FeatSummary } from '../composables/catalog'
 import { processFormattingTags, formatEntries } from '../utils/textFormatting'
 
 export async function formatFeatDetails(feat: Feat | FeatSummary): Promise<string> {

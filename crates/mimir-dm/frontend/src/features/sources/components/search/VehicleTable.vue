@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import CatalogTable from '@/shared/components/catalog/CatalogTable.vue'
 import { vehicleConfig } from '@/shared/components/catalog/config/vehicleConfig'
-import type { VehicleSummary } from '../../composables/useCatalog'
+import type { VehicleSummary } from '../../composables/catalog'
 
 interface Props {
   vehicles: VehicleSummary[]

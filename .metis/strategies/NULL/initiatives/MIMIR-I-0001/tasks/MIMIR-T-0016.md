@@ -4,14 +4,14 @@ level: task
 title: "Split books.rs command handler by concern"
 short_code: "MIMIR-T-0016"
 created_at: 2025-10-24T11:53:49.662110+00:00
-updated_at: 2025-10-25T01:27:49.209993+00:00
+updated_at: 2025-10-25T01:50:23.493152+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -64,6 +64,8 @@ initiative_id: MIMIR-I-0001
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

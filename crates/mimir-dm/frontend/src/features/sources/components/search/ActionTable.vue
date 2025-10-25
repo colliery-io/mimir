@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import CatalogTable from '../../../../shared/components/catalog/CatalogTable.vue'
 import { actionConfig } from '../../../../shared/components/catalog/config/actionConfig'
-import type { ActionSummary } from '../../composables/useCatalog'
+import type { ActionSummary } from '../../composables/catalog'
 
 interface Props {
   actions: ActionSummary[]

@@ -1,4 +1,4 @@
-import type { TrapOrHazard } from '../composables/useCatalog'
+import type { TrapOrHazard } from '../composables/catalog'
 
 export async function formatTrapDetails(trap: TrapOrHazard): Promise<string> {
   if (!trap) return '<div>No trap data available</div>'

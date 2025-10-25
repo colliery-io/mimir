@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import CatalogTable from '@/shared/components/catalog/CatalogTable.vue'
 import { variantRuleConfig } from '@/shared/components/catalog/config/variantRuleConfig'
-import type { VariantRuleSummary } from '../../composables/useCatalog'
+import type { VariantRuleSummary } from '../../composables/catalog'
 
 // Props
 defineProps<{

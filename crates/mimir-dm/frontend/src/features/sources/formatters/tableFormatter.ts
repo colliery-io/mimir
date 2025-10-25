@@ -1,4 +1,4 @@
-import type { Table } from '../composables/useCatalog'
+import type { Table } from '../composables/catalog'
 import { processFormattingTags } from '../utils/textFormatting'
 
 export async function formatTableDetails(table: Table): Promise<string> {

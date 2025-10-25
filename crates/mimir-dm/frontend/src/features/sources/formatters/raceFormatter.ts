@@ -1,4 +1,4 @@
-import type { Race, RaceSummary, RaceWithDetails, Subrace } from '../composables/useCatalog'
+import type { Race, RaceSummary, RaceWithDetails, Subrace } from '../composables/catalog'
 import { processFormattingTags, formatEntries } from '../utils/textFormatting'
 
 export async function formatRaceDetails(raceData: RaceWithDetails | RaceSummary): Promise<string> {
