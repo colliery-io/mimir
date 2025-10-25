@@ -26,7 +26,7 @@ use commands::catalog_vehicle_db::{search_vehicles_db, get_vehicle_details_db, g
 // Class catalog now uses database-backed commands only
 use services::database::DatabaseService;
 use services::context_service::ContextState;
-use services::llm_service::{self, LlmService, ConfirmationReceivers, CancellationTokens};
+use services::llm::{self, LlmService, ConfirmationReceivers, CancellationTokens};
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 use tauri::Manager;
@@ -92,7 +92,7 @@ fn main() {
             // Spawn async task to initialize LLM
             tauri::async_runtime::spawn(async move {
                 info!("Starting LLM service initialization...");
-                match llm_service::initialize_llm(app_handle, db_service_clone, confirmation_receivers_clone).await {
+                match llm::initialize_llm(app_handle, db_service_clone, confirmation_receivers_clone).await {
                     Ok(service) => {
                         info!("LLM service initialized successfully");
                         let mut llm = llm_service_clone.lock().await;
@@ -311,13 +311,13 @@ fn main() {
             open_chat_window,
             open_log_viewer_window,
             // LLM commands
-            llm_service::check_llm_status,
-            llm_service::get_llm_model_info,
-            llm_service::send_chat_message,
-            llm_service::cancel_chat_message,
-            llm_service::get_model_context_info,
-            llm_service::confirm_tool_action,
-            llm_service::list_available_models,
+            llm::commands::check_llm_status,
+            llm::commands::get_llm_model_info,
+            llm::commands::send_chat_message,
+            llm::commands::cancel_chat_message,
+            llm::commands::get_model_context_info,
+            llm::commands::confirm_tool_action,
+            llm::commands::list_available_models,
             // Chat session commands
             list_chat_sessions,
             load_chat_session,

@@ -4,14 +4,14 @@ level: task
 title: "Split llm_service.rs into focused modules"
 short_code: "MIMIR-T-0015"
 created_at: 2025-10-24T11:53:49.545045+00:00
-updated_at: 2025-10-24T11:53:49.545045+00:00
+updated_at: 2025-10-25T01:13:09.895436+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -64,6 +64,8 @@ initiative_id: MIMIR-I-0001
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

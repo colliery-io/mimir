@@ -1,7 +1,7 @@
 //! Session todo query and configuration commands
 
 use crate::{
-    services::llm_service::LlmService,
+    services::llm::LlmService,
     types::ApiResponse,
 };
 use mimir_dm_llm::TodoItem;

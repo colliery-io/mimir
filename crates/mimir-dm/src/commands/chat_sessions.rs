@@ -314,7 +314,7 @@ pub async fn save_chat_session(
 #[tauri::command]
 pub async fn create_chat_session(
     session_manager: SessionManagerState<'_>,
-    llm_service: tauri::State<'_, Arc<tokio::sync::Mutex<Option<crate::services::llm_service::LlmService>>>>,
+    llm_service: tauri::State<'_, Arc<tokio::sync::Mutex<Option<crate::services::llm::LlmService>>>>,
 ) -> Result<ChatSession, String> {
     let session = session_manager
         .create_session()
