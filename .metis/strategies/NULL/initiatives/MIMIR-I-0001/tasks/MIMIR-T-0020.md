@@ -29,108 +29,211 @@ initiative_id: MIMIR-I-0001
 
 ## Objective **[REQUIRED]**
 
-{Clear statement of what this task accomplishes}
+Move database connection management to the core layer where it belongs, establishing proper architectural layering. Currently, the UI layer (mimir-dm) owns connection pooling while core layer (mimir-dm-core) uses direct connections - this is backwards. Core should own the DAL and provide DatabaseService, with the UI layer simply consuming it.
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+### Technical Debt Impact
 
-{Delete this section when task is assigned to an initiative}
+- **Current Problems**:
+  - **Inverted architecture**: UI layer owns DB_POOL instead of core layer
+  - Two disconnected database connection patterns:
+    - UI layer (mimir-dm/src/db_connection.rs): r2d2 pooled connections
+    - Core layer (mimir-dm-core/src/connection.rs): Direct connections with async wrappers
+  - Core layer cannot use its own connection pooling
+  - UI layer has database management responsibilities it shouldn't have
+  - Violates separation of concerns and layered architecture principles
+  - 9 files in core using workaround patterns due to lack of proper pooling
 
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
+- **Benefits of Fixing**:
+  - **Proper layering**: Core owns DAL, UI consumes it
+  - Single connection pool managed in core layer
+  - Core services can directly use pooled connections
+  - UI layer becomes thinner and focused on presentation/commands
+  - Better testability - core can be tested independently with its own pool
+  - Clearer architectural boundaries
+  - Easier to reason about connection lifecycle
 
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
-
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
-
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
-
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+- **Risk Assessment**:
+  - Low-medium risk - requires coordination between layers
+  - Breaking change to internal API structure
+  - Must ensure UI layer properly imports from core
+  - Tests will verify no regressions
+  - Can be done incrementally with feature flags if needed
 
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+- [ ] r2d2 connection pooling moved from mimir-dm to mimir-dm-core
+- [ ] mimir-dm-core exports DatabaseService with pool management
+- [ ] mimir-dm imports and uses DatabaseService from core
+- [ ] mimir-dm/src/db_connection.rs removed or becomes thin re-export wrapper
+- [ ] All core services use pooled connections directly
+- [ ] Direct connection async wrappers (`with_connection`, `with_transaction`) removed
+- [ ] All 9 affected core files refactored to use pool-based connections
+- [ ] All tests passing with no regressions
+- [ ] Build succeeds with no compilation errors
+- [ ] Proper architectural layering: Core owns connections, UI consumes DAL
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+## Implementation Notes
 
-{Delete unless this is a testing task}
+### Current Architecture (Incorrect Layering)
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+**UI Layer** (mimir-dm/src/db_connection.rs) - OWNS connection pool:
+```rust
+// Global pool with OnceLock - should NOT be in UI layer
+pub static DB_POOL: OnceLock<DbPool> = OnceLock::new();
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+pub fn get_connection() -> Result<PooledConnection<...>> {
+    DB_POOL.get()?.get()
+}
+```
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
+**UI Layer** (mimir-dm/src/services/database.rs) - Thin wrapper:
+```rust
+// Delegates to ui layer's db_connection
+pub struct DatabaseService;
+impl DatabaseService {
+    pub fn get_connection(&self) -> Result<DbConnection> {
+        crate::db_connection::get_connection()
+    }
+}
+```
 
-{Delete unless this is a documentation task}
+**Core Layer** (mimir-dm-core/src/connection.rs) - Direct connections:
+```rust
+// Can't use pooling because it's in UI layer!
+pub fn establish_connection(url: &str) -> Result<DbConnection> {
+    DbConnection::establish(url)?
+}
 
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
+// Workaround with async wrappers
+pub async fn with_connection<F, R>(url: String, f: F) -> Result<R> {
+    tokio::task::spawn_blocking(move || {
+        let mut conn = establish_connection(&url)?;
+        f(&mut conn)
+    }).await?
+}
+```
 
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
+### Target Architecture (Proper Layering)
 
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
+**Core Layer** (mimir-dm-core) - OWNS connection pool and provides DAL:
+```rust
+// mimir-dm-core/src/db.rs (new file)
+use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
+use diesel::SqliteConnection;
 
-## Implementation Notes **[CONDITIONAL: Technical Task]**
+pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
+pub type DbConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
 
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
+pub struct DatabaseService {
+    pool: DbPool,
+}
 
-### Technical Approach
-{How this will be implemented}
+impl DatabaseService {
+    pub fn new(database_url: &str, is_memory_db: bool) -> Result<Self> {
+        let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+        let pool = Pool::builder()
+            .min_idle(if is_memory_db { Some(1) } else { None })
+            .max_size(if is_memory_db { 1 } else { 10 })
+            .build(manager)?;
+        Ok(Self { pool })
+    }
+
+    pub fn get_connection(&self) -> Result<DbConnection> {
+        self.pool.get().map_err(|e| ...)
+    }
+}
+
+// Core services use DatabaseService directly
+impl CampaignService {
+    pub fn list(conn: &mut DbConnection) -> Result<Vec<Campaign>> {
+        // Direct database access
+    }
+}
+```
+
+**UI Layer** (mimir-dm) - Imports and uses core's DatabaseService:
+```rust
+// mimir-dm/src/main.rs
+use mimir_dm_core::db::DatabaseService;
+
+fn main() {
+    let db_service = DatabaseService::new(&database_url, false)?;
+
+    tauri::Builder::default()
+        .manage(Arc::new(db_service))  // Pass core's service to Tauri
+        .invoke_handler(tauri::generate_handler![...])
+        .run()?;
+}
+
+// Commands use core's DatabaseService
+#[tauri::command]
+async fn list_campaigns(
+    db: State<'_, Arc<DatabaseService>>
+) -> Result<Vec<Campaign>> {
+    let mut conn = db.get_connection()?;
+    CampaignService::list(&mut conn)  // Use core service
+}
+```
+
+### Files Requiring Changes
+
+**Core Layer - New/Modified:**
+1. `/crates/mimir-dm-core/src/db.rs` - NEW: Connection pool and DatabaseService
+2. `/crates/mimir-dm-core/src/lib.rs` - Export new db module
+3. `/crates/mimir-dm-core/src/connection.rs` - Remove async wrappers, keep establish_connection for migrations
+4. `/crates/mimir-dm-core/src/services/*.rs` - Update to use pooled connections
+5. `/crates/mimir-dm-core/src/seed/template_seeder.rs` - Use pooled connections
+6. `/crates/mimir-dm-core/tests/**/*.rs` - Use core's DatabaseService for tests
+
+**UI Layer - Modified/Removed:**
+1. `/crates/mimir-dm/src/db_connection.rs` - REMOVE or reduce to thin re-export
+2. `/crates/mimir-dm/src/services/database.rs` - REMOVE (use core's version)
+3. `/crates/mimir-dm/src/main.rs` - Import DatabaseService from core
+4. `/crates/mimir-dm/src/app_init.rs` - Use core's DatabaseService
+5. `/crates/mimir-dm/src/commands/**/*.rs` - Import from core, not local
+
+**Total:** 6 core files + 5 UI files = 11 files
+
+### Implementation Steps
+
+**Phase 1: Create core's DatabaseService**
+1. Create `/crates/mimir-dm-core/src/db.rs` with connection pool
+2. Move r2d2 pool initialization logic from UI to core
+3. Implement DatabaseService in core with pool ownership
+4. Export from mimir-dm-core/src/lib.rs
+
+**Phase 2: Update core services**
+1. Modify core services to accept `&mut DbConnection` from pool
+2. Remove `database_url: String` parameters from service methods
+3. Remove usage of `with_connection` / `with_transaction` wrappers
+4. Update core tests to use DatabaseService
+
+**Phase 3: Update UI layer**
+1. Import DatabaseService from mimir-dm-core in main.rs
+2. Initialize core's DatabaseService and pass to Tauri State
+3. Update all command handlers to use core's DatabaseService
+4. Remove mimir-dm/src/db_connection.rs
+5. Remove mimir-dm/src/services/database.rs
+
+**Phase 4: Cleanup**
+1. Remove async wrapper functions from core/src/connection.rs
+2. Keep only `establish_connection()` for migration runner
+3. Update all imports across both crates
+4. Run full test suite to verify
 
 ### Dependencies
-{Other tasks or systems this depends on}
+
+- Requires diesel and r2d2 in mimir-dm-core's Cargo.toml
+- Core must export DatabaseService publicly
+- UI layer must import from core, not define its own
 
 ### Risk Considerations
-{Technical risks and mitigation strategies}
+
+- **Import ordering**: UI layer must not create circular dependencies
+- **Test setup**: Both crates need access to test database setup
+- **Migration runner**: Keep establish_connection for running migrations
+- **API surface**: Core's DatabaseService becomes public API
+- **Feature flags**: May need conditional compilation for test utilities
 
 ## Status Updates **[REQUIRED]**
 
