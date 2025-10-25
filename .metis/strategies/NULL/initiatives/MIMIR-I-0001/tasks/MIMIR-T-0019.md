@@ -29,108 +29,122 @@ initiative_id: MIMIR-I-0001
 
 ## Objective **[REQUIRED]**
 
-{Clear statement of what this task accomplishes}
+Extract reusable child components from large Vue files (>500 lines) to improve maintainability and code organization. This continues the pattern from T-0017 (useCatalog split) and T-0018 (chat store split) by decomposing monolithic files into focused, reusable components while maintaining zero functional changes.
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+### Technical Debt Impact
 
-{Delete this section when task is assigned to an initiative}
-
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
-
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
-
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
-
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
-
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+- **Current Problems**: 
+  - 5 Vue components exceed 500 lines (up to 753 lines)
+  - Monolithic components mix multiple concerns in single files
+  - Difficult to locate and modify specific UI sections
+  - Limited component reusability across the application
+  - Violates single responsibility principle
+  
+- **Benefits of Fixing**: 
+  - All component files under 500 lines (target <300 for new components)
+  - Improved code discoverability and navigation
+  - Enhanced component reusability
+  - Easier testing of isolated UI sections
+  - Follows established patterns from previous refactoring tasks
+  
+- **Risk Assessment**: 
+  - Low risk - components are well-tested through UI usage
+  - No functional changes, pure refactoring
+  - Vue's reactivity system handles component composition well
+  - TypeScript will catch any prop/emit interface issues
 
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+- [ ] Identified and extracted reusable components from files >500 lines
+- [ ] All parent components reduced to <500 lines (target <400 where possible)
+- [ ] All extracted child components are <300 lines
+- [ ] Clear component boundaries with well-defined props and emits
+- [ ] No functional changes - application works identically
+- [ ] Application builds successfully with no TypeScript errors
+- [ ] All components properly typed with TypeScript interfaces
 
-## Test Cases **[CONDITIONAL: Testing Task]**
 
-{Delete unless this is a testing task}
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+## Implementation Notes
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+### Target Files (>500 lines)
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
+Priority files identified for component extraction:
 
-{Delete unless this is a documentation task}
+1. **StageLandingView.vue** (753 lines)
+   - Extract: StageHeader, StageTransitionCard, ModulesList, ModuleCreateModal
+   - Target: <400 lines after extraction
 
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
+2. **LogViewerWindow.vue** (715 lines)
+   - Extract: LogFilters, LogEntry, LogToolbar
+   - Target: <400 lines after extraction
 
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
+3. **ModuleDocumentSidebar.vue** (685 lines)
+   - Extract: DocumentTree, DocumentItem, DocumentActions
+   - Target: <400 lines after extraction
 
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
+4. **CampaignManagementModal.vue** (597 lines)
+   - Extract: CampaignForm, CampaignList, CampaignActions
+   - Target: <400 lines after extraction
 
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
+5. **ToolConfirmation.vue** (566 lines)
+   - Extract: FileEditPreview, FileWritePreview, ConfirmationActions
+   - Target: <400 lines after extraction
 
 ### Technical Approach
-{How this will be implemented}
+
+Follow the same pattern as T-0017 and T-0018:
+
+1. **Analyze component structure**
+   - Identify logical sections (header, list, form, actions, etc.)
+   - Find repeated patterns suitable for extraction
+   - Map props and emits needed for each extracted component
+
+2. **Create child components**
+   - Place in same directory as parent (e.g., `components/LogViewer/`)
+   - Define clear TypeScript interfaces for props
+   - Keep components focused on single responsibility
+   - Target <300 lines per child component
+
+3. **Update parent component**
+   - Import and use child components
+   - Pass data via props, handle events via emits
+   - Maintain exact same functionality
+   - Verify reactivity still works correctly
+
+4. **Component naming convention**
+   - Parent: `ParentName.vue`
+   - Children: `ParentNameSection.vue` (e.g., `LogViewerFilters.vue`)
+   - Keep related components together in subdirectory
+
+### Example Structure
+
+Before:
+```
+components/
+└── LogViewerWindow.vue (715 lines)
+```
+
+After:
+```
+components/LogViewer/
+├── LogViewerWindow.vue (<400 lines)
+├── LogViewerFilters.vue (<200 lines)
+├── LogViewerEntry.vue (<150 lines)
+└── LogViewerToolbar.vue (<100 lines)
+```
 
 ### Dependencies
-{Other tasks or systems this depends on}
+- Follows patterns from MIMIR-T-0017 (useCatalog split) and MIMIR-T-0018 (chat store split)
+- Requires understanding of Vue 3 composition API and component communication
+- Must preserve all reactive state and event handling
 
 ### Risk Considerations
-{Technical risks and mitigation strategies}
+- Need to maintain props/emits contracts carefully
+- Must preserve all reactive dependencies
+- Event bubbling may need adjustment
+- Scoped styles may need refinement
+- Must test all user interactions still work
 
 ## Status Updates **[REQUIRED]**
 
