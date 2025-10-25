@@ -9,7 +9,7 @@ use colored::*;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use flate2::read::GzDecoder;
-use mimir_dm_core::{run_migrations, services::{CatalogService, ActionService, ConditionService, LanguageService}};
+use mimir_dm_core::{run_migrations, services::{CatalogService, ActionService, ConditionService, LanguageService, RewardService, BackgroundService, FeatService, RaceService, ObjectService, TrapService}};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -373,37 +373,37 @@ impl LoadTester {
         self.test_catalog_import(
             &mut results,
             "rewards",
-            || CatalogService::import_rewards_from_book(&mut conn, book_dir, source),
+            || RewardService::import_rewards_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "backgrounds",
-            || CatalogService::import_backgrounds_from_book(&mut conn, book_dir, source),
+            || BackgroundService::import_backgrounds_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "feats",
-            || CatalogService::import_feats_from_book(&mut conn, book_dir, source),
+            || FeatService::import_feats_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "races",
-            || CatalogService::import_races_from_book(&mut conn, book_dir, source),
+            || RaceService::import_races_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "objects",
-            || CatalogService::import_objects_from_book(&mut conn, book_dir, source),
+            || ObjectService::import_objects_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(
             &mut results,
             "traps",
-            || CatalogService::import_traps_from_book(&mut conn, book_dir, source),
+            || TrapService::import_traps_from_book(&mut conn, book_dir, source),
         );
 
         self.test_catalog_import(

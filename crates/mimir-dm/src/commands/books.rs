@@ -15,7 +15,7 @@ use serde_json::Value;
 use diesel::prelude::*;
 use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
-use mimir_dm_core::services::{CatalogService, ActionService, ConditionService, LanguageService};
+use mimir_dm_core::services::{CatalogService, ActionService, ConditionService, LanguageService, RewardService, BackgroundService, FeatService, RaceService, ObjectService, TrapService};
 use chrono::Utc;
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit)
@@ -254,7 +254,7 @@ pub async fn upload_book_archive(
             }
             
             // Import rewards
-            match CatalogService::import_rewards_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match RewardService::import_rewards_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(reward_count) => {
                     info!("Imported {} rewards from book '{}'", reward_count, book_name);
                 }
@@ -265,7 +265,7 @@ pub async fn upload_book_archive(
             }
             
             // Import backgrounds
-            match CatalogService::import_backgrounds_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match BackgroundService::import_backgrounds_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(background_count) => {
                     info!("Imported {} backgrounds from book '{}'", background_count, book_name);
                 }
@@ -276,7 +276,7 @@ pub async fn upload_book_archive(
             }
             
             // Import feats
-            match CatalogService::import_feats_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match FeatService::import_feats_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(feat_count) => {
                     info!("Imported {} feats from book '{}'", feat_count, book_name);
                 }
@@ -287,7 +287,7 @@ pub async fn upload_book_archive(
             }
             
             // Import races
-            match CatalogService::import_races_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match RaceService::import_races_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(race_count) => {
                     info!("Imported {} races from book '{}'", race_count, book_name);
                 }
@@ -296,9 +296,9 @@ pub async fn upload_book_archive(
                     // Don't fail the entire upload for catalog import errors
                 }
             }
-            
+
             // Import objects
-            match CatalogService::import_objects_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match ObjectService::import_objects_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(object_count) => {
                     info!("Imported {} objects from book '{}'", object_count, book_name);
                 }
@@ -307,9 +307,9 @@ pub async fn upload_book_archive(
                     // Don't fail the entire upload for catalog import errors
                 }
             }
-            
+
             // Import traps and hazards
-            match CatalogService::import_traps_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
+            match TrapService::import_traps_from_book(&mut catalog_conn, &final_book_dir, &book_id) {
                 Ok(trap_count) => {
                     info!("Imported {} traps/hazards from book '{}'", trap_count, book_name);
                 }
@@ -491,11 +491,12 @@ pub async fn remove_book_from_library(
                     let _ = ActionService::remove_actions_by_source(conn, &book_id);
                     let _ = ConditionService::remove_conditions_by_source(conn, &book_id);
                     let _ = LanguageService::remove_languages_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_rewards_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_backgrounds_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_feats_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_races_by_source(conn, &book_id);
-                    let _ = CatalogService::remove_objects_by_source(conn, &book_id);
+                    let _ = RewardService::remove_rewards_by_source(conn, &book_id);
+                    let _ = BackgroundService::remove_backgrounds_by_source(conn, &book_id);
+                    let _ = FeatService::remove_feats_by_source(conn, &book_id);
+                    let _ = RaceService::remove_races_by_source(conn, &book_id);
+                    let _ = ObjectService::remove_objects_by_source(conn, &book_id);
+                    let _ = TrapService::remove_traps_from_source(conn, &book_id);
                     let _ = CatalogService::remove_monsters_from_source(conn, &book_id);
                     let _ = CatalogService::remove_deities_from_source(conn, &book_id);
                     let _ = CatalogService::remove_vehicles_from_source(conn, &book_id);
