@@ -1,133 +1,50 @@
 <template>
   <div class="document-sidebar">
-    <div class="sidebar-header">
-      <h3 v-if="['active', 'completed'].includes(moduleStage)">Module Documents</h3>
-      <h3 v-else>📋 Module Documents</h3>
-    </div>
-    
-    <!-- Back to Campaign Button -->
-    <div class="back-button-container" v-if="campaignId">
-      <router-link :to="`/campaigns/${campaignId}/board`" class="back-to-campaign">
-        ← Back to Campaign
-      </router-link>
-    </div>
+    <DocumentSidebarHeader :module-stage="moduleStage" />
 
-    <!-- Document List Grouped by Stage -->
+    <BackToCampaignButton :campaign-id="campaignId" />
+
+    <!-- Document List -->
     <div class="document-content">
       <div v-if="loading" class="loading-state">
         Loading documents...
       </div>
-      
+
+      <!-- Active/completed modules: Simple flat list -->
       <div v-else-if="['active', 'completed'].includes(moduleStage)" class="active-documents">
-        <!-- Simple list for active/completed modules -->
         <div class="document-items">
-          <div 
-            v-for="doc in getAllDocumentsForActive()" 
+          <DocumentItem
+            v-for="doc in getAllDocumentsForActive()"
             :key="doc.templateId"
-            class="document-item"
-            :class="{ 
-              selected: selectedDocument?.template_id === doc.templateId
-            }"
-          >
-            <!-- Edit icon on the left -->
-            <img 
-              :src="getEditIcon()" 
-              alt="Edit"
-              class="document-icon"
-              @click="handleDocumentClick(doc)"
-              title="Edit document"
-            />
-            
-            <!-- Document title -->
-            <span 
-              class="document-title"
-              @click="handleDocumentClick(doc)"
-            >
-              {{ doc.title }}
-            </span>
-            
-            <!-- Checkmark on the right for completion -->
-            <button 
-              v-if="doc.instance"
-              class="completion-checkbox"
-              :class="{ checked: doc.instance?.completed_at }"
-              @click.stop="toggleDocumentCompletion(doc)"
-              :title="doc.instance?.completed_at ? 'Mark as incomplete' : 'Mark as complete'"
-            >
-              <span v-if="doc.instance?.completed_at">✓</span>
-            </button>
-          </div>
+            :doc="doc"
+            :is-selected="selectedDocument?.template_id === doc.templateId"
+            :is-locked="false"
+            :edit-icon="getEditIcon()"
+            :locked-icon="getLockedIcon()"
+            :show-optional-label="false"
+            @click="handleDocumentClick"
+            @toggle-completion="toggleDocumentCompletion"
+          />
         </div>
       </div>
-      
+
+      <!-- Planning modules: Grouped by stages -->
       <div v-else class="stage-groups">
-        <!-- Dynamic Stage Documents from Board Configuration -->
-        <div 
-          v-for="stage in boardConfig?.stages || []" 
+        <DocumentStageGroup
+          v-for="stage in boardConfig?.stages || []"
           :key="stage.key"
-          v-show="isStageAccessible(stage.key)"
-          class="stage-group"
-        >
-          <div class="stage-header">
-            <h4>{{ stage.display_name }} ({{ getStageDocuments(stage.key).completed }}/{{ getStageDocuments(stage.key).total }})</h4>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill" 
-                :style="{ width: getStageDocuments(stage.key).percentage + '%' }"
-              ></div>
-            </div>
-          </div>
-          <div class="document-items">
-            <div 
-              v-for="doc in getStageDocuments(stage.key).documents" 
-              :key="doc.templateId"
-              class="document-item"
-              :class="{ 
-                selected: selectedDocument?.template_id === doc.templateId,
-                completed: doc.instance?.completed_at,
-                locked: !isStageAccessible(stage.key)
-              }"
-            >
-              <!-- Edit icon on the left (always visible, clickable) -->
-              <img 
-                v-if="!isStageAccessible(stage.key)"
-                :src="getLockedIcon()" 
-                alt="Locked"
-                class="document-icon locked"
-                title="Stage not yet accessible"
-              />
-              <img 
-                v-else
-                :src="getEditIcon()" 
-                alt="Edit"
-                class="document-icon"
-                @click="handleDocumentClick(doc)"
-                title="Edit document"
-              />
-              
-              <!-- Document title (also clickable) -->
-              <span 
-                class="document-title" 
-                :class="{ optional: !doc.required }"
-                @click="handleDocumentClick(doc)"
-              >
-                {{ doc.title }}
-                <span v-if="!doc.required" class="optional-label">(Optional)</span>
-              </span>
-              
-              <!-- Checkmark on the right for completion -->
-              <button 
-                v-if="doc.instance && isStageAccessible(stage.key)"
-                class="completion-checkbox"
-                :class="{ checked: doc.instance?.completed_at }"
-                @click.stop="toggleDocumentCompletion(doc)"
-                :title="doc.instance?.completed_at ? 'Mark as incomplete' : 'Mark as complete'"
-              >
-                <span v-if="doc.instance?.completed_at">✓</span>
-              </button>
-            </div>
-          </div>
-        </div>
+          :stage-name="stage.display_name"
+          :documents="getStageDocuments(stage.key).documents"
+          :completed="getStageDocuments(stage.key).completed"
+          :total="getStageDocuments(stage.key).total"
+          :percentage="getStageDocuments(stage.key).percentage"
+          :is-accessible="isStageAccessible(stage.key)"
+          :selected-document-id="selectedDocument?.id"
+          :edit-icon="getEditIcon()"
+          :locked-icon="getLockedIcon()"
+          @document-click="handleDocumentClick"
+          @toggle-completion="toggleDocumentCompletion"
+        />
       </div>
     </div>
   </div>
@@ -139,6 +56,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { useThemeStore } from '../../../stores/theme'
 import { DocumentService, type Document } from '@/services/DocumentService'
 import { ModuleService } from '@/services/ModuleService'
+import DocumentSidebarHeader from './DocumentSidebar/DocumentSidebarHeader.vue'
+import BackToCampaignButton from './DocumentSidebar/BackToCampaignButton.vue'
+import DocumentStageGroup from './DocumentSidebar/DocumentStageGroup.vue'
+import DocumentItem from './DocumentSidebar/DocumentItem.vue'
 
 // Import icon images
 import lightEditIcon from '../../../assets/images/light-edit.png'
@@ -447,7 +368,6 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Module document sidebar - inherits common styles from components.css */
 .document-sidebar {
   width: 320px;
   height: 100%;
@@ -457,66 +377,6 @@ defineExpose({
   flex-direction: column;
 }
 
-/* Stage Groups */
-.stage-groups {
-  display: flex;
-  flex-direction: column;
-}
-
-.stage-group {
-  padding: var(--spacing-sm) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.stage-group:last-child {
-  border-bottom: none;
-}
-
-.stage-header {
-  padding: 0 var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
-}
-
-.stage-header h4 {
-  margin: 0 0 var(--spacing-xs) 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-}
-
-/* Progress Bar */
-.progress-bar {
-  height: 16px;
-  background-color: var(--color-surface-variant);
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-}
-
-.progress-fill {
-  height: 100%;
-  background-color: var(--color-primary-400);
-  border-radius: 8px;
-  transition: width var(--transition-base);
-  position: relative;
-}
-
-.progress-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 10px,
-    var(--color-overlay-light) 10px,
-    var(--color-overlay-light) 20px
-  );
-  border-radius: 8px;
-}
-
-/* Document Content */
 .document-content {
   flex: 1;
   overflow-y: auto;
@@ -533,154 +393,18 @@ defineExpose({
   color: var(--color-text-secondary);
 }
 
-/* Document Items */
-.document-items {
+.stage-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
 }
 
-.document-item {
-  padding: var(--spacing-sm) var(--spacing-md);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  border: 2px solid transparent;
-}
-
-.document-item:hover:not(.locked) {
-  border-color: var(--color-border);
-}
-
-.document-item.selected {
-  border-color: var(--color-primary-400);
-}
-
-.document-item.completed {
-  opacity: 0.8;
-}
-
-.document-item.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.document-icon {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.document-icon.locked {
-  cursor: not-allowed;
-}
-
-.document-title {
-  font-size: 0.875rem;
-  color: var(--color-text);
-  flex: 1;
-}
-
-/* Optional document styling */
-.document-title.optional {
-  font-style: italic;
-}
-
-.optional-label {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  font-style: normal;
-  margin-left: var(--spacing-xs);
-}
-
-/* Completion Checkbox */
-.completion-checkbox {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  border: 2px solid var(--color-border);
-  border-radius: 4px;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-base);
-  margin-left: auto;
-}
-
-.completion-checkbox:hover {
-  border-color: var(--color-primary-400);
-  background-color: var(--color-primary-50);
-}
-
-.completion-checkbox.checked {
-  background-color: var(--color-success);
-  border-color: var(--color-success);
-  color: white;
-}
-
-.completion-checkbox.checked:hover {
-  background-color: var(--color-success-dark);
-  border-color: var(--color-success-dark);
-}
-
-/* Active Documents View (simplified for active/completed states) */
 .active-documents {
   padding-top: var(--spacing-sm);
 }
 
-.active-documents .document-items {
+.document-items {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-}
-
-.active-documents .document-item {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  transition: background-color var(--transition-fast);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.active-documents .document-item:hover {
-  background-color: var(--color-surface-variant);
-}
-
-.active-documents .document-title {
-  cursor: pointer;
-}
-
-/* Back to Campaign Button */
-.back-button-container {
-  padding: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.back-to-campaign {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--color-surface-variant);
-  color: var(--color-text);
-  text-decoration: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all var(--transition-base);
-  width: 100%;
-  justify-content: center;
-}
-
-.back-to-campaign:hover {
-  background-color: var(--color-primary-100);
-  color: var(--color-primary-600);
-  transform: translateX(-2px);
 }
 </style>
