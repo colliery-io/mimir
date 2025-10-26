@@ -11,7 +11,7 @@ archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -29,109 +29,156 @@ initiative_id: MIMIR-I-0001
 
 ## Objective **[REQUIRED]**
 
-{Clear statement of what this task accomplishes}
-
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
-
-{Delete this section when task is assigned to an initiative}
+Investigate and consolidate duplicate formatter implementations across the frontend codebase. Multiple formatting functions (formatSpellLevel, formatCR, formatWeight, etc.) exist in different locations with overlapping functionality, creating maintenance burden and potential inconsistencies. This task will identify all duplicates, create a single source of truth, and update all imports.
 
 ### Type
 - [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
+- [ ] Feature - New functionality or enhancement
+- [x] Tech Debt - Code improvement or refactoring
 - [ ] Chore - Maintenance or setup work
 
 ### Priority
 - [ ] P0 - Critical (blocks users/revenue)
 - [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
+- [x] P2 - Medium (nice to have)
 - [ ] P3 - Low (when time permits)
 
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
+### Technical Debt Impact
+- **Current Problems**:
+  - Multiple implementations of same formatting logic scattered across codebase
+  - `formatSpellLevel`: 3 different implementations (catalog formatters, spellFormatterEnhanced, optionalFeatureFormatter)
+  - `formatCR`: 2 implementations (catalog formatters, monsterFormatterEnhanced)
+  - `formatWeight`: 2 implementations (catalog formatters, itemConfig)
+  - Unused formatters in `shared/components/catalog/config/formatters.ts` (`formatGold`, `formatArray`, etc.)
+  - Inconsistent naming (`formatLevel` vs `formatSpellLevel`)
+  - Maintenance burden: bug fixes/changes must be applied to multiple locations
+  - Risk of behavioral divergence between implementations
 
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
+- **Benefits of Fixing**:
+  - Single source of truth for all formatting logic
+  - Easier to maintain and modify formatting behavior
+  - Consistent formatting across all features
+  - Reduced code duplication (~100-200 lines)
+  - Clearer dependencies and imports
+  - Easier to test formatting logic in isolation
 
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+- **Risk Assessment**:
+  - Low risk: purely internal refactoring
+  - No user-facing changes expected
+  - Can verify by comparing rendered output before/after
+  - Changes are mechanical: consolidate implementations, update imports
 
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+- [ ] All duplicate formatter implementations identified and documented
+- [ ] Single source of truth created in `shared/utils/formatters.ts` (or similar location)
+- [ ] All duplicate `formatSpellLevel` implementations consolidated to one
+- [ ] All duplicate `formatCR` implementations consolidated to one
+- [ ] All duplicate `formatWeight` implementations consolidated to one
+- [ ] Unused formatters in catalog config removed or consolidated
+- [ ] All imports updated to use consolidated formatters
+- [ ] No compilation errors or TypeScript warnings
+- [ ] All existing functionality preserved (no visual/behavioral changes)
+- [ ] Code builds and runs successfully
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+## Implementation Notes
 
-{Delete unless this is a testing task}
+### Duplicate Formatters Found
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+**1. formatSpellLevel** (3 implementations):
+- `shared/components/catalog/config/formatters.ts:2` - Used by spellConfig.ts
+  ```ts
+  export function formatSpellLevel(level: number): string
+  ```
+- `features/sources/formatters/spellFormatterEnhanced.ts:401` - Named `formatLevel`
+  ```ts
+  function formatLevel(level: number): string
+  ```
+- `features/sources/formatters/optionalFeatureFormatter.ts:620` - Different signature
+  ```ts
+  function formatSpellLevel(level: string, spells: string[]): string
+  ```
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+**2. formatCR** (2 implementations):
+- `shared/components/catalog/config/formatters.ts:18` - Appears unused
+  ```ts
+  export function formatCR(cr: string): string
+  ```
+- `features/sources/formatters/monsterFormatterEnhanced.ts:399`
+  ```ts
+  function formatCR(cr: any): string
+  ```
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
+**3. formatWeight** (2 implementations):
+- `shared/components/catalog/config/formatters.ts:36` - Appears unused
+  ```ts
+  export function formatWeight(weight: number): string
+  ```
+- `shared/components/catalog/config/itemConfig.ts:17`
+  ```ts
+  function formatWeight(weight: number | null): string
+  ```
 
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
+**4. Unused formatters in catalog config**:
+- `formatGold` - Appears unused
+- `formatArray` - Appears unused
 
 ### Technical Approach
-{How this will be implemented}
+
+**Phase 1: Investigation** ✓ (Completed above)
+1. Grep for formatter functions across codebase
+2. Identify duplicates and their usage
+3. Document findings in task
+
+**Phase 2: Consolidation**
+1. Create `shared/utils/formatters.ts` with all consolidated formatters
+2. Choose best implementation for each formatter (most flexible/robust)
+3. Export all formatters from single file
+
+**Phase 3: Migration**
+1. Update imports in all consuming files:
+   - `spellConfig.ts` → use shared formatters
+   - `spellFormatterEnhanced.ts` → import shared formatSpellLevel
+   - `monsterFormatterEnhanced.ts` → import shared formatCR
+   - `itemConfig.ts` → import shared formatWeight
+2. Remove duplicate implementations
+3. Delete unused formatters or move to shared
+
+**Phase 4: Verification**
+1. Run TypeScript compiler to catch import errors
+2. Build frontend to verify no runtime errors
+3. Manually test catalog views to ensure formatting unchanged
 
 ### Dependencies
-{Other tasks or systems this depends on}
+
+- No blocking dependencies
+- Builds on patterns from previous refactoring tasks (T-0017, T-0018, T-0019)
 
 ### Risk Considerations
-{Technical risks and mitigation strategies}
+
+- **Import path changes**: All consuming files must update imports simultaneously
+- **Signature differences**: `optionalFeatureFormatter.formatSpellLevel` has different signature than others - may need to keep separate or reconcile
+- **Unused code detection**: Need to verify formatters are actually unused before removing
+- **Testing**: Limited automated tests for formatters - rely on manual verification
+- **Rollback**: Easy - single commit can be reverted if issues arise
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### Investigation Complete - 2025-10-26
+
+Investigation phase completed. Found multiple duplicate formatter implementations:
+
+**Duplicates Identified**:
+- `formatSpellLevel`: 3 implementations across different files
+- `formatCR`: 2 implementations
+- `formatWeight`: 2 implementations
+- Unused formatters in catalog config: `formatGold`, `formatArray`
+
+**Analysis**:
+- Most duplicates appear to be caused by feature-specific formatters being created without checking for existing shared utilities
+- The `shared/components/catalog/config/formatters.ts` file was created but most formatters went unused
+- Different naming conventions used (`formatLevel` vs `formatSpellLevel`)
+- Some formatters have different signatures (optionalFeatureFormatter.formatSpellLevel)
+
+**Next Steps**:
+Ready to proceed with consolidation implementation. Task transitioned to active phase.

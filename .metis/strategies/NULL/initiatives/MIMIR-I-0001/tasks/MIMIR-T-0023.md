@@ -7,14 +7,14 @@ created_at: 2025-10-24T11:54:04.271750+00:00
 updated_at: 2025-10-24T11:54:04.271750+00:00
 parent: MIMIR-I-0001
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
-exit_criteria_met: false
+exit_criteria_met: true
 strategy_id: NULL
 initiative_id: MIMIR-I-0001
 ---
@@ -134,4 +134,18 @@ initiative_id: MIMIR-I-0001
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### Archived - 2025-10-26
+
+This task is a duplicate of MIMIR-T-0019 ("Extract reusable components from large Vue files") which was completed on 2025-10-25.
+
+**Work Already Completed in T-0019**:
+- StageLandingView.vue: Reduced to 316 lines (under 500 line target)
+- LogViewerWindow.vue: Reduced to 313 lines (under 500 line target)
+- ModuleDocumentSidebar.vue: Reduced to 409 lines (under 500 line target)
+
+All three components mentioned in this task title were successfully decomposed as part of T-0019. Components were extracted into focused, reusable child components:
+- LogViewer components: LogViewerHeader, LogViewerContent, LogViewerFooter
+- StageLanding components: StageHeader, StageGuidance, StageActions
+- ModuleDocument components: DocumentList, DocumentItem, SessionControls
+
+**Task Status**: Marking as archived since the work has been completed under T-0019.
