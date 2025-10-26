@@ -28,26 +28,45 @@ impl<T> ApiResponse<T> {
     }
 }
 
+/// API-level errors that can be sent to the frontend
+///
+/// All variants are serializable to JSON with a "type" and "message" field.
+/// This enables structured error handling on the frontend.
 #[allow(dead_code)]
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Serialize, Deserialize)]
+#[serde(tag = "type", content = "message")]
 pub enum ApiError {
+    /// Database operation failed
     #[error("Database error: {0}")]
     Database(String),
-    
+
+    /// IO operation failed
     #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    
+    Io(String),
+
+    /// Serialization/deserialization failed
     #[error("Serialization error: {0}")]
     Serialization(String),
-    
+
+    /// Requested resource not found
     #[error("Not found: {0}")]
     NotFound(String),
-    
+
+    /// Request validation failed
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    /// Request is invalid or malformed
     #[error("Bad request: {0}")]
     BadRequest(String),
-    
-    #[error("Internal server error: {0}")]
-    InternalServerError(String),
+
+    /// User lacks permission for this operation
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    /// Internal server error
+    #[error("Internal error: {0}")]
+    Internal(String),
 }
 
 impl From<mimir_dm_core::error::DbError> for ApiError {
@@ -56,7 +75,25 @@ impl From<mimir_dm_core::error::DbError> for ApiError {
             mimir_dm_core::error::DbError::NotFound { entity_type, id } => {
                 ApiError::NotFound(format!("{} with id '{}' not found", entity_type, id))
             }
+            mimir_dm_core::error::DbError::ConstraintViolation { field, message } => {
+                ApiError::Validation(format!("{}: {}", field, message))
+            }
+            mimir_dm_core::error::DbError::InvalidData(msg) => {
+                ApiError::Validation(msg)
+            }
             _ => ApiError::Database(err.to_string()),
         }
+    }
+}
+
+impl From<std::io::Error> for ApiError {
+    fn from(err: std::io::Error) -> Self {
+        ApiError::Io(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for ApiError {
+    fn from(err: serde_json::Error) -> Self {
+        ApiError::Serialization(err.to_string())
     }
 }
