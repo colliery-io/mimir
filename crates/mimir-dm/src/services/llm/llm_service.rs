@@ -23,7 +23,7 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::services::chat_logger::ChatLogger;
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use crate::services::tools::ToolRegistry;
 
 /// The model we want to use for the DM assistant

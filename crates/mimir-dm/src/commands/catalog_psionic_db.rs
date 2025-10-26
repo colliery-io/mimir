@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tauri::State;
 use mimir_dm_core::services::PsionicService;
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use mimir_dm_core::models::catalog::{PsionicFilters};
 
 #[tauri::command]

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error};
 
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use mimir_dm_core::services::DeityService;
 use mimir_dm_core::models::catalog::deity::{DeitySummary, DeityFilters, Deity};
 

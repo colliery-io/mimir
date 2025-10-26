@@ -21,8 +21,9 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Database dependencies
 rusqlite = { version = "0.31.0", features = ["bundled"] }
-diesel = { version = "2.1", features = ["sqlite", "chrono", "uuid", "64-column-tables", "returning_clauses_for_sqlite_3_35"] }
+diesel = { version = "2.1", features = ["sqlite", "chrono", "uuid", "64-column-tables", "returning_clauses_for_sqlite_3_35", "r2d2"] }
 diesel_migrations = "2.1"
+r2d2 = "0.8"
 sqlite-vec = { version = "0.1.6" }
 zerocopy = "0.7.33"
 

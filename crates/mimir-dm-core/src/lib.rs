@@ -6,6 +6,7 @@
 
 pub mod connection;
 pub mod dal;
+pub mod db;
 pub mod domain;
 pub mod error;
 pub mod models;
@@ -16,7 +17,8 @@ pub mod services;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 // Re-export commonly used types
-pub use connection::{establish_connection, DbConnection};
+pub use connection::establish_connection;
+pub use db::{DatabaseService, DbConnection, DbPool};
 pub use error::{DbError, Result};
 
 
@@ -34,7 +36,7 @@ pub use dal::traits::{Repository, AsyncRepository};
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 /// Run all pending migrations on the database
-pub fn run_migrations(conn: &mut DbConnection) -> Result<()> {
+pub fn run_migrations(conn: &mut diesel::SqliteConnection) -> Result<()> {
     conn.run_pending_migrations(MIGRATIONS)
         .map_err(|e| DbError::Migration(format!("Failed to run migrations: {}", e)))?;
     Ok(())

@@ -2,10 +2,9 @@
 
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
-use mimir_dm_core::run_migrations;
 use std::fs;
 use std::path::PathBuf;
-use tracing::{info, warn};
+use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 pub struct AppPaths {
@@ -69,53 +68,9 @@ impl AppPaths {
         })
     }
 
-    /// Initialize the database, running migrations if needed
-    pub fn init_database(&self) -> Result<()> {
-        let db_path = self.database_path.to_string_lossy();
-        let is_new_db = !self.database_path.exists();
-
-        if is_new_db {
-            info!("Creating new database at: {}", db_path);
-        } else {
-            info!("Using existing database at: {}", db_path);
-        }
-
-        // Initialize the connection pool
-        let pool = crate::db_connection::init_db_pool(&db_path, false)
-            .context("Failed to initialize database pool")?;
-        
-        // Run migrations
-        let mut conn = pool.get()
-            .context("Failed to get connection from pool")?;
-        
-        info!("Running database migrations...");
-        match run_migrations(&mut *conn) {
-            Ok(_) => {
-                info!("Database migrations completed successfully");
-            }
-            Err(e) => {
-                warn!("Database migration warning: {}", e);
-                // Don't fail on migration warnings - database might already be up to date
-            }
-        }
-        
-        // Store the pool globally
-        crate::db_connection::DB_POOL
-            .set(pool)
-            .map_err(|_| anyhow::anyhow!("Failed to set global database pool"))?;
-
-        if is_new_db {
-            info!("Database initialized successfully");
-            
-            // Seed templates for new databases
-            info!("Seeding initial templates...");
-            if let Err(e) = crate::seed_templates::seed_templates() {
-                warn!("Failed to seed templates: {}", e);
-                // Don't fail app init if seeding fails
-            }
-        }
-
-        Ok(())
+    /// Check if this is a new database (for seeding purposes)
+    pub fn is_new_database(&self) -> bool {
+        !self.database_path.exists()
     }
 
     /// Get the database path as a string
@@ -129,18 +84,16 @@ pub fn initialize_app() -> Result<AppPaths> {
     // First initialize directories (without logging since we need the logs dir)
     let app_paths = AppPaths::init_directories()
         .context("Failed to initialize application directories")?;
-    
+
     // Now set up logging with the logs directory available
     setup_logging(&app_paths.logs_dir)
         .context("Failed to set up logging")?;
 
     info!("Starting Mimir application initialization...");
+    info!("Application directories initialized successfully");
 
-    // Initialize database
-    app_paths.init_database()
-        .context("Failed to initialize database")?;
+    // Note: Database initialization now happens in main.rs using core's DatabaseService
 
-    info!("Application initialization completed successfully");
     Ok(app_paths)
 }
 

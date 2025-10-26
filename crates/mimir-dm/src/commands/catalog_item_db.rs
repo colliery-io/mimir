@@ -2,7 +2,7 @@ use tauri::State;
 use std::sync::Arc;
 use mimir_dm_core::models::catalog::item::{ItemSummary, ItemFilters, Item};
 use mimir_dm_core::services::item_service::ItemService;
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use tracing::{info, debug, error};
 
 #[tauri::command]

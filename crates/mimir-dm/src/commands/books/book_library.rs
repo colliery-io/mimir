@@ -9,8 +9,11 @@ use mimir_dm_core::services::{
     BackgroundService, FeatService, RaceService, ObjectService, TrapService,
     ItemService, MonsterService, DeityService, VehicleService, ClassService,
 };
+use mimir_dm_core::DatabaseService;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
+use tauri::State;
 use tracing::{error, info, warn};
 
 /// Book information for library listing
@@ -22,10 +25,12 @@ pub struct BookInfo {
 
 /// List all books in the library
 #[tauri::command]
-pub async fn list_library_books() -> Result<ApiResponse<Vec<BookInfo>>, String> {
+pub async fn list_library_books(
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<ApiResponse<Vec<BookInfo>>, String> {
     info!("Listing library books from database");
 
-    match crate::db_connection::get_connection() {
+    match db_service.get_connection() {
         Ok(mut conn) => {
             match uploaded_books::table.load::<UploadedBook>(&mut conn) {
                 Ok(books) => {
@@ -56,11 +61,12 @@ pub async fn list_library_books() -> Result<ApiResponse<Vec<BookInfo>>, String> 
 #[tauri::command]
 pub async fn remove_book_from_library(
     book_id: String,
+    db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<()>, String> {
     info!("Removing book from library: {}", book_id);
 
     // First, get book info from database to know what to clean up
-    let book_record = match crate::db_connection::get_connection() {
+    let book_record = match db_service.get_connection() {
         Ok(mut conn) => {
             match uploaded_books::table
                 .filter(uploaded_books::id.eq(&book_id))
@@ -84,7 +90,7 @@ pub async fn remove_book_from_library(
 
     if let Some(book) = book_record {
         // Use database transaction for atomic cleanup
-        match crate::db_connection::get_connection() {
+        match db_service.get_connection() {
             Ok(mut conn) => {
                 let transaction_result = conn.transaction::<_, diesel::result::Error, _>(|conn| {
                     // Delete from database first

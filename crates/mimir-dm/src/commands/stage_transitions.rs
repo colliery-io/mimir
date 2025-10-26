@@ -12,6 +12,7 @@ use mimir_dm_core::{
         template_documents::TemplateRepository,
     },
     DbConnection,
+    DatabaseService,
 };
 use std::path::PathBuf;
 use std::fs;
@@ -19,7 +20,6 @@ use std::collections::HashMap;
 use anyhow::Result;
 use tera::Tera;
 use serde_json::Value as JsonValue;
-use crate::DatabaseService;
 use crate::types::ApiResponse;
 
 /// Stage document templates mapping
@@ -136,19 +136,18 @@ pub async fn initialize_stage_documents(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Vec<String>>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
     // Get the campaign
-    let mut campaign_repo = CampaignRepository::new(conn);
+    let mut campaign_repo = CampaignRepository::new(&mut *conn);
     let campaign = match campaign_repo.find_by_id(campaign_id) {
         Ok(Some(c)) => c,
         Ok(None) => return Ok(ApiResponse::error("Campaign not found".to_string())),
         Err(e) => return Ok(ApiResponse::error(format!("Database error: {}", e)))
     };
-    
+
     // Create documents for the current stage
-    let created_docs = create_stage_documents(conn, &campaign, &campaign.status)
+    let created_docs = create_stage_documents(&mut conn, &campaign, &campaign.status)
         .map_err(|e| format!("Failed to create stage documents: {}", e))?;
     
     Ok(ApiResponse::success(created_docs))

@@ -6,6 +6,7 @@
 pub mod campaign_service;
 pub mod module_service;
 pub mod session_service;
+pub mod document_service;
 pub mod template_service;
 pub mod spell_service;
 pub mod action_service;
@@ -31,6 +32,7 @@ pub mod class_service;
 pub use campaign_service::CampaignService;
 pub use module_service::ModuleService;
 pub use session_service::SessionService;
+pub use document_service::DocumentService;
 pub use template_service::TemplateService;
 pub use spell_service::SpellService;
 pub use action_service::ActionService;

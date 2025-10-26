@@ -1,4 +1,4 @@
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use mimir_dm_core::models::catalog::{CatalogTrap, TrapFilters, TrapSummary};
 use mimir_dm_core::services::TrapService;
 use std::sync::Arc;

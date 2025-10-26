@@ -10,7 +10,7 @@ use crate::{
     dal::campaign::campaigns::CampaignRepository,
     dal::campaign::documents::DocumentRepository,
     dal::campaign::template_documents::TemplateRepository,
-    domain::{BoardRegistry},
+    domain::{BoardCompletionStatus, BoardRegistry},
     error::{DbError, Result},
     models::campaign::campaigns::{Campaign, NewCampaign},
     models::campaign::documents::{NewDocument},
@@ -179,7 +179,74 @@ impl<'a> CampaignService<'a> {
         let mut repo = CampaignRepository::new(self.conn);
         repo.list_archived()
     }
-    
+
+    /// Check campaign stage completion status
+    pub fn check_stage_completion(&mut self, campaign_id: i32) -> Result<BoardCompletionStatus> {
+        // Get the campaign
+        let mut repo = CampaignRepository::new(self.conn);
+        let campaign = repo.find_by_id(campaign_id)?
+            .ok_or_else(|| DbError::NotFound {
+                entity_type: "Campaign".to_string(),
+                id: campaign_id.to_string(),
+            })?;
+
+        // Get the board definition
+        let board_registry = BoardRegistry::new();
+        let board = board_registry.get("campaign")
+            .ok_or_else(|| DbError::InvalidData("Campaign board definition not found".to_string()))?;
+
+        let current_stage = &campaign.status;
+
+        // Get required and optional documents for current stage
+        let required_docs = board.required_documents(current_stage);
+        let optional_docs = board.optional_documents(current_stage);
+
+        // Get all documents for this campaign
+        let all_documents = DocumentRepository::find_by_campaign(self.conn, campaign_id)?;
+
+        // Count completed required documents
+        let mut completed_required = 0;
+        let mut missing_required = Vec::new();
+
+        for doc_type in &required_docs {
+            if let Some(doc) = all_documents.iter().find(|d| d.document_type == *doc_type) {
+                if doc.completed_at.is_some() {
+                    completed_required += 1;
+                }
+            } else {
+                missing_required.push(doc_type.to_string());
+            }
+        }
+
+        // Count completed optional documents
+        let mut completed_optional = 0;
+        for doc_type in &optional_docs {
+            if let Some(doc) = all_documents.iter().find(|d| d.document_type == *doc_type) {
+                if doc.completed_at.is_some() {
+                    completed_optional += 1;
+                }
+            }
+        }
+
+        let is_stage_complete = required_docs.len() == completed_required && missing_required.is_empty();
+        let next_stage = board.next_stage(current_stage).map(|s| s.to_string());
+        let can_progress = is_stage_complete && next_stage.is_some();
+
+        Ok(BoardCompletionStatus {
+            board_type: board.board_type().to_string(),
+            current_stage: current_stage.clone(),
+            total_required_documents: required_docs.len(),
+            completed_required_documents: completed_required,
+            total_optional_documents: optional_docs.len(),
+            completed_optional_documents: completed_optional,
+            missing_required_documents: missing_required,
+            is_stage_complete,
+            can_progress,
+            next_stage,
+            stage_metadata: board.stage_metadata(current_stage),
+        })
+    }
+
     /// Create the campaign directory structure
     fn create_campaign_directory_structure(
         &self,

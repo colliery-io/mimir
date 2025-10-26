@@ -1,4 +1,4 @@
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use mimir_dm_core::models::catalog::cult::{CatalogCult, CultFilters, CultBoonSummary};
 use mimir_dm_core::services::CultService;
 use std::sync::Arc;

@@ -6,6 +6,7 @@ use crate::{
     connection::DbConnection,
     dal::campaign::campaigns::CampaignRepository,
     dal::campaign::template_documents::TemplateRepository,
+    domain::{TemplateInfo, TemplateVariable},
     error::{DbError, Result},
     models::campaign::campaigns::Campaign,
     models::campaign::template_documents::TemplateDocument,
@@ -116,7 +117,60 @@ impl<'a> TemplateService<'a> {
         TemplateRepository::get_all_active(self.conn)
             .map_err(|e| e.into())
     }
-    
+
+    /// List all available templates with parsed metadata and variables
+    pub fn list_templates_with_details(&mut self) -> Result<Vec<TemplateInfo>> {
+        let templates = self.list_templates()?;
+
+        Ok(templates.into_iter()
+            .filter_map(|template| {
+                // Parse variables from the variables_schema JSON
+                let variables = match &template.variables_schema {
+                    Some(schema_str) => {
+                        serde_json::from_str::<Vec<JsonValue>>(schema_str)
+                            .ok()
+                            .map(|vars| {
+                                vars.into_iter()
+                                    .filter_map(|v| {
+                                        Some(TemplateVariable {
+                                            name: v.get("name")?.as_str()?.to_string(),
+                                            var_type: v.get("var_type")
+                                                .or(v.get("type"))?
+                                                .as_str()?
+                                                .to_string(),
+                                            description: v.get("description")?.as_str()?.to_string(),
+                                            default: v.get("default")?.clone(),
+                                            required: v.get("required")
+                                                .and_then(|r| r.as_bool())
+                                                .unwrap_or(true),
+                                        })
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default()
+                    }
+                    None => vec![]
+                };
+
+                // Parse title from metadata
+                let title = template.metadata
+                    .as_ref()
+                    .and_then(|m| serde_json::from_str::<JsonValue>(m).ok())
+                    .and_then(|m| m.get("title")?.as_str().map(String::from))
+                    .unwrap_or_else(|| "Untitled Template".to_string());
+
+                Some(TemplateInfo {
+                    id: template.document_id,
+                    title,
+                    purpose: template.purpose.unwrap_or_else(|| "No purpose specified".to_string()),
+                    level: template.document_level.unwrap_or_else(|| "unknown".to_string()),
+                    template_type: template.document_type.unwrap_or_else(|| "unknown".to_string()),
+                    variables,
+                })
+            })
+            .collect())
+    }
+
     /// Get a specific template
     pub fn get_template(&mut self, template_id: &str) -> Result<TemplateDocument> {
         TemplateRepository::get_latest(self.conn, template_id)

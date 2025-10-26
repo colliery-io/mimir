@@ -1,6 +1,6 @@
 use tauri::State;
 use mimir_dm_core::services::RaceService;
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use mimir_dm_core::models::catalog::RaceFilters;
 use std::sync::Arc;
 use tracing::error;

@@ -2,7 +2,6 @@
 
 mod app_init;
 mod commands;
-mod db_connection;
 mod embedded_test_book;
 mod seed_templates;
 mod services;
@@ -24,7 +23,7 @@ use commands::catalog_feat_db::{search_feats, get_feat_details, get_feat_sources
 use commands::catalog_psionic_db::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
 use commands::catalog_vehicle_db::{search_vehicles_db, get_vehicle_details_db, get_vehicle_types_db, get_vehicle_sizes_db, get_vehicle_terrains_db, get_vehicle_statistics_db};
 // Class catalog now uses database-backed commands only
-use services::database::DatabaseService;
+use mimir_dm_core::{DatabaseService, run_migrations};
 use services::context_service::ContextState;
 use services::llm::{self, LlmService, ConfirmationReceivers, CancellationTokens};
 use std::collections::HashMap;
@@ -59,8 +58,33 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            // Initialize database service
-            let db_service = Arc::new(DatabaseService);
+            // Initialize database service from core
+            let app_paths = APP_PATHS.get().expect("App paths should be initialized");
+            let is_new_db = app_paths.is_new_database();
+
+            let db_service = DatabaseService::new(
+                &app_paths.database_path_str(),
+                app_paths.is_memory_db
+            ).expect("Failed to initialize database service");
+
+            // Run migrations
+            info!("Running database migrations...");
+            let mut conn = db_service.get_connection()
+                .expect("Failed to get connection for migrations");
+            match run_migrations(&mut *conn) {
+                Ok(_) => info!("Database migrations completed successfully"),
+                Err(e) => warn!("Database migration warning: {}", e),
+            }
+            // Seed templates for new databases (reuse migration connection)
+            if is_new_db {
+                info!("Seeding initial templates...");
+                if let Err(e) = seed_templates::seed_templates(&mut conn) {
+                    warn!("Failed to seed templates: {}", e);
+                }
+            }
+            drop(conn); // Release connection after seeding
+
+            let db_service = Arc::new(db_service);
             let db_service_clone = Arc::clone(&db_service);
             app.manage(db_service);
             

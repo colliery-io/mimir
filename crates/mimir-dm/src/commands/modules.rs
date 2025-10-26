@@ -1,13 +1,11 @@
 //! Module management commands
 
-use crate::{
-    services::database::DatabaseService,
-    types::ApiResponse,
-};
+use crate::types::ApiResponse;
 use mimir_dm_core::{
     services::ModuleService,
     models::campaign::modules::{Module, UpdateModule},
     domain::BoardCompletionStatus,
+    DatabaseService,
 };
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -52,122 +50,27 @@ pub async fn create_module(
     request: CreateModuleRequest,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Module>, String> {
-    info!("Creating module: {} for campaign {} with type: {:?}", 
+    info!("Creating module: {} for campaign {} with type: {:?}",
         request.name, request.campaign_id, request.module_type);
-    
+
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    
-    // Get campaign for directory path
-    use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
-    let mut campaign_repo = CampaignRepository::new(&mut *conn);
-    let campaign = campaign_repo.find_by_id(request.campaign_id)
-        .map_err(|e| format!("Failed to find campaign: {}", e))?
-        .ok_or_else(|| "Campaign not found".to_string())?;
-    
-    // First create the module
     let mut service = ModuleService::new(&mut *conn);
-    let module = match service.create_module(
+
+    match service.create_module_with_documents(
         request.campaign_id,
-        request.name.clone(),
+        request.name,
         request.expected_sessions,
+        request.module_type,
     ) {
-        Ok(module) => module,
+        Ok(module) => {
+            info!("Module created successfully with ID: {}", module.id);
+            Ok(ApiResponse::success(module))
+        }
         Err(e) => {
             error!("Failed to create module: {}", e);
-            return Ok(ApiResponse::error(format!("Failed to create module: {}", e)));
-        }
-    };
-    
-    // Now create the module directory and documents
-    use std::path::PathBuf;
-    use std::fs;
-    use std::collections::HashMap;
-    use serde_json::json;
-    
-    let module_dir = PathBuf::from(&campaign.directory_path)
-        .join("modules")
-        .join(format!("module_{:02}", module.module_number));
-    
-    if !module_dir.exists() {
-        fs::create_dir_all(&module_dir).map_err(|e| format!("Failed to create module directory: {}", e))?;
-    }
-    
-    // Prepare variables for templates
-    let mut variables = HashMap::new();
-    variables.insert("module_name".to_string(), json!(request.name));
-    variables.insert("module_number".to_string(), json!(module.module_number));
-    
-    // Create the module overview document using the appropriate template
-    {
-        // Determine which template to use based on module type
-        let template_id = if let Some(module_type) = request.module_type.as_ref() {
-            match module_type.as_str() {
-                "mystery" => "module_mystery",
-                "dungeon" => "module_dungeon",
-                "heist" => "module_heist",
-                "horror" => "module_horror",
-                "political" => "module_political",
-                _ => "module_overview", // Default to generic overview
-            }
-        } else {
-            "module_overview" // Default if no type specified
-        };
-        
-        let overview_file_path = module_dir.join("module-overview.md");
-        
-        // Get the template and use its create_context method for defaults
-        use mimir_dm_core::dal::campaign::template_documents::TemplateRepository;
-        match TemplateRepository::get_latest(&mut *conn, template_id) {
-            Ok(template) => {
-                // Create context with template defaults
-                let mut context = template.create_context();
-                
-                // Add our custom variables (these will override defaults if they have the same key)
-                for (key, value) in variables.clone() {
-                    context.insert(&key, &value);
-                }
-                
-                // Render the template
-                let mut tera = tera::Tera::default();
-                tera.add_raw_template(&template.document_id, &template.document_content)
-                    .map_err(|e| format!("Failed to add template: {}", e))?;
-                
-                let content = tera.render(&template.document_id, &context)
-                    .map_err(|e| format!("Failed to render template: {}", e))?;
-                
-                // Write the file
-                fs::write(&overview_file_path, content).map_err(|e| format!("Failed to write overview: {}", e))?;
-                
-                // Create database record for overview
-                use mimir_dm_core::models::campaign::documents::NewDocument;
-                use mimir_dm_core::dal::campaign::documents::DocumentRepository;
-                
-                let overview_doc = NewDocument {
-                    campaign_id: request.campaign_id,
-                    module_id: Some(module.id),
-                    session_id: None,
-                    template_id: "module_overview".to_string(),  // Always use module_overview as the template_id
-                    document_type: "module_overview".to_string(),
-                    title: "Module Overview".to_string(),
-                    file_path: overview_file_path.to_string_lossy().to_string(),
-                };
-                
-                DocumentRepository::create(&mut *conn, overview_doc)
-                    .map_err(|e| format!("Failed to create overview document record: {}", e))?;
-                
-                if request.module_type.is_some() {
-                    info!("Created module overview using {} template", template_id);
-                }
-            }
-            Err(e) => {
-                error!("Failed to get template {}: {}", template_id, e);
-                return Ok(ApiResponse::error(format!("Failed to get template: {}", e)));
-            }
+            Ok(ApiResponse::error(format!("Failed to create module: {}", e)))
         }
     }
-    
-    info!("Module created successfully with ID: {}", module.id);
-    Ok(ApiResponse::success(module))
 }
 
 /// Get a module by ID

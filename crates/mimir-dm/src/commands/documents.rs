@@ -1,22 +1,13 @@
 //! Document management commands
 
 use mimir_dm_core::{
-    dal::campaign::{
-        documents::DocumentRepository,
-        campaigns::CampaignRepository,
-        template_documents::TemplateRepository,
-    },
+    services::DocumentService,
     models::campaign::documents::{Document, NewDocument, UpdateDocument},
+    DatabaseService,
 };
 use std::sync::Arc;
-use std::path::PathBuf;
-use std::fs;
 use tauri::State;
-
-use crate::{
-    services::database::DatabaseService,
-    types::ApiResponse,
-};
+use crate::types::ApiResponse;
 use serde::Serialize;
 
 /// Get all documents for a campaign
@@ -25,15 +16,12 @@ pub async fn get_campaign_documents(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    match DocumentRepository::find_by_campaign(conn, campaign_id) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.get_campaign_documents(campaign_id) {
         Ok(documents) => Ok(ApiResponse::success(documents)),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to load documents: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to load documents: {}", e))),
     }
 }
 
@@ -46,43 +34,12 @@ pub async fn get_documents_by_level(
     session_id: Option<i32>,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    let documents = match level.as_str() {
-        "campaign" => {
-            // Get campaign-level documents (no module or session id)
-            DocumentRepository::find_by_campaign(conn, campaign_id)
-                .map(|docs| docs.into_iter()
-                    .filter(|d| d.module_id.is_none() && d.session_id.is_none() && d.document_type != "handout")
-                    .collect())
-        },
-        "module" => {
-            if let Some(mid) = module_id {
-                DocumentRepository::find_by_module(conn, mid)
-            } else {
-                Ok(vec![])
-            }
-        },
-        "session" => {
-            if let Some(sid) = session_id {
-                DocumentRepository::find_by_session(conn, sid)
-            } else {
-                Ok(vec![])
-            }
-        },
-        "handout" => {
-            DocumentRepository::find_handouts_by_campaign(conn, campaign_id)
-        },
-        _ => Err(mimir_dm_core::error::DbError::InvalidData(format!("Invalid document level: {}", level))),
-    };
-    
-    match documents {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.get_documents_by_level(campaign_id, &level, module_id, session_id) {
         Ok(docs) => Ok(ApiResponse::success(docs)),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to load documents: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to load documents: {}", e))),
     }
 }
 
@@ -92,15 +49,12 @@ pub async fn create_document(
     new_document: NewDocument,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Document>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    match DocumentRepository::create(conn, new_document) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.create_document(new_document) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to create document: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to create document: {}", e))),
     }
 }
 
@@ -111,15 +65,12 @@ pub async fn update_document(
     update: UpdateDocument,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Document>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    match DocumentRepository::update(conn, document_id, update) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.update_document(document_id, update) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to update document: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to update document: {}", e))),
     }
 }
 
@@ -129,15 +80,12 @@ pub async fn complete_document(
     document_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Document>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    match DocumentRepository::mark_completed(conn, document_id) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.complete_document(document_id) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to complete document: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to complete document: {}", e))),
     }
 }
 
@@ -147,15 +95,12 @@ pub async fn delete_document(
     document_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<()>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    match DocumentRepository::delete(conn, document_id) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.delete_document(document_id) {
         Ok(_) => Ok(ApiResponse::success(())),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to delete document: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to delete document: {}", e))),
     }
 }
 
@@ -165,15 +110,12 @@ pub async fn get_incomplete_documents(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    match DocumentRepository::find_incomplete_by_campaign(conn, campaign_id) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.get_incomplete_documents(campaign_id) {
         Ok(documents) => Ok(ApiResponse::success(documents)),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to load incomplete documents: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to load incomplete documents: {}", e))),
     }
 }
 
@@ -183,15 +125,12 @@ pub async fn get_completed_documents(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    match DocumentRepository::find_completed_by_campaign(conn, campaign_id) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.get_completed_documents(campaign_id) {
         Ok(documents) => Ok(ApiResponse::success(documents)),
-        Err(e) => Ok(ApiResponse::error(format!(
-            "Failed to load completed documents: {}",
-            e
-        ))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to load completed documents: {}", e))),
     }
 }
 
@@ -202,74 +141,12 @@ pub async fn create_document_from_template(
     template_id: String,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Document>, String> {
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    // Get the campaign
-    let mut campaign_repo = CampaignRepository::new(conn);
-    let campaign = match campaign_repo.find_by_id(campaign_id) {
-        Ok(Some(c)) => c,
-        Ok(None) => return Ok(ApiResponse::error("Campaign not found".to_string())),
-        Err(e) => return Ok(ApiResponse::error(format!("Database error: {}", e))),
-    };
-    
-    // Check if document already exists
-    let existing = DocumentRepository::find_by_campaign(conn, campaign_id)
-        .map_err(|e| e.to_string())?;
-    if existing.iter().any(|d| d.template_id == template_id) {
-        return Ok(ApiResponse::error("Document already exists".to_string()));
-    }
-    
-    // Get the template
-    let template = match TemplateRepository::get_latest(conn, &template_id) {
-        Ok(t) => t,
-        Err(_) => return Ok(ApiResponse::error(format!("Template '{}' not found", template_id))),
-    };
-    
-    // Create the document file
-    let file_name = format!("{}.md", template_id);
-    let file_path = PathBuf::from(&campaign.directory_path).join(&file_name);
-    
-    // Process template using the create_context method
-    let context = template.create_context();
-    let mut tera = tera::Tera::default();
-    tera.add_raw_template(&template.document_id, &template.document_content)
-        .map_err(|e| format!("Failed to add template: {}", e))?;
-    
-    let content = tera.render(&template.document_id, &context)
-        .map_err(|e| format!("Failed to render template: {}", e))?;
-    
-    // Write file to disk
-    fs::write(&file_path, content)
-        .map_err(|e| format!("Failed to write document file: {}", e))?;
-    
-    // Create database record
-    // Generate title from template_id
-    let title = template_id
-        .split('-')
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ");
-    
-    let new_doc = NewDocument {
-        campaign_id: campaign.id,
-        module_id: None,
-        session_id: None,
-        template_id: template_id.clone(),
-        document_type: template_id.replace('-', "_"),
-        title,
-        file_path: file_path.to_string_lossy().to_string(),
-    };
-    
-    match DocumentRepository::create(conn, new_doc) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = DocumentService::new(&mut *conn);
+
+    match service.create_document_from_template(campaign_id, &template_id) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to create document: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!("Failed to create document from template: {}", e))),
     }
 }
 
@@ -277,17 +154,12 @@ pub async fn create_document_from_template(
 #[tauri::command]
 pub async fn read_document_file(
     file_path: String,
-    _db_service: State<'_, Arc<DatabaseService>>,
+    db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<String>, String> {
-    let path = PathBuf::from(&file_path);
-    
-    // Check if file exists
-    if !path.exists() {
-        return Ok(ApiResponse::error("Document file not found".to_string()));
-    }
-    
-    // Read the markdown file directly
-    match fs::read_to_string(&path) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let service = DocumentService::new(&mut *conn);
+
+    match service.read_document_file(&file_path) {
         Ok(content) => Ok(ApiResponse::success(content)),
         Err(e) => Ok(ApiResponse::error(format!("Failed to read document: {}", e))),
     }
@@ -298,21 +170,12 @@ pub async fn read_document_file(
 pub async fn save_document_file(
     file_path: String,
     content: String,
-    _db_service: State<'_, Arc<DatabaseService>>,
+    db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<()>, String> {
-    let path = PathBuf::from(&file_path);
-    
-    // Ensure parent directory exists
-    if let Some(parent) = path.parent() {
-        if !parent.exists() {
-            if let Err(e) = fs::create_dir_all(parent) {
-                return Ok(ApiResponse::error(format!("Failed to create directory: {}", e)));
-            }
-        }
-    }
-    
-    // Write the file
-    match fs::write(&path, content) {
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let service = DocumentService::new(&mut *conn);
+
+    match service.save_document_file(&file_path, &content) {
         Ok(_) => Ok(ApiResponse::success(())),
         Err(e) => Ok(ApiResponse::error(format!("Failed to save document: {}", e))),
     }

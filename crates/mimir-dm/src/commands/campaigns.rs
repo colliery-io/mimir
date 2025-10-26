@@ -1,13 +1,10 @@
 //! Campaign management commands
 
-use crate::{
-    services::database::DatabaseService,
-    types::ApiResponse,
-};
+use crate::types::ApiResponse;
 use mimir_dm_core::{
-    dal::campaign::{campaigns::CampaignRepository, documents::DocumentRepository},
-    domain::{BoardCompletionStatus, BoardRegistry},
+    domain::{BoardCompletionStatus, TemplateInfo},
     models::campaign::campaigns::Campaign as DbCampaign,
+    DatabaseService,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -145,77 +142,18 @@ pub async fn generate_campaign_document(
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TemplateInfo {
-    pub id: String,
-    pub title: String,
-    pub purpose: String,
-    pub level: String,
-    pub template_type: String,
-    pub variables: Vec<TemplateVariable>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TemplateVariable {
-    pub name: String,
-    pub var_type: String,
-    pub description: String,
-    pub default: JsonValue,
-    pub required: bool,
-}
-
 /// List all available templates
 #[tauri::command]
 pub async fn list_templates(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<Vec<TemplateInfo>>, String> {
     info!("Listing available templates");
-    
+
     let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
     let mut service = mimir_dm_core::services::TemplateService::new(&mut *conn);
-    
-    match service.list_templates() {
-        Ok(templates) => {
-            let template_infos: Vec<TemplateInfo> = templates.into_iter()
-                .filter_map(|template| {
-                    // Parse variables from the variables_schema JSON
-                    let variables = match &template.variables_schema {
-                        Some(schema_str) => {
-                            serde_json::from_str::<Vec<serde_json::Value>>(schema_str)
-                                .ok()
-                                .map(|vars| {
-                                    vars.into_iter()
-                                        .filter_map(|v| {
-                                            Some(TemplateVariable {
-                                                name: v.get("name")?.as_str()?.to_string(),
-                                                var_type: v.get("var_type").or(v.get("type"))?.as_str()?.to_string(),
-                                                description: v.get("description")?.as_str()?.to_string(),
-                                                default: v.get("default")?.clone(),
-                                                required: v.get("required").and_then(|r| r.as_bool()).unwrap_or(true),
-                                            })
-                                        })
-                                        .collect()
-                                })
-                                .unwrap_or_default()
-                        }
-                        None => vec![]
-                    };
-                    
-                    Some(TemplateInfo {
-                        id: template.document_id,
-                        title: template.metadata
-                            .as_ref()
-                            .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
-                            .and_then(|m| m.get("title")?.as_str().map(String::from))
-                            .unwrap_or_else(|| "Untitled Template".to_string()),
-                        purpose: template.purpose.unwrap_or_else(|| "No purpose specified".to_string()),
-                        level: template.document_level.unwrap_or_else(|| "unknown".to_string()),
-                        template_type: template.document_type.unwrap_or_else(|| "unknown".to_string()),
-                        variables,
-                    })
-                })
-                .collect();
-            
+
+    match service.list_templates_with_details() {
+        Ok(template_infos) => {
             info!("Found {} templates", template_infos.len());
             Ok(ApiResponse::success(template_infos))
         }
@@ -260,93 +198,20 @@ pub async fn check_campaign_stage_completion(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<ApiResponse<BoardCompletionStatus>, String> {
     info!("Checking stage completion for campaign {}", campaign_id);
-    
-    let mut pooled_conn = db_service.get_connection().map_err(|e| e.to_string())?;
-    let conn = &mut *pooled_conn;
-    
-    // Get the campaign
-    let mut campaign_repo = CampaignRepository::new(conn);
-    let campaign = match campaign_repo.find_by_id(campaign_id) {
-        Ok(Some(c)) => c,
-        Ok(None) => {
-            error!("Campaign {} not found", campaign_id);
-            return Ok(ApiResponse::error(format!("Campaign {} not found", campaign_id)));
+
+    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
+
+    match service.check_stage_completion(campaign_id) {
+        Ok(status) => {
+            info!("Stage completion status: {:?}", status);
+            Ok(ApiResponse::success(status))
         }
         Err(e) => {
-            error!("Failed to find campaign: {}", e);
-            return Ok(ApiResponse::error(format!("Database error: {}", e)));
-        }
-    };
-    
-    // Get the board definition
-    let board_registry = BoardRegistry::new();
-    let board = match board_registry.get("campaign") {
-        Some(b) => b,
-        None => {
-            error!("Campaign board definition not found");
-            return Ok(ApiResponse::error("Campaign board definition not found".to_string()));
-        }
-    };
-    
-    let current_stage = &campaign.status;
-    
-    // Get required and optional documents for current stage
-    let required_docs = board.required_documents(current_stage);
-    let optional_docs = board.optional_documents(current_stage);
-    
-    // Get all documents for this campaign
-    let all_documents = match DocumentRepository::find_by_campaign(conn, campaign_id) {
-        Ok(docs) => docs,
-        Err(e) => {
-            error!("Failed to find documents: {}", e);
-            return Ok(ApiResponse::error(format!("Failed to find documents: {}", e)));
-        }
-    };
-    
-    // Count completed required documents
-    let mut completed_required = 0;
-    let mut missing_required = Vec::new();
-    
-    for doc_type in &required_docs {
-        if let Some(doc) = all_documents.iter().find(|d| d.document_type == *doc_type) {
-            if doc.completed_at.is_some() {
-                completed_required += 1;
-            }
-        } else {
-            missing_required.push(doc_type.to_string());
+            error!("Failed to check stage completion: {}", e);
+            Ok(ApiResponse::error(format!("Failed to check stage completion: {}", e)))
         }
     }
-    
-    // Count completed optional documents
-    let mut completed_optional = 0;
-    for doc_type in &optional_docs {
-        if let Some(doc) = all_documents.iter().find(|d| d.document_type == *doc_type) {
-            if doc.completed_at.is_some() {
-                completed_optional += 1;
-            }
-        }
-    }
-    
-    let is_stage_complete = required_docs.len() == completed_required && missing_required.is_empty();
-    let next_stage = board.next_stage(current_stage).map(|s| s.to_string());
-    let can_progress = is_stage_complete && next_stage.is_some();
-    
-    let status = BoardCompletionStatus {
-        board_type: board.board_type().to_string(),
-        current_stage: current_stage.clone(),
-        total_required_documents: required_docs.len(),
-        completed_required_documents: completed_required,
-        total_optional_documents: optional_docs.len(),
-        completed_optional_documents: completed_optional,
-        missing_required_documents: missing_required,
-        is_stage_complete,
-        can_progress,
-        next_stage,
-        stage_metadata: board.stage_metadata(current_stage),
-    };
-    
-    info!("Stage completion status: {:?}", status);
-    Ok(ApiResponse::success(status))
 }
 
 /// Transition campaign to the next stage

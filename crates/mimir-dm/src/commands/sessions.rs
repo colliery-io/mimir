@@ -1,6 +1,6 @@
 //! Session-related Tauri commands
 
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use crate::types::ApiResponse;
 use mimir_dm_core::services::SessionService;
 use mimir_dm_core::domain::BoardRegistry;
@@ -27,7 +27,8 @@ pub async fn create_session(
     request: CreateSessionRequest,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<SessionResponse, String> {
-    let mut conn = db_service.get_connection()?;
+    let mut conn = db_service.get_connection()
+        .map_err(|e| format!("Database connection failed: {}", e))?;
     
     let session = SessionService::create_session(
         &mut conn,
@@ -57,8 +58,9 @@ pub async fn list_module_sessions(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<SessionListResponse, String> {
     use mimir_dm_core::dal::campaign::sessions::SessionRepository;
-    
-    let mut conn = db_service.get_connection()?;
+
+    let mut conn = db_service.get_connection()
+        .map_err(|e| format!("Database connection failed: {}", e))?;
     let mut repo = SessionRepository::new(&mut conn);
     let sessions = repo.list_by_module(request.module_id)
         .map_err(|e| format!("Failed to list sessions: {}", e))?;
@@ -79,8 +81,9 @@ pub async fn transition_session_status(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<SessionResponse, String> {
     use mimir_dm_core::dal::campaign::sessions::SessionRepository;
-    
-    let mut conn = db_service.get_connection()?;
+
+    let mut conn = db_service.get_connection()
+        .map_err(|e| format!("Database connection failed: {}", e))?;
     let mut repo = SessionRepository::new(&mut conn);
     let session = repo.transition_status(request.session_id, &request.new_status)
         .map_err(|e| format!("Failed to transition session: {}", e))?;

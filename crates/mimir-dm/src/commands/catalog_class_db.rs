@@ -3,7 +3,7 @@
 use tauri::State;
 use mimir_dm_core::models::catalog::class::{ClassSummary, ClassFilters, Class, Subclass};
 use mimir_dm_core::services::ClassService;
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use std::sync::Arc;
 
 /// Search classes with database backend

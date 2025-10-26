@@ -1,15 +1,13 @@
 //! Template seeding functionality - wrapper around mimir-dm-core's template seeder
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+use mimir_dm_core::DbConnection;
 use tracing::info;
 
 /// Seed the database with initial templates if they don't exist
-pub fn seed_templates() -> Result<()> {
-    let mut conn = crate::db_connection::get_connection()
-        .context("Failed to get database connection for seeding")?;
-    
+pub fn seed_templates(conn: &mut DbConnection) -> Result<()> {
     // Use the seeder from mimir-dm-core
-    match mimir_dm_core::seed::template_seeder::seed_templates(&mut *conn) {
+    match mimir_dm_core::seed::template_seeder::seed_templates(&mut **conn) {
         Ok(count) => {
             if count > 0 {
                 info!("Successfully seeded {} templates", count);

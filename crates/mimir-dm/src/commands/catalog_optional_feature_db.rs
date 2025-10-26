@@ -1,7 +1,7 @@
 use tauri::State;
 use mimir_dm_core::models::catalog::optionalfeature::{OptionalFeatureSummary, OptionalFeatureFilters, OptionalFeature};
 use mimir_dm_core::services::OptionalFeatureService;
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use std::sync::Arc;
 use tracing::{info, debug, error};
 

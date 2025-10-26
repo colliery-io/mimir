@@ -32,10 +32,10 @@ impl<'a> ModuleService<'a> {
         expected_sessions: i32,
     ) -> Result<Module> {
         let mut repo = ModuleRepository::new(self.conn);
-        
+
         // Get the next module number
         let module_number = repo.get_next_module_number(campaign_id)?;
-        
+
         let new_module = NewModule {
             campaign_id,
             name,
@@ -43,8 +43,98 @@ impl<'a> ModuleService<'a> {
             status: "planning".to_string(),
             expected_sessions,
         };
-        
+
         repo.create(new_module)
+    }
+
+    /// Create a new module with its directory and initial documents
+    pub fn create_module_with_documents(
+        &mut self,
+        campaign_id: i32,
+        name: String,
+        expected_sessions: i32,
+        module_type: Option<String>,
+    ) -> Result<Module> {
+        // Get the campaign to find directory path
+        use crate::dal::campaign::campaigns::CampaignRepository;
+        let mut campaign_repo = CampaignRepository::new(self.conn);
+        let campaign = campaign_repo.find_by_id(campaign_id)?
+            .ok_or_else(|| diesel::result::Error::NotFound)?;
+
+        // Create the module record
+        let module = self.create_module(campaign_id, name.clone(), expected_sessions)?;
+
+        // Create the module directory
+        let module_dir = PathBuf::from(&campaign.directory_path)
+            .join("modules")
+            .join(format!("module_{:02}", module.module_number));
+
+        if !module_dir.exists() {
+            fs::create_dir_all(&module_dir)?;
+        }
+
+        // Prepare variables for templates
+        let mut variables = std::collections::HashMap::new();
+        variables.insert("module_name".to_string(), json!(name));
+        variables.insert("module_number".to_string(), json!(module.module_number));
+
+        // Determine which template to use based on module type
+        let template_id = if let Some(ref mt) = module_type {
+            match mt.as_str() {
+                "mystery" => "module_mystery",
+                "dungeon" => "module_dungeon",
+                "heist" => "module_heist",
+                "horror" => "module_horror",
+                "political" => "module_political",
+                _ => "module_overview", // Default to generic overview
+            }
+        } else {
+            "module_overview" // Default if no type specified
+        };
+
+        let overview_file_path = module_dir.join("module-overview.md");
+
+        // Get the template and use its create_context method for defaults
+        use crate::dal::campaign::template_documents::TemplateRepository;
+        let template = TemplateRepository::get_latest(self.conn, template_id)?;
+
+        // Create context with template defaults
+        let mut context = template.create_context();
+
+        // Add our custom variables (these will override defaults if they have the same key)
+        for (key, value) in variables {
+            context.insert(&key, &value);
+        }
+
+        // Render the template
+        let mut tera = tera::Tera::default();
+        tera.add_raw_template(&template.document_id, &template.document_content)
+            .map_err(|e| diesel::result::Error::QueryBuilderError(
+                format!("Failed to add template: {}", e).into()
+            ))?;
+
+        let content = tera.render(&template.document_id, &context)
+            .map_err(|e| diesel::result::Error::QueryBuilderError(
+                format!("Failed to render template: {}", e).into()
+            ))?;
+
+        // Write the file
+        fs::write(&overview_file_path, content)?;
+
+        // Create database record for overview
+        let overview_doc = NewDocument {
+            campaign_id,
+            module_id: Some(module.id),
+            session_id: None,
+            template_id: "module_overview".to_string(),  // Always use module_overview as the template_id
+            document_type: "module_overview".to_string(),
+            title: "Module Overview".to_string(),
+            file_path: overview_file_path.to_string_lossy().to_string(),
+        };
+
+        DocumentRepository::create(self.conn, overview_doc)?;
+
+        Ok(module)
     }
     
     

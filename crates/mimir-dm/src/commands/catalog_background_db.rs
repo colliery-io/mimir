@@ -1,6 +1,6 @@
 use tauri::State;
 use mimir_dm_core::services::BackgroundService;
-use crate::services::database::DatabaseService;
+use mimir_dm_core::DatabaseService;
 use mimir_dm_core::models::catalog::BackgroundFilters;
 use std::sync::Arc;
 use tracing::error;
