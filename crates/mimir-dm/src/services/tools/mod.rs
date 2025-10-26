@@ -8,7 +8,6 @@ use mimir_dm_llm::{Tool as LlmTool, ToolTrait};
 use mimir_dm_llm::traits::ToolCallContext as ToolCall;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use crate::APP_PATHS;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use std::path::Path;
@@ -117,19 +116,12 @@ impl ToolRegistry {
     /// This method allows overriding the directory path for campaign-specific operations
     pub fn generate_system_rules_with_directory(&self, session_id: Option<&str>, custom_directory: Option<&str>) -> Vec<String> {
         let mut rules = Vec::new();
-        
+
         // When campaign directory is provided, we work exclusively with that directory
         if let Some(campaign_dir) = custom_directory {
             info!("Using campaign directory for file operations: {}", campaign_dir);
-        } else {
-            // Only check APP_PATHS when no campaign directory is provided
-            if let Some(app_paths) = APP_PATHS.get() {
-                info!("APP_PATHS is available: data_dir = {}", app_paths.data_dir.display());
-            } else {
-                warn!("APP_PATHS is None in generate_system_rules!");
-            }
         }
-        
+
         // Add general context information
         rules.push(self.generate_context_information(session_id, custom_directory));
         

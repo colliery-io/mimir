@@ -25,6 +25,7 @@ use uuid::Uuid;
 use crate::services::chat_logger::ChatLogger;
 use mimir_dm_core::DatabaseService;
 use crate::services::tools::ToolRegistry;
+use crate::app_init::AppPaths;
 
 /// The model we want to use for the DM assistant
 pub const REQUIRED_MODEL: &str = "gpt-oss:20b";
@@ -66,6 +67,8 @@ pub struct LlmService {
     pub(super) todo_state_manager: TodoStateManager,
     /// Chat loggers by session ID
     chat_loggers: Arc<Mutex<HashMap<String, Arc<ChatLogger>>>>,
+    /// Application paths for file operations
+    app_paths: Arc<AppPaths>,
 }
 
 impl LlmService {
@@ -74,6 +77,7 @@ impl LlmService {
         db_service: Arc<DatabaseService>,
         confirmation_receivers: ConfirmationReceivers,
         app_handle: AppHandle,
+        app_paths: Arc<AppPaths>,
     ) -> Result<Self> {
         let config = Self::create_config(REQUIRED_MODEL, None);
         let provider =
@@ -112,6 +116,7 @@ impl LlmService {
             app_handle: Some(app_handle),
             todo_state_manager,
             chat_loggers: Arc::new(Mutex::new(HashMap::new())),
+            app_paths,
         })
     }
 
@@ -292,11 +297,7 @@ impl LlmService {
         }
 
         // Create new logger
-        let app_paths = crate::APP_PATHS
-            .get()
-            .ok_or_else(|| anyhow!("App paths not initialized"))?;
-
-        let logger = ChatLogger::new(session_id.to_string(), &app_paths.logs_dir)
+        let logger = ChatLogger::new(session_id.to_string(), &self.app_paths.logs_dir)
             .context("Failed to create chat logger")?;
         let logger_arc = Arc::new(logger);
 
@@ -360,10 +361,11 @@ pub async fn initialize_llm(
     app_handle: AppHandle,
     db_service: Arc<DatabaseService>,
     confirmation_receivers: ConfirmationReceivers,
+    app_paths: Arc<AppPaths>,
 ) -> Result<LlmService> {
     info!("Initializing LLM service...");
 
-    let service = LlmService::new(db_service, confirmation_receivers, app_handle)
+    let service = LlmService::new(db_service, confirmation_receivers, app_handle, app_paths)
         .context("Failed to create LLM service")?;
 
     // Check and download model if needed

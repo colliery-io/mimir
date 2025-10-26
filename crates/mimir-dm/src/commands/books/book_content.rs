@@ -1,11 +1,11 @@
 //! Book content serving commands
 
-use crate::{
-    types::ApiResponse,
-    APP_PATHS,
-};
+use crate::app_init::AppPaths;
+use crate::types::ApiResponse;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use tauri::State;
 use tracing::{error, info};
 use base64::{engine::general_purpose::STANDARD, Engine};
 
@@ -13,12 +13,9 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 #[tauri::command]
 pub async fn get_book_content(
     book_id: String,
+    app_paths: State<'_, Arc<AppPaths>>
 ) -> Result<ApiResponse<serde_json::Value>, String> {
     info!("Getting book content for: {}", book_id);
-
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
 
     // Get book directory
     let book_dir = app_paths.data_dir
@@ -76,11 +73,9 @@ pub async fn get_book_content(
 pub async fn serve_book_image(
     book_id: String,
     image_path: String,
+    app_paths: State<'_, Arc<AppPaths>>,
 ) -> Result<ApiResponse<String>, String> {
     info!("Serving image {} from book {}", image_path, book_id);
-
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
 
     let books_dir = app_paths.data_dir.join("books");
 

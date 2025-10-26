@@ -1,11 +1,11 @@
 //! Book reference lookup functionality
 
-use crate::{
-    types::ApiResponse,
-    APP_PATHS,
-};
+use crate::app_init::AppPaths;
+use crate::types::ApiResponse;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
+use tauri::State;
 use tracing::{debug, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -26,11 +26,9 @@ pub async fn lookup_reference(
     ref_type: String,
     ref_name: String,
     ref_source: Option<String>,
+    app_paths: State<'_, Arc<AppPaths>>
 ) -> Result<ApiResponse<ReferenceData>, String> {
     info!("Looking up reference: {} '{}' from {:?}", ref_type, ref_name, ref_source);
-
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
 
     let books_dir = app_paths.data_dir.join("books");
 

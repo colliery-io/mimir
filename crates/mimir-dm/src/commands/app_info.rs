@@ -1,7 +1,10 @@
 //! Application info commands
 
-use crate::{types::ApiResponse, APP_PATHS};
+use crate::app_init::AppPaths;
+use crate::types::ApiResponse;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tauri::State;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppInfo {
@@ -12,19 +15,16 @@ pub struct AppInfo {
 }
 
 #[tauri::command]
-pub async fn get_app_info() -> Result<ApiResponse<AppInfo>, String> {
-    match APP_PATHS.get() {
-        Some(paths) => {
-            let app_info = AppInfo {
-                database_path: paths.database_path_str(),
-                app_dir: paths.app_dir.to_string_lossy().to_string(),
-                config_dir: paths.config_dir.to_string_lossy().to_string(),
-                data_dir: paths.data_dir.to_string_lossy().to_string(),
-            };
-            Ok(ApiResponse::success(app_info))
-        }
-        None => Ok(ApiResponse::error("Application not initialized".to_string()))
-    }
+pub async fn get_app_info(
+    app_paths: State<'_, Arc<AppPaths>>
+) -> Result<ApiResponse<AppInfo>, String> {
+    let app_info = AppInfo {
+        database_path: app_paths.database_path_str(),
+        app_dir: app_paths.app_dir.to_string_lossy().to_string(),
+        config_dir: app_paths.config_dir.to_string_lossy().to_string(),
+        data_dir: app_paths.data_dir.to_string_lossy().to_string(),
+    };
+    Ok(ApiResponse::success(app_info))
 }
 
 #[tauri::command]

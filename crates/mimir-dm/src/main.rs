@@ -7,7 +7,7 @@ mod seed_templates;
 mod services;
 mod types;
 
-use app_init::{initialize_app, AppPaths};
+use app_init::initialize_app;
 use commands::{logs, *};
 use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
 // use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details}; // Replaced by catalog_background_db
@@ -27,12 +27,9 @@ use mimir_dm_core::{DatabaseService, run_migrations};
 use services::context_service::ContextState;
 use services::llm::{self, LlmService, ConfirmationReceivers, CancellationTokens};
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use tauri::Manager;
 use tracing::{error, info, warn};
-
-// Global application state
-pub static APP_PATHS: OnceLock<AppPaths> = OnceLock::new();
 
 fn main() {
     // Initialize the application first
@@ -47,20 +44,14 @@ fn main() {
         }
     };
 
-    // Store app paths globally
-    if APP_PATHS.set(app_paths).is_err() {
-        error!("Failed to set global app paths");
-        std::process::exit(1);
-    }
+    let is_new_db = app_paths.is_new_database();
 
     // Start Tauri application
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .setup(move |app| {
             // Initialize database service from core
-            let app_paths = APP_PATHS.get().expect("App paths should be initialized");
-            let is_new_db = app_paths.is_new_database();
 
             let db_service = DatabaseService::new(
                 &app_paths.database_path_str(),
@@ -87,14 +78,17 @@ fn main() {
             let db_service = Arc::new(db_service);
             let db_service_clone = Arc::clone(&db_service);
             app.manage(db_service);
-            
+
+            // Register AppPaths as Tauri state
+            let app_paths_state = Arc::new(app_paths);
+            app.manage(app_paths_state.clone());
+
             // Initialize context service
             let context_state = ContextState::new();
             app.manage(context_state);
-            
+
             // Initialize session manager
-            let app_paths = APP_PATHS.get().expect("App paths should be initialized");
-            let session_manager = commands::chat_sessions::init_session_manager(app_paths)
+            let session_manager = commands::chat_sessions::init_session_manager(&app_paths_state)
                 .map_err(|e| {
                     error!("Failed to initialize session manager: {}", e);
                     e
@@ -112,11 +106,12 @@ fn main() {
             let app_handle = app.handle().clone();
             let llm_service = Arc::new(tokio::sync::Mutex::new(None::<LlmService>));
             let llm_service_clone = Arc::clone(&llm_service);
-            
+            let app_paths_clone = Arc::clone(&app_paths_state);
+
             // Spawn async task to initialize LLM
             tauri::async_runtime::spawn(async move {
                 info!("Starting LLM service initialization...");
-                match llm::initialize_llm(app_handle, db_service_clone, confirmation_receivers_clone).await {
+                match llm::initialize_llm(app_handle, db_service_clone, confirmation_receivers_clone, app_paths_clone).await {
                     Ok(service) => {
                         info!("LLM service initialized successfully");
                         let mut llm = llm_service_clone.lock().await;

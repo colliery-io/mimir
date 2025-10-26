@@ -1,9 +1,7 @@
 //! Book archive upload functionality
 
-use crate::{
-    types::ApiResponse,
-    APP_PATHS,
-};
+use crate::app_init::AppPaths;
+use crate::types::ApiResponse;
 use super::catalog_import::import_all_catalogs_from_book;
 use super::book_library::BookInfo;
 use super::book_content::find_book_content_file;
@@ -25,12 +23,9 @@ use chrono::Utc;
 pub async fn upload_book_archive(
     archive_path: String,
     db_service: State<'_, Arc<DatabaseService>>,
+    app_paths: State<'_, Arc<AppPaths>>
 ) -> Result<ApiResponse<BookInfo>, String> {
     info!("Uploading book archive from: {}", archive_path);
-
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
 
     // Verify archive exists
     let archive_file = Path::new(&archive_path);

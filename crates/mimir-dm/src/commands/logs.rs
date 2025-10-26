@@ -1,11 +1,11 @@
 //! Log file management commands
 
-use crate::{
-    types::ApiResponse,
-    APP_PATHS,
-};
+use crate::app_init::AppPaths;
+use crate::types::ApiResponse;
 use std::fs;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
+use std::sync::Arc;
+use tauri::State;
 use tracing::{info, debug};
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
@@ -40,12 +40,10 @@ pub struct LogTailResponse {
 
 /// List all available log files in both application and chat directories
 #[tauri::command]
-pub async fn list_log_files() -> Result<ApiResponse<LogFilesResponse>, String> {
+pub async fn list_log_files(
+    app_paths: State<'_, Arc<AppPaths>>
+) -> Result<ApiResponse<LogFilesResponse>, String> {
     info!("Listing log files");
-    
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
     
     let logs_dir = &app_paths.logs_dir;
     let chat_logs_dir = logs_dir.join("chat_sessions");
@@ -152,17 +150,14 @@ pub async fn read_log_file(
     file_name: String,
     offset: usize,
     limit: usize,
+    app_paths: State<'_, Arc<AppPaths>>
 ) -> Result<ApiResponse<LogContent>, String> {
     debug!("Reading log file: {} (offset: {}, limit: {})", file_name, offset, limit);
-    
+
     // Validate file name to prevent directory traversal
     if file_name.contains("..") || file_name.contains("/") || file_name.contains("\\") {
         return Ok(ApiResponse::error("Invalid file name".to_string()));
     }
-    
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
     
     // Determine file path - check application logs first, then chat logs
     let file_path = if file_name.starts_with("mimir.log") {
@@ -211,15 +206,12 @@ pub async fn read_log_file(
 pub async fn tail_log_file(
     file_name: String,
     last_position: u64,
+    app_paths: State<'_, Arc<AppPaths>>
 ) -> Result<ApiResponse<LogTailResponse>, String> {
     // Validate file name
     if file_name.contains("..") || file_name.contains("/") || file_name.contains("\\") {
         return Ok(ApiResponse::error("Invalid file name".to_string()));
     }
-    
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
     
     // Determine file path - check application logs first, then chat logs
     let file_path = if file_name.starts_with("mimir.log") {
@@ -269,10 +261,9 @@ pub async fn tail_log_file(
 
 /// Open the chat logs directory in the system file explorer
 #[tauri::command]
-pub async fn open_logs_folder() -> Result<ApiResponse<()>, String> {
-    // Get app paths
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
+pub async fn open_logs_folder(
+    app_paths: State<'_, Arc<AppPaths>>
+) -> Result<ApiResponse<()>, String> {
     
     let chat_logs_dir = app_paths.logs_dir.join("chat_sessions");
     

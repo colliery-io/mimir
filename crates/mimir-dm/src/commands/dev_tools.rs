@@ -1,11 +1,13 @@
 //! Development tools and commands
 
+use crate::app_init::AppPaths;
 use crate::{
     embedded_test_book::{get_embedded_test_books, is_dev_build},
     types::ApiResponse,
-    APP_PATHS,
 };
 use std::fs;
+use std::sync::Arc;
+use tauri::State;
 use tracing::info;
 
 /// Check if we're in development mode
@@ -17,13 +19,12 @@ pub async fn is_dev_mode() -> Result<bool, String> {
 
 /// Remove the development test book
 #[tauri::command]
-pub async fn remove_dev_test_book() -> Result<ApiResponse<()>, String> {
+pub async fn remove_dev_test_book(
+    app_paths: State<'_, Arc<AppPaths>>
+) -> Result<ApiResponse<()>, String> {
     if !is_dev_build() {
         return Ok(ApiResponse::error("Not in development mode".to_string()));
     }
-    
-    let app_paths = APP_PATHS.get()
-        .ok_or_else(|| "App paths not initialized".to_string())?;
     
     let books_dir = app_paths.data_dir.join("books");
     let test_books = get_embedded_test_books();
