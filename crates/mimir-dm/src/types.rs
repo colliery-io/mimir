@@ -97,3 +97,9 @@ impl From<serde_json::Error> for ApiError {
         ApiError::Serialization(err.to_string())
     }
 }
+
+impl From<anyhow::Error> for ApiError {
+    fn from(err: anyhow::Error) -> Self {
+        ApiError::Internal(err.to_string())
+    }
+}

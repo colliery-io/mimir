@@ -1,6 +1,6 @@
 //! Campaign management commands
 
-use crate::types::ApiResponse;
+use crate::types::{ApiError, ApiResponse};
 use mimir_dm_core::{
     domain::{BoardCompletionStatus, TemplateInfo},
     models::campaign::campaigns::Campaign as DbCampaign,
@@ -45,10 +45,10 @@ pub struct CreateCampaignRequest {
 #[tauri::command]
 pub async fn list_campaigns(
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Campaign>>, String> {
+) -> Result<ApiResponse<Vec<Campaign>>, ApiError> {
     info!("Listing campaigns");
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.list_active_campaigns() {
@@ -73,10 +73,10 @@ pub async fn list_campaigns(
 pub async fn create_campaign(
     request: CreateCampaignRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Campaign>, String> {
+) -> Result<ApiResponse<Campaign>, ApiError> {
     info!("Creating new campaign: {} at location: {}", request.name, request.directory_location);
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.create_campaign(
@@ -115,10 +115,10 @@ pub struct GeneratedDocument {
 pub async fn generate_campaign_document(
     request: GenerateDocumentRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<GeneratedDocument>, String> {
+) -> Result<ApiResponse<GeneratedDocument>, ApiError> {
     info!("Generating document from template '{}' for campaign {}", request.template_id, request.campaign_id);
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::TemplateService::new(&mut *conn);
     
     match service.generate_document(
@@ -146,10 +146,10 @@ pub async fn generate_campaign_document(
 #[tauri::command]
 pub async fn list_templates(
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<TemplateInfo>>, String> {
+) -> Result<ApiResponse<Vec<TemplateInfo>>, ApiError> {
     info!("Listing available templates");
 
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::TemplateService::new(&mut *conn);
 
     match service.list_templates_with_details() {
@@ -169,10 +169,10 @@ pub async fn list_templates(
 pub async fn get_campaign(
     id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Campaign>, String> {
+) -> Result<ApiResponse<Campaign>, ApiError> {
     info!("Getting campaign with id: {}", id);
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.get_campaign(id) {
@@ -196,10 +196,10 @@ pub async fn get_campaign(
 pub async fn check_campaign_stage_completion(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<BoardCompletionStatus>, String> {
+) -> Result<ApiResponse<BoardCompletionStatus>, ApiError> {
     info!("Checking stage completion for campaign {}", campaign_id);
 
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
 
     match service.check_stage_completion(campaign_id) {
@@ -220,10 +220,10 @@ pub async fn transition_campaign_stage(
     campaign_id: i32,
     new_stage: String,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Campaign>, String> {
+) -> Result<ApiResponse<Campaign>, ApiError> {
     info!("Transitioning campaign {} to stage {}", campaign_id, new_stage);
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.transition_campaign_stage(campaign_id, &new_stage) {
@@ -243,10 +243,10 @@ pub async fn transition_campaign_stage(
 pub async fn archive_campaign(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Campaign>, String> {
+) -> Result<ApiResponse<Campaign>, ApiError> {
     info!("Archiving campaign {}", campaign_id);
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.archive_campaign(campaign_id) {
@@ -266,10 +266,10 @@ pub async fn archive_campaign(
 pub async fn unarchive_campaign(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Campaign>, String> {
+) -> Result<ApiResponse<Campaign>, ApiError> {
     info!("Unarchiving campaign {}", campaign_id);
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.unarchive_campaign(campaign_id) {
@@ -295,10 +295,10 @@ pub struct DeleteCampaignRequest {
 pub async fn delete_campaign(
     request: DeleteCampaignRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<()>, String> {
+) -> Result<ApiResponse<()>, ApiError> {
     info!("Deleting campaign {} (delete_files: {})", request.campaign_id, request.delete_files);
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.delete_campaign(request.campaign_id, request.delete_files) {
@@ -317,10 +317,10 @@ pub async fn delete_campaign(
 #[tauri::command]
 pub async fn list_archived_campaigns(
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Campaign>>, String> {
+) -> Result<ApiResponse<Vec<Campaign>>, ApiError> {
     info!("Listing archived campaigns");
-    
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+
+    let mut conn = db_service.get_connection()?;
     let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
     
     match service.list_archived_campaigns() {
