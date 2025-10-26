@@ -482,7 +482,9 @@ All acceptance criteria for investigation and documentation phase met:
 - [x] Example implementations provided for each layer
 - [x] Migration strategy documented (incremental approach)
 
-**Next Steps**: This task is complete for planning/analysis phase. Implementation of standardized patterns should be tracked in separate tasks for each phase:
-- Create T-0025-P1: Make ApiError Serializable
-- Create T-0025-P2: Update command layer to use ApiError
-- Create T-0025-P3: Standardize frontend error handling patterns
+**Next Steps**: Implementation tasks created:
+- [[MIMIR-T-0034]]: Phase 1 - Make ApiError Serializable
+- [[MIMIR-T-0035]]: Phase 2 - Update command layer to use ApiError
+- [[MIMIR-T-0036]]: Phase 3 - Standardize frontend error handling patterns
+
+This planning task is now complete. Implementation will proceed through the three phase tasks above.
