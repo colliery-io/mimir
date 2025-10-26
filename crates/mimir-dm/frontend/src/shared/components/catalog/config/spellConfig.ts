@@ -1,5 +1,5 @@
 import type { CatalogConfig } from './types'
-import { formatSpellLevel, formatSpellTags } from './formatters'
+import { formatSpellLevel, formatSpellTags } from '../../../utils/formatters'
 
 export const spellConfig: CatalogConfig = {
   name: 'spells',

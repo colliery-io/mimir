@@ -1,4 +1,5 @@
 import type { CatalogConfig } from './types'
+import { formatWeight } from '../../../utils/formatters'
 
 // Format cost from copper pieces to appropriate currency
 function formatCost(value: number | null): string {
@@ -11,12 +12,6 @@ function formatCost(value: number | null): string {
   } else {
     return `${value} cp`
   }
-}
-
-// Format weight with appropriate units
-function formatWeight(weight: number | null): string {
-  if (!weight || weight === 0) return '—'
-  return `${weight} lb`
 }
 
 // Format rarity for display

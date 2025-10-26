@@ -1,4 +1,5 @@
 import { processFormattingTags } from '../utils/textFormatting'
+import { formatSpellLevel } from '../../../shared/utils/formatters'
 
 interface SpellDetails {
   name: string
@@ -75,7 +76,7 @@ function formatSpellSummary(spell: any): string {
   
   // Header with level and school
   html += '<div class="spell-header-section">'
-  html += `<div class="spell-level-school">${formatLevel(spell.level)} ${spell.school}</div>`
+  html += `<div class="spell-level-school">${formatSpellLevel(spell.level)} ${spell.school}</div>`
   if (spell.ritual) {
     html += '<div class="spell-tag ritual">Ritual</div>'
   }
@@ -130,7 +131,7 @@ function formatFullSpellDetails(spell: SpellDetails): string {
   
   // Header section
   html += '<div class="spell-header-section">'
-  const levelSchool = `${formatLevel(spell.level)} ${spell.school}`
+  const levelSchool = `${formatSpellLevel(spell.level)} ${spell.school}`
   html += `<div class="spell-level-school">${levelSchool}</div>`
   
   const tags = []
@@ -396,12 +397,6 @@ function formatList(listObj: any): string {
   }
   html += '</ul>'
   return html
-}
-
-function formatLevel(level: number): string {
-  if (level === 0) return 'Cantrip'
-  const suffixes = ['', '1st-level', '2nd-level', '3rd-level']
-  return suffixes[level] || `${level}th-level`
 }
 
 function formatSaveType(save: string): string {

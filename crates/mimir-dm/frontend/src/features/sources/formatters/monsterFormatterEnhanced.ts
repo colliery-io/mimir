@@ -1,6 +1,7 @@
 import type { MonsterSummary } from '../composables/catalog'
 import { formatEntries } from '../utils/textFormatting'
 import { invoke } from '@tauri-apps/api/core'
+import { formatCR } from '../../../shared/utils/formatters'
 
 interface Monster {
   // Core fields
@@ -394,14 +395,6 @@ function formatAlignment(alignment: any): string {
     return alignments || 'Unaligned'
   }
   return 'Unaligned'
-}
-
-function formatCR(cr: any): string {
-  if (!cr) return '—'
-  if (typeof cr === 'string') return cr
-  if (typeof cr === 'number') return cr.toString()
-  if (cr.cr) return cr.cr
-  return '—'
 }
 
 function formatAC(ac: any): string {
