@@ -216,10 +216,10 @@ class BoardConfigurationService {
       
       // Cache the configuration
       this.boardConfigs.set(boardType, boardConfig)
-      
+
       return boardConfig
     } catch (error) {
-      throw error
+      throw new Error(`Failed to fetch board configuration for ${boardType}: ${error}`)
     }
   }
 

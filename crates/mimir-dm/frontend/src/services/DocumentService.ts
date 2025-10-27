@@ -42,115 +42,156 @@ class DocumentServiceClass {
   private cache = new Map<string, Document[]>()
   
   async create(data: DocumentData): Promise<Document> {
-    const response = await invoke<{ data: Document }>('create_document', {
-      newDocument: data
-    })
-    
-    this.clearCache()
-    return response.data
+    try {
+      const response = await invoke<{ data: Document }>('create_document', {
+        newDocument: data
+      })
+
+      this.clearCache()
+      return response.data
+    } catch (error) {
+      throw new Error(`Failed to create document "${data.title}": ${error}`)
+    }
   }
   
   async update(id: string | number, content: string): Promise<Document> {
-    const response = await invoke<{ data: Document }>('update_document', {
-      documentId: Number(id),
-      update: {
-        content
-      }
-    })
-    
-    this.clearCache()
-    return response.data
+    try {
+      const response = await invoke<{ data: Document }>('update_document', {
+        documentId: Number(id),
+        update: {
+          content
+        }
+      })
+
+      this.clearCache()
+      return response.data
+    } catch (error) {
+      throw new Error(`Failed to update document ${id}: ${error}`)
+    }
   }
   
   async updateMetadata(id: string | number, metadata: Partial<Document>): Promise<Document> {
-    const response = await invoke<{ data: Document }>('update_document_metadata', {
-      documentId: Number(id),
-      ...metadata
-    })
-    
-    this.clearCache()
-    return response.data
+    try {
+      const response = await invoke<{ data: Document }>('update_document_metadata', {
+        documentId: Number(id),
+        ...metadata
+      })
+
+      this.clearCache()
+      return response.data
+    } catch (error) {
+      throw new Error(`Failed to update metadata for document ${id}: ${error}`)
+    }
   }
   
   async delete(id: string | number): Promise<void> {
-    await invoke('delete_document', {
-      documentId: Number(id)
-    })
-    
-    this.clearCache()
+    try {
+      await invoke('delete_document', {
+        documentId: Number(id)
+      })
+
+      this.clearCache()
+    } catch (error) {
+      throw new Error(`Failed to delete document ${id}: ${error}`)
+    }
   }
   
   async transition(id: string | number, phase: string): Promise<Document> {
-    const response = await invoke<{ data: Document }>('transition_document_phase', {
-      documentId: Number(id),
-      phase: phase
-    })
-    
-    this.clearCache()
-    return response.data
+    try {
+      const response = await invoke<{ data: Document }>('transition_document_phase', {
+        documentId: Number(id),
+        phase: phase
+      })
+
+      this.clearCache()
+      return response.data
+    } catch (error) {
+      throw new Error(`Failed to transition document ${id} to ${phase}: ${error}`)
+    }
   }
   
   async complete(id: string | number): Promise<Document> {
-    const response = await invoke<{ data: Document }>('complete_document', {
-      documentId: Number(id)
-    })
-    
-    this.clearCache()
-    return response.data
+    try {
+      const response = await invoke<{ data: Document }>('complete_document', {
+        documentId: Number(id)
+      })
+
+      this.clearCache()
+      return response.data
+    } catch (error) {
+      throw new Error(`Failed to complete document ${id}: ${error}`)
+    }
   }
-  
+
   async uncomplete(id: string | number): Promise<Document> {
-    // There's no uncomplete_document command, so we use update_document
-    // to set completed_at to null
-    const response = await invoke<{ data: Document }>('update_document', {
-      documentId: Number(id),
-      update: {
-        completed_at: null
-      }
-    })
-    
-    this.clearCache()
-    return response.data
+    try {
+      // There's no uncomplete_document command, so we use update_document
+      // to set completed_at to null
+      const response = await invoke<{ data: Document }>('update_document', {
+        documentId: Number(id),
+        update: {
+          completed_at: null
+        }
+      })
+
+      this.clearCache()
+      return response.data
+    } catch (error) {
+      throw new Error(`Failed to uncomplete document ${id}: ${error}`)
+    }
   }
   
   async validateExitCriteria(id: string | number): Promise<boolean> {
-    const response = await invoke<{ data: boolean }>('validate_exit_criteria', {
-      documentId: Number(id)
-    })
-    
-    return response.data
+    try {
+      const response = await invoke<{ data: boolean }>('validate_exit_criteria', {
+        documentId: Number(id)
+      })
+
+      return response.data
+    } catch (error) {
+      throw new Error(`Failed to validate exit criteria for document ${id}: ${error}`)
+    }
   }
   
   async list(moduleId?: number, campaignId?: number): Promise<Document[]> {
     const cacheKey = `${moduleId || ''}-${campaignId || ''}`
-    
+
     if (this.cache.has(cacheKey)) {
       return this.cache.get(cacheKey)!
     }
-    
-    let response: { data: Document[] }
-    
-    if (campaignId && !moduleId) {
-      // Use get_campaign_documents for campaign-level documents
-      response = await invoke<{ data: Document[] }>('get_campaign_documents', {
-        campaignId: campaignId
-      })
-    } else if (moduleId) {
-      // Use get_documents_by_level for module documents
-      response = await invoke<{ data: Document[] }>('get_documents_by_level', {
-        campaignId: campaignId,
-        level: 'module',
-        moduleId: moduleId,
-        sessionId: null
-      })
-    } else {
-      // No campaignId or moduleId - return empty array
-      response = { data: [] }
+
+    try {
+      let response: { data: Document[] }
+
+      if (campaignId && !moduleId) {
+        // Use get_campaign_documents for campaign-level documents
+        response = await invoke<{ data: Document[] }>('get_campaign_documents', {
+          campaignId: campaignId
+        })
+      } else if (moduleId) {
+        // Use get_documents_by_level for module documents
+        response = await invoke<{ data: Document[] }>('get_documents_by_level', {
+          campaignId: campaignId,
+          level: 'module',
+          moduleId: moduleId,
+          sessionId: null
+        })
+      } else {
+        // No campaignId or moduleId - return empty array
+        response = { data: [] }
+      }
+
+      const documents = response.data || []
+      this.cache.set(cacheKey, documents)
+      return documents
+    } catch (error) {
+      const context = moduleId
+        ? `module ${moduleId}`
+        : campaignId
+        ? `campaign ${campaignId}`
+        : 'unknown context'
+      throw new Error(`Failed to list documents for ${context}: ${error}`)
     }
-    
-    const documents = response.data || []
-    this.cache.set(cacheKey, documents)
-    return documents
   }
   
   async getByType(moduleId: number | undefined, type: string): Promise<Document[]> {

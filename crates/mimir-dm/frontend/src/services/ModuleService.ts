@@ -78,7 +78,7 @@ class ModuleServiceClass {
       this.cache.set(cacheKey, normalizedModule)
       return normalizedModule
     } catch (error) {
-      throw new Error(`Failed to get module: ${error}`)
+      throw new Error(`Failed to get module ${id}: ${error}`)
     }
   }
   
@@ -106,7 +106,7 @@ class ModuleServiceClass {
       this.cache.set(cacheKey, modules)
       return modules
     } catch (error) {
-      throw new Error(`Failed to list modules: ${error}`)
+      throw new Error(`Failed to list modules for campaign ${campaignId}: ${error}`)
     }
   }
   
@@ -137,7 +137,7 @@ class ModuleServiceClass {
         completed_at: module.completed_at ?? null
       }
     } catch (error) {
-      throw new Error(`Failed to create module: ${error}`)
+      throw new Error(`Failed to create module "${data.name}": ${error}`)
     }
   }
   
@@ -170,7 +170,7 @@ class ModuleServiceClass {
         completed_at: response.data.completed_at ?? null
       }
     } catch (error) {
-      throw new Error(`Failed to update module: ${error}`)
+      throw new Error(`Failed to update module ${id}: ${error}`)
     }
   }
   
@@ -181,7 +181,7 @@ class ModuleServiceClass {
       // Clear all caches since we don't know the campaign
       this.clearCache()
     } catch (error) {
-      throw new Error(`Failed to delete module: ${error}`)
+      throw new Error(`Failed to delete module ${id}: ${error}`)
     }
   }
   
@@ -215,7 +215,7 @@ class ModuleServiceClass {
         completed_at: response.data.completed_at ?? null
       }
     } catch (error) {
-      throw new Error(`Failed to transition module stage: ${error}`)
+      throw new Error(`Failed to transition module ${id} to ${newStage}: ${error}`)
     }
   }
   
@@ -238,10 +238,10 @@ class ModuleServiceClass {
           campaign_directory: directory
         }
       })
-      
+
       return response.data || []
     } catch (error) {
-      throw new Error(`Failed to initialize module documents: ${error}`)
+      throw new Error(`Failed to initialize documents for module ${id}: ${error}`)
     }
   }
   
@@ -252,10 +252,10 @@ class ModuleServiceClass {
           module_id: id
         }
       })
-      
+
       return response.data || []
     } catch (error) {
-      throw new Error(`Failed to get module documents: ${error}`)
+      throw new Error(`Failed to get documents for module ${id}: ${error}`)
     }
   }
   
@@ -275,7 +275,7 @@ class ModuleServiceClass {
         created_at: session.created_at ?? new Date().toISOString()
       }))
     } catch (error) {
-      throw new Error(`Failed to list module sessions: ${error}`)
+      throw new Error(`Failed to list sessions for module ${id}: ${error}`)
     }
   }
   
@@ -288,8 +288,8 @@ class ModuleServiceClass {
       // Clear module cache to get updated count
       this.cache.delete(`module-${id}`)
     } catch (error) {
-      // Non-critical error, don't throw
-      console.warn(`Failed to increment session count: ${error}`)
+      // Non-critical operation - log and continue
+      console.warn(`Failed to increment session count for module ${id}: ${error}`)
     }
   }
   
