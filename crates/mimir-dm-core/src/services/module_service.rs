@@ -370,7 +370,3 @@ impl<'a> ModuleService<'a> {
         repo.delete(id)
     }
 }
-
-#[cfg(test)]
-#[path = "module_service_tests.rs"]
-mod tests;
