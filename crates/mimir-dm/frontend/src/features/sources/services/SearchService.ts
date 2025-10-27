@@ -103,121 +103,130 @@ class SearchServiceClass {
   private psionics = usePsionics()
 
   async initialize(category: string): Promise<void> {
-    switch (category) {
-      case 'Spells':
-        await this.spells.initializeCatalog()
-        break
-      case 'Equipment':
-      case 'Magic Items':
-        await this.items.initializeItemCatalog()
-        break
-      case 'Monsters':
-        await this.monsters.initializeMonsterCatalog()
-        break
-      case 'Classes':
-        await this.classes.initializeClassCatalog()
-        break
-      case 'Races':
-        console.log('Races now use database-backed service (no initialization needed)')
-        break
-      case 'Backgrounds':
-        await this.backgrounds.initializeBackgroundCatalog()
-        break
-      case 'Actions':
-        await this.actions.initializeActionCatalog()
-        break
-      case 'Conditions':
-        await this.conditions.initializeConditionCatalog()
-        break
-      case 'Options':
-      case 'Other Options & Features':
-        console.log('Optional features now use database-backed service (no initialization needed)')
-        break
-      case 'Deities':
-        await this.deities.initializeDeityCatalog()
-        break
-      case 'Objects':
-        console.log('Objects now use database-backed service (no initialization needed)')
-        break
-      case 'Traps & Hazards':
-        await this.traps.initializeTrapCatalog()
-        break
-      case 'Languages':
-        await this.languages.initializeLanguageCatalog()
-        break
-      case 'Rewards':
-        await this.rewards.initializeRewardCatalog()
-        break
-      case 'Tables':
-        await this.tables.initializeTableCatalog()
-        break
-      case 'Variant Rules':
-        // No initialization needed - loaded from database
-        break
-      case 'Vehicles':
-        await this.vehicles.initializeVehicleCatalog()
-        break
-      case 'Cults & Boons':
-        await this.cults.initializeCultCatalog()
-        break
-      case 'Psionics':
-        // No initialization needed - loaded from single file
-        break
-      case 'Feats':
-        // No initialization needed - uses database-backed service
-        break
+    try {
+      switch (category) {
+        case 'Spells':
+          await this.spells.initializeCatalog()
+          break
+        case 'Equipment':
+        case 'Magic Items':
+          await this.items.initializeItemCatalog()
+          break
+        case 'Monsters':
+          await this.monsters.initializeMonsterCatalog()
+          break
+        case 'Classes':
+          await this.classes.initializeClassCatalog()
+          break
+        case 'Races':
+          console.log('Races now use database-backed service (no initialization needed)')
+          break
+        case 'Backgrounds':
+          await this.backgrounds.initializeBackgroundCatalog()
+          break
+        case 'Actions':
+          await this.actions.initializeActionCatalog()
+          break
+        case 'Conditions':
+          await this.conditions.initializeConditionCatalog()
+          break
+        case 'Options':
+        case 'Other Options & Features':
+          console.log('Optional features now use database-backed service (no initialization needed)')
+          break
+        case 'Deities':
+          await this.deities.initializeDeityCatalog()
+          break
+        case 'Objects':
+          console.log('Objects now use database-backed service (no initialization needed)')
+          break
+        case 'Traps & Hazards':
+          await this.traps.initializeTrapCatalog()
+          break
+        case 'Languages':
+          await this.languages.initializeLanguageCatalog()
+          break
+        case 'Rewards':
+          await this.rewards.initializeRewardCatalog()
+          break
+        case 'Tables':
+          await this.tables.initializeTableCatalog()
+          break
+        case 'Variant Rules':
+          // No initialization needed - loaded from database
+          break
+        case 'Vehicles':
+          await this.vehicles.initializeVehicleCatalog()
+          break
+        case 'Cults & Boons':
+          await this.cults.initializeCultCatalog()
+          break
+        case 'Psionics':
+          // No initialization needed - loaded from single file
+          break
+        case 'Feats':
+          // No initialization needed - uses database-backed service
+          break
+      }
+    } catch (error) {
+      throw new Error(`Failed to initialize ${category} catalog: ${error}`)
     }
   }
   
   async search(params: Partial<SearchParams>): Promise<any[]> {
     const { query, sources, category, filters = {} } = params
-    
-    switch (category) {
-      case 'Spells':
-        return await this.searchSpells(query, sources, filters.spells)
-      case 'Equipment':
-        return await this.searchEquipment(query, sources, filters.equipment)
-      case 'Magic Items':
-        return await this.searchMagicItems(query, sources, filters.magicItems)
-      case 'Monsters':
-        return await this.searchMonsters(query, sources, filters.monsters)
-      case 'Classes':
-        return await this.searchClasses(query)
-      case 'Races':
-        return await this.searchRaces(query, sources)
-      case 'Backgrounds':
-        return await this.searchBackgrounds(query, sources)
-      case 'Actions':
-        return await this.searchActions(query, sources)
-      case 'Conditions':
-        return await this.searchConditions(query, sources)
-      case 'Options':
-      case 'Other Options & Features':
-        return await this.searchOptionalFeatures(query, sources)
-      case 'Deities':
-        return await this.searchDeities(query, sources)
-      case 'Objects':
-        return await this.searchObjects(query, sources)
-      case 'Traps & Hazards':
-        return await this.searchTraps({ query, sources })
-      case 'Languages':
-        return await this.searchLanguages({ query, sources })
-      case 'Rewards':
-        return await this.searchRewards({ query, sources })
-      case 'Tables':
-        return await this.searchTables({ query, sources })
-      case 'Variant Rules':
-        return await this.searchVariantRules({ query, sources })
-      case 'Vehicles':
-        return await this.searchVehicles({ query, sources })
-      case 'Cults & Boons':
-        return await this.searchCults({ query, sources })
-      case 'Psionics':
-        return await this.searchPsionics({ query, sources })
-      case 'Feats':
-        return await this.searchFeats(query, sources)
-      default:
-        return []
+
+    try {
+      switch (category) {
+        case 'Spells':
+          return await this.searchSpells(query, sources, filters.spells)
+        case 'Equipment':
+          return await this.searchEquipment(query, sources, filters.equipment)
+        case 'Magic Items':
+          return await this.searchMagicItems(query, sources, filters.magicItems)
+        case 'Monsters':
+          return await this.searchMonsters(query, sources, filters.monsters)
+        case 'Classes':
+          return await this.searchClasses(query)
+        case 'Races':
+          return await this.searchRaces(query, sources)
+        case 'Backgrounds':
+          return await this.searchBackgrounds(query, sources)
+        case 'Actions':
+          return await this.searchActions(query, sources)
+        case 'Conditions':
+          return await this.searchConditions(query, sources)
+        case 'Options':
+        case 'Other Options & Features':
+          return await this.searchOptionalFeatures(query, sources)
+        case 'Deities':
+          return await this.searchDeities(query, sources)
+        case 'Objects':
+          return await this.searchObjects(query, sources)
+        case 'Traps & Hazards':
+          return await this.searchTraps({ query, sources })
+        case 'Languages':
+          return await this.searchLanguages({ query, sources })
+        case 'Rewards':
+          return await this.searchRewards({ query, sources })
+        case 'Tables':
+          return await this.searchTables({ query, sources })
+        case 'Variant Rules':
+          return await this.searchVariantRules({ query, sources })
+        case 'Vehicles':
+          return await this.searchVehicles({ query, sources })
+        case 'Cults & Boons':
+          return await this.searchCults({ query, sources })
+        case 'Psionics':
+          return await this.searchPsionics({ query, sources })
+        case 'Feats':
+          return await this.searchFeats(query, sources)
+        default:
+          return []
+      }
+    } catch (error) {
+      const searchContext = query ? `"${query}" in ${category}` : category || 'catalog'
+      throw new Error(`Failed to search ${searchContext}: ${error}`)
     }
   }
   
@@ -551,57 +560,61 @@ class SearchServiceClass {
   async getDetails(params: DetailFetchParams): Promise<any> {
     const { name, source, type, subclassName } = params
 
-    switch (type) {
-      case 'spell':
-        return await this.spells.getSpellDetails(name, source)
-      case 'item':
-        const { invoke } = await import('@tauri-apps/api/core')
-        return await invoke('get_item_details_db', { itemName: name, itemSource: source })
-      case 'monster':
-        return await this.monsters.getMonsterDetails(name, source)
-      case 'class':
-        return await this.classes.getClassDetails(name, source)
-      case 'subclass':
-        if (!subclassName) {
-          throw new Error('subclassName is required for subclass details')
-        }
-        return await this.classes.getSubclassDetails(subclassName, name, source)
-      case 'feat':
-        return await this.feats.getFeatDetails(name, source)
-      case 'race':
-        return await this.races.getRaceDetails(name, source)
-      case 'background':
-        return await this.backgrounds.getBackgroundDetails(name, source)
-      case 'action':
-        return await this.actions.getActionDetails(name, source)
-      case 'condition':
-        return await this.conditions.getConditionDetails(name, source)
-      case 'option':
-        return await this.optionalFeatures.getOptionalFeatureDetails(name, source)
-      case 'deity':
-        return await this.deities.getDeityDetails(name, source)
-      case 'object':
-        return await this.objects.getObjectDetails(name, source)
-      case 'trap':
-        return await this.traps.getTrapDetails(name, source)
-      case 'language':
-        return await this.languages.getLanguageDetails(name, source)
-      case 'reward':
-        return await this.rewards.getRewardDetails(name, source)
-      case 'table':
-        return await this.tables.getTableDetails(name, source)
-      case 'variantrule':
-        return await this.variantRules.getVariantRuleDetails(name, source)
-      case 'vehicle':
-        return await this.vehicles.getVehicleDetails(name, source)
-      case 'cult':
-        return await this.cults.getCultDetails(name, source)
-      case 'boon':
-        return await this.cults.getBoonDetails(name, source)
-      case 'psionic':
-        return await this.psionics.getPsionicDetails(name, source)
-      default:
-        return null
+    try {
+      switch (type) {
+        case 'spell':
+          return await this.spells.getSpellDetails(name, source)
+        case 'item':
+          const { invoke } = await import('@tauri-apps/api/core')
+          return await invoke('get_item_details_db', { itemName: name, itemSource: source })
+        case 'monster':
+          return await this.monsters.getMonsterDetails(name, source)
+        case 'class':
+          return await this.classes.getClassDetails(name, source)
+        case 'subclass':
+          if (!subclassName) {
+            throw new Error('subclassName is required for subclass details')
+          }
+          return await this.classes.getSubclassDetails(subclassName, name, source)
+        case 'feat':
+          return await this.feats.getFeatDetails(name, source)
+        case 'race':
+          return await this.races.getRaceDetails(name, source)
+        case 'background':
+          return await this.backgrounds.getBackgroundDetails(name, source)
+        case 'action':
+          return await this.actions.getActionDetails(name, source)
+        case 'condition':
+          return await this.conditions.getConditionDetails(name, source)
+        case 'option':
+          return await this.optionalFeatures.getOptionalFeatureDetails(name, source)
+        case 'deity':
+          return await this.deities.getDeityDetails(name, source)
+        case 'object':
+          return await this.objects.getObjectDetails(name, source)
+        case 'trap':
+          return await this.traps.getTrapDetails(name, source)
+        case 'language':
+          return await this.languages.getLanguageDetails(name, source)
+        case 'reward':
+          return await this.rewards.getRewardDetails(name, source)
+        case 'table':
+          return await this.tables.getTableDetails(name, source)
+        case 'variantrule':
+          return await this.variantRules.getVariantRuleDetails(name, source)
+        case 'vehicle':
+          return await this.vehicles.getVehicleDetails(name, source)
+        case 'cult':
+          return await this.cults.getCultDetails(name, source)
+        case 'boon':
+          return await this.cults.getBoonDetails(name, source)
+        case 'psionic':
+          return await this.psionics.getPsionicDetails(name, source)
+        default:
+          return null
+      }
+    } catch (error) {
+      throw new Error(`Failed to get ${type} details for "${name}" (${source}): ${error}`)
     }
   }
 
