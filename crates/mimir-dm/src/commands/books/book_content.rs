@@ -1,7 +1,7 @@
 //! Book content serving commands
 
 use crate::app_init::AppPaths;
-use crate::types::ApiResponse;
+use crate::types::{ApiError, ApiResponse};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -14,7 +14,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 pub async fn get_book_content(
     book_id: String,
     app_paths: State<'_, Arc<AppPaths>>
-) -> Result<ApiResponse<serde_json::Value>, String> {
+) -> Result<ApiResponse<serde_json::Value>, ApiError> {
     info!("Getting book content for: {}", book_id);
 
     // Get book directory
@@ -74,7 +74,7 @@ pub async fn serve_book_image(
     book_id: String,
     image_path: String,
     app_paths: State<'_, Arc<AppPaths>>,
-) -> Result<ApiResponse<String>, String> {
+) -> Result<ApiResponse<String>, ApiError> {
     info!("Serving image {} from book {}", image_path, book_id);
 
     let books_dir = app_paths.data_dir.join("books");
@@ -129,7 +129,7 @@ pub async fn serve_book_image(
 // Helper functions
 
 /// Find the main book content file in the archive structure
-pub(super) fn find_book_content_file(dir: &Path) -> Result<Option<PathBuf>, String> {
+pub(super) fn find_book_content_file(dir: &Path) -> Result<Option<PathBuf>, ApiError> {
     info!("find_book_content_file: searching in {:?}", dir);
 
     // Check for book directory with book-*.json files

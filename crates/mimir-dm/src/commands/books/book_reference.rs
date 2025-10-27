@@ -1,7 +1,7 @@
 //! Book reference lookup functionality
 
 use crate::app_init::AppPaths;
-use crate::types::ApiResponse;
+use crate::types::{ApiError, ApiResponse};
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -27,7 +27,7 @@ pub async fn lookup_reference(
     ref_name: String,
     ref_source: Option<String>,
     app_paths: State<'_, Arc<AppPaths>>
-) -> Result<ApiResponse<ReferenceData>, String> {
+) -> Result<ApiResponse<ReferenceData>, ApiError> {
     info!("Looking up reference: {} '{}' from {:?}", ref_type, ref_name, ref_source);
 
     let books_dir = app_paths.data_dir.join("books");
@@ -70,7 +70,7 @@ async fn search_book_for_reference(
     book_dir: &Path,
     ref_type: &str,
     ref_name: &str,
-) -> Result<Option<ReferenceData>, String> {
+) -> Result<Option<ReferenceData>, ApiError> {
     debug!("Searching book {:?} for {} '{}'", book_dir, ref_type, ref_name);
 
     // Map reference types to data file patterns
@@ -142,7 +142,7 @@ async fn search_all_books_for_reference(
     books_dir: &Path,
     ref_type: &str,
     ref_name: &str,
-) -> Result<ApiResponse<ReferenceData>, String> {
+) -> Result<ApiResponse<ReferenceData>, ApiError> {
     debug!("Searching all books for {} '{}'", ref_type, ref_name);
 
     if let Ok(entries) = fs::read_dir(books_dir) {

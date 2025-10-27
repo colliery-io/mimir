@@ -1,6 +1,6 @@
 //! Module management commands
 
-use crate::types::ApiResponse;
+use crate::types::{ApiError, ApiResponse};
 use mimir_dm_core::{
     services::ModuleService,
     models::campaign::modules::{Module, UpdateModule},
@@ -49,11 +49,11 @@ pub struct ListModulesRequest {
 pub async fn create_module(
     request: CreateModuleRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Module>, String> {
+) -> Result<ApiResponse<Module>, ApiError> {
     info!("Creating module: {} for campaign {} with type: {:?}",
         request.name, request.campaign_id, request.module_type);
 
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
 
     match service.create_module_with_documents(
@@ -78,10 +78,10 @@ pub async fn create_module(
 pub async fn get_module(
     id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Module>, String> {
+) -> Result<ApiResponse<Module>, ApiError> {
     info!("Getting module with ID: {}", id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.get_module(id) {
@@ -105,10 +105,10 @@ pub async fn get_module(
 pub async fn list_campaign_modules(
     request: ListModulesRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Module>>, String> {
+) -> Result<ApiResponse<Vec<Module>>, ApiError> {
     info!("Listing modules for campaign: {}", request.campaign_id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.list_campaign_modules(request.campaign_id) {
@@ -129,10 +129,10 @@ pub async fn update_module(
     id: i32,
     request: UpdateModuleRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Module>, String> {
+) -> Result<ApiResponse<Module>, ApiError> {
     info!("Updating module with ID: {}", id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     let update = UpdateModule {
@@ -161,10 +161,10 @@ pub async fn update_module(
 pub async fn transition_module_stage(
     request: TransitionModuleRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Module>, String> {
+) -> Result<ApiResponse<Module>, ApiError> {
     info!("Transitioning module {} to stage: {}", request.module_id, request.new_stage);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.transition_module_stage(request.module_id, &request.new_stage) {
@@ -184,10 +184,10 @@ pub async fn transition_module_stage(
 pub async fn initialize_module_documents(
     request: InitializeDocumentsRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<String>>, String> {
+) -> Result<ApiResponse<Vec<String>>, ApiError> {
     info!("Initializing documents for module: {}", request.module_id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.initialize_module_documents(
@@ -216,10 +216,10 @@ pub struct GetModuleDocumentsRequest {
 pub async fn get_module_documents(
     request: GetModuleDocumentsRequest,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<mimir_dm_core::models::campaign::documents::Document>>, String> {
+) -> Result<ApiResponse<Vec<mimir_dm_core::models::campaign::documents::Document>>, ApiError> {
     info!("Getting documents for module: {}", request.module_id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.get_module_documents(request.module_id) {
@@ -239,10 +239,10 @@ pub async fn get_module_documents(
 pub async fn check_module_completion(
     module_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<BoardCompletionStatus>, String> {
+) -> Result<ApiResponse<BoardCompletionStatus>, ApiError> {
     info!("Checking completion status for module: {}", module_id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.check_module_completion(module_id) {
@@ -265,10 +265,10 @@ pub async fn check_module_completion(
 pub async fn find_modules_needing_next(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Module>>, String> {
+) -> Result<ApiResponse<Vec<Module>>, ApiError> {
     info!("Finding modules needing next planning for campaign: {}", campaign_id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.find_modules_needing_next(campaign_id) {
@@ -288,10 +288,10 @@ pub async fn find_modules_needing_next(
 pub async fn increment_module_sessions(
     module_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Module>, String> {
+) -> Result<ApiResponse<Module>, ApiError> {
     info!("Incrementing session count for module: {}", module_id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.increment_module_sessions(module_id) {
@@ -311,10 +311,10 @@ pub async fn increment_module_sessions(
 pub async fn delete_module(
     id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<()>, String> {
+) -> Result<ApiResponse<()>, ApiError> {
     info!("Deleting module with ID: {}", id);
     
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db_service.get_connection()?;
     let mut service = ModuleService::new(&mut *conn);
     
     match service.delete_module(id) {

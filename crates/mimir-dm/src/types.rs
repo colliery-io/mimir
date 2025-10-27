@@ -103,3 +103,9 @@ impl From<anyhow::Error> for ApiError {
         ApiError::Internal(err.to_string())
     }
 }
+
+impl From<String> for ApiError {
+    fn from(err: String) -> Self {
+        ApiError::Internal(err)
+    }
+}

@@ -7,7 +7,7 @@ use mimir_dm_core::{
 };
 use std::sync::Arc;
 use tauri::State;
-use crate::types::ApiResponse;
+use crate::types::{ApiError, ApiResponse};
 use serde::Serialize;
 
 /// Get all documents for a campaign
@@ -15,8 +15,8 @@ use serde::Serialize;
 pub async fn get_campaign_documents(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Vec<Document>>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.get_campaign_documents(campaign_id) {
@@ -33,8 +33,8 @@ pub async fn get_documents_by_level(
     module_id: Option<i32>,
     session_id: Option<i32>,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Vec<Document>>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.get_documents_by_level(campaign_id, &level, module_id, session_id) {
@@ -48,8 +48,8 @@ pub async fn get_documents_by_level(
 pub async fn create_document(
     new_document: NewDocument,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Document>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Document>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.create_document(new_document) {
@@ -64,8 +64,8 @@ pub async fn update_document(
     document_id: i32,
     update: UpdateDocument,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Document>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Document>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.update_document(document_id, update) {
@@ -79,8 +79,8 @@ pub async fn update_document(
 pub async fn complete_document(
     document_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Document>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Document>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.complete_document(document_id) {
@@ -94,8 +94,8 @@ pub async fn complete_document(
 pub async fn delete_document(
     document_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<()>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<()>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.delete_document(document_id) {
@@ -109,8 +109,8 @@ pub async fn delete_document(
 pub async fn get_incomplete_documents(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Vec<Document>>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.get_incomplete_documents(campaign_id) {
@@ -124,8 +124,8 @@ pub async fn get_incomplete_documents(
 pub async fn get_completed_documents(
     campaign_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<Document>>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Vec<Document>>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.get_completed_documents(campaign_id) {
@@ -140,8 +140,8 @@ pub async fn create_document_from_template(
     campaign_id: i32,
     template_id: String,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Document>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<Document>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let mut service = DocumentService::new(&mut *conn);
 
     match service.create_document_from_template(campaign_id, &template_id) {
@@ -155,8 +155,8 @@ pub async fn create_document_from_template(
 pub async fn read_document_file(
     file_path: String,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<String>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let service = DocumentService::new(&mut *conn);
 
     match service.read_document_file(&file_path) {
@@ -171,8 +171,8 @@ pub async fn save_document_file(
     file_path: String,
     content: String,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<()>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+) -> Result<ApiResponse<()>, ApiError> {
+    let mut conn = db_service.get_connection()?;
     let service = DocumentService::new(&mut *conn);
 
     match service.save_document_file(&file_path, &content) {

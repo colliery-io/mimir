@@ -1,6 +1,6 @@
 //! Book library listing and removal commands
 
-use crate::types::ApiResponse;
+use crate::types::{ApiError, ApiResponse};
 use diesel::prelude::*;
 use mimir_dm_core::models::catalog::UploadedBook;
 use mimir_dm_core::schema::uploaded_books;
@@ -27,7 +27,7 @@ pub struct BookInfo {
 #[tauri::command]
 pub async fn list_library_books(
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<Vec<BookInfo>>, String> {
+) -> Result<ApiResponse<Vec<BookInfo>>, ApiError> {
     info!("Listing library books from database");
 
     match db_service.get_connection() {
@@ -62,7 +62,7 @@ pub async fn list_library_books(
 pub async fn remove_book_from_library(
     book_id: String,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<ApiResponse<()>, String> {
+) -> Result<ApiResponse<()>, ApiError> {
     info!("Removing book from library: {}", book_id);
 
     // First, get book info from database to know what to clean up
