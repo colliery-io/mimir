@@ -22,17 +22,17 @@ FRONTEND_DIR = PROJECT_ROOT / "crates" / "mimir-dm" / "frontend"
 # Create a test command group
 test = angreal.command_group(name="test", about="Testing commands for the Mimir workspace")
 
-@test
+@test()
 @angreal.command(name="unit", about="Run tests")
-@angreal.argument(name="watch", short="w", takes_value=False, help="Run tests in watch mode")
-@angreal.argument(name="backend-only", short="b", takes_value=False, help="Run backend tests only")
-@angreal.argument(name="frontend-only", short="f", takes_value=False, help="Run frontend tests only")
-def test_main(watch: bool = False, backend_only: bool = False, frontend_only: bool = False):
+@angreal.argument(name="watch", long="watch", short="w", takes_value=False, help="Run tests in watch mode")
+@angreal.argument(name="backend", long="backend", short="b", takes_value=False, help="Run backend tests only")
+@angreal.argument(name="frontend", long="frontend",short="f", takes_value=False, help="Run frontend tests only")
+def unit(watch: bool = False, backend: bool = False, frontend: bool = False):
     """Run tests (all, backend only, or frontend only)"""
     failures = []
 
     # Run backend tests unless frontend-only
-    if not frontend_only:
+    if not frontend:
         print("\nRunning Rust tests (unit + integration)...")
         result = subprocess.run(
             ["cargo", "test", "--workspace"],
@@ -43,7 +43,7 @@ def test_main(watch: bool = False, backend_only: bool = False, frontend_only: bo
             failures.append("Backend tests")
 
     # Run frontend tests unless backend-only
-    if not backend_only:
+    if not backend:
         print("\nRunning frontend tests...")
         if not FRONTEND_DIR.exists():
             print(f"Frontend directory not found: {FRONTEND_DIR}")
@@ -68,19 +68,19 @@ def test_main(watch: bool = False, backend_only: bool = False, frontend_only: bo
     else:
         print("\nAll tests passed!")
 
-@test
+@test()
 @angreal.command(name="coverage", about="Run tests with coverage reporting")
-@angreal.argument(name="backend-only", short="b", takes_value=False, help="Run backend coverage only")
-@angreal.argument(name="frontend-only", short="f", takes_value=False, help="Run frontend coverage only")
-@angreal.argument(name="open", short="o", takes_value=False, help="Open coverage reports in browser")
-def test_coverage(backend_only: bool = False, frontend_only: bool = False, open: bool = False):
+@angreal.argument(name="backend",long="backend", short="b", takes_value=False, help="Run backend coverage only")
+@angreal.argument(name="frontend", long="frontend",short="f", takes_value=False, help="Run frontend coverage only")
+@angreal.argument(name="open", long="open",short="o", takes_value=False, help="Open coverage reports in browser")
+def coverage(backend: bool = False, frontend: bool = False, open: bool = False):
     """Run tests with code coverage for both backend and frontend"""
     print("Running tests with coverage...")
     
     failures = []
     
     # Run backend coverage unless frontend-only
-    if not frontend_only:
+    if not frontend:
         print("\n[Backend Coverage (Rust)]")
         
         # Check if cargo-tarpaulin is installed
@@ -113,7 +113,7 @@ def test_coverage(backend_only: bool = False, frontend_only: bool = False, open:
                 subprocess.run(["open", "target/coverage/tarpaulin-report.html"], cwd=PROJECT_ROOT)
     
     # Run frontend coverage unless backend-only
-    if not backend_only:
+    if not backend:
         print("\n[Frontend Coverage (Vue/TypeScript)]")
         
         # Check if coverage package is installed
