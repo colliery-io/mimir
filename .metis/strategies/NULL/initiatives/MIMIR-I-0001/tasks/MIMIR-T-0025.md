@@ -4,14 +4,14 @@ level: task
 title: "Standardize error handling patterns across codebase"
 short_code: "MIMIR-T-0025"
 created_at: 2025-10-24T11:54:16.072497+00:00
-updated_at: 2025-10-24T11:54:16.072497+00:00
+updated_at: 2025-10-28T18:17:48.514740+00:00
 parent: MIMIR-I-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -74,6 +74,10 @@ Standardize error handling patterns across the Rust backend and TypeScript front
 - **Low risk**: Mostly internal refactoring, minimal user-facing changes
 - **High value**: Significantly improves developer experience and code quality
 - **Incremental approach**: Can be done layer-by-layer (core → services → commands → frontend)
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
