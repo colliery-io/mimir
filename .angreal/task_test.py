@@ -23,9 +23,10 @@ FRONTEND_DIR = PROJECT_ROOT / "crates" / "mimir-dm" / "frontend"
 test = angreal.command_group(name="test", about="Testing commands for the Mimir workspace")
 
 @test
+@angreal.command(name="unit", about="Run tests")
 @angreal.argument(name="watch", short="w", takes_value=False, help="Run tests in watch mode")
-@angreal.argument(name="backend_only", short="b", takes_value=False, help="Run backend tests only")
-@angreal.argument(name="frontend_only", short="f", takes_value=False, help="Run frontend tests only")
+@angreal.argument(name="backend-only", short="b", takes_value=False, help="Run backend tests only")
+@angreal.argument(name="frontend-only", short="f", takes_value=False, help="Run frontend tests only")
 def test_main(watch: bool = False, backend_only: bool = False, frontend_only: bool = False):
     """Run tests (all, backend only, or frontend only)"""
     failures = []
@@ -69,8 +70,8 @@ def test_main(watch: bool = False, backend_only: bool = False, frontend_only: bo
 
 @test
 @angreal.command(name="coverage", about="Run tests with coverage reporting")
-@angreal.argument(name="backend_only", short="b", takes_value=False, help="Run backend coverage only")
-@angreal.argument(name="frontend_only", short="f", takes_value=False, help="Run frontend coverage only")
+@angreal.argument(name="backend-only", short="b", takes_value=False, help="Run backend coverage only")
+@angreal.argument(name="frontend-only", short="f", takes_value=False, help="Run frontend coverage only")
 @angreal.argument(name="open", short="o", takes_value=False, help="Open coverage reports in browser")
 def test_coverage(backend_only: bool = False, frontend_only: bool = False, open: bool = False):
     """Run tests with code coverage for both backend and frontend"""
