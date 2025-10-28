@@ -5,7 +5,7 @@ edition = "2021"
 description = "Core business logic, domain models, and data persistence for Mimir"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/yourusername/mimir"
+repository = "https://github.com/colliery-io/mimir"
 readme = "README.md"
 
 [dependencies]

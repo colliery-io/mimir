@@ -4,6 +4,13 @@
 
 ---
 
+# Getting Started
+
+- [Contributing](./CONTRIBUTING.md)
+- [Development Setup](./DEVELOPMENT.md)
+
+---
+
 # Campaign Generation Framework
 *Systematic approach to creating and managing D&D campaigns*
 

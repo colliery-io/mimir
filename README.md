@@ -2,7 +2,41 @@
 
 A local-first desktop application for managing D&D campaigns, built with Tauri, Vue 3, and Rust.
 
-## Prerequisites
+## Installation
+
+### For Users
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/colliery-io/mimir/releases):
+
+#### macOS
+1. Download `Mimir_[version]_[arch].dmg` for your Mac (Intel or Apple Silicon)
+2. Open the DMG file and drag Mimir to your Applications folder
+3. **Important**: Remove the quarantine attribute to run the app:
+   ```bash
+   xattr -cr /Applications/Mimir.app
+   ```
+4. Launch Mimir from your Applications folder
+
+#### Windows
+1. Download `Mimir_[version]_x64_en-US.msi`
+2. Run the installer and follow the installation wizard
+3. Launch Mimir from the Start menu
+
+#### Linux
+1. Download the appropriate package for your distribution:
+   - **Debian/Ubuntu**: `mimir_[version]_amd64.deb`
+   - **Universal**: `mimir_[version]_amd64.AppImage`
+2. Install:
+   - **DEB**: `sudo dpkg -i mimir_[version]_amd64.deb`
+   - **AppImage**: `chmod +x mimir_[version]_amd64.AppImage && ./mimir_[version]_amd64.AppImage`
+
+### For Developers
+
+See the [Development Setup](#development-setup) section below for instructions on building from source.
+
+## Development Setup
+
+### Prerequisites
 
 - **Rust** (1.70 or higher) - [Install Rust](https://rustup.rs/)
 - **Node.js** (v18 or higher) - [Install Node.js](https://nodejs.org/)
@@ -148,8 +182,13 @@ mimir/
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started, code style, testing requirements, and the pull request process.
 
 ## License
 
-[License information here]
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
