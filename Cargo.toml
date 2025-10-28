@@ -9,7 +9,8 @@ resolver = "2"
 
 [workspace.dependencies]
 # Core dependencies
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.37", features = ["full"] }
+tokio-util = "0.7"
 anyhow = "1.0"
 thiserror = "1.0"
 tracing = "0.1"
@@ -17,7 +18,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { version = "1.10", features = ["v4", "serde"] }
+regex = "1.10"
+similar = "2.6"
 
 # Database dependencies
 rusqlite = { version = "0.31.0", features = ["bundled"] }
@@ -28,7 +31,7 @@ sqlite-vec = { version = "0.1.6" }
 zerocopy = "0.7.33"
 
 # HTTP client for Ollama
-reqwest = { version = "0.11", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 futures = "0.3"
 async-trait = "0.1"
 serde_yaml = "0.9"
@@ -57,6 +60,18 @@ sha2 = "0.10"
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }
+
+# File handling
+walkdir = "2.5"
+flate2 = "1.0"
+tar = "0.4"
+base64 = "0.22.1"
+
+# Parallel processing
+rayon = "1.10"
+
+# Testing
+tempfile = "3.10"
 
 # Tauri
 tauri = { version = "2" }
