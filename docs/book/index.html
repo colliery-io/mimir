@@ -178,10 +178,27 @@
 </blockquote>
 <p>Welcome to Mimir, a project to build a local-first D&amp;D campaign assistant. Named after the wise floating skull of Planescape lore, Mimir will help Dungeon Masters manage the cognitive complexity of running campaigns.</p>
 <h2 id="current-status"><a class="header" href="#current-status">Current Status</a></h2>
-<p>🚧 <strong>Documentation Phase</strong> - We’re currently documenting the campaign management framework that will guide Mimir’s development.</p>
+<p><strong>Active Development - v0.0.1 Released</strong> - Mimir is now available as a downloadable desktop application with core campaign management features.</p>
+<h3 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h3>
+<ol>
+<li><strong><a href="https://github.com/yourusername/mimir/releases">Download Mimir</a></strong> - Get the latest release for your platform</li>
+<li><strong>Install</strong> - Follow the platform-specific installation instructions in the <a href="../../README.html#installation">main README</a></li>
+<li><strong>Explore</strong> - Start managing your D&amp;D campaigns with the Campaign Generation Framework</li>
+</ol>
 <h3 id="whats-available-now"><a class="header" href="#whats-available-now">What’s Available Now</a></h3>
 <ul>
-<li><strong><a href="./campaign-framework/README.html">Campaign Generation Framework</a></strong> - A complete system for creating and managing D&amp;D campaigns
+<li>
+<p><strong>Desktop Application (v0.0.1)</strong> - Local-first campaign management tool</p>
+<ul>
+<li>Campaign workflow management with structured phases</li>
+<li>D&amp;D 5e catalog with full-text search</li>
+<li>Document templates and rich text editing</li>
+<li>Local LLM integration via Ollama</li>
+<li>Cross-platform support (macOS, Windows, Linux)</li>
+</ul>
+</li>
+<li>
+<p><strong><a href="./campaign-framework/README.html">Campaign Generation Framework</a></strong> - A complete system for creating and managing D&amp;D campaigns</p>
 <ul>
 <li>The Three-Board System for organization</li>
 <li>Campaign genesis process</li>
@@ -191,14 +208,14 @@
 </ul>
 </li>
 </ul>
-<p>This framework represents the methodology that Mimir will eventually automate and enhance.</p>
 <h2 id="vision"><a class="header" href="#vision">Vision</a></h2>
-<p>Mimir will be a <strong>terminal-based application</strong> built in Rust that serves as your intelligent campaign companion. The goal is to implement the Campaign Generation Framework as software, adding:</p>
+<p>Mimir is a <strong>desktop application</strong> built with Rust and Tauri that serves as your intelligent campaign companion. The application implements the Campaign Generation Framework and provides:</p>
 <ul>
-<li>Local AI integration for creative assistance</li>
+<li>Local LLM integration for creative assistance (via Ollama)</li>
 <li>Intelligent NPC and plot tracking</li>
-<li>Automated session preparation</li>
+<li>Session preparation tools</li>
 <li>Privacy-first design with all data stored locally</li>
+<li>Cross-platform native desktop experience</li>
 </ul>
 <h2 id="documentation-structure"><a class="header" href="#documentation-structure">Documentation Structure</a></h2>
 <p>This documentation follows the <a href="https://diataxis.fr/">Diátaxis</a> framework. Currently available:</p>
@@ -226,7 +243,7 @@
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
 
-                            <a rel="next prefetch" href="campaign-framework/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="CONTRIBUTING.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -237,29 +254,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
 
-                    <a rel="next prefetch" href="campaign-framework/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="CONTRIBUTING.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
 
         </div>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
 

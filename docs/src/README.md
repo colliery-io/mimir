@@ -6,9 +6,22 @@ Welcome to Mimir, a project to build a local-first D&D campaign assistant. Named
 
 ## Current Status
 
-🚧 **Documentation Phase** - We're currently documenting the campaign management framework that will guide Mimir's development.
+**Active Development - v0.0.1 Released** - Mimir is now available as a downloadable desktop application with core campaign management features.
+
+### Getting Started
+
+1. **[Download Mimir](https://github.com/colliery-io/mimir/releases)** - Get the latest release for your platform
+2. **Install** - Follow the platform-specific installation instructions in the [main README](../../README.md#installation)
+3. **Explore** - Start managing your D&D campaigns with the Campaign Generation Framework
 
 ### What's Available Now
+
+- **Desktop Application (v0.0.1)** - Local-first campaign management tool
+  - Campaign workflow management with structured phases
+  - D&D 5e catalog with full-text search
+  - Document templates and rich text editing
+  - Local LLM integration via Ollama
+  - Cross-platform support (macOS, Windows, Linux)
 
 - **[Campaign Generation Framework](./campaign-framework/README.md)** - A complete system for creating and managing D&D campaigns
   - The Three-Board System for organization
@@ -17,16 +30,15 @@ Welcome to Mimir, a project to build a local-first D&D campaign assistant. Named
   - Session management techniques
   - Ready-to-use templates
 
-This framework represents the methodology that Mimir will eventually automate and enhance.
-
 ## Vision
 
-Mimir will be a **terminal-based application** built in Rust that serves as your intelligent campaign companion. The goal is to implement the Campaign Generation Framework as software, adding:
+Mimir is a **desktop application** built with Rust and Tauri that serves as your intelligent campaign companion. The application implements the Campaign Generation Framework and provides:
 
-- Local AI integration for creative assistance
+- Local LLM integration for creative assistance (via Ollama)
 - Intelligent NPC and plot tracking
-- Automated session preparation
+- Session preparation tools
 - Privacy-first design with all data stored locally
+- Cross-platform native desktop experience
 
 ## Documentation Structure
 
@@ -42,8 +54,8 @@ Coming soon:
 
 ## Getting Help
 
-- **Issues**: Report bugs or request features on [GitHub Issues](https://github.com/yourusername/mimir/issues)
-- **Discussions**: Join community discussions on [GitHub Discussions](https://github.com/yourusername/mimir/discussions)
+- **Issues**: Report bugs or request features on [GitHub Issues](https://github.com/colliery-io/mimir/issues)
+- **Discussions**: Join community discussions on [GitHub Discussions](https://github.com/colliery-io/mimir/discussions)
 - **Troubleshooting**: Check our [troubleshooting guide](./how-to/troubleshooting.md)
 
 ## License

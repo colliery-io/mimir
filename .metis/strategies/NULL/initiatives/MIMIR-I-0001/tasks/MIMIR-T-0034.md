@@ -4,15 +4,14 @@ level: task
 title: "Phase 1: Make ApiError Serializable and enhance error types"
 short_code: "MIMIR-T-0034"
 created_at: 2025-10-26T11:21:03.422334+00:00
-updated_at: 2025-10-26T11:21:03.422334+00:00
+updated_at: 2025-10-28T18:15:46.489233+00:00
 parent: MIMIR-I-0001
 blocked_by: []
-blocks: [MIMIR-T-0035]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -66,6 +65,10 @@ Part of error handling standardization effort (see MIMIR-T-0025 for full design)
 - No breaking changes to existing commands or frontend
 - Purely additive - adds capabilities without removing functionality
 - Easy to test with cargo check and cargo test
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

@@ -176,10 +176,27 @@
 </blockquote>
 <p>Welcome to Mimir, a project to build a local-first D&amp;D campaign assistant. Named after the wise floating skull of Planescape lore, Mimir will help Dungeon Masters manage the cognitive complexity of running campaigns.</p>
 <h2 id="current-status"><a class="header" href="#current-status">Current Status</a></h2>
-<p>🚧 <strong>Documentation Phase</strong> - We’re currently documenting the campaign management framework that will guide Mimir’s development.</p>
+<p><strong>Active Development - v0.0.1 Released</strong> - Mimir is now available as a downloadable desktop application with core campaign management features.</p>
+<h3 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h3>
+<ol>
+<li><strong><a href="https://github.com/yourusername/mimir/releases">Download Mimir</a></strong> - Get the latest release for your platform</li>
+<li><strong>Install</strong> - Follow the platform-specific installation instructions in the <a href="../../README.html#installation">main README</a></li>
+<li><strong>Explore</strong> - Start managing your D&amp;D campaigns with the Campaign Generation Framework</li>
+</ol>
 <h3 id="whats-available-now"><a class="header" href="#whats-available-now">What’s Available Now</a></h3>
 <ul>
-<li><strong><a href="./campaign-framework/README.html">Campaign Generation Framework</a></strong> - A complete system for creating and managing D&amp;D campaigns
+<li>
+<p><strong>Desktop Application (v0.0.1)</strong> - Local-first campaign management tool</p>
+<ul>
+<li>Campaign workflow management with structured phases</li>
+<li>D&amp;D 5e catalog with full-text search</li>
+<li>Document templates and rich text editing</li>
+<li>Local LLM integration via Ollama</li>
+<li>Cross-platform support (macOS, Windows, Linux)</li>
+</ul>
+</li>
+<li>
+<p><strong><a href="./campaign-framework/README.html">Campaign Generation Framework</a></strong> - A complete system for creating and managing D&amp;D campaigns</p>
 <ul>
 <li>The Three-Board System for organization</li>
 <li>Campaign genesis process</li>
@@ -189,14 +206,14 @@
 </ul>
 </li>
 </ul>
-<p>This framework represents the methodology that Mimir will eventually automate and enhance.</p>
 <h2 id="vision"><a class="header" href="#vision">Vision</a></h2>
-<p>Mimir will be a <strong>terminal-based application</strong> built in Rust that serves as your intelligent campaign companion. The goal is to implement the Campaign Generation Framework as software, adding:</p>
+<p>Mimir is a <strong>desktop application</strong> built with Rust and Tauri that serves as your intelligent campaign companion. The application implements the Campaign Generation Framework and provides:</p>
 <ul>
-<li>Local AI integration for creative assistance</li>
+<li>Local LLM integration for creative assistance (via Ollama)</li>
 <li>Intelligent NPC and plot tracking</li>
-<li>Automated session preparation</li>
+<li>Session preparation tools</li>
 <li>Privacy-first design with all data stored locally</li>
+<li>Cross-platform native desktop experience</li>
 </ul>
 <h2 id="documentation-structure"><a class="header" href="#documentation-structure">Documentation Structure</a></h2>
 <p>This documentation follows the <a href="https://diataxis.fr/">Diátaxis</a> framework. Currently available:</p>
@@ -218,6 +235,1043 @@
 </ul>
 <h2 id="license"><a class="header" href="#license">License</a></h2>
 <p>Licensed under either of Apache License, Version 2.0 or MIT license at your option.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="contributing-to-mimir"><a class="header" href="#contributing-to-mimir">Contributing to Mimir</a></h1>
+<p>Welcome to the Mimir contributor guide! This comprehensive guide covers everything you need to know about contributing to the project.</p>
+<h2 id="quick-links"><a class="header" href="#quick-links">Quick Links</a></h2>
+<ul>
+<li><a href="../../CONTRIBUTING.html">Main Contributing Guide</a> - Quick reference for contributors</li>
+<li><a href="DEVELOPMENT.html">Development Setup</a> - Detailed development environment setup</li>
+<li><a href="https://github.com/yourusername/mimir">GitHub Repository</a></li>
+<li><a href="https://github.com/yourusername/mimir/issues">Issue Tracker</a></li>
+</ul>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ol>
+<li><a href="CONTRIBUTING.html#getting-started">Getting Started</a></li>
+<li><a href="CONTRIBUTING.html#development-workflow">Development Workflow</a></li>
+<li><a href="CONTRIBUTING.html#code-style-and-standards">Code Style and Standards</a></li>
+<li><a href="CONTRIBUTING.html#testing-guidelines">Testing Guidelines</a></li>
+<li><a href="CONTRIBUTING.html#pull-request-process">Pull Request Process</a></li>
+<li><a href="CONTRIBUTING.html#architecture-overview">Architecture Overview</a></li>
+<li><a href="CONTRIBUTING.html#design-principles">Design Principles</a></li>
+<li><a href="CONTRIBUTING.html#release-process">Release Process</a></li>
+</ol>
+<h2 id="getting-started-1"><a class="header" href="#getting-started-1">Getting Started</a></h2>
+<h3 id="first-time-contributors"><a class="header" href="#first-time-contributors">First-Time Contributors</a></h3>
+<p>Welcome! Here’s how to make your first contribution:</p>
+<ol>
+<li><strong>Find an issue</strong> - Look for issues labeled <code>good first issue</code> or <code>help wanted</code></li>
+<li><strong>Comment on the issue</strong> - Let us know you’re working on it</li>
+<li><strong>Fork and clone</strong> - Create your own fork and clone it locally</li>
+<li><strong>Set up your environment</strong> - Follow the <a href="DEVELOPMENT.html">Development Setup</a> guide</li>
+<li><strong>Make your changes</strong> - Implement your fix or feature</li>
+<li><strong>Submit a PR</strong> - Create a pull request with your changes</li>
+</ol>
+<h3 id="finding-work"><a class="header" href="#finding-work">Finding Work</a></h3>
+<ul>
+<li><strong>Good First Issues</strong> - Tagged issues suitable for newcomers</li>
+<li><strong>Help Wanted</strong> - Issues where we’d appreciate community help</li>
+<li><strong>Bug Reports</strong> - Always welcome to fix reported bugs</li>
+<li><strong>Feature Requests</strong> - Check if a feature request needs implementation</li>
+<li><strong>Documentation</strong> - Help improve our docs</li>
+</ul>
+<h2 id="development-workflow"><a class="header" href="#development-workflow">Development Workflow</a></h2>
+<h3 id="branch-strategy"><a class="header" href="#branch-strategy">Branch Strategy</a></h3>
+<ul>
+<li><code>main</code> - Stable release branch</li>
+<li>Feature branches - <code>feature/description</code> or <code>fix/description</code></li>
+<li>Always branch from <code>main</code></li>
+</ul>
+<pre><code class="language-bash">git checkout main
+git pull origin main
+git checkout -b feature/my-new-feature
+</code></pre>
+<h3 id="making-changes"><a class="header" href="#making-changes">Making Changes</a></h3>
+<ol>
+<li><strong>Write code</strong> following our style guidelines</li>
+<li><strong>Test your changes</strong> locally</li>
+<li><strong>Commit frequently</strong> with clear messages</li>
+<li><strong>Push to your fork</strong> regularly</li>
+<li><strong>Keep your branch updated</strong> with main</li>
+</ol>
+<pre><code class="language-bash"># Keep your branch up to date
+git fetch origin
+git rebase origin/main
+
+# Or merge if you prefer
+git merge origin/main
+</code></pre>
+<h3 id="before-submitting"><a class="header" href="#before-submitting">Before Submitting</a></h3>
+<p>Checklist before creating a pull request:</p>
+<ul>
+<li><input disabled="" type="checkbox"/>
+All tests pass locally</li>
+<li><input disabled="" type="checkbox"/>
+Code follows style guidelines</li>
+<li><input disabled="" type="checkbox"/>
+New tests added for new functionality</li>
+<li><input disabled="" type="checkbox"/>
+Documentation updated if needed</li>
+<li><input disabled="" type="checkbox"/>
+Commit messages follow conventions</li>
+<li><input disabled="" type="checkbox"/>
+No merge conflicts with main</li>
+<li><input disabled="" type="checkbox"/>
+Changes are focused and minimal</li>
+</ul>
+<h2 id="code-style-and-standards"><a class="header" href="#code-style-and-standards">Code Style and Standards</a></h2>
+<h3 id="rust-code-style"><a class="header" href="#rust-code-style">Rust Code Style</a></h3>
+<p><strong>Formatting:</strong></p>
+<pre><code class="language-bash"># Format all Rust code
+cargo fmt
+
+# Check formatting without changing
+cargo fmt -- --check
+</code></pre>
+<p><strong>Linting:</strong></p>
+<pre><code class="language-bash"># Run clippy
+cargo clippy --all-targets --all-features
+
+# Fix auto-fixable warnings
+cargo clippy --fix
+</code></pre>
+<p><strong>Best Practices:</strong></p>
+<ul>
+<li>Use meaningful variable and function names</li>
+<li>Write doc comments for public APIs</li>
+<li>Keep functions focused and reasonably sized</li>
+<li>Prefer explicit error handling over unwrap()</li>
+<li>Use <code>Result&lt;T, E&gt;</code> for operations that can fail</li>
+<li>Follow the Rust API Guidelines</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Retrieves a campaign by ID from the database.
+///
+/// # Arguments
+/// * `conn` - Database connection
+/// * `id` - Campaign ID to retrieve
+///
+/// # Returns
+/// * `Ok(Campaign)` - The campaign if found
+/// * `Err(String)` - Error message if not found
+pub fn get_campaign(conn: &amp;mut SqliteConnection, id: i32) -&gt; Result&lt;Campaign, String&gt; {
+    campaigns::table
+        .find(id)
+        .first(conn)
+        .map_err(|e| format!("Failed to get campaign: {}", e))
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="typescriptvue-code-style"><a class="header" href="#typescriptvue-code-style">TypeScript/Vue Code Style</a></h3>
+<p><strong>Type Safety:</strong></p>
+<ul>
+<li>Always use TypeScript, not JavaScript</li>
+<li>Define interfaces for all data structures</li>
+<li>Avoid <code>any</code> type unless absolutely necessary</li>
+<li>Use strict mode in tsconfig.json</li>
+</ul>
+<p><strong>Vue Best Practices:</strong></p>
+<ul>
+<li>Use Composition API with <code>&lt;script setup&gt;</code></li>
+<li>Keep components focused and single-purpose</li>
+<li>Props should have types and validators</li>
+<li>Emit events with proper typing</li>
+<li>Use composables for reusable logic</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-vue">&lt;script setup lang="ts"&gt;
+import { ref, computed } from 'vue';
+import type { Campaign } from '@/types/campaigns';
+
+interface Props {
+  campaign: Campaign;
+  editable?: boolean;
+}
+
+const props = withDefaults(defineProps&lt;Props&gt;(), {
+  editable: false
+});
+
+const emit = defineEmits&lt;{
+  save: [campaign: Campaign];
+  cancel: [];
+}&gt;();
+
+const localCampaign = ref({ ...props.campaign });
+
+const hasChanges = computed(() =&gt; {
+  return JSON.stringify(localCampaign.value) !== JSON.stringify(props.campaign);
+});
+
+function handleSave() {
+  emit('save', localCampaign.value);
+}
+&lt;/script&gt;
+</code></pre>
+<h3 id="general-conventions"><a class="header" href="#general-conventions">General Conventions</a></h3>
+<p><strong>Naming:</strong></p>
+<ul>
+<li>Rust: <code>snake_case</code> for functions/variables, <code>PascalCase</code> for types</li>
+<li>TypeScript: <code>camelCase</code> for variables/functions, <code>PascalCase</code> for classes/interfaces</li>
+<li>Files: Match the primary export name</li>
+</ul>
+<p><strong>Comments:</strong></p>
+<ul>
+<li>Write self-documenting code</li>
+<li>Add comments for complex logic</li>
+<li>Doc comments for public APIs</li>
+<li>No commented-out code in commits</li>
+</ul>
+<p><strong>Prohibited:</strong></p>
+<ul>
+<li>No emojis in code, comments, or commit messages</li>
+<li>No references to Claude or Anthropic in commit messages</li>
+<li>No hardcoded secrets or credentials</li>
+<li>No console.log in production code (use logging frameworks)</li>
+</ul>
+<h2 id="testing-guidelines"><a class="header" href="#testing-guidelines">Testing Guidelines</a></h2>
+<h3 id="rust-testing"><a class="header" href="#rust-testing">Rust Testing</a></h3>
+<p><strong>Unit Tests:</strong></p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_campaign_creation() {
+        let campaign = Campaign::new("Test Campaign");
+        assert_eq!(campaign.name, "Test Campaign");
+        assert_eq!(campaign.stage, CampaignStage::Spark);
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p><strong>Integration Tests:</strong>
+Place in <code>tests/</code> directory:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use mimir_dm_core::{establish_connection, run_migrations};
+
+#[test]
+fn test_database_integration() {
+    let mut conn = establish_connection(":memory:").unwrap();
+    run_migrations(&amp;mut conn).unwrap();
+    // Test database operations
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="frontend-testing"><a class="header" href="#frontend-testing">Frontend Testing</a></h3>
+<p><strong>Component Tests:</strong></p>
+<pre><code class="language-typescript">import { describe, it, expect } from 'vitest';
+import { mount } from '@vue/test-utils';
+import CampaignCard from '@/components/CampaignCard.vue';
+
+describe('CampaignCard', () =&gt; {
+  it('renders campaign name', () =&gt; {
+    const wrapper = mount(CampaignCard, {
+      props: {
+        campaign: { id: 1, name: 'Test Campaign' }
+      }
+    });
+    expect(wrapper.text()).toContain('Test Campaign');
+  });
+});
+</code></pre>
+<h3 id="running-tests"><a class="header" href="#running-tests">Running Tests</a></h3>
+<pre><code class="language-bash"># All tests
+cargo test --workspace
+cd crates/mimir-dm/frontend &amp;&amp; npm test
+
+# Unit tests only
+angreal test unit
+
+# With coverage
+npm run test:coverage
+
+# Specific test
+cargo test test_campaign_creation
+</code></pre>
+<h2 id="pull-request-process"><a class="header" href="#pull-request-process">Pull Request Process</a></h2>
+<h3 id="1-prepare-your-pr"><a class="header" href="#1-prepare-your-pr">1. Prepare Your PR</a></h3>
+<ul>
+<li>Ensure all tests pass</li>
+<li>Update documentation</li>
+<li>Write a clear PR description</li>
+<li>Reference related issues</li>
+</ul>
+<h3 id="2-pr-description-template"><a class="header" href="#2-pr-description-template">2. PR Description Template</a></h3>
+<pre><code class="language-markdown">## Description
+Brief description of what this PR does
+
+## Related Issues
+Fixes #123
+Related to #456
+
+## Changes Made
+- Added feature X
+- Fixed bug Y
+- Updated documentation for Z
+
+## Testing
+- [ ] Unit tests added/updated
+- [ ] Integration tests added/updated
+- [ ] Manually tested on macOS/Windows/Linux
+
+## Checklist
+- [ ] Code follows style guidelines
+- [ ] Self-review completed
+- [ ] Documentation updated
+- [ ] No new warnings
+- [ ] Tests pass locally
+</code></pre>
+<h3 id="3-review-process"><a class="header" href="#3-review-process">3. Review Process</a></h3>
+<ul>
+<li>Maintainers will review your PR</li>
+<li>Address feedback and requested changes</li>
+<li>Keep discussion focused and professional</li>
+<li>Be patient - reviews may take a few days</li>
+</ul>
+<h3 id="4-after-approval"><a class="header" href="#4-after-approval">4. After Approval</a></h3>
+<ul>
+<li>PR will be merged to main</li>
+<li>Your contribution will be included in the next release</li>
+<li>Thank you for contributing!</li>
+</ul>
+<h2 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h2>
+<h3 id="system-architecture"><a class="header" href="#system-architecture">System Architecture</a></h3>
+<p>Mimir follows a clean architecture pattern with clear separation of concerns:</p>
+<pre><code>┌─────────────────────────────────────────┐
+│         Frontend (Vue 3 + TS)          │
+│  ┌──────────────────────────────────┐  │
+│  │ Components, Views, Stores        │  │
+│  └──────────────────────────────────┘  │
+└─────────────────┬───────────────────────┘
+                  │ Tauri IPC
+┌─────────────────▼───────────────────────┐
+│      Tauri Desktop Shell (Rust)        │
+│  ┌──────────────────────────────────┐  │
+│  │ Commands, Services, State        │  │
+│  └──────────────┬───────────────────┘  │
+└─────────────────┼───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│      mimir-dm-core (Business Logic)    │
+│  ┌──────────────────────────────────┐  │
+│  │ Services, DAL, Domain Models     │  │
+│  └──────────────┬───────────────────┘  │
+└─────────────────┼───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│      Database (SQLite + Diesel)        │
+└─────────────────────────────────────────┘
+</code></pre>
+<h3 id="key-crates"><a class="header" href="#key-crates">Key Crates</a></h3>
+<ul>
+<li><strong>mimir-dm</strong> - Tauri app shell and command handlers</li>
+<li><strong>mimir-dm-core</strong> - Business logic, domain models, database</li>
+<li><strong>mimir-dm-llm</strong> - LLM provider abstraction</li>
+<li><strong>mimir-5etools-splitter</strong> - Data processing utility</li>
+</ul>
+<p>See individual crate READMEs for detailed information.</p>
+<h2 id="design-principles"><a class="header" href="#design-principles">Design Principles</a></h2>
+<ol>
+<li><strong>Local-First</strong> - All data stored locally, no cloud dependencies</li>
+<li><strong>Privacy-First</strong> - No telemetry, no tracking, user data stays local</li>
+<li><strong>Type Safety</strong> - Strong typing in both Rust and TypeScript</li>
+<li><strong>Separation of Concerns</strong> - Clear boundaries between layers</li>
+<li><strong>Testability</strong> - Write testable code with good test coverage</li>
+<li><strong>Domain-Driven Design</strong> - Model the D&amp;D campaign management domain</li>
+<li><strong>Progressive Enhancement</strong> - Core features work without LLM</li>
+<li><strong>Cross-Platform</strong> - Native experience on Windows, macOS, Linux</li>
+</ol>
+<h2 id="release-process"><a class="header" href="#release-process">Release Process</a></h2>
+<h3 id="version-numbering"><a class="header" href="#version-numbering">Version Numbering</a></h3>
+<p>We follow <a href="https://semver.org/">Semantic Versioning</a>:</p>
+<ul>
+<li>MAJOR.MINOR.PATCH (e.g., 0.0.1)</li>
+<li>MAJOR: Breaking changes</li>
+<li>MINOR: New features, backwards compatible</li>
+<li>PATCH: Bug fixes, backwards compatible</li>
+</ul>
+<h3 id="release-steps"><a class="header" href="#release-steps">Release Steps</a></h3>
+<ol>
+<li>Update version in all <code>Cargo.toml</code> files</li>
+<li>Update version in <code>package.json</code></li>
+<li>Update version in <code>tauri.conf.json</code></li>
+<li>Update CHANGELOG.md</li>
+<li>Create git tag: <code>git tag v0.0.2</code></li>
+<li>Push tag: <code>git push origin v0.0.2</code></li>
+<li>GitHub Actions builds and creates release</li>
+<li>Publish release notes on GitHub</li>
+</ol>
+<h2 id="questions-and-help"><a class="header" href="#questions-and-help">Questions and Help</a></h2>
+<h3 id="getting-help-1"><a class="header" href="#getting-help-1">Getting Help</a></h3>
+<ul>
+<li><strong>Documentation</strong> - Check this guide and <a href="DEVELOPMENT.html">DEVELOPMENT.md</a></li>
+<li><strong>Issues</strong> - Search existing issues or create a new one</li>
+<li><strong>Discussions</strong> - Use GitHub Discussions for questions</li>
+<li><strong>Pull Requests</strong> - Ask questions in PR comments</li>
+</ul>
+<h3 id="maintainer-response-times"><a class="header" href="#maintainer-response-times">Maintainer Response Times</a></h3>
+<ul>
+<li>Issues: Usually within 1-3 days</li>
+<li>PRs: Usually within 3-7 days</li>
+<li>Critical bugs: Within 24 hours when possible</li>
+</ul>
+<h2 id="recognition"><a class="header" href="#recognition">Recognition</a></h2>
+<p>Contributors are recognized in:</p>
+<ul>
+<li>Git commit history</li>
+<li>Release notes</li>
+<li>Project documentation</li>
+<li>GitHub contributors page</li>
+</ul>
+<p>Thank you for contributing to Mimir!</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="development-setup-and-guide"><a class="header" href="#development-setup-and-guide">Development Setup and Guide</a></h1>
+<p>This comprehensive guide covers everything you need to know about developing Mimir, from initial setup to advanced development workflows.</p>
+<h2 id="quick-links-1"><a class="header" href="#quick-links-1">Quick Links</a></h2>
+<ul>
+<li><a href="../../DEVELOPMENT.html">Main Development Guide</a> - Quick reference for development</li>
+<li><a href="CONTRIBUTING.html">Contributing Guide</a> - How to contribute to the project</li>
+<li><a href="https://github.com/yourusername/mimir">GitHub Repository</a></li>
+</ul>
+<h2 id="table-of-contents-1"><a class="header" href="#table-of-contents-1">Table of Contents</a></h2>
+<ol>
+<li><a href="DEVELOPMENT.html#environment-setup">Environment Setup</a></li>
+<li><a href="DEVELOPMENT.html#building-and-running">Building and Running</a></li>
+<li><a href="DEVELOPMENT.html#project-architecture">Project Architecture</a></li>
+<li><a href="DEVELOPMENT.html#development-workflows">Development Workflows</a></li>
+<li><a href="DEVELOPMENT.html#testing-strategy">Testing Strategy</a></li>
+<li><a href="DEVELOPMENT.html#debugging-techniques">Debugging Techniques</a></li>
+<li><a href="DEVELOPMENT.html#database-management">Database Management</a></li>
+<li><a href="DEVELOPMENT.html#frontend-development">Frontend Development</a></li>
+<li><a href="DEVELOPMENT.html#tauri-specific-considerations">Tauri-Specific Considerations</a></li>
+<li><a href="DEVELOPMENT.html#common-tasks">Common Tasks</a></li>
+</ol>
+<h2 id="environment-setup"><a class="header" href="#environment-setup">Environment Setup</a></h2>
+<h3 id="system-requirements"><a class="header" href="#system-requirements">System Requirements</a></h3>
+<ul>
+<li><strong>macOS</strong>: 10.15 (Catalina) or later</li>
+<li><strong>Windows</strong>: Windows 10 or later</li>
+<li><strong>Linux</strong>: Any modern distribution with glibc 2.31+</li>
+</ul>
+<h3 id="required-tools"><a class="header" href="#required-tools">Required Tools</a></h3>
+<h4 id="rust-toolchain"><a class="header" href="#rust-toolchain">Rust Toolchain</a></h4>
+<pre><code class="language-bash"># Install rustup (Rust version manager)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Verify installation
+rustc --version
+cargo --version
+</code></pre>
+<h4 id="nodejs-and-npm"><a class="header" href="#nodejs-and-npm">Node.js and npm</a></h4>
+<pre><code class="language-bash"># macOS (via Homebrew)
+brew install node
+
+# Windows (via installer)
+# Download from https://nodejs.org
+
+# Linux (via package manager)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify installation
+node --version  # Should be v18 or higher
+npm --version
+</code></pre>
+<h3 id="platform-specific-dependencies"><a class="header" href="#platform-specific-dependencies">Platform-Specific Dependencies</a></h3>
+<h4 id="macos-setup"><a class="header" href="#macos-setup">macOS Setup</a></h4>
+<pre><code class="language-bash"># Install Xcode Command Line Tools
+xcode-select --install
+
+# Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Optional: Install additional development tools
+brew install git gh
+</code></pre>
+<h4 id="linux-setup-ubuntudebian"><a class="header" href="#linux-setup-ubuntudebian">Linux Setup (Ubuntu/Debian)</a></h4>
+<pre><code class="language-bash"># Update package lists
+sudo apt-get update
+
+# Install required dependencies
+sudo apt-get install -y \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libssl-dev \
+  libgtk-3-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev \
+  patchelf
+
+# Optional: Install git and gh
+sudo apt-get install -y git gh
+</code></pre>
+<h4 id="linux-setup-fedora"><a class="header" href="#linux-setup-fedora">Linux Setup (Fedora)</a></h4>
+<pre><code class="language-bash">sudo dnf install \
+  webkit2gtk4.1-devel \
+  openssl-devel \
+  curl \
+  wget \
+  file \
+  libappindicator-gtk3-devel \
+  librsvg2-devel \
+  patchelf
+
+sudo dnf groupinstall "C Development Tools and Libraries"
+</code></pre>
+<h4 id="windows-setup"><a class="header" href="#windows-setup">Windows Setup</a></h4>
+<ol>
+<li>Install <a href="https://visualstudio.microsoft.com/visual-cpp-build-tools/">Visual Studio Build Tools</a></li>
+<li>Install <a href="https://git-scm.com/download/win">Git for Windows</a></li>
+<li>Install <a href="https://nodejs.org/">Node.js</a></li>
+<li>Install Rust via <a href="https://rustup.rs/">rustup-init.exe</a></li>
+</ol>
+<h3 id="optional-development-tools"><a class="header" href="#optional-development-tools">Optional Development Tools</a></h3>
+<pre><code class="language-bash"># Tauri CLI (faster startup for dev mode)
+cargo install tauri-cli
+
+# Angreal (test runner)
+pip install 'angreal&gt;=2'
+
+# Diesel CLI (database migrations)
+cargo install diesel_cli --no-default-features --features sqlite
+
+# GitHub CLI (for PR management)
+brew install gh  # macOS
+# or download from https://cli.github.com/
+</code></pre>
+<h3 id="ide-setup"><a class="header" href="#ide-setup">IDE Setup</a></h3>
+<h4 id="vs-code-recommended"><a class="header" href="#vs-code-recommended">VS Code (Recommended)</a></h4>
+<p>Install these extensions:</p>
+<ul>
+<li><strong>rust-analyzer</strong> - Rust language support</li>
+<li><strong>Tauri</strong> - Tauri development tools</li>
+<li><strong>Volar</strong> - Vue 3 language support</li>
+<li><strong>ESLint</strong> - JavaScript/TypeScript linting</li>
+<li><strong>Error Lens</strong> - Inline error messages</li>
+</ul>
+<p>Settings:</p>
+<pre><code class="language-json">{
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "editor.formatOnSave": true,
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "Vue.volar"
+  }
+}
+</code></pre>
+<h4 id="intellij-idea--clion"><a class="header" href="#intellij-idea--clion">IntelliJ IDEA / CLion</a></h4>
+<ul>
+<li>Install Rust plugin</li>
+<li>Install Vue.js plugin</li>
+<li>Enable Tauri support</li>
+</ul>
+<h2 id="building-and-running"><a class="header" href="#building-and-running">Building and Running</a></h2>
+<h3 id="initial-build"><a class="header" href="#initial-build">Initial Build</a></h3>
+<pre><code class="language-bash"># Clone repository
+git clone https://github.com/yourusername/mimir.git
+cd mimir
+
+# Build Rust workspace
+cargo build
+
+# Install frontend dependencies
+cd crates/mimir-dm/frontend
+npm install
+cd ../../..
+</code></pre>
+<h3 id="development-mode"><a class="header" href="#development-mode">Development Mode</a></h3>
+<pre><code class="language-bash"># Run with hot reload (from project root)
+cd crates/mimir-dm
+cargo tauri dev
+
+# Or using installed tauri-cli
+cd crates/mimir-dm
+tauri dev
+</code></pre>
+<p>This starts:</p>
+<ul>
+<li>Vite dev server for frontend (hot reload)</li>
+<li>Rust backend in debug mode</li>
+<li>Application window with DevTools available</li>
+</ul>
+<h3 id="production-build"><a class="header" href="#production-build">Production Build</a></h3>
+<pre><code class="language-bash"># Build optimized release
+cd crates/mimir-dm
+cargo tauri build
+
+# Output locations:
+# macOS: target/release/bundle/dmg/
+# Windows: target/release/bundle/msi/
+# Linux: target/release/bundle/deb/ and target/release/bundle/appimage/
+</code></pre>
+<h2 id="project-architecture"><a class="header" href="#project-architecture">Project Architecture</a></h2>
+<h3 id="workspace-structure"><a class="header" href="#workspace-structure">Workspace Structure</a></h3>
+<pre><code>mimir/
+├── Cargo.toml                 # Workspace configuration
+├── crates/
+│   ├── mimir-dm/             # Main application
+│   ├── mimir-dm-core/        # Business logic
+│   ├── mimir-dm-llm/         # LLM abstraction
+│   └── mimir-5etools-splitter/ # Data processing
+├── docs/                      # Documentation
+├── data/                      # D&amp;D reference data
+└── .metis/                   # Project management
+</code></pre>
+<h3 id="architecture-layers"><a class="header" href="#architecture-layers">Architecture Layers</a></h3>
+<p><strong>Frontend Layer (Vue 3 + TypeScript)</strong></p>
+<ul>
+<li>Views: Page-level components</li>
+<li>Components: Reusable UI components</li>
+<li>Stores: Pinia state management</li>
+<li>Services: API wrappers for Tauri commands</li>
+</ul>
+<p><strong>Application Layer (Tauri + Rust)</strong></p>
+<ul>
+<li>Commands: IPC handlers</li>
+<li>Services: Application-level business logic</li>
+<li>State: Application state management</li>
+</ul>
+<p><strong>Domain Layer (mimir-dm-core)</strong></p>
+<ul>
+<li>Models: Domain entities</li>
+<li>Services: Business logic</li>
+<li>DAL: Data access layer</li>
+<li>Migrations: Database schema</li>
+</ul>
+<p><strong>Infrastructure Layer</strong></p>
+<ul>
+<li>Database: SQLite with Diesel ORM</li>
+<li>LLM: Ollama integration</li>
+<li>File System: Campaign data storage</li>
+</ul>
+<h3 id="data-flow"><a class="header" href="#data-flow">Data Flow</a></h3>
+<pre><code>User Interaction
+      ↓
+Vue Component
+      ↓
+Pinia Store / API Service
+      ↓
+Tauri Command (IPC)
+      ↓
+Command Handler
+      ↓
+Core Service
+      ↓
+Repository (DAL)
+      ↓
+Database
+</code></pre>
+<h2 id="development-workflows"><a class="header" href="#development-workflows">Development Workflows</a></h2>
+<h3 id="feature-development"><a class="header" href="#feature-development">Feature Development</a></h3>
+<ol>
+<li><strong>Create Feature Branch</strong></li>
+</ol>
+<pre><code class="language-bash">git checkout -b feature/my-feature
+</code></pre>
+<ol start="2">
+<li><strong>Implement Feature</strong></li>
+</ol>
+<ul>
+<li>Add backend logic in <code>mimir-dm-core</code></li>
+<li>Add Tauri command in <code>mimir-dm/src/commands</code></li>
+<li>Add frontend UI in <code>mimir-dm/frontend/src</code></li>
+</ul>
+<ol start="3">
+<li><strong>Test Locally</strong></li>
+</ol>
+<pre><code class="language-bash">cargo test --workspace
+cd crates/mimir-dm/frontend &amp;&amp; npm test
+</code></pre>
+<ol start="4">
+<li><strong>Commit and Push</strong></li>
+</ol>
+<pre><code class="language-bash">git add .
+git commit -m "Add feature description"
+git push origin feature/my-feature
+</code></pre>
+<h3 id="bug-fix-workflow"><a class="header" href="#bug-fix-workflow">Bug Fix Workflow</a></h3>
+<ol>
+<li><strong>Reproduce the Bug</strong></li>
+</ol>
+<ul>
+<li>Create a failing test</li>
+<li>Document reproduction steps</li>
+</ul>
+<ol start="2">
+<li><strong>Fix the Issue</strong></li>
+</ol>
+<ul>
+<li>Implement fix</li>
+<li>Verify test passes</li>
+</ul>
+<ol start="3">
+<li><strong>Test Edge Cases</strong></li>
+</ol>
+<ul>
+<li>Add additional tests</li>
+<li>Manual testing</li>
+</ul>
+<ol start="4">
+<li><strong>Submit PR</strong></li>
+</ol>
+<h3 id="adding-a-new-page"><a class="header" href="#adding-a-new-page">Adding a New Page</a></h3>
+<ol>
+<li><strong>Create Vue Component</strong></li>
+</ol>
+<pre><code class="language-bash"># In crates/mimir-dm/frontend/src/views/
+touch MyNewView.vue
+</code></pre>
+<ol start="2">
+<li><strong>Add Route</strong></li>
+</ol>
+<pre><code class="language-typescript">// In crates/mimir-dm/frontend/src/app/router.ts
+{
+  path: '/my-new-page',
+  name: 'MyNewPage',
+  component: () =&gt; import('@/views/MyNewView.vue')
+}
+</code></pre>
+<ol start="3">
+<li><strong>Add Navigation</strong></li>
+</ol>
+<pre><code class="language-vue">&lt;!-- In layout component --&gt;
+&lt;router-link to="/my-new-page"&gt;My New Page&lt;/router-link&gt;
+</code></pre>
+<h3 id="adding-a-new-tauri-command"><a class="header" href="#adding-a-new-tauri-command">Adding a New Tauri Command</a></h3>
+<ol>
+<li><strong>Create Command Function</strong></li>
+</ol>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// In crates/mimir-dm/src/commands/my_commands.rs
+#[tauri::command]
+pub async fn my_new_command(
+    db_service: State&lt;'_, Arc&lt;DatabaseService&gt;&gt;,
+    param: String,
+) -&gt; Result&lt;String, String&gt; {
+    let mut conn = db_service.get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    // Business logic here
+    Ok(format!("Processed: {}", param))
+}
+<span class="boring">}</span></code></pre></pre>
+<ol start="2">
+<li><strong>Register Command</strong></li>
+</ol>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// In crates/mimir-dm/src/main.rs
+.invoke_handler(tauri::generate_handler![
+    commands::my_new_command,
+    // ... other commands
+])
+<span class="boring">}</span></code></pre></pre>
+<ol start="3">
+<li><strong>Call from Frontend</strong></li>
+</ol>
+<pre><code class="language-typescript">// In frontend service
+import { invoke } from '@tauri-apps/api/core';
+
+export async function myNewCommand(param: string): Promise&lt;string&gt; {
+  return await invoke&lt;string&gt;('my_new_command', { param });
+}
+</code></pre>
+<h2 id="testing-strategy"><a class="header" href="#testing-strategy">Testing Strategy</a></h2>
+<h3 id="rust-testing-1"><a class="header" href="#rust-testing-1">Rust Testing</a></h3>
+<h4 id="unit-tests"><a class="header" href="#unit-tests">Unit Tests</a></h4>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// In same file as implementation
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_feature() {
+        let result = my_function();
+        assert_eq!(result, expected);
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h4 id="integration-tests"><a class="header" href="#integration-tests">Integration Tests</a></h4>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// In tests/integration_test.rs
+use mimir_dm_core::*;
+
+#[test]
+fn test_database_workflow() {
+    let mut conn = establish_connection(":memory:").unwrap();
+    run_migrations(&amp;mut conn).unwrap();
+
+    // Test full workflow
+}
+<span class="boring">}</span></code></pre></pre>
+<h4 id="running-rust-tests"><a class="header" href="#running-rust-tests">Running Rust Tests</a></h4>
+<pre><code class="language-bash"># All tests
+cargo test --workspace
+
+# Specific crate
+cargo test -p mimir-dm-core
+
+# Specific test
+cargo test test_campaign_creation
+
+# With output
+cargo test -- --nocapture
+
+# Unit tests only (via angreal)
+angreal test unit
+</code></pre>
+<h3 id="frontend-testing-1"><a class="header" href="#frontend-testing-1">Frontend Testing</a></h3>
+<h4 id="component-tests"><a class="header" href="#component-tests">Component Tests</a></h4>
+<pre><code class="language-typescript">// In crates/mimir-dm/frontend/src/components/__tests__/
+import { describe, it, expect } from 'vitest';
+import { mount } from '@vue/test-utils';
+import MyComponent from '../MyComponent.vue';
+
+describe('MyComponent', () =&gt; {
+  it('renders correctly', () =&gt; {
+    const wrapper = mount(MyComponent, {
+      props: { title: 'Test' }
+    });
+    expect(wrapper.text()).toContain('Test');
+  });
+});
+</code></pre>
+<h4 id="running-frontend-tests"><a class="header" href="#running-frontend-tests">Running Frontend Tests</a></h4>
+<pre><code class="language-bash">cd crates/mimir-dm/frontend
+
+# Run tests
+npm test
+
+# Watch mode
+npm test -- --watch
+
+# Coverage
+npm run test:coverage
+
+# UI mode
+npm run test:ui
+</code></pre>
+<h2 id="debugging-techniques"><a class="header" href="#debugging-techniques">Debugging Techniques</a></h2>
+<h3 id="rust-debugging"><a class="header" href="#rust-debugging">Rust Debugging</a></h3>
+<h4 id="print-debugging"><a class="header" href="#print-debugging">Print Debugging</a></h4>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use tracing::{info, debug, warn, error};
+
+debug!("Variable value: {:?}", my_var);
+info!("Operation started");
+warn!("Unusual condition: {}", condition);
+error!("Operation failed: {}", err);
+<span class="boring">}</span></code></pre></pre>
+<h4 id="vs-code-debugging"><a class="header" href="#vs-code-debugging">VS Code Debugging</a></h4>
+<ol>
+<li>Install CodeLLDB extension</li>
+<li>Add <code>.vscode/launch.json</code>:</li>
+</ol>
+<pre><code class="language-json">{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Tauri",
+      "cargo": {
+        "args": ["build", "--manifest-path=crates/mimir-dm/Cargo.toml"]
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
+</code></pre>
+<h3 id="frontend-debugging"><a class="header" href="#frontend-debugging">Frontend Debugging</a></h3>
+<h4 id="browser-devtools"><a class="header" href="#browser-devtools">Browser DevTools</a></h4>
+<ul>
+<li>Right-click in app → “Inspect Element”</li>
+<li>Console tab for logs</li>
+<li>Network tab for Tauri commands</li>
+<li>Vue DevTools for component inspection</li>
+</ul>
+<h4 id="console-logging"><a class="header" href="#console-logging">Console Logging</a></h4>
+<pre><code class="language-typescript">console.log('Debug:', variable);
+console.warn('Warning:', condition);
+console.error('Error:', error);
+</code></pre>
+<h3 id="database-debugging"><a class="header" href="#database-debugging">Database Debugging</a></h3>
+<pre><code class="language-bash"># Open development database (macOS)
+sqlite3 ~/Library/Application\ Support/com.mimir.mimir-test/mimir.db
+
+# Common commands
+.tables                # List tables
+.schema campaigns      # Show table structure
+SELECT * FROM campaigns;  # Query data
+.quit                  # Exit
+</code></pre>
+<h2 id="database-management"><a class="header" href="#database-management">Database Management</a></h2>
+<h3 id="migrations"><a class="header" href="#migrations">Migrations</a></h3>
+<h4 id="creating-a-migration"><a class="header" href="#creating-a-migration">Creating a Migration</a></h4>
+<pre><code class="language-bash">cd crates/mimir-dm-core
+diesel migration generate add_new_feature
+
+# Edit migrations/YYYY-MM-DD-HHMMSS_add_new_feature/up.sql
+# Edit migrations/YYYY-MM-DD-HHMMSS_add_new_feature/down.sql
+</code></pre>
+<h4 id="running-migrations"><a class="header" href="#running-migrations">Running Migrations</a></h4>
+<pre><code class="language-bash"># Apply migrations
+diesel migration run
+
+# Rollback last migration
+diesel migration revert
+
+# Test migration cycle
+diesel migration redo
+</code></pre>
+<h4 id="development-database-location"><a class="header" href="#development-database-location">Development Database Location</a></h4>
+<ul>
+<li><strong>macOS</strong>: <code>~/Library/Application Support/com.mimir.mimir-test/mimir.db</code></li>
+<li><strong>Linux</strong>: <code>~/.local/share/com.mimir.mimir-test/mimir.db</code></li>
+<li><strong>Windows</strong>: <code>%APPDATA%\com.mimir.mimir-test\mimir.db</code></li>
+</ul>
+<h3 id="resetting-development-database"><a class="header" href="#resetting-development-database">Resetting Development Database</a></h3>
+<pre><code class="language-bash"># macOS
+rm -rf ~/Library/Application\ Support/com.mimir.mimir-test/
+
+# Linux
+rm -rf ~/.local/share/com.mimir.mimir-test/
+
+# Windows
+# Delete folder: %APPDATA%\com.mimir.mimir-test\
+
+# Restart app to recreate
+cargo tauri dev
+</code></pre>
+<h2 id="frontend-development"><a class="header" href="#frontend-development">Frontend Development</a></h2>
+<h3 id="hot-reload"><a class="header" href="#hot-reload">Hot Reload</a></h3>
+<p>Changes to Vue components, TypeScript, and CSS hot reload automatically:</p>
+<ul>
+<li>Save file</li>
+<li>Browser refreshes automatically</li>
+<li>State may reset depending on change</li>
+</ul>
+<h3 id="state-management-pinia"><a class="header" href="#state-management-pinia">State Management (Pinia)</a></h3>
+<pre><code class="language-typescript">// Define store
+import { defineStore } from 'pinia';
+
+export const useCampaignStore = defineStore('campaign', () =&gt; {
+  const campaigns = ref&lt;Campaign[]&gt;([]);
+
+  async function loadCampaigns() {
+    campaigns.value = await invoke('list_campaigns');
+  }
+
+  return { campaigns, loadCampaigns };
+});
+
+// Use in component
+const campaignStore = useCampaignStore();
+await campaignStore.loadCampaigns();
+</code></pre>
+<h3 id="calling-tauri-commands"><a class="header" href="#calling-tauri-commands">Calling Tauri Commands</a></h3>
+<pre><code class="language-typescript">import { invoke } from '@tauri-apps/api/core';
+
+// Basic invocation
+const result = await invoke&lt;string&gt;('command_name', { param: value });
+
+// With error handling
+try {
+  const data = await invoke&lt;Campaign&gt;('get_campaign', { id: campaignId });
+} catch (error) {
+  console.error('Failed to get campaign:', error);
+}
+</code></pre>
+<h2 id="tauri-specific-considerations"><a class="header" href="#tauri-specific-considerations">Tauri-Specific Considerations</a></h2>
+<h3 id="ipc-communication"><a class="header" href="#ipc-communication">IPC Communication</a></h3>
+<p>Commands run in separate thread from UI:</p>
+<ul>
+<li>Always async</li>
+<li>Data must be serializable</li>
+<li>Large data may have performance impact</li>
+</ul>
+<h3 id="file-system-access"><a class="header" href="#file-system-access">File System Access</a></h3>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Use tauri::api::path for cross-platform paths
+use tauri::api::path::{app_data_dir, app_config_dir};
+
+let data_dir = app_data_dir(&amp;config).unwrap();
+<span class="boring">}</span></code></pre></pre>
+<h3 id="window-management"><a class="header" href="#window-management">Window Management</a></h3>
+<pre><code class="language-typescript">import { getCurrent } from '@tauri-apps/api/window';
+
+const appWindow = getCurrent();
+await appWindow.setTitle('New Title');
+await appWindow.maximize();
+</code></pre>
+<h2 id="common-tasks"><a class="header" href="#common-tasks">Common Tasks</a></h2>
+<h3 id="updating-dependencies"><a class="header" href="#updating-dependencies">Updating Dependencies</a></h3>
+<pre><code class="language-bash"># Rust dependencies
+cargo update
+
+# Frontend dependencies
+cd crates/mimir-dm/frontend
+npm update
+</code></pre>
+<h3 id="formatting-code"><a class="header" href="#formatting-code">Formatting Code</a></h3>
+<pre><code class="language-bash"># Rust
+cargo fmt
+
+# TypeScript/Vue
+cd crates/mimir-dm/frontend
+npm run lint
+</code></pre>
+<h3 id="running-clippy"><a class="header" href="#running-clippy">Running Clippy</a></h3>
+<pre><code class="language-bash">cargo clippy --all-targets --all-features
+
+# Fix auto-fixable issues
+cargo clippy --fix
+</code></pre>
+<h3 id="type-checking-frontend"><a class="header" href="#type-checking-frontend">Type Checking Frontend</a></h3>
+<pre><code class="language-bash">cd crates/mimir-dm/frontend
+npm run type-check
+</code></pre>
+<h2 id="performance-optimization"><a class="header" href="#performance-optimization">Performance Optimization</a></h2>
+<h3 id="profiling-rust-code"><a class="header" href="#profiling-rust-code">Profiling Rust Code</a></h3>
+<pre><code class="language-bash">cargo build --release --profile=profiling
+# Use profiling tools like flamegraph or perf
+</code></pre>
+<h3 id="frontend-performance"><a class="header" href="#frontend-performance">Frontend Performance</a></h3>
+<ul>
+<li>Use Vue DevTools performance tab</li>
+<li>Check bundle size: <code>npm run build -- --analyze</code></li>
+<li>Lazy load routes and heavy components</li>
+</ul>
+<h2 id="additional-resources"><a class="header" href="#additional-resources">Additional Resources</a></h2>
+<ul>
+<li><a href="https://tauri.app/">Tauri Documentation</a></li>
+<li><a href="https://vuejs.org/">Vue 3 Documentation</a></li>
+<li><a href="https://doc.rust-lang.org/book/">Rust Book</a></li>
+<li><a href="https://diesel.rs/guides/">Diesel Guide</a></li>
+<li><a href="https://pinia.vuejs.org/">Pinia Documentation</a></li>
+</ul>
+<h2 id="getting-help-2"><a class="header" href="#getting-help-2">Getting Help</a></h2>
+<ul>
+<li>Check <a href="CONTRIBUTING.html">CONTRIBUTING.md</a> for contribution guidelines</li>
+<li>Search <a href="https://github.com/yourusername/mimir/issues">GitHub Issues</a></li>
+<li>Review crate READMEs for detailed architecture info</li>
+<li>Ask questions in pull request comments</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="campaign-generation-framework"><a class="header" href="#campaign-generation-framework">Campaign Generation Framework</a></h1>
 <p>A systematic approach to creating and managing D&amp;D campaigns that grow with your players.</p>
 <h2 id="what-youll-learn"><a class="header" href="#what-youll-learn">What You’ll Learn</a></h2>
@@ -244,7 +1298,8 @@
 <p>Ready-to-use artifacts that make the system practical.</p>
 <h2 id="start-here"><a class="header" href="#start-here">Start Here</a></h2>
 <p>New to the framework? Begin with <a href="campaign-framework/./01-foundations/README.html">Framework Philosophy</a> to understand the core principles, then explore <a href="campaign-framework/./01-foundations/three-board-system.html">The Three-Board System</a> to see how it all fits together.</p>
-<h2 id="design-principles"><a class="header" href="#design-principles">Design Principles</a></h2>
+<p>Need a quick reference? Check out the <a href="campaign-framework/./cheat-sheet.html">Campaign Framework Cheat Sheet</a> for an algorithmic breakdown of when to create documents and advance through stages.</p>
+<h2 id="design-principles-1"><a class="header" href="#design-principles-1">Design Principles</a></h2>
 <ul>
 <li><strong>Sustainable</strong>: Work you do once serves you many times</li>
 <li><strong>Responsive</strong>: Player choices shape the campaign</li>
@@ -392,7 +1447,7 @@
 <li>Story coherence: Plot threads resolve satisfyingly</li>
 <li>Creative flow: Inspiration comes easily during prep</li>
 </ul>
-<h2 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h2>
+<h2 id="getting-started-2"><a class="header" href="#getting-started-2">Getting Started</a></h2>
 <p>The framework’s modular nature means you can adopt it gradually:</p>
 <ol>
 <li><strong>Start small</strong>: Implement just the Three-Board System</li>
@@ -642,8 +1697,8 @@ Once per month. Are player arcs getting spotlight time? Has the campaign drifted
 <h2 id="tutorial-campaign-the-ironhold-insurrection"><a class="header" href="#tutorial-campaign-the-ironhold-insurrection">Tutorial Campaign: The Ironhold Insurrection</a></h2>
 <p>Throughout these chapters, we’ll build a complete campaign from scratch. You’ll see exactly how each phase works with real examples you can adapt for your own use.</p>
 <p><strong>Our Example Campaign</strong>: <em>The Ironhold Insurrection</em> - A dwarven city-state faces civil war as ancient clan rivalries explode into violence, while something stirs in the abandoned deeps below.</p>
-<h2 id="the-four-phases"><a class="header" href="#the-four-phases">The Four Phases</a></h2>
-<p>The Campaign Genesis Process breaks down into four manageable phases:</p>
+<h2 id="the-five-phases"><a class="header" href="#the-five-phases">The Five Phases</a></h2>
+<p>The Campaign Genesis Process breaks down into five manageable phases:</p>
 <h3 id="phase-1-the-spark-week-1"><a class="header" href="#phase-1-the-spark-week-1"><a href="campaign-framework/02-campaign-genesis/./phase-1-spark.html">Phase 1: The Spark</a> (Week 1)</a></h3>
 <p>Transform your initial idea into a clear campaign concept:</p>
 <ul>
@@ -680,14 +1735,24 @@ Once per month. Are player arcs getting spotlight time? Has the campaign drifted
 <li><strong>Time</strong>: 6-9 hours across a week</li>
 <li><strong>Output</strong>: Ready-to-run first session</li>
 </ul>
-<h2 id="total-investment"><a class="header" href="#total-investment">Total Investment</a></h2>
-<p>The complete Campaign Genesis Process requires:</p>
+<h3 id="phase-5-campaign-conclusion-when-ready"><a class="header" href="#phase-5-campaign-conclusion-when-ready"><a href="campaign-framework/02-campaign-genesis/./phase-5-conclusion.html">Phase 5: Campaign Conclusion</a> (When Ready)</a></h3>
+<p>Bring your campaign to a satisfying close:</p>
 <ul>
-<li><strong>Calendar Time</strong>: 2-3 weeks</li>
-<li><strong>Total Hours</strong>: 20-30 hours</li>
+<li>Recognizing when to conclude</li>
+<li>Planning the finale arc</li>
+<li>Resolving story threads</li>
+<li><strong>Time</strong>: Planning happens across final 8 sessions</li>
+<li><strong>Output</strong>: Memorable ending and preserved campaign materials</li>
+</ul>
+<h2 id="total-investment"><a class="header" href="#total-investment">Total Investment</a></h2>
+<p>The complete Campaign Genesis Process (Phases 1-4) requires:</p>
+<ul>
+<li><strong>Calendar Time</strong>: 2-3 weeks to launch</li>
+<li><strong>Total Hours</strong>: 20-30 hours for initial setup</li>
 <li><strong>Daily Average</strong>: 1-2 hours</li>
 <li><strong>Peak Time</strong>: Session Zero day (3-4 hours)</li>
 </ul>
+<p>Phase 5 (Conclusion) happens organically when your campaign reaches its natural end point.</p>
 <p>This investment creates:</p>
 <ul>
 <li>Clear campaign vision and themes</li>
@@ -5427,7 +6492,7 @@ You feel anxiety when players make unexpected choices. You find yourself steerin
 <strong>Perfect for</strong>: New DMs or quick campaign starts</p>
 <p><a href="campaign-framework/06-templates/./templates/quick-start-kit.html">View Full Template</a></p>
 <h2 id="using-the-templates"><a class="header" href="#using-the-templates">Using the Templates</a></h2>
-<h3 id="getting-started-1"><a class="header" href="#getting-started-1">Getting Started</a></h3>
+<h3 id="getting-started-3"><a class="header" href="#getting-started-3">Getting Started</a></h3>
 <ol>
 <li>
 <p><strong>Choose Your Core Set</strong>: Start with just 4-5 templates</p>
@@ -5543,22 +6608,6 @@ You feel anxiety when players make unexpected choices. You find yourself steerin
 
         </div>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
 
