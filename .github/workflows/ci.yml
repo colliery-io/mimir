@@ -69,4 +69,4 @@ jobs:
         run: pip install 'angreal>=2'
 
       - name: Run tests
-        run: angreal test backend
+        run: angreal test unit
