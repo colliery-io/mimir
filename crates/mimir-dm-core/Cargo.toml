@@ -1,6 +1,6 @@
 [package]
 name = "mimir-dm-core"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 description = "Core business logic, domain models, and data persistence for Mimir"
 authors = ["Your Name <your.email@example.com>"]
@@ -9,7 +9,7 @@ repository = "https://github.com/yourusername/mimir"
 readme = "README.md"
 
 [dependencies]
-mimir-dm-llm = { version = "0.0.0", path = "../mimir-dm-llm" }
+mimir-dm-llm = { version = "0.0.1", path = "../mimir-dm-llm" }
 
 tokio = { workspace = true }
 anyhow = { workspace = true }
