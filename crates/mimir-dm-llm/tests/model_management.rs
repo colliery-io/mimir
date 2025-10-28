@@ -1,6 +1,4 @@
-mod common;
-
-use common::create_ollama_config;
+use crate::common::create_ollama_config;
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig},
     providers::ollama::OllamaProvider,

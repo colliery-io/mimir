@@ -7,10 +7,12 @@ authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/yourusername/mimir"
 readme = "README.md"
+autobenches = false
+autotests = false
 
 [dependencies]
 tokio = { workspace = true }
-tokio-util = "0.7"
+tokio-util = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
@@ -20,10 +22,14 @@ reqwest = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
-serde_yaml = "0.9"
-url = "2.5"
-similar = "2.6"
-regex = "1.10"
+serde_yaml = { workspace = true }
+url = { workspace = true }
+similar = { workspace = true }
+regex = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3.0"
+tempfile = { workspace = true }
+
+[[test]]
+name = "main"
+path = "tests/main.rs"
