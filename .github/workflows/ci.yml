@@ -68,5 +68,5 @@ jobs:
       - name: Install angreal
         run: pip install 'angreal>=2'
 
-      - name: Run tests
-        run: angreal test unit
+      - name: Run backend tests
+        run: angreal test --backend-only
