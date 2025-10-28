@@ -58,7 +58,7 @@ jobs:
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           projectPath: ./crates/mimir-dm
           tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
