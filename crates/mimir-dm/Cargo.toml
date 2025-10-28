@@ -32,31 +32,26 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 directories = { workspace = true }
 diesel = { workspace = true, features = ["r2d2"] }
-r2d2 = "0.8"
+r2d2 = { workspace = true }
 chrono = { workspace = true }
-tera = "1.19"
+tera = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tokio-util = "0.7"
-base64 = "0.22.1"
-tar = "0.4"
-flate2 = "1.0"
-tempfile = "3.10"
-walkdir = "2.5"
+tokio-util = { workspace = true }
+base64 = { workspace = true }
+tar = { workspace = true }
+flate2 = { workspace = true }
+tempfile = { workspace = true }
+walkdir = { workspace = true }
 async-trait.workspace = true
-uuid = { version = "1.10", features = ["v4", "serde"] }
-similar = "2.6"
-reqwest = { version = "0.12", features = ["json"] }
-
-# Remove TUI dependencies since we're going GUI
-# config = { workspace = true }
-# directories = { workspace = true }
-# clap = { workspace = true }
+uuid = { workspace = true }
+similar = { workspace = true }
+reqwest = { workspace = true }
 
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 
 [dev-dependencies]
-tempfile = "3.0"
+tempfile = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "macros"] }
