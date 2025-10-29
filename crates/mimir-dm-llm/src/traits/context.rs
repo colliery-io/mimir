@@ -17,6 +17,9 @@ use std::sync::{Arc, Mutex};
 /// 
 /// Example usage:
 /// ```rust
+/// use mimir_dm_llm::traits::ToolContext;
+/// use serde_json::json;
+///
 /// let context = ToolContext::new();
 /// context.set("document_read:campaign_bible", json!({"timestamp": "2023-01-01T00:00:00Z"}));
 /// if context.has_key("document_read:campaign_bible") {

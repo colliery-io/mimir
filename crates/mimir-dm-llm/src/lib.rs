@@ -18,7 +18,7 @@
 //! use mimir_dm_llm::{
 //!     config::{ModelConfig, EndpointType},
 //!     providers::ollama::OllamaProvider,
-//!     provider::{LlmProvider, Message},
+//!     traits::{LlmProvider, Message},
 //! };
 //! use std::collections::HashMap;
 //!
@@ -38,14 +38,14 @@
 //!
 //! // Create provider
 //! let provider = OllamaProvider::new(config)?;
-//! 
+//!
 //! // Use chat endpoint
 //! let messages = vec![Message {
 //!     role: "user".to_string(),
 //!     content: "Hello, world!".to_string(),
 //! }];
 //!
-//! let response = provider.chat(messages, None, None, None, None, None).await?;
+//! let response = provider.chat(messages, None, None, None, None, None, None, None).await?;
 //! println!("Response: {}", response.content);
 //! # Ok(())
 //! # }

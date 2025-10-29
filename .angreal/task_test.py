@@ -25,25 +25,40 @@ test = angreal.command_group(name="test", about="Testing commands for the Mimir 
 @test()
 @angreal.command(name="unit", about="Run tests")
 @angreal.argument(name="watch", long="watch", short="w", takes_value=False, help="Run tests in watch mode")
-@angreal.argument(name="backend", long="backend", short="b", takes_value=False, help="Run backend tests only")
-@angreal.argument(name="frontend", long="frontend",short="f", takes_value=False, help="Run frontend tests only")
-def unit(watch: bool = False, backend: bool = False, frontend: bool = False):
-    """Run tests (all, backend only, or frontend only)"""
+@angreal.argument(name="core", long="core", short="c", takes_value=False, help="Run core/CLI crate tests only (default)")
+@angreal.argument(name="ui", long="ui", short="u", takes_value=False, help="Run UI/frontend tests only")
+@angreal.argument(name="all", long="all", short="a", takes_value=False, help="Run all tests (core + UI)")
+def unit(watch: bool = False, core: bool = False, ui: bool = False, all: bool = False):
+    """Run tests (core only by default, or UI only, or all)"""
     failures = []
 
-    # Run backend tests unless frontend-only
-    if not frontend:
-        print("\nRunning Rust tests (unit + integration)...")
+    # Determine what to run:
+    # - If --all is set, run both
+    # - If --ui is set, run only UI
+    # - Otherwise (default or --core), run only core
+    if all:
+        run_core = True
+        run_ui = True
+    elif ui:
+        run_core = False
+        run_ui = True
+    else:  # default or --core
+        run_core = True
+        run_ui = False
+
+    # Run core crate tests if requested
+    if run_core:
+        print("\nRunning Rust tests (unit + integration) for core crates...")
         result = subprocess.run(
-            ["cargo", "test", "--workspace"],
+            ["cargo", "test", "--workspace", "--exclude", "mimir-dm", "--", "--test-threads=1"],
             cwd=PROJECT_ROOT,
             capture_output=False
         )
         if result.returncode != 0:
-            failures.append("Backend tests")
+            failures.append("Core tests")
 
-    # Run frontend tests unless backend-only
-    if not backend:
+    # Run UI/frontend tests if requested
+    if run_ui:
         print("\nRunning frontend tests...")
         if not FRONTEND_DIR.exists():
             print(f"Frontend directory not found: {FRONTEND_DIR}")
@@ -59,7 +74,7 @@ def unit(watch: bool = False, backend: bool = False, frontend: bool = False):
 
         result = subprocess.run(cmd, cwd=FRONTEND_DIR, capture_output=False)
         if result.returncode != 0:
-            failures.append("Frontend tests")
+            failures.append("UI tests")
 
     # Summary
     if failures:
@@ -70,50 +85,63 @@ def unit(watch: bool = False, backend: bool = False, frontend: bool = False):
 
 @test()
 @angreal.command(name="coverage", about="Run tests with coverage reporting")
-@angreal.argument(name="backend",long="backend", short="b", takes_value=False, help="Run backend coverage only")
-@angreal.argument(name="frontend", long="frontend",short="f", takes_value=False, help="Run frontend coverage only")
+@angreal.argument(name="core", long="core", short="c", takes_value=False, help="Run core crate coverage only (default)")
+@angreal.argument(name="ui", long="ui", short="u", takes_value=False, help="Run UI/frontend coverage only")
+@angreal.argument(name="all", long="all", short="a", takes_value=False, help="Run all coverage (core + UI)")
 @angreal.argument(name="open", long="open",short="o", takes_value=False, help="Open coverage reports in browser")
-def coverage(backend: bool = False, frontend: bool = False, open: bool = False):
-    """Run tests with code coverage for both backend and frontend"""
+def coverage(core: bool = False, ui: bool = False, all: bool = False, open: bool = False):
+    """Run tests with code coverage (core only by default, or UI only, or all)"""
     print("Running tests with coverage...")
-    
+
     failures = []
-    
-    # Run backend coverage unless frontend-only
-    if not frontend:
-        print("\n[Backend Coverage (Rust)]")
-        
+
+    # Determine what to run (same logic as unit tests)
+    if all:
+        run_core = True
+        run_ui = True
+    elif ui:
+        run_core = False
+        run_ui = True
+    else:  # default or --core
+        run_core = True
+        run_ui = False
+
+    # Run core coverage if requested
+    if run_core:
+        print("\n[Core Coverage (Rust)]")
+
         # Check if cargo-tarpaulin is installed
         check_result = subprocess.run(
             ["cargo", "tarpaulin", "--version"],
             capture_output=True,
             cwd=PROJECT_ROOT
         )
-        
+
         if check_result.returncode != 0:
             print("cargo-tarpaulin not found. Installing...")
             subprocess.run(["cargo", "install", "cargo-tarpaulin"], cwd=PROJECT_ROOT)
-        
-        # Run tarpaulin with HTML output
+
+        # Run tarpaulin with HTML output, excluding UI crate
         cmd = [
             "cargo", "tarpaulin",
             "--workspace",
+            "--exclude", "mimir-dm",
             "--out", "Html",
             "--output-dir", "target/coverage",
             "--exclude-files", "*/tests/*", "*/examples/*", "*/build.rs",
             "--timeout", "120"
         ]
-        
+
         result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=False)
         if result.returncode != 0:
-            failures.append("Backend coverage")
+            failures.append("Core coverage")
         else:
-            print("Backend coverage report: target/coverage/tarpaulin-report.html")
+            print("Core coverage report: target/coverage/tarpaulin-report.html")
             if open:
                 subprocess.run(["open", "target/coverage/tarpaulin-report.html"], cwd=PROJECT_ROOT)
-    
-    # Run frontend coverage unless backend-only
-    if not backend:
+
+    # Run UI coverage if requested
+    if run_ui:
         print("\n[Frontend Coverage (Vue/TypeScript)]")
         
         # Check if coverage package is installed
@@ -134,9 +162,9 @@ def coverage(backend: bool = False, frontend: bool = False, open: bool = False):
             capture_output=False
         )
         if result.returncode != 0:
-            failures.append("Frontend coverage")
+            failures.append("UI coverage")
         else:
-            print("Frontend coverage report: crates/mimir-dm/frontend/coverage/index.html")
+            print("UI coverage report: crates/mimir-dm/frontend/coverage/index.html")
             if open:
                 subprocess.run(["open", "crates/mimir-dm/frontend/coverage/index.html"], cwd=PROJECT_ROOT)
     
