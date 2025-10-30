@@ -48,11 +48,11 @@
                 </button>
               </li>
               <li>
-                <button 
-                  @click="activeSection = 'llm-endpoint'"
-                  :class="['nav-item', { active: activeSection === 'llm-endpoint' }]"
+                <button
+                  @click="activeSection = 'provider-config'"
+                  :class="['nav-item', { active: activeSection === 'provider-config' }]"
                 >
-                  LLM Serving Location
+                  Provider Configuration
                 </button>
               </li>
             </ul>
@@ -85,23 +85,67 @@
             />
           </div>
           
-          <!-- LLM Endpoint -->
-          <div v-else-if="activeSection === 'llm-endpoint'" class="content-section">
-            <h2 class="content-title">LLM Serving Location</h2>
-            <p class="content-description">Configure where the AI assistant connects for processing requests</p>
+          <!-- Provider Configuration -->
+          <div v-else-if="activeSection === 'provider-config'" class="content-section">
+            <h2 class="content-title">Provider Configuration</h2>
+            <p class="content-description">Configure which LLM provider to use for AI assistant requests</p>
+
             <div class="form-group">
-              <label for="llm-endpoint-input" class="form-label">Endpoint URL</label>
+              <label for="provider-type" class="form-label">Provider</label>
+              <select
+                id="provider-type"
+                class="form-input"
+                v-model="providerSettings.provider_type"
+                @change="handleProviderTypeChange"
+              >
+                <option value="ollama">Ollama (Local)</option>
+                <option value="groq">Groq (Cloud)</option>
+              </select>
+              <p class="input-help">
+                Choose between local Ollama installation or cloud-based Groq service.
+              </p>
+            </div>
+
+            <!-- Ollama-specific settings -->
+            <div v-if="providerSettings.provider_type === 'ollama'" class="form-group">
+              <label for="ollama-base-url" class="form-label">Ollama Base URL</label>
               <input
-                id="llm-endpoint-input"
+                id="ollama-base-url"
                 type="url"
                 class="form-input"
-                :value="chatStore.systemConfig.llmEndpoint || 'http://localhost:11434'"
-                @input="handleEndpointChange"
+                v-model="providerSettings.ollama_config.base_url"
                 placeholder="http://localhost:11434"
               />
               <p class="input-help">
-                Enter the full URL of your LLM service. For local Ollama installations, use <code>http://localhost:11434</code>. 
-                For remote services, include the full URL (e.g., <code>https://your-server.com:11434</code>).
+                Enter the URL where Ollama is running. Default is <code>http://localhost:11434</code>.
+              </p>
+            </div>
+
+            <!-- Groq-specific settings -->
+            <div v-if="providerSettings.provider_type === 'groq'" class="form-group">
+              <label for="groq-api-key" class="form-label">Groq API Key</label>
+              <input
+                id="groq-api-key"
+                type="password"
+                class="form-input"
+                v-model="providerSettings.groq_config.api_key"
+                placeholder="Enter your Groq API key"
+              />
+              <p class="input-help">
+                Your Groq API key. You can get one at <a href="https://console.groq.com" target="_blank">console.groq.com</a>.
+              </p>
+            </div>
+
+            <div class="form-actions">
+              <button
+                @click="saveProviderSettings"
+                class="button action-button"
+                :disabled="isSavingSettings"
+              >
+                {{ isSavingSettings ? 'Saving...' : 'Save Settings' }}
+              </button>
+              <p v-if="settingsSaveMessage" :class="['settings-message', settingsSaveMessageType]">
+                {{ settingsSaveMessage }}
               </p>
             </div>
           </div>
@@ -141,7 +185,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, reactive } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../shared/components/layout/MainLayout.vue'
 import ThemeSelector from '../shared/components/ui/ThemeSelector.vue'
 import SystemPromptEditor from '@/components/SystemPromptEditor.vue'
@@ -155,6 +200,100 @@ const showBookManagementModal = ref(false)
 const showCampaignManagementModal = ref(false)
 const activeSection = ref('theme')
 
+// Provider settings state
+interface OllamaConfig {
+  base_url: string
+}
+
+interface GroqConfig {
+  api_key: string
+}
+
+interface ProviderSettings {
+  provider_type: 'ollama' | 'groq'
+  ollama_config: OllamaConfig
+  groq_config: GroqConfig
+}
+
+const providerSettings = reactive<ProviderSettings>({
+  provider_type: 'ollama',
+  ollama_config: {
+    base_url: 'http://localhost:11434'
+  },
+  groq_config: {
+    api_key: ''
+  }
+})
+
+const isSavingSettings = ref(false)
+const settingsSaveMessage = ref('')
+const settingsSaveMessageType = ref<'success' | 'error'>('success')
+
+// Load provider settings on mount
+onMounted(async () => {
+  try {
+    const settings = await invoke<ProviderSettings>('get_provider_settings')
+
+    // Update reactive state
+    providerSettings.provider_type = settings.provider_type
+
+    if (settings.ollama_config) {
+      providerSettings.ollama_config = settings.ollama_config
+    }
+
+    if (settings.groq_config) {
+      providerSettings.groq_config = settings.groq_config
+    }
+  } catch (error) {
+    console.error('Failed to load provider settings:', error)
+  }
+})
+
+// Save provider settings
+const saveProviderSettings = async () => {
+  isSavingSettings.value = true
+  settingsSaveMessage.value = ''
+
+  try {
+    // Build the settings object to send
+    const settingsToSave: any = {
+      provider_type: providerSettings.provider_type
+    }
+
+    if (providerSettings.provider_type === 'ollama') {
+      settingsToSave.ollama_config = providerSettings.ollama_config
+      settingsToSave.groq_config = null
+    } else {
+      settingsToSave.groq_config = providerSettings.groq_config
+      settingsToSave.ollama_config = null
+    }
+
+    await invoke('save_provider_settings', { settings: settingsToSave })
+
+    settingsSaveMessage.value = 'Settings saved successfully. Restart the application for changes to take effect.'
+    settingsSaveMessageType.value = 'success'
+
+    // Clear message after 5 seconds
+    setTimeout(() => {
+      settingsSaveMessage.value = ''
+    }, 5000)
+  } catch (error) {
+    console.error('Failed to save provider settings:', error)
+    settingsSaveMessage.value = `Failed to save settings: ${error}`
+    settingsSaveMessageType.value = 'error'
+  } finally {
+    isSavingSettings.value = false
+  }
+}
+
+// Handle provider type change
+const handleProviderTypeChange = () => {
+  // Initialize default values when switching providers
+  if (providerSettings.provider_type === 'ollama' && !providerSettings.ollama_config.base_url) {
+    providerSettings.ollama_config.base_url = 'http://localhost:11434'
+  }
+}
+
 // Open modals based on section selection
 watch(activeSection, (newSection) => {
   if (newSection === 'import-books') {
@@ -164,7 +303,7 @@ watch(activeSection, (newSection) => {
   }
 })
 
-// When modals close, switch to a different section (theme)  
+// When modals close, switch to a different section (theme)
 const handleBookModalClose = () => {
   showBookManagementModal.value = false
   activeSection.value = 'theme'
@@ -173,11 +312,6 @@ const handleBookModalClose = () => {
 const handleCampaignModalClose = () => {
   showCampaignManagementModal.value = false
   activeSection.value = 'theme'
-}
-
-const handleEndpointChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  chatStore.setLlmEndpoint(target.value)
 }
 
 </script>
@@ -395,5 +529,61 @@ const handleEndpointChange = (event: Event) => {
 
 .theme-dark .input-help code {
   background-color: var(--color-gray-700);
+}
+
+.input-help a {
+  color: var(--color-primary-500);
+  text-decoration: underline;
+}
+
+.input-help a:hover {
+  color: var(--color-primary-600);
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.settings-message {
+  font-size: 0.875rem;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin: 0;
+}
+
+.settings-message.success {
+  background-color: var(--color-success-100);
+  color: var(--color-success-700);
+  border: 1px solid var(--color-success-300);
+}
+
+.settings-message.error {
+  background-color: var(--color-error-100);
+  color: var(--color-error-700);
+  border: 1px solid var(--color-error-300);
+}
+
+.theme-dark .settings-message.success {
+  background-color: var(--color-success-900);
+  color: var(--color-success-300);
+  border-color: var(--color-success-700);
+}
+
+.theme-dark .settings-message.error {
+  background-color: var(--color-error-900);
+  color: var(--color-error-300);
+  border-color: var(--color-error-700);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+select.form-input {
+  cursor: pointer;
 }
 </style>
