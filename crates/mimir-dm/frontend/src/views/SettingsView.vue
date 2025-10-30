@@ -268,9 +268,13 @@ const saveProviderSettings = async () => {
       settingsToSave.ollama_config = null
     }
 
+    // Save settings
     await invoke('save_provider_settings', { settings: settingsToSave })
 
-    settingsSaveMessage.value = 'Settings saved successfully. Restart the application for changes to take effect.'
+    // Reload LLM service to apply changes immediately
+    await invoke('reload_llm_service')
+
+    settingsSaveMessage.value = 'Settings saved and applied successfully!'
     settingsSaveMessageType.value = 'success'
 
     // Clear message after 5 seconds

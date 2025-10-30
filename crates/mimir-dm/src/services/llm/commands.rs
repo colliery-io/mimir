@@ -309,3 +309,35 @@ pub async fn save_provider_settings(
     info!("Provider settings saved successfully");
     Ok(())
 }
+
+/// Tauri command to reload LLM service with new provider settings
+#[tauri::command]
+pub async fn reload_llm_service(
+    service: State<'_, Arc<Mutex<Option<LlmService>>>>,
+    app_handle: tauri::AppHandle,
+    db_service: State<'_, Arc<mimir_dm_core::DatabaseService>>,
+    confirmation_receivers: State<'_, ConfirmationReceivers>,
+    app_paths: State<'_, Arc<AppPaths>>,
+) -> Result<(), String> {
+    info!("Reloading LLM service with new provider settings");
+
+    // Create new LLM service with updated settings
+    let new_service = super::initialize_llm(
+        app_handle,
+        db_service.inner().clone(),
+        confirmation_receivers.inner().clone(),
+        app_paths.inner().clone(),
+    )
+    .await
+    .map_err(|e| {
+        error!("Failed to reload LLM service: {}", e);
+        format!("Failed to reload LLM service: {}", e)
+    })?;
+
+    // Replace the old service with the new one
+    let mut service_guard = service.lock().await;
+    *service_guard = Some(new_service);
+
+    info!("LLM service reloaded successfully");
+    Ok(())
+}
