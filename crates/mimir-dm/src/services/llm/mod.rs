@@ -14,5 +14,4 @@ mod llm_service;
 // Re-export main types from llm_service
 pub use llm_service::{
     initialize_llm, CancellationTokens, ConfirmationReceivers, LlmService, OLLAMA_BASE_URL,
-    REQUIRED_MODEL,
 };

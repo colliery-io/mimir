@@ -337,6 +337,8 @@ fn main() {
             llm::commands::get_model_context_info,
             llm::commands::confirm_tool_action,
             llm::commands::list_available_models,
+            llm::commands::get_provider_settings,
+            llm::commands::save_provider_settings,
             // Chat session commands
             list_chat_sessions,
             load_chat_session,

@@ -10,9 +10,12 @@ use anyhow::{anyhow, Context, Result};
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig},
     providers::ollama::OllamaProvider,
+    providers::groq::GroqProvider,
     traits::ActionDescription,
-    LlmProvider, ModelPullProgress, TodoListTool, TodoStateManager,
+    ChatResponse, CompletionResponse, EmbeddingResponse, LlmProvider, Message, ModelPullProgress, RateLimitState, TodoListTool, TodoStateManager, Tool,
 };
+use crate::services::provider_settings::{ProviderSettings, ProviderType};
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -27,8 +30,112 @@ use mimir_dm_core::DatabaseService;
 use crate::services::tools::ToolRegistry;
 use crate::app_init::AppPaths;
 
-/// The model we want to use for the DM assistant
-pub const REQUIRED_MODEL: &str = "gpt-oss:20b";
+/// Provider enum that wraps concrete provider implementations
+/// This is needed because LlmProvider trait is not dyn-compatible due to generic methods
+#[derive(Clone)]
+pub enum Provider {
+    Ollama(Arc<OllamaProvider>),
+    Groq(Arc<GroqProvider>),
+}
+
+#[async_trait]
+impl LlmProvider for Provider {
+    fn config(&self) -> &ModelConfig {
+        match self {
+            Provider::Ollama(p) => p.config(),
+            Provider::Groq(p) => p.config(),
+        }
+    }
+
+    fn rate_limit_state(&self) -> &RateLimitState {
+        match self {
+            Provider::Ollama(p) => p.rate_limit_state(),
+            Provider::Groq(p) => p.rate_limit_state(),
+        }
+    }
+
+    async fn chat(
+        &self,
+        messages: Vec<Message>,
+        tools: Option<Vec<Tool>>,
+        n: Option<u32>,
+        temperature: Option<f32>,
+        max_tokens: Option<u32>,
+        stop: Option<Vec<String>>,
+        extra_config: Option<HashMap<String, String>>,
+        cancellation_token: Option<CancellationToken>,
+    ) -> Result<ChatResponse, mimir_dm_llm::LlmError> {
+        match self {
+            Provider::Ollama(p) => p.chat(messages, tools, n, temperature, max_tokens, stop, extra_config, cancellation_token).await,
+            Provider::Groq(p) => p.chat(messages, tools, n, temperature, max_tokens, stop, extra_config, cancellation_token).await,
+        }
+    }
+
+    async fn complete(
+        &self,
+        prompt: String,
+        n: Option<u32>,
+        temperature: Option<f32>,
+        max_tokens: Option<u32>,
+        stop: Option<Vec<String>>,
+        extra_config: Option<HashMap<String, String>>,
+    ) -> Result<CompletionResponse, mimir_dm_llm::LlmError> {
+        match self {
+            Provider::Ollama(p) => p.complete(prompt, n, temperature, max_tokens, stop, extra_config).await,
+            Provider::Groq(p) => p.complete(prompt, n, temperature, max_tokens, stop, extra_config).await,
+        }
+    }
+
+    async fn embed(
+        &self,
+        input: Vec<String>,
+        extra_config: Option<HashMap<String, String>>,
+    ) -> Result<EmbeddingResponse, mimir_dm_llm::LlmError> {
+        match self {
+            Provider::Ollama(p) => p.embed(input, extra_config).await,
+            Provider::Groq(p) => p.embed(input, extra_config).await,
+        }
+    }
+
+    async fn check_service(&self) -> Result<bool, mimir_dm_llm::LlmError> {
+        match self {
+            Provider::Ollama(p) => p.check_service().await,
+            Provider::Groq(p) => p.check_service().await,
+        }
+    }
+
+    async fn model_exists(&self, model_name: &str) -> Result<bool, mimir_dm_llm::LlmError> {
+        match self {
+            Provider::Ollama(p) => p.model_exists(model_name).await,
+            Provider::Groq(p) => p.model_exists(model_name).await,
+        }
+    }
+
+    async fn pull_model(&self, model_name: &str) -> Result<(), mimir_dm_llm::LlmError> {
+        match self {
+            Provider::Ollama(p) => p.pull_model(model_name).await,
+            Provider::Groq(p) => p.pull_model(model_name).await,
+        }
+    }
+
+    async fn pull_model_with_progress<F>(
+        &self,
+        model_name: &str,
+        progress_callback: F,
+    ) -> Result<(), mimir_dm_llm::LlmError>
+    where
+        F: Fn(ModelPullProgress) + Send + 'static,
+    {
+        match self {
+            Provider::Ollama(p) => p.pull_model_with_progress(model_name, progress_callback).await,
+            Provider::Groq(p) => p.pull_model_with_progress(model_name, progress_callback).await,
+        }
+    }
+}
+
+/// Model names for different providers
+pub const OLLAMA_MODEL: &str = "gpt-oss:20b";
+pub const GROQ_MODEL: &str = "openai/gpt-oss-20b";
 pub const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -55,7 +162,7 @@ pub type CancellationTokens = Arc<Mutex<HashMap<String, CancellationToken>>>;
 
 /// LLM Service state
 pub struct LlmService {
-    pub(super) provider: Arc<OllamaProvider>,
+    pub(super) provider: Provider,
     model_name: String,
     pub(super) tool_registry: Arc<ToolRegistry>,
     _db_service: Arc<DatabaseService>,
@@ -79,9 +186,12 @@ impl LlmService {
         app_handle: AppHandle,
         app_paths: Arc<AppPaths>,
     ) -> Result<Self> {
-        let config = Self::create_config(REQUIRED_MODEL, None);
-        let provider =
-            OllamaProvider::new(config).context("Failed to create Ollama provider")?;
+        // Load provider settings
+        let settings = ProviderSettings::load(&app_paths.config_dir)
+            .context("Failed to load provider settings")?;
+
+        // Create provider based on settings
+        let (provider, model_name) = Self::create_provider_from_settings(&settings)?;
 
         // Create todo state manager
         let todo_state_manager = TodoStateManager::new();
@@ -108,8 +218,8 @@ impl LlmService {
         info!("Registered TodoListTool with configurable state manager");
 
         Ok(Self {
-            provider: Arc::new(provider),
-            model_name: REQUIRED_MODEL.to_string(),
+            provider,
+            model_name,
             tool_registry: Arc::new(tool_registry),
             _db_service: db_service,
             confirmation_receivers,
@@ -120,27 +230,74 @@ impl LlmService {
         })
     }
 
-    /// Create the model configuration
-    fn create_config(model: &str, base_url: Option<&str>) -> ModelConfig {
+    /// Create provider from settings
+    fn create_provider_from_settings(
+        settings: &ProviderSettings,
+    ) -> Result<(Provider, String)> {
+        match settings.provider_type {
+            ProviderType::Ollama => {
+                let ollama_config = settings
+                    .ollama_config
+                    .as_ref()
+                    .context("Missing Ollama configuration")?;
+
+                let config = Self::create_ollama_config(&ollama_config.base_url);
+                let provider = OllamaProvider::new(config)
+                    .context("Failed to create Ollama provider")?;
+
+                info!("Created Ollama provider with base URL: {}", ollama_config.base_url);
+                Ok((Provider::Ollama(Arc::new(provider)), OLLAMA_MODEL.to_string()))
+            }
+            ProviderType::Groq => {
+                let groq_config = settings
+                    .groq_config
+                    .as_ref()
+                    .context("Missing Groq configuration")?;
+
+                let config = Self::create_groq_config(&groq_config.api_key);
+                let provider = GroqProvider::new(config)
+                    .context("Failed to create Groq provider")?;
+
+                info!("Created Groq provider");
+                Ok((Provider::Groq(Arc::new(provider)), GROQ_MODEL.to_string()))
+            }
+        }
+    }
+
+    /// Create Ollama model configuration
+    fn create_ollama_config(base_url: &str) -> ModelConfig {
         let mut config_map = HashMap::new();
-        config_map.insert(
-            "base_url".to_string(),
-            base_url.unwrap_or(OLLAMA_BASE_URL).to_string(),
-        );
+        config_map.insert("base_url".to_string(), base_url.to_string());
 
         ModelConfig {
-            name: format!("{}-dm", model),
+            name: format!("{}-dm", OLLAMA_MODEL),
             supported_endpoints: vec![
                 EndpointType::Chat,
                 EndpointType::Completion,
                 EndpointType::Embedding,
             ],
             provider: "ollama".to_string(),
-            model: model.to_string(),
+            model: OLLAMA_MODEL.to_string(),
             config: Some(config_map),
-            limit: None, // No rate limiting for local Ollama
+            limit: None,
         }
     }
+
+    /// Create Groq model configuration
+    fn create_groq_config(api_key: &str) -> ModelConfig {
+        let mut config_map = HashMap::new();
+        config_map.insert("api_key".to_string(), api_key.to_string());
+
+        ModelConfig {
+            name: format!("{}-dm", GROQ_MODEL),
+            supported_endpoints: vec![EndpointType::Chat, EndpointType::Completion],
+            provider: "groq".to_string(),
+            model: GROQ_MODEL.to_string(),
+            config: Some(config_map),
+            limit: None,
+        }
+    }
+
 
     /// Check if Ollama service is running
     pub async fn check_service(&self) -> Result<bool> {
@@ -249,25 +406,17 @@ impl LlmService {
 
     /// Get the provider for direct LLM operations
     #[allow(dead_code)]
-    pub fn provider(&self) -> Arc<OllamaProvider> {
-        Arc::clone(&self.provider)
+    pub fn provider(&self) -> Provider {
+        self.provider.clone()
     }
 
-    /// Get or create a provider with a specific endpoint
+    /// Get the configured provider
+    /// Note: The endpoint parameter is deprecated and ignored - configure provider via settings
     pub(super) fn get_provider_with_endpoint(
         &self,
-        endpoint: Option<&str>,
-    ) -> Result<Arc<OllamaProvider>> {
-        // If no custom endpoint provided, use the default provider
-        if endpoint.is_none() || endpoint == Some(OLLAMA_BASE_URL) {
-            return Ok(self.provider.clone());
-        }
-
-        // Create a new provider with the custom endpoint
-        let config = Self::create_config(REQUIRED_MODEL, endpoint);
-        let provider = OllamaProvider::new(config)
-            .context("Failed to create Ollama provider with custom endpoint")?;
-        Ok(Arc::new(provider))
+        _endpoint: Option<&str>,
+    ) -> Result<Provider> {
+        Ok(self.provider.clone())
     }
 
     /// Get the model name being used

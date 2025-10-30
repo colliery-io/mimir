@@ -20,7 +20,7 @@ use crate::services::chat_logger::ChatTokenUsage;
 use crate::services::tools::ToolRegistry;
 use crate::services::llm::LlmService;
 
-use super::REQUIRED_MODEL;
+// Model name is now retrieved from LlmService, not a constant
 
 /// Helper macro for bifurcated logging - full content to file, truncated to console
 macro_rules! debug_content {
@@ -533,9 +533,8 @@ impl<'a> ChatProcessor<'a> {
 
         // Log the request details before making the call
         info!(
-            "Making LLM request: endpoint={}, model={}, messages={}, tools={}",
-            ollama_url.unwrap_or(super::OLLAMA_BASE_URL),
-            REQUIRED_MODEL,
+            "Making LLM request: model={}, messages={}, tools={}",
+            self.llm.model_name(),
             provider_messages.len(),
             tools.as_ref().map_or(0, |t| t.len())
         );
@@ -558,7 +557,7 @@ impl<'a> ChatProcessor<'a> {
                 error!(
                     "Request details: endpoint={}, model={}, messages={}, tools={}",
                     ollama_url.unwrap_or(super::OLLAMA_BASE_URL),
-                    REQUIRED_MODEL,
+                    self.llm.model_name(),
                     provider_messages.len(),
                     tools.as_ref().map_or(0, |t| t.len())
                 );

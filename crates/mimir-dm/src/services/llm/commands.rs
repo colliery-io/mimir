@@ -5,8 +5,11 @@
 
 use crate::services::llm::chat_processor::ChatProcessor;
 use crate::services::llm::LlmService;
+use crate::services::provider_settings::ProviderSettings;
+use crate::app_init::AppPaths;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tauri::State;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
@@ -267,4 +270,42 @@ pub async fn cancel_chat_message(
         error!("Session ID is required for cancellation but was None");
         Err("Session ID is required for cancellation".to_string())
     }
+}
+
+/// Tauri command to get provider settings
+#[tauri::command]
+pub async fn get_provider_settings(
+    app_paths: State<'_, Arc<AppPaths>>,
+) -> Result<ProviderSettings, String> {
+    info!("Loading provider settings");
+
+    ProviderSettings::load(&app_paths.config_dir)
+        .map_err(|e| {
+            error!("Failed to load provider settings: {}", e);
+            format!("Failed to load provider settings: {}", e)
+        })
+}
+
+/// Tauri command to save provider settings
+#[tauri::command]
+pub async fn save_provider_settings(
+    app_paths: State<'_, Arc<AppPaths>>,
+    settings: ProviderSettings,
+) -> Result<(), String> {
+    info!("Saving provider settings: {:?}", settings.provider_type);
+
+    // Validate settings before saving
+    settings.validate().map_err(|e| {
+        error!("Invalid provider settings: {}", e);
+        format!("Invalid provider settings: {}", e)
+    })?;
+
+    settings.save(&app_paths.config_dir)
+        .map_err(|e| {
+            error!("Failed to save provider settings: {}", e);
+            format!("Failed to save provider settings: {}", e)
+        })?;
+
+    info!("Provider settings saved successfully");
+    Ok(())
 }
