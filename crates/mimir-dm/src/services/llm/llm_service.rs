@@ -164,6 +164,7 @@ pub type CancellationTokens = Arc<Mutex<HashMap<String, CancellationToken>>>;
 pub struct LlmService {
     pub(super) provider: Provider,
     model_name: String,
+    provider_type: ProviderType,
     pub(super) tool_registry: Arc<ToolRegistry>,
     _db_service: Arc<DatabaseService>,
     /// Channel senders for pending confirmations (shared globally)
@@ -191,7 +192,7 @@ impl LlmService {
             .context("Failed to load provider settings")?;
 
         // Create provider based on settings
-        let (provider, model_name) = Self::create_provider_from_settings(&settings)?;
+        let (provider, model_name, provider_type) = Self::create_provider_from_settings(&settings)?;
 
         // Create todo state manager
         let todo_state_manager = TodoStateManager::new();
@@ -220,6 +221,7 @@ impl LlmService {
         Ok(Self {
             provider,
             model_name,
+            provider_type,
             tool_registry: Arc::new(tool_registry),
             _db_service: db_service,
             confirmation_receivers,
@@ -233,7 +235,7 @@ impl LlmService {
     /// Create provider from settings
     fn create_provider_from_settings(
         settings: &ProviderSettings,
-    ) -> Result<(Provider, String)> {
+    ) -> Result<(Provider, String, ProviderType)> {
         match settings.provider_type {
             ProviderType::Ollama => {
                 let ollama_config = settings
@@ -246,7 +248,7 @@ impl LlmService {
                     .context("Failed to create Ollama provider")?;
 
                 info!("Created Ollama provider with base URL: {}", ollama_config.base_url);
-                Ok((Provider::Ollama(Arc::new(provider)), OLLAMA_MODEL.to_string()))
+                Ok((Provider::Ollama(Arc::new(provider)), OLLAMA_MODEL.to_string(), ProviderType::Ollama))
             }
             ProviderType::Groq => {
                 let groq_config = settings
@@ -259,7 +261,7 @@ impl LlmService {
                     .context("Failed to create Groq provider")?;
 
                 info!("Created Groq provider");
-                Ok((Provider::Groq(Arc::new(provider)), GROQ_MODEL.to_string()))
+                Ok((Provider::Groq(Arc::new(provider)), GROQ_MODEL.to_string(), ProviderType::Groq))
             }
         }
     }
@@ -309,40 +311,51 @@ impl LlmService {
 
     /// Ensure the required model is available
     pub async fn ensure_model(&self, app: Option<AppHandle>) -> Result<()> {
-        // First check if Ollama is running
-        if !self.check_service().await? {
-            return Err(anyhow::anyhow!(
-                "Ollama service is not running. Please start Ollama first."
-            ));
-        }
+        // Only perform these checks for Ollama (local provider)
+        // Groq is a cloud service and doesn't need service/model checks
+        match self.provider_type {
+            ProviderType::Ollama => {
+                // First check if Ollama is running
+                if !self.check_service().await? {
+                    return Err(anyhow::anyhow!(
+                        "Ollama service is not running. Please start Ollama first."
+                    ));
+                }
 
-        // Check if model exists
-        info!("Checking for model: {}", self.model_name);
-        let model_exists = self
-            .provider
-            .model_exists(&self.model_name)
-            .await
-            .context("Failed to check model existence")?;
+                // Check if model exists
+                info!("Checking for model: {}", self.model_name);
+                let model_exists = self
+                    .provider
+                    .model_exists(&self.model_name)
+                    .await
+                    .context("Failed to check model existence")?;
 
-        if model_exists {
-            info!("Model {} is already available", self.model_name);
-            return Ok(());
-        }
+                if model_exists {
+                    info!("Model {} is already available", self.model_name);
+                    return Ok(());
+                }
 
-        // Model doesn't exist, need to download it
-        info!("Model {} not found, downloading...", self.model_name);
+                // Model doesn't exist, need to download it
+                info!("Model {} not found, downloading...", self.model_name);
 
-        if let Some(app) = app {
-            // Download with progress tracking
-            self.download_model_with_progress(app).await
-        } else {
-            // Download without progress (for non-GUI contexts)
-            self.provider
-                .pull_model(&self.model_name)
-                .await
-                .context("Failed to pull model")?;
-            info!("Model {} downloaded successfully", self.model_name);
-            Ok(())
+                if let Some(app) = app {
+                    // Download with progress tracking
+                    self.download_model_with_progress(app).await
+                } else {
+                    // Download without progress (for non-GUI contexts)
+                    self.provider
+                        .pull_model(&self.model_name)
+                        .await
+                        .context("Failed to pull model")?;
+                    info!("Model {} downloaded successfully", self.model_name);
+                    Ok(())
+                }
+            }
+            ProviderType::Groq => {
+                // Groq is a cloud service - no local checks needed
+                info!("Using Groq cloud provider with model: {}", self.model_name);
+                Ok(())
+            }
         }
     }
 
