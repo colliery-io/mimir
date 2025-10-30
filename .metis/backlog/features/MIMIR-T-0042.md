@@ -4,7 +4,7 @@ level: task
 title: "Provider Selection UI in Settings"
 short_code: "MIMIR-T-0042"
 created_at: 2025-10-30T22:45:00+00:00
-updated_at: 2025-10-30T18:56:39.680678+00:00
+updated_at: 2025-10-30T20:11:06.958861+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#feature"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -59,6 +59,10 @@ Add UI in the application settings to allow users to select their LLM provider (
   - LlmService initialization logic updates
   - Provider switching without full app restart (or clear restart requirement)
   - Estimated 1-2 days implementation + testing
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
