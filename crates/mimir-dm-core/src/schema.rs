@@ -114,6 +114,53 @@ diesel::table! {
 }
 
 diesel::table! {
+    players (id) {
+        id -> Integer,
+        name -> Text,
+        email -> Nullable<Text>,
+        notes -> Nullable<Text>,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
+    campaign_players (id) {
+        id -> Integer,
+        campaign_id -> Integer,
+        player_id -> Integer,
+        joined_at -> Text,
+        active -> Integer,
+    }
+}
+
+diesel::table! {
+    characters (id) {
+        id -> Integer,
+        campaign_id -> Integer,
+        player_id -> Integer,
+        character_name -> Text,
+        current_level -> Integer,
+        current_version -> Integer,
+        directory_path -> Text,
+        created_at -> Text,
+        last_updated_at -> Text,
+    }
+}
+
+diesel::table! {
+    character_versions (id) {
+        id -> Integer,
+        character_id -> Integer,
+        version_number -> Integer,
+        file_path -> Text,
+        character_data -> Text,
+        snapshot_reason -> Nullable<Text>,
+        level -> Integer,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
     catalog_actions (id) {
         id -> Integer,
         name -> Text,
@@ -450,15 +497,24 @@ diesel::joinable!(workflow_card_tags -> workflow_cards (card_id));
 diesel::joinable!(documents -> campaigns (campaign_id));
 diesel::joinable!(documents -> modules (module_id));
 diesel::joinable!(documents -> sessions (session_id));
+diesel::joinable!(campaign_players -> campaigns (campaign_id));
+diesel::joinable!(campaign_players -> players (player_id));
+diesel::joinable!(characters -> campaigns (campaign_id));
+diesel::joinable!(characters -> players (player_id));
+diesel::joinable!(character_versions -> characters (character_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     campaigns,
+    campaign_players,
     modules,
     sessions,
     workflow_cards,
     workflow_card_tags,
     template_documents,
     documents,
+    players,
+    characters,
+    character_versions,
     catalog_actions,
     catalog_backgrounds,
     catalog_classes,
