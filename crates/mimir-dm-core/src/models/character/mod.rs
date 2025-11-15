@@ -2,9 +2,17 @@
 //!
 //! Models for managing characters and their version history.
 
+pub mod data;
+
 use crate::schema::{character_versions, characters};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+
+// Re-export commonly used data types
+pub use data::{
+    AbilityScores, CharacterData, EquippedItems, InventoryItem, Personality, Proficiencies,
+    SpellData, SpellSlots,
+};
 
 /// Database model for characters (metadata only)
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize, Associations)]
