@@ -16,6 +16,7 @@ pub struct Character {
     pub campaign_id: i32,
     pub player_id: i32,
     pub character_name: String,
+    pub is_npc: i32,
     pub current_level: i32,
     pub current_version: i32,
     pub directory_path: String,
@@ -30,6 +31,7 @@ pub struct NewCharacter {
     pub campaign_id: i32,
     pub player_id: i32,
     pub character_name: String,
+    pub is_npc: Option<i32>,
     pub directory_path: String,
 }
 
@@ -38,6 +40,7 @@ pub struct NewCharacter {
 #[diesel(table_name = characters)]
 pub struct UpdateCharacter {
     pub character_name: Option<String>,
+    pub is_npc: Option<i32>,
     pub current_level: Option<i32>,
     pub current_version: Option<i32>,
     pub last_updated_at: Option<String>,

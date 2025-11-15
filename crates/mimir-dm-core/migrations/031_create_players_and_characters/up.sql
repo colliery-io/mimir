@@ -30,6 +30,7 @@ CREATE TABLE characters (
     campaign_id INTEGER NOT NULL,
     player_id INTEGER NOT NULL,
     character_name TEXT NOT NULL,
+    is_npc INTEGER NOT NULL DEFAULT 0,
     current_level INTEGER NOT NULL DEFAULT 1,
     current_version INTEGER NOT NULL DEFAULT 1,
     directory_path TEXT NOT NULL,
@@ -42,6 +43,7 @@ CREATE TABLE characters (
 CREATE INDEX idx_characters_campaign ON characters(campaign_id);
 CREATE INDEX idx_characters_player ON characters(player_id);
 CREATE INDEX idx_characters_name ON characters(character_name);
+CREATE INDEX idx_characters_is_npc ON characters(is_npc);
 
 -- Character versions table (version tracking with full character data)
 CREATE TABLE character_versions (

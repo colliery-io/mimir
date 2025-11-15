@@ -139,6 +139,7 @@ diesel::table! {
         campaign_id -> Integer,
         player_id -> Integer,
         character_name -> Text,
+        is_npc -> Integer,
         current_level -> Integer,
         current_version -> Integer,
         directory_path -> Text,
