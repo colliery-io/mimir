@@ -53,7 +53,7 @@ Create a PlayerService in the backend core layer with full CRUD operations for m
 - Use transactions for multi-table operations (player + campaign_players join)
 
 ### Dependencies
-- MIMIR-T-0042 (database migrations)
+- MIMIR-T-0063 (database migrations)
 - MIMIR-T-0043 (Player and CampaignPlayer models)
 - Diesel ORM connection pool
 

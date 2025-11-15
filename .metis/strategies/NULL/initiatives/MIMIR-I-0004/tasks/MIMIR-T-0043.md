@@ -4,14 +4,14 @@ level: task
 title: "Create Player, Character, and CharacterVersion models with Diesel"
 short_code: "MIMIR-T-0043"
 created_at: 2025-11-10T18:56:58.153040+00:00
-updated_at: 2025-11-10T18:56:58.153040+00:00
+updated_at: 2025-11-15T16:28:42.002700+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: MIMIR-I-0004
 ## Objective **[REQUIRED]**
 
 Create Rust models with Diesel ORM integration for Player, CampaignPlayer, Character, and CharacterVersion entities to enable database operations.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -51,7 +55,7 @@ Create Rust models with Diesel ORM integration for Player, CampaignPlayer, Chara
 - Add to schema.rs after migrations run
 
 ### Dependencies
-- MIMIR-T-0042 (migrations must be created first)
+- MIMIR-T-0063 (migrations must be created first)
 - Existing schema.rs structure
 
 ### Risk Considerations
@@ -60,4 +64,27 @@ Create Rust models with Diesel ORM integration for Player, CampaignPlayer, Chara
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2025-11-11
+**Status**: Completed
+
+Created all Diesel models for player and character management:
+
+**Player models** (src/models/player/mod.rs):
+- Player: id, name, email, notes, created_at
+- NewPlayer: Insertable struct for creating players
+- UpdatePlayer: AsChangeset struct for updating players
+- CampaignPlayer: id, campaign_id, player_id, joined_at, active
+- NewCampaignPlayer: Insertable struct for associating players with campaigns
+- UpdateCampaignPlayer: AsChangeset struct for updating associations
+
+**Character models** (src/models/character/mod.rs):
+- Character: id, campaign_id, player_id, character_name, current_level, current_version, directory_path, created_at, last_updated_at
+- NewCharacter: Insertable struct for creating characters
+- UpdateCharacter: AsChangeset struct for updating character metadata
+- CharacterVersion: id, character_id, version_number, file_path, character_data (String for YAML/JSON), snapshot_reason, level, created_at
+- NewCharacterVersion: Insertable struct for creating character versions
+
+All models use proper Diesel derive macros (Queryable, Selectable, Insertable, AsChangeset, Associations, Serialize, Deserialize).
+Foreign key relationships defined using belongs_to attributes.
+Added player and character modules to models/mod.rs.
+All tests pass (50 tests).

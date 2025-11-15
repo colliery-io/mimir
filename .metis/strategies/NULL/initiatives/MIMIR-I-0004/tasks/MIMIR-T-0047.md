@@ -54,7 +54,7 @@ Create a CharacterService that handles character creation, versioning, file syst
 - Version control: increment version number, create snapshot with reason
 
 ### Dependencies
-- MIMIR-T-0042 (database migrations)
+- MIMIR-T-0063 (database migrations)
 - MIMIR-T-0043 (Character and CharacterVersion models)
 - MIMIR-T-0044 (CharacterData structs)
 - MIMIR-T-0045 (MarkdownRenderer)
