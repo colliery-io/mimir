@@ -6,6 +6,7 @@
 pub mod campaign_service;
 pub mod character;
 pub mod module_service;
+pub mod player_service;
 pub mod session_service;
 pub mod document_service;
 pub mod template_service;
@@ -32,6 +33,7 @@ pub mod class_service;
 // Re-export services
 pub use campaign_service::CampaignService;
 pub use module_service::ModuleService;
+pub use player_service::PlayerService;
 pub use session_service::SessionService;
 pub use document_service::DocumentService;
 pub use template_service::TemplateService;

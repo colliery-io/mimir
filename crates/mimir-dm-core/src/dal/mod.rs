@@ -1,8 +1,9 @@
 //! Data Access Layer - Repository pattern for database operations
-//! 
-//! Organized into two domains matching the model structure:
-//! - `rules`: Repositories for D&D reference data
+//!
+//! Organized into domains matching the model structure:
 //! - `campaign`: Repositories for campaign management
+//! - `player`: Repositories for player management
 
 pub mod campaign;
+pub mod player;
 pub mod traits;
