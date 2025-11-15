@@ -32,6 +32,7 @@ pub mod class_service;
 
 // Re-export services
 pub use campaign_service::CampaignService;
+pub use character::CharacterService;
 pub use module_service::ModuleService;
 pub use player_service::PlayerService;
 pub use session_service::SessionService;
