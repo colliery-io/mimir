@@ -4,14 +4,14 @@ level: task
 title: "Implement markdown template renderer for character sheets"
 short_code: "MIMIR-T-0045"
 created_at: 2025-11-10T18:56:58.574665+00:00
-updated_at: 2025-11-10T18:56:58.574665+00:00
+updated_at: 2025-11-15T19:48:06.399750+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: MIMIR-I-0004
 ## Objective **[REQUIRED]**
 
 Implement a markdown template rendering system that generates human-readable character sheets from CharacterData structs, with support for dynamic sections based on character class and features.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -64,4 +68,38 @@ Implement a markdown template rendering system that generates human-readable cha
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2025-11-11
+**Status**: Completed
+
+Created markdown template renderer for character sheets in src/services/character/renderer.rs:
+
+**CharacterRenderer Trait:**
+- Extensible trait for future renderers (HTML, PDF, etc.)
+- render() method takes CharacterData and returns formatted string
+
+**MarkdownRenderer Implementation:**
+- Comprehensive character sheet generation with all D&D 5e sections
+- Header: Character name, level, class, subclass
+- Metadata: Race, background, alignment, XP, version info
+- Ability scores: Table with scores and modifiers
+- Combat stats: HP, hit dice, proficiency bonus
+- Proficiencies: Skills, saves, armor, weapons, tools, languages
+- Class features: Bulleted list
+- Feats: Bulleted list (conditional)
+- Spells: Slots, cantrips, known/prepared spells (conditional for spellcasters)
+- Equipment: Equipped armor, shield, weapons (conditional)
+- Inventory: Table with quantity, weight, value, notes (conditional)
+- Personality: Traits, ideals, bonds, flaws (conditional)
+
+**Features:**
+- Conditional rendering: Only shows sections with data
+- Proper markdown formatting: Headers, tables, lists
+- Calculated values: Ability modifiers, proficiency bonus
+- Clean output: No frontmatter, pure presentation
+
+**Tests:**
+- Fighter character rendering (complete sheet)
+- Wizard character with spells
+- Minimal character with conditional sections
+
+All tests pass (58 tests including 3 new renderer tests).
