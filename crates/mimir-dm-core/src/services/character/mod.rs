@@ -1,8 +1,10 @@
 //! Character management services
 
 pub mod renderer;
+pub mod level_up;
 
 pub use renderer::{CharacterRenderer, MarkdownRenderer};
+pub use level_up::{LevelUpOptions, HpGainMethod, AsiOrFeat, ClassInfo, MulticlassPrerequisites};
 
 use crate::{
     connection::DbConnection,
@@ -223,6 +225,134 @@ impl<'a> CharacterService<'a> {
             .map_err(|e| DbError::InvalidData(format!("Failed to parse character data: {}", e)))?;
 
         Ok(character_data)
+    }
+
+    /// Level up a character
+    pub fn level_up_character(
+        &mut self,
+        character_id: i32,
+        options: LevelUpOptions,
+    ) -> Result<CharacterVersion> {
+        // Get current character data
+        let (_character, mut char_data) = self.get_character(character_id)?;
+
+        // Get class info
+        let class_info = ClassInfo::get(&options.class_name)
+            .ok_or_else(|| DbError::InvalidData(format!("Unknown class: {}", options.class_name)))?;
+
+        // Check if this is multiclassing
+        let is_multiclass = char_data.class.to_lowercase() != options.class_name.to_lowercase();
+
+        // Validate multiclass prerequisites
+        if is_multiclass {
+            if let Some(prereqs) = MulticlassPrerequisites::get(&options.class_name) {
+                prereqs.check(&char_data.abilities)?;
+            }
+        }
+
+        // Validate HP gain
+        options.validate_hp_gain(class_info.hit_die_value)?;
+
+        // Calculate HP gain
+        let con_modifier = char_data.abilities.con_modifier();
+        let hp_gain = match options.hp_method {
+            HpGainMethod::Roll(value) => value + con_modifier,
+            HpGainMethod::Average => class_info.average_hp_gain() + con_modifier,
+        };
+
+        // Update HP
+        char_data.max_hp += hp_gain;
+        char_data.current_hp += hp_gain;
+
+        // Increment level
+        char_data.level += 1;
+
+        // Update hit dice
+        if !is_multiclass {
+            char_data.hit_dice_remaining += 1;
+        } else {
+            // For multiclass, this gets more complex - for now, just increment
+            char_data.hit_dice_remaining += 1;
+        }
+
+        // Check if this level grants ASI/Feat
+        if class_info.asi_levels.contains(&char_data.level) {
+            if let Some(choice) = &options.asi_or_feat {
+                options.validate_asi_or_feat()?;
+
+                match choice {
+                    AsiOrFeat::AbilityScoreImprovement {
+                        ability1,
+                        increase1,
+                        ability2,
+                        increase2,
+                    } => {
+                        // Apply ability score increases (cap at 20)
+                        self.apply_ability_increase(&mut char_data.abilities, ability1, *increase1)?;
+
+                        if let (Some(ability), Some(increase)) = (ability2, increase2) {
+                            self.apply_ability_increase(&mut char_data.abilities, ability, *increase)?;
+                        }
+                    }
+                    AsiOrFeat::Feat(feat_name) => {
+                        // Add feat to character
+                        if !char_data.feats.contains(feat_name) {
+                            char_data.feats.push(feat_name.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update subclass if provided
+        if let Some(subclass) = &options.subclass_choice {
+            char_data.subclass = Some(subclass.clone());
+        }
+
+        // Update class if multiclassing
+        if is_multiclass {
+            // For now, just append to class string
+            // In a real implementation, you'd track class levels separately
+            char_data.class = format!("{} / {}", char_data.class, options.class_name);
+        }
+
+        // Update spell slots if character is a spellcaster
+        // For now, we'll skip this complex logic and leave it for future enhancement
+
+        // Update snapshot reason
+        let snapshot_reason = options.snapshot_reason.or_else(|| {
+            Some(format!("Leveled up to {}", char_data.level))
+        });
+
+        // Create new version
+        self.update_character(character_id, char_data, snapshot_reason)
+    }
+
+    // Helper method to apply ability score increase
+    fn apply_ability_increase(
+        &self,
+        abilities: &mut crate::models::character::data::AbilityScores,
+        ability_name: &str,
+        increase: i32,
+    ) -> Result<()> {
+        let score = match ability_name.to_lowercase().as_str() {
+            "strength" => &mut abilities.strength,
+            "dexterity" => &mut abilities.dexterity,
+            "constitution" => &mut abilities.constitution,
+            "intelligence" => &mut abilities.intelligence,
+            "wisdom" => &mut abilities.wisdom,
+            "charisma" => &mut abilities.charisma,
+            _ => {
+                return Err(DbError::InvalidData(format!(
+                    "Unknown ability: {}",
+                    ability_name
+                )))
+            }
+        };
+
+        // Apply increase (cap at 20)
+        *score = (*score + increase).min(20);
+        Ok(())
     }
 
     // Helper methods
@@ -635,5 +765,301 @@ mod tests {
         // Try to get non-existent version
         let result = service.get_character_version(created.id, 999);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_level_up_with_hp_roll() {
+        let mut conn = setup_test_db();
+        let campaign_id = create_test_campaign(&mut conn);
+        let player_id = create_test_player(&mut conn);
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
+        let mut service = CharacterService::new(&mut conn);
+        let mut character_data = create_test_character_data();
+        character_data.player_id = player_id;
+
+        let created = service
+            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .expect("Failed to create character");
+
+        // Level up with HP roll
+        let level_up_options = LevelUpOptions {
+            class_name: "Fighter".to_string(),
+            hp_method: HpGainMethod::Roll(8),
+            asi_or_feat: None,
+            subclass_choice: None,
+            snapshot_reason: Some("Test level up".to_string()),
+        };
+
+        let version = service
+            .level_up_character(created.id, level_up_options)
+            .expect("Failed to level up");
+
+        assert_eq!(version.version_number, 2);
+        assert_eq!(version.level, 2);
+
+        // Get updated character
+        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        assert_eq!(data.level, 2);
+        // HP should be 12 (initial) + 8 (roll) + 2 (CON modifier) = 22
+        assert_eq!(data.max_hp, 22);
+    }
+
+    #[test]
+    fn test_level_up_with_average_hp() {
+        let mut conn = setup_test_db();
+        let campaign_id = create_test_campaign(&mut conn);
+        let player_id = create_test_player(&mut conn);
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
+        let mut service = CharacterService::new(&mut conn);
+        let mut character_data = create_test_character_data();
+        character_data.player_id = player_id;
+
+        let created = service
+            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .expect("Failed to create character");
+
+        // Level up with average HP
+        let level_up_options = LevelUpOptions {
+            class_name: "Fighter".to_string(),
+            hp_method: HpGainMethod::Average,
+            asi_or_feat: None,
+            subclass_choice: None,
+            snapshot_reason: None,
+        };
+
+        service
+            .level_up_character(created.id, level_up_options)
+            .expect("Failed to level up");
+
+        // Get updated character
+        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        assert_eq!(data.level, 2);
+        // HP should be 12 (initial) + 6 (average for d10) + 2 (CON modifier) = 20
+        assert_eq!(data.max_hp, 20);
+    }
+
+    #[test]
+    fn test_level_up_with_asi() {
+        let mut conn = setup_test_db();
+        let campaign_id = create_test_campaign(&mut conn);
+        let player_id = create_test_player(&mut conn);
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
+        let mut service = CharacterService::new(&mut conn);
+        let mut character_data = create_test_character_data();
+        character_data.player_id = player_id;
+
+        let created = service
+            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .expect("Failed to create character");
+
+        // Level up to 2, 3 (no ASI)
+        for _ in 0..2 {
+            let options = LevelUpOptions {
+                class_name: "Fighter".to_string(),
+                hp_method: HpGainMethod::Average,
+                asi_or_feat: None,
+                subclass_choice: None,
+                snapshot_reason: None,
+            };
+            service.level_up_character(created.id, options).unwrap();
+        }
+
+        // Level up to 4 with ASI
+        let options = LevelUpOptions {
+            class_name: "Fighter".to_string(),
+            hp_method: HpGainMethod::Average,
+            asi_or_feat: Some(AsiOrFeat::AbilityScoreImprovement {
+                ability1: "Strength".to_string(),
+                increase1: 2,
+                ability2: None,
+                increase2: None,
+            }),
+            subclass_choice: None,
+            snapshot_reason: Some("Level 4 with ASI".to_string()),
+        };
+
+        service.level_up_character(created.id, options).expect("Failed to level up with ASI");
+
+        // Get updated character
+        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        assert_eq!(data.level, 4);
+        // Strength should be 18 (16 + 2)
+        assert_eq!(data.abilities.strength, 18);
+    }
+
+    #[test]
+    fn test_level_up_with_feat() {
+        let mut conn = setup_test_db();
+        let campaign_id = create_test_campaign(&mut conn);
+        let player_id = create_test_player(&mut conn);
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
+        let mut service = CharacterService::new(&mut conn);
+        let mut character_data = create_test_character_data();
+        character_data.player_id = player_id;
+
+        let created = service
+            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .expect("Failed to create character");
+
+        // Level up to 4 with feat
+        for _ in 0..2 {
+            let options = LevelUpOptions {
+                class_name: "Fighter".to_string(),
+                hp_method: HpGainMethod::Average,
+                asi_or_feat: None,
+                subclass_choice: None,
+                snapshot_reason: None,
+            };
+            service.level_up_character(created.id, options).unwrap();
+        }
+
+        let options = LevelUpOptions {
+            class_name: "Fighter".to_string(),
+            hp_method: HpGainMethod::Average,
+            asi_or_feat: Some(AsiOrFeat::Feat("Great Weapon Master".to_string())),
+            subclass_choice: None,
+            snapshot_reason: None,
+        };
+
+        service.level_up_character(created.id, options).expect("Failed to level up with feat");
+
+        // Get updated character
+        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        assert_eq!(data.level, 4);
+        assert!(data.feats.contains(&"Great Weapon Master".to_string()));
+    }
+
+    #[test]
+    fn test_level_up_multiclass_valid() {
+        let mut conn = setup_test_db();
+        let campaign_id = create_test_campaign(&mut conn);
+        let player_id = create_test_player(&mut conn);
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
+        let mut service = CharacterService::new(&mut conn);
+        let mut character_data = create_test_character_data();
+        character_data.player_id = player_id;
+        // Set STR to 13 to meet Barbarian multiclass prerequisite
+        character_data.abilities.strength = 16;
+
+        let created = service
+            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .expect("Failed to create character");
+
+        // Multiclass into Barbarian
+        let options = LevelUpOptions {
+            class_name: "Barbarian".to_string(),
+            hp_method: HpGainMethod::Average,
+            asi_or_feat: None,
+            subclass_choice: None,
+            snapshot_reason: Some("Multiclass to Barbarian".to_string()),
+        };
+
+        service.level_up_character(created.id, options).expect("Failed to multiclass");
+
+        // Get updated character
+        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        assert_eq!(data.level, 2);
+        assert!(data.class.contains("Barbarian"));
+    }
+
+    #[test]
+    fn test_level_up_multiclass_invalid_prerequisites() {
+        let mut conn = setup_test_db();
+        let campaign_id = create_test_campaign(&mut conn);
+        let player_id = create_test_player(&mut conn);
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
+        let mut service = CharacterService::new(&mut conn);
+        let mut character_data = create_test_character_data();
+        character_data.player_id = player_id;
+        // DEX is 14, but Monk requires DEX 13 AND WIS 13
+        // WIS is only 12, so should fail
+        character_data.abilities.dexterity = 14;
+        character_data.abilities.wisdom = 12;
+
+        let created = service
+            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .expect("Failed to create character");
+
+        // Try to multiclass into Monk (should fail due to low WIS)
+        let options = LevelUpOptions {
+            class_name: "Monk".to_string(),
+            hp_method: HpGainMethod::Average,
+            asi_or_feat: None,
+            subclass_choice: None,
+            snapshot_reason: None,
+        };
+
+        let result = service.level_up_character(created.id, options);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_level_up_ability_score_cap_at_20() {
+        let mut conn = setup_test_db();
+        let campaign_id = create_test_campaign(&mut conn);
+        let player_id = create_test_player(&mut conn);
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let campaign_dir = temp_dir.path().to_str().unwrap();
+
+        let mut service = CharacterService::new(&mut conn);
+        let mut character_data = create_test_character_data();
+        character_data.player_id = player_id;
+        // Start with STR 19
+        character_data.abilities.strength = 19;
+
+        let created = service
+            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .expect("Failed to create character");
+
+        // Level up to 4 with +2 STR
+        for _ in 0..2 {
+            let options = LevelUpOptions {
+                class_name: "Fighter".to_string(),
+                hp_method: HpGainMethod::Average,
+                asi_or_feat: None,
+                subclass_choice: None,
+                snapshot_reason: None,
+            };
+            service.level_up_character(created.id, options).unwrap();
+        }
+
+        let options = LevelUpOptions {
+            class_name: "Fighter".to_string(),
+            hp_method: HpGainMethod::Average,
+            asi_or_feat: Some(AsiOrFeat::AbilityScoreImprovement {
+                ability1: "Strength".to_string(),
+                increase1: 2,
+                ability2: None,
+                increase2: None,
+            }),
+            subclass_choice: None,
+            snapshot_reason: None,
+        };
+
+        service.level_up_character(created.id, options).expect("Failed to level up");
+
+        // Get updated character
+        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        // STR should be capped at 20 (not 21)
+        assert_eq!(data.abilities.strength, 20);
     }
 }
