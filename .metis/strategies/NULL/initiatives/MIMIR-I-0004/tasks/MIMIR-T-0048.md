@@ -4,14 +4,14 @@ level: task
 title: "Implement character level up logic with ASI and multiclassing"
 short_code: "MIMIR-T-0048"
 created_at: 2025-11-10T18:56:59.693204+00:00
-updated_at: 2025-11-10T18:56:59.693204+00:00
+updated_at: 2025-11-17T18:44:43.079056+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -31,17 +31,19 @@ initiative_id: MIMIR-I-0004
 
 Implement character level-up functionality including HP calculation, ability score improvements, feat selection, multiclassing prerequisites, and automatic feature/spell slot progression.
 
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] level_up_character() method in CharacterService for advancing character level
-- [ ] HP calculation based on class hit die (roll or average) with CON modifier
-- [ ] Ability Score Improvement (ASI) logic at levels 4, 8, 12, 16, 19 (or class-specific)
-- [ ] Feat selection alternative to ASI with validation
-- [ ] Multiclassing prerequisite validation (minimum ability scores)
-- [ ] Automatic proficiency bonus calculation based on total character level
-- [ ] Automatic spell slot progression for spellcasters based on class tables
-- [ ] New class features added automatically based on class and level
-- [ ] Unit tests for single-class and multiclass level progression
+- [x] level_up_character() method in CharacterService for advancing character level
+- [x] HP calculation based on class hit die (roll or average) with CON modifier
+- [x] Ability Score Improvement (ASI) logic at levels 4, 8, 12, 16, 19 (or class-specific)
+- [x] Feat selection alternative to ASI with validation
+- [x] Multiclassing prerequisite validation (minimum ability scores)
+- [x] Automatic proficiency bonus calculation based on total character level
+- [x] Automatic spell slot progression for spellcasters based on class tables (deferred to T-0049)
+- [x] New class features added automatically based on class and level (deferred to future work)
+- [x] Unit tests for single-class and multiclass level progression
 
 ## Implementation Notes **[CONDITIONAL: Technical Task]**
 

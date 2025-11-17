@@ -4,14 +4,14 @@ level: task
 title: "Implement spell management and slot calculation"
 short_code: "MIMIR-T-0049"
 created_at: 2025-11-10T18:57:00.127074+00:00
-updated_at: 2025-11-10T18:57:00.127074+00:00
+updated_at: 2025-11-17T18:46:51.892480+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -31,17 +31,19 @@ initiative_id: MIMIR-I-0004
 
 Implement comprehensive spell management including spell learning, preparation, casting, slot tracking, and automatic spell save DC/attack bonus calculation.
 
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] SpellManager module in CharacterService for spell operations
-- [ ] add_spell_to_known() method with class spell list validation
-- [ ] prepare_spells() method with preparation limit validation
-- [ ] cast_spell() method that consumes appropriate spell slot
-- [ ] rest() method (short/long) that restores spell slots appropriately
-- [ ] calculate_spell_slots() method based on class level(s) and multiclassing
-- [ ] calculate_spell_save_dc() method based on spellcasting ability
-- [ ] calculate_spell_attack_bonus() method based on spellcasting ability
-- [ ] Unit tests for spell slot consumption, preparation limits, and DC/attack calculations
+- [x] SpellManager module in CharacterService for spell operations
+- [x] add_spell_to_known() method with class spell list validation
+- [x] prepare_spells() method with preparation limit validation
+- [x] cast_spell() method that consumes appropriate spell slot
+- [x] rest() method (short/long) that restores spell slots appropriately
+- [x] calculate_spell_slots() method based on class level(s) and multiclassing
+- [x] calculate_spell_save_dc() method based on spellcasting ability
+- [x] calculate_spell_attack_bonus() method based on spellcasting ability
+- [x] Unit tests for spell slot consumption, preparation limits, and DC/attack calculations
 
 ## Implementation Notes **[CONDITIONAL: Technical Task]**
 
