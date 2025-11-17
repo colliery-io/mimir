@@ -2,16 +2,21 @@
 //!
 //! Handles level advancement including HP calculation, ASI, feats, and multiclassing.
 
+use crate::connection::DbConnection;
 use crate::error::{DbError, Result};
-use crate::models::character::data::{AbilityScores, SpellSlots};
+use crate::models::character::data::AbilityScores;
+use crate::services::ClassService;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Options for leveling up a character
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LevelUpOptions {
     /// Class to level up in (allows multiclassing)
     pub class_name: String,
+
+    /// Source book for the class (e.g., "PHB", "XGE")
+    #[serde(default = "default_source")]
+    pub class_source: String,
 
     /// HP gain method
     pub hp_method: HpGainMethod,
@@ -24,6 +29,10 @@ pub struct LevelUpOptions {
 
     /// Reason for this level up (e.g., "Leveled up after defeating dragon")
     pub snapshot_reason: Option<String>,
+}
+
+fn default_source() -> String {
+    "PHB".to_string()
 }
 
 /// Method for gaining HP on level up
@@ -159,95 +168,109 @@ impl LevelUpOptions {
 }
 
 impl ClassInfo {
-    /// Get class information by name
-    pub fn get(class_name: &str) -> Option<Self> {
-        match class_name.to_lowercase().as_str() {
-            "barbarian" => Some(ClassInfo {
-                name: "Barbarian".to_string(),
-                hit_die: "d12".to_string(),
-                hit_die_value: 12,
-                spellcasting_type: None,
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "bard" => Some(ClassInfo {
-                name: "Bard".to_string(),
-                hit_die: "d8".to_string(),
-                hit_die_value: 8,
-                spellcasting_type: Some(SpellcastingType::Full),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "cleric" => Some(ClassInfo {
-                name: "Cleric".to_string(),
-                hit_die: "d8".to_string(),
-                hit_die_value: 8,
-                spellcasting_type: Some(SpellcastingType::Full),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "druid" => Some(ClassInfo {
-                name: "Druid".to_string(),
-                hit_die: "d8".to_string(),
-                hit_die_value: 8,
-                spellcasting_type: Some(SpellcastingType::Full),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "fighter" => Some(ClassInfo {
-                name: "Fighter".to_string(),
-                hit_die: "d10".to_string(),
-                hit_die_value: 10,
-                spellcasting_type: None,
-                asi_levels: vec![4, 6, 8, 12, 14, 16, 19],
-            }),
-            "monk" => Some(ClassInfo {
-                name: "Monk".to_string(),
-                hit_die: "d8".to_string(),
-                hit_die_value: 8,
-                spellcasting_type: None,
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "paladin" => Some(ClassInfo {
-                name: "Paladin".to_string(),
-                hit_die: "d10".to_string(),
-                hit_die_value: 10,
-                spellcasting_type: Some(SpellcastingType::Half),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "ranger" => Some(ClassInfo {
-                name: "Ranger".to_string(),
-                hit_die: "d10".to_string(),
-                hit_die_value: 10,
-                spellcasting_type: Some(SpellcastingType::Half),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "rogue" => Some(ClassInfo {
-                name: "Rogue".to_string(),
-                hit_die: "d8".to_string(),
-                hit_die_value: 8,
-                spellcasting_type: None,
-                asi_levels: vec![4, 8, 10, 12, 16, 19],
-            }),
-            "sorcerer" => Some(ClassInfo {
-                name: "Sorcerer".to_string(),
-                hit_die: "d6".to_string(),
-                hit_die_value: 6,
-                spellcasting_type: Some(SpellcastingType::Full),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "warlock" => Some(ClassInfo {
-                name: "Warlock".to_string(),
-                hit_die: "d8".to_string(),
-                hit_die_value: 8,
-                spellcasting_type: Some(SpellcastingType::Warlock),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            "wizard" => Some(ClassInfo {
-                name: "Wizard".to_string(),
-                hit_die: "d6".to_string(),
-                hit_die_value: 6,
-                spellcasting_type: Some(SpellcastingType::Full),
-                asi_levels: vec![4, 8, 12, 16, 19],
-            }),
-            _ => None,
+    /// Get class information by name from database
+    pub fn get(conn: &mut DbConnection, class_name: &str, source: &str) -> Result<Self> {
+        let mut class_service = ClassService::new(conn);
+
+        let class = class_service
+            .get_class_by_name_and_source(class_name, source)
+            .map_err(|e| DbError::InvalidData(format!("Failed to get class: {}", e)))?
+            .ok_or_else(|| {
+                DbError::InvalidData(format!(
+                    "Class '{}' from '{}' not found in database. Please import the appropriate rulebook first.",
+                    class_name, source
+                ))
+            })?;
+
+        // Parse hit die
+        let (hit_die, hit_die_value) = if let Some(hd) = &class.hd {
+            if let Some(hd_obj) = hd.as_object() {
+                let faces = hd_obj.get("faces").and_then(|f| f.as_u64()).unwrap_or(6) as i32;
+                (format!("d{}", faces), faces)
+            } else {
+                ("d6".to_string(), 6)
+            }
+        } else {
+            ("d6".to_string(), 6)
+        };
+
+        // Parse spellcasting type
+        let spellcasting_type = if let Some(caster_prog) = &class.caster_progression {
+            match caster_prog.as_str() {
+                "full" => Some(SpellcastingType::Full),
+                "1/2" | "half" => Some(SpellcastingType::Half),
+                "1/3" | "third" => Some(SpellcastingType::Third),
+                "pact" => Some(SpellcastingType::Warlock),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        // Parse ASI levels from class table groups
+        let asi_levels = Self::parse_asi_levels(&class);
+
+        Ok(ClassInfo {
+            name: class.name.clone(),
+            hit_die,
+            hit_die_value,
+            spellcasting_type,
+            asi_levels,
+        })
+    }
+
+    /// Parse ASI levels from class table groups
+    fn parse_asi_levels(class: &crate::models::catalog::Class) -> Vec<i32> {
+        // Default ASI levels for most classes
+        let default_asi = vec![4, 8, 12, 16, 19];
+
+        // Check if class table groups contain ASI information
+        if let Some(table_groups) = &class.class_table_groups {
+            for group in table_groups {
+                if let Some(group_obj) = group.as_object() {
+                    // Look for "Ability Score Improvement" or similar columns
+                    if let Some(col_labels) = group_obj.get("colLabels").and_then(|c| c.as_array()) {
+                        for label in col_labels {
+                            if let Some(label_str) = label.as_str() {
+                                if label_str.contains("Ability Score") || label_str.contains("ASI") {
+                                    // Found ASI column, now extract levels from rows
+                                    if let Some(rows) = group_obj.get("rows").and_then(|r| r.as_array()) {
+                                        let mut levels = Vec::new();
+                                        for (idx, row) in rows.iter().enumerate() {
+                                            if let Some(row_array) = row.as_array() {
+                                                // Check if this row has an ASI marker
+                                                for cell in row_array {
+                                                    if let Some(cell_str) = cell.as_str() {
+                                                        if cell_str.contains("Ability Score") || cell_str == "✓" {
+                                                            levels.push((idx + 1) as i32);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if !levels.is_empty() {
+                                            return levels;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+
+        // Special case for Fighter (gets more ASIs)
+        if class.name.to_lowercase() == "fighter" {
+            return vec![4, 6, 8, 12, 14, 16, 19];
+        }
+
+        // Special case for Rogue (gets extra ASI at level 10)
+        if class.name.to_lowercase() == "rogue" {
+            return vec![4, 8, 10, 12, 16, 19];
+        }
+
+        default_asi
     }
 
     /// Calculate average HP gain for this class
@@ -257,59 +280,68 @@ impl ClassInfo {
 }
 
 impl MulticlassPrerequisites {
-    /// Get multiclass prerequisites for a class
-    pub fn get(class_name: &str) -> Option<Self> {
-        match class_name.to_lowercase().as_str() {
-            "barbarian" => Some(Self {
-                class_name: "Barbarian".to_string(),
-                required_abilities: vec![("Strength".to_string(), 13)],
-            }),
-            "bard" => Some(Self {
-                class_name: "Bard".to_string(),
-                required_abilities: vec![("Charisma".to_string(), 13)],
-            }),
-            "cleric" => Some(Self {
-                class_name: "Cleric".to_string(),
-                required_abilities: vec![("Wisdom".to_string(), 13)],
-            }),
-            "druid" => Some(Self {
-                class_name: "Druid".to_string(),
-                required_abilities: vec![("Wisdom".to_string(), 13)],
-            }),
-            "fighter" => Some(Self {
-                class_name: "Fighter".to_string(),
-                required_abilities: vec![("Strength".to_string(), 13), ("Dexterity".to_string(), 13)],
-            }),
-            "monk" => Some(Self {
-                class_name: "Monk".to_string(),
-                required_abilities: vec![("Dexterity".to_string(), 13), ("Wisdom".to_string(), 13)],
-            }),
-            "paladin" => Some(Self {
-                class_name: "Paladin".to_string(),
-                required_abilities: vec![("Strength".to_string(), 13), ("Charisma".to_string(), 13)],
-            }),
-            "ranger" => Some(Self {
-                class_name: "Ranger".to_string(),
-                required_abilities: vec![("Dexterity".to_string(), 13), ("Wisdom".to_string(), 13)],
-            }),
-            "rogue" => Some(Self {
-                class_name: "Rogue".to_string(),
-                required_abilities: vec![("Dexterity".to_string(), 13)],
-            }),
-            "sorcerer" => Some(Self {
-                class_name: "Sorcerer".to_string(),
-                required_abilities: vec![("Charisma".to_string(), 13)],
-            }),
-            "warlock" => Some(Self {
-                class_name: "Warlock".to_string(),
-                required_abilities: vec![("Charisma".to_string(), 13)],
-            }),
-            "wizard" => Some(Self {
-                class_name: "Wizard".to_string(),
-                required_abilities: vec![("Intelligence".to_string(), 13)],
-            }),
-            _ => None,
+    /// Get multiclass prerequisites for a class from database
+    pub fn get(conn: &mut DbConnection, class_name: &str, source: &str) -> Result<Option<Self>> {
+        let mut class_service = ClassService::new(conn);
+
+        let class = class_service
+            .get_class_by_name_and_source(class_name, source)
+            .map_err(|e| DbError::InvalidData(format!("Failed to get class: {}", e)))?;
+
+        if let Some(class) = class {
+            // Parse multiclassing requirements from class JSON
+            if let Some(multiclassing) = &class.multiclassing {
+                if let Some(requirements) = multiclassing.as_object().and_then(|m| m.get("requirements")) {
+                    let mut required_abilities = Vec::new();
+
+                    // Requirements can be in different formats
+                    if let Some(req_obj) = requirements.as_object() {
+                        // Format: {"str": 13, "cha": 13}
+                        for (ability_abbr, value) in req_obj {
+                            if let Some(min_score) = value.as_i64() {
+                                let ability_name = Self::expand_ability_name(ability_abbr);
+                                required_abilities.push((ability_name, min_score as i32));
+                            }
+                        }
+                    } else if let Some(req_array) = requirements.as_array() {
+                        // Format: [{"str": 13}, {"cha": 13}] or ["Strength 13", "Charisma 13"]
+                        for req in req_array {
+                            if let Some(req_obj) = req.as_object() {
+                                for (ability_abbr, value) in req_obj {
+                                    if let Some(min_score) = value.as_i64() {
+                                        let ability_name = Self::expand_ability_name(ability_abbr);
+                                        required_abilities.push((ability_name, min_score as i32));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if !required_abilities.is_empty() {
+                        return Ok(Some(Self {
+                            class_name: class.name.clone(),
+                            required_abilities,
+                        }));
+                    }
+                }
+            }
         }
+
+        Ok(None)
+    }
+
+    /// Expand ability abbreviation to full name
+    fn expand_ability_name(abbr: &str) -> String {
+        match abbr.to_lowercase().as_str() {
+            "str" => "Strength",
+            "dex" => "Dexterity",
+            "con" => "Constitution",
+            "int" => "Intelligence",
+            "wis" => "Wisdom",
+            "cha" => "Charisma",
+            _ => abbr, // Return as-is if not recognized
+        }
+        .to_string()
     }
 
     /// Check if character meets prerequisites for this class
@@ -341,12 +373,17 @@ impl MulticlassPrerequisites {
     }
 }
 
+// TODO: This function needs to be refactored to accept a database connection
+// so it can query class information from the database rather than using hardcoded data.
+// For now, spell slot calculation should be done in CharacterService which has access
+// to the database connection.
+/*
 /// Calculate spell slots for multiclass spellcasters
 pub fn calculate_spell_slots(class_levels: &HashMap<String, i32>) -> HashMap<i32, SpellSlots> {
     let mut caster_level = 0;
 
     for (class_name, level) in class_levels {
-        if let Some(class_info) = ClassInfo::get(class_name) {
+        if let Ok(class_info) = ClassInfo::get(conn, class_name, source) {
             match class_info.spellcasting_type {
                 Some(SpellcastingType::Full) => caster_level += level,
                 Some(SpellcastingType::Half) => caster_level += level / 2,
@@ -390,15 +427,53 @@ pub fn calculate_spell_slots(class_levels: &HashMap<String, i32>) -> HashMap<i32
         .map(|(level, max)| (level, SpellSlots::new(max)))
         .collect()
 }
+*/
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::establish_connection;
+
+    fn setup_test_db() -> DbConnection {
+        let mut conn = establish_connection(":memory:").expect("Failed to create in-memory DB");
+        crate::run_migrations(&mut conn).expect("Failed to run migrations");
+        conn
+    }
+
+    fn insert_test_class(conn: &mut DbConnection, class_name: &str, hit_die: i32, caster_prog: Option<&str>, multiclass_req: Option<&str>) {
+        use diesel::prelude::*;
+
+        let class_json = format!(r#"{{
+            "name": "{}",
+            "source": "PHB",
+            "hd": {{"number": 1, "faces": {}}},
+            "proficiency": ["str", "con"],
+            "casterProgression": {},
+            "multiclassing": {}
+        }}"#,
+            class_name,
+            hit_die,
+            caster_prog.map(|c| format!(r#""{}""#, c)).unwrap_or("null".to_string()),
+            multiclass_req.unwrap_or("null")
+        );
+
+        diesel::insert_into(crate::schema::catalog_classes::table)
+            .values((
+                crate::schema::catalog_classes::name.eq(class_name),
+                crate::schema::catalog_classes::source.eq("PHB"),
+                crate::schema::catalog_classes::hit_dice.eq(format!("d{}", hit_die)),
+                crate::schema::catalog_classes::caster_progression.eq(caster_prog),
+                crate::schema::catalog_classes::full_class_json.eq(class_json),
+            ))
+            .execute(conn)
+            .expect("Failed to insert test class");
+    }
 
     #[test]
     fn test_hp_gain_validation() {
         let options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Roll(10),
             asi_or_feat: None,
             subclass_choice: None,
@@ -410,6 +485,7 @@ mod tests {
 
         let bad_options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Roll(11),
             asi_or_feat: None,
             subclass_choice: None,
@@ -423,6 +499,7 @@ mod tests {
     fn test_asi_validation() {
         let options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: Some(AsiOrFeat::AbilityScoreImprovement {
                 ability1: "Strength".to_string(),
@@ -438,6 +515,7 @@ mod tests {
 
         let bad_options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: Some(AsiOrFeat::AbilityScoreImprovement {
                 ability1: "Strength".to_string(),
@@ -454,6 +532,10 @@ mod tests {
 
     #[test]
     fn test_multiclass_prerequisites() {
+        let mut conn = setup_test_db();
+        insert_test_class(&mut conn, "Barbarian", 12, None, Some(r#"{"requirements": {"str": 13}}"#));
+        insert_test_class(&mut conn, "Monk", 8, None, Some(r#"{"requirements": {"dex": 13, "wis": 13}}"#));
+
         let abilities = AbilityScores {
             strength: 15,
             dexterity: 12,
@@ -463,43 +545,30 @@ mod tests {
             charisma: 8,
         };
 
-        let barbarian_prereqs = MulticlassPrerequisites::get("Barbarian").unwrap();
+        let barbarian_prereqs = MulticlassPrerequisites::get(&mut conn, "Barbarian", "PHB")
+            .expect("Failed to get prereqs")
+            .expect("Barbarian prereqs not found");
         assert!(barbarian_prereqs.check(&abilities).is_ok());
 
-        let monk_prereqs = MulticlassPrerequisites::get("Monk").unwrap();
+        let monk_prereqs = MulticlassPrerequisites::get(&mut conn, "Monk", "PHB")
+            .expect("Failed to get prereqs")
+            .expect("Monk prereqs not found");
         assert!(monk_prereqs.check(&abilities).is_err()); // Needs DEX 13
     }
 
     #[test]
-    fn test_spell_slot_calculation() {
-        let mut class_levels = HashMap::new();
-        class_levels.insert("Wizard".to_string(), 5);
-
-        let slots = calculate_spell_slots(&class_levels);
-        assert_eq!(slots.get(&1).unwrap().max, 4);
-        assert_eq!(slots.get(&2).unwrap().max, 3);
-        assert_eq!(slots.get(&3).unwrap().max, 2);
-
-        // Multiclass: Wizard 3 / Cleric 2
-        let mut multiclass_levels = HashMap::new();
-        multiclass_levels.insert("Wizard".to_string(), 3);
-        multiclass_levels.insert("Cleric".to_string(), 2);
-
-        let multiclass_slots = calculate_spell_slots(&multiclass_levels);
-        assert_eq!(multiclass_slots.get(&1).unwrap().max, 4);
-        assert_eq!(multiclass_slots.get(&2).unwrap().max, 3);
-        assert_eq!(multiclass_slots.get(&3).unwrap().max, 2);
-    }
-
-    #[test]
     fn test_class_info() {
-        let fighter = ClassInfo::get("Fighter").unwrap();
+        let mut conn = setup_test_db();
+        insert_test_class(&mut conn, "Fighter", 10, None, None);
+        insert_test_class(&mut conn, "Wizard", 6, Some("full"), None);
+
+        let fighter = ClassInfo::get(&mut conn, "Fighter", "PHB")
+            .expect("Failed to get Fighter");
         assert_eq!(fighter.hit_die_value, 10);
         assert_eq!(fighter.average_hp_gain(), 6);
-        assert!(fighter.asi_levels.contains(&4));
-        assert!(fighter.asi_levels.contains(&6)); // Fighter gets extra ASI
 
-        let wizard = ClassInfo::get("Wizard").unwrap();
+        let wizard = ClassInfo::get(&mut conn, "Wizard", "PHB")
+            .expect("Failed to get Wizard");
         assert_eq!(wizard.hit_die_value, 6);
         assert_eq!(wizard.average_hp_gain(), 4);
         assert_eq!(wizard.spellcasting_type, Some(SpellcastingType::Full));

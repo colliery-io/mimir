@@ -238,16 +238,15 @@ impl<'a> CharacterService<'a> {
         // Get current character data
         let (_character, mut char_data) = self.get_character(character_id)?;
 
-        // Get class info
-        let class_info = ClassInfo::get(&options.class_name)
-            .ok_or_else(|| DbError::InvalidData(format!("Unknown class: {}", options.class_name)))?;
+        // Get class info from database
+        let class_info = ClassInfo::get(self.conn, &options.class_name, &options.class_source)?;
 
         // Check if this is multiclassing
         let is_multiclass = char_data.class.to_lowercase() != options.class_name.to_lowercase();
 
         // Validate multiclass prerequisites
         if is_multiclass {
-            if let Some(prereqs) = MulticlassPrerequisites::get(&options.class_name) {
+            if let Some(prereqs) = MulticlassPrerequisites::get(self.conn, &options.class_name, &options.class_source)? {
                 prereqs.check(&char_data.abilities)?;
             }
         }
@@ -402,7 +401,71 @@ mod tests {
     fn setup_test_db() -> DbConnection {
         let mut conn = establish_connection(":memory:").expect("Failed to create in-memory DB");
         crate::run_migrations(&mut conn).expect("Failed to run migrations");
+        insert_test_classes(&mut conn);
         conn
+    }
+
+    fn insert_test_classes(conn: &mut DbConnection) {
+        use diesel::prelude::*;
+
+        // Insert Fighter class
+        let fighter_json = r#"{
+            "name": "Fighter",
+            "source": "PHB",
+            "hd": {"number": 1, "faces": 10},
+            "proficiency": ["str", "con"],
+            "casterProgression": null
+        }"#;
+
+        diesel::insert_into(crate::schema::catalog_classes::table)
+            .values((
+                crate::schema::catalog_classes::name.eq("Fighter"),
+                crate::schema::catalog_classes::source.eq("PHB"),
+                crate::schema::catalog_classes::hit_dice.eq("d10"),
+                crate::schema::catalog_classes::full_class_json.eq(fighter_json),
+            ))
+            .execute(conn)
+            .expect("Failed to insert Fighter class");
+
+        // Insert Barbarian class with multiclass requirements
+        let barbarian_json = r#"{
+            "name": "Barbarian",
+            "source": "PHB",
+            "hd": {"number": 1, "faces": 12},
+            "proficiency": ["str", "con"],
+            "casterProgression": null,
+            "multiclassing": {"requirements": {"str": 13}}
+        }"#;
+
+        diesel::insert_into(crate::schema::catalog_classes::table)
+            .values((
+                crate::schema::catalog_classes::name.eq("Barbarian"),
+                crate::schema::catalog_classes::source.eq("PHB"),
+                crate::schema::catalog_classes::hit_dice.eq("d12"),
+                crate::schema::catalog_classes::full_class_json.eq(barbarian_json),
+            ))
+            .execute(conn)
+            .expect("Failed to insert Barbarian class");
+
+        // Insert Monk class with multiclass requirements
+        let monk_json = r#"{
+            "name": "Monk",
+            "source": "PHB",
+            "hd": {"number": 1, "faces": 8},
+            "proficiency": ["str", "dex"],
+            "casterProgression": null,
+            "multiclassing": {"requirements": {"dex": 13, "wis": 13}}
+        }"#;
+
+        diesel::insert_into(crate::schema::catalog_classes::table)
+            .values((
+                crate::schema::catalog_classes::name.eq("Monk"),
+                crate::schema::catalog_classes::source.eq("PHB"),
+                crate::schema::catalog_classes::hit_dice.eq("d8"),
+                crate::schema::catalog_classes::full_class_json.eq(monk_json),
+            ))
+            .execute(conn)
+            .expect("Failed to insert Monk class");
     }
 
     fn create_test_campaign(conn: &mut DbConnection) -> i32 {
@@ -789,6 +852,7 @@ mod tests {
         // Level up with HP roll
         let level_up_options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Roll(8),
             asi_or_feat: None,
             subclass_choice: None,
@@ -829,6 +893,7 @@ mod tests {
         // Level up with average HP
         let level_up_options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: None,
             subclass_choice: None,
@@ -867,6 +932,7 @@ mod tests {
         for _ in 0..2 {
             let options = LevelUpOptions {
                 class_name: "Fighter".to_string(),
+                class_source: "PHB".to_string(),
                 hp_method: HpGainMethod::Average,
                 asi_or_feat: None,
                 subclass_choice: None,
@@ -878,6 +944,7 @@ mod tests {
         // Level up to 4 with ASI
         let options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: Some(AsiOrFeat::AbilityScoreImprovement {
                 ability1: "Strength".to_string(),
@@ -919,6 +986,7 @@ mod tests {
         for _ in 0..2 {
             let options = LevelUpOptions {
                 class_name: "Fighter".to_string(),
+                class_source: "PHB".to_string(),
                 hp_method: HpGainMethod::Average,
                 asi_or_feat: None,
                 subclass_choice: None,
@@ -929,6 +997,7 @@ mod tests {
 
         let options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: Some(AsiOrFeat::Feat("Great Weapon Master".to_string())),
             subclass_choice: None,
@@ -965,6 +1034,7 @@ mod tests {
         // Multiclass into Barbarian
         let options = LevelUpOptions {
             class_name: "Barbarian".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: None,
             subclass_choice: None,
@@ -1003,6 +1073,7 @@ mod tests {
         // Try to multiclass into Monk (should fail due to low WIS)
         let options = LevelUpOptions {
             class_name: "Monk".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: None,
             subclass_choice: None,
@@ -1036,6 +1107,7 @@ mod tests {
         for _ in 0..2 {
             let options = LevelUpOptions {
                 class_name: "Fighter".to_string(),
+                class_source: "PHB".to_string(),
                 hp_method: HpGainMethod::Average,
                 asi_or_feat: None,
                 subclass_choice: None,
@@ -1046,6 +1118,7 @@ mod tests {
 
         let options = LevelUpOptions {
             class_name: "Fighter".to_string(),
+            class_source: "PHB".to_string(),
             hp_method: HpGainMethod::Average,
             asi_or_feat: Some(AsiOrFeat::AbilityScoreImprovement {
                 ability1: "Strength".to_string(),

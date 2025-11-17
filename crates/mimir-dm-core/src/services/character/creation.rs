@@ -59,8 +59,9 @@ pub struct CharacterBuilder<'a> {
     race_source: Option<String>,
     subrace_name: Option<String>,
 
-    // Step 2: Class (uses existing ClassInfo from level_up module)
+    // Step 2: Class (from database)
     class: Option<String>,
+    class_source: Option<String>,
     subclass: Option<String>,
 
     // Step 3: Ability Scores
@@ -91,6 +92,7 @@ impl<'a> CharacterBuilder<'a> {
             race_source: None,
             subrace_name: None,
             class: None,
+            class_source: None,
             subclass: None,
             base_abilities: None,
             ability_method: None,
@@ -135,13 +137,13 @@ impl<'a> CharacterBuilder<'a> {
         Ok(self)
     }
 
-    /// Set class (uses existing ClassInfo)
-    pub fn set_class(mut self, class: &str, subclass: Option<String>) -> Result<Self> {
-        // Validate class exists using existing ClassInfo
-        let _class_info = super::level_up::ClassInfo::get(class)
-            .ok_or_else(|| DbError::InvalidData(format!("Unknown class: {}", class)))?;
+    /// Set class by name and source (looks up from database)
+    pub fn set_class(mut self, class: &str, source: &str, subclass: Option<String>) -> Result<Self> {
+        // Validate class exists in database
+        let _class_info = super::level_up::ClassInfo::get(self.conn, class, source)?;
 
         self.class = Some(class.to_string());
+        self.class_source = Some(source.to_string());
         self.subclass = subclass;
 
         // Add class proficiencies
@@ -337,9 +339,12 @@ impl<'a> CharacterBuilder<'a> {
             self.proficiencies.languages.push("Common".to_string());
         }
 
-        // Get class info for hit die
-        let class_info = super::level_up::ClassInfo::get(&class)
-            .ok_or_else(|| DbError::InvalidData(format!("Unknown class: {}", class)))?;
+        let class_source = self
+            .class_source
+            .ok_or_else(|| DbError::InvalidData("Class source is required".to_string()))?;
+
+        // Get class info for hit die from database
+        let class_info = super::level_up::ClassInfo::get(self.conn, &class, &class_source)?;
 
         // Calculate starting HP: max hit die + CON modifier
         let max_hp = class_info.hit_die_value + base_abilities.con_modifier();
@@ -632,6 +637,28 @@ mod tests {
             .expect("Failed to insert test race");
     }
 
+    fn insert_test_class(conn: &mut DbConnection, class_name: &str, hit_die: i32) {
+        // Insert a test class
+        let class_json = format!(r#"{{
+            "name": "{}",
+            "source": "PHB",
+            "hd": {{"number": 1, "faces": {}}},
+            "proficiency": ["str", "con"],
+            "casterProgression": null
+        }}"#, class_name, hit_die);
+
+        diesel::insert_into(crate::schema::catalog_classes::table)
+            .values((
+                crate::schema::catalog_classes::name.eq(class_name),
+                crate::schema::catalog_classes::source.eq("PHB"),
+                crate::schema::catalog_classes::hit_dice.eq(format!("d{}", hit_die)),
+                crate::schema::catalog_classes::primary_ability.eq("Strength"),
+                crate::schema::catalog_classes::full_class_json.eq(class_json),
+            ))
+            .execute(conn)
+            .expect("Failed to insert test class");
+    }
+
     fn insert_test_background(conn: &mut DbConnection) {
         // Insert a simple test background
         let background_json = r#"{
@@ -661,6 +688,7 @@ mod tests {
     fn test_character_builder_with_point_buy() {
         let mut conn = setup_test_db();
         insert_test_race(&mut conn);
+        insert_test_class(&mut conn, "Fighter", 10);
         insert_test_background(&mut conn);
 
         let ability_scores = AbilityScoreMethod::PointBuy {
@@ -676,7 +704,7 @@ mod tests {
             .set_identity("Test Character".to_string(), 1)
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
-            .set_class("Fighter", None)
+            .set_class("Fighter", "PHB", None)
             .expect("Failed to set class")
             .set_ability_scores(ability_scores)
             .expect("Failed to set abilities")
@@ -705,6 +733,7 @@ mod tests {
     fn test_character_builder_with_standard_array() {
         let mut conn = setup_test_db();
         insert_test_race(&mut conn);
+        insert_test_class(&mut conn, "Wizard", 6);
         insert_test_background(&mut conn);
 
         let ability_scores = AbilityScoreMethod::StandardArray {
@@ -720,7 +749,7 @@ mod tests {
             .set_identity("Test Character 2".to_string(), 1)
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
-            .set_class("Wizard", None)
+            .set_class("Wizard", "PHB", None)
             .expect("Failed to set class")
             .set_background("Soldier", "PHB")
             .expect("Failed to set background")
@@ -809,6 +838,7 @@ mod tests {
     fn test_character_builder_missing_background() {
         let mut conn = setup_test_db();
         insert_test_race(&mut conn);
+        insert_test_class(&mut conn, "Fighter", 10);
 
         let ability_scores = AbilityScoreMethod::StandardArray {
             strength: 15,
@@ -823,7 +853,7 @@ mod tests {
             .set_identity("Test Character".to_string(), 1)
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
-            .set_class("Fighter", None)
+            .set_class("Fighter", "PHB", None)
             .expect("Failed to set class")
             .set_background("Noble", "PHB");
 
@@ -847,6 +877,8 @@ mod tests {
     fn test_hp_calculation_different_classes() {
         let mut conn = setup_test_db();
         insert_test_race(&mut conn);
+        insert_test_class(&mut conn, "Fighter", 10);
+        insert_test_class(&mut conn, "Wizard", 6);
         insert_test_background(&mut conn);
 
         let ability_scores = AbilityScoreMethod::Manual {
@@ -863,7 +895,7 @@ mod tests {
             .set_identity("Fighter Test".to_string(), 1)
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
-            .set_class("Fighter", None)
+            .set_class("Fighter", "PHB", None)
             .expect("Failed to set class")
             .set_background("Soldier", "PHB")
             .expect("Failed to set background")
@@ -879,7 +911,7 @@ mod tests {
             .set_identity("Wizard Test".to_string(), 1)
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
-            .set_class("Wizard", None)
+            .set_class("Wizard", "PHB", None)
             .expect("Failed to set class")
             .set_background("Soldier", "PHB")
             .expect("Failed to set background")
