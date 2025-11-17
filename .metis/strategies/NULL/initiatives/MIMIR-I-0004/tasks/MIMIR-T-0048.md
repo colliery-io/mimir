@@ -4,14 +4,14 @@ level: task
 title: "Implement character level up logic with ASI and multiclassing"
 short_code: "MIMIR-T-0048"
 created_at: 2025-11-10T18:56:59.693204+00:00
-updated_at: 2025-11-16T15:29:42.146469+00:00
+updated_at: 2025-11-10T18:56:59.693204+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/completed"
+  - "#phase/todo"
 
 
 exit_criteria_met: false
@@ -30,10 +30,6 @@ initiative_id: MIMIR-I-0004
 ## Objective **[REQUIRED]**
 
 Implement character level-up functionality including HP calculation, ability score improvements, feat selection, multiclassing prerequisites, and automatic feature/spell slot progression.
-
-## Acceptance Criteria
-
-## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
