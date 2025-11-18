@@ -33,6 +33,8 @@ pub mod context;
 pub mod window_manager;
 pub mod chat_sessions;
 pub mod session_todos;
+pub mod player;
+pub mod character;
 
 pub use campaigns::*;
 pub use app_info::*;
@@ -56,3 +58,5 @@ pub use context::*;
 pub use window_manager::*;
 pub use chat_sessions::*;
 pub use session_todos::*;
+pub use player::*;
+pub use character::*;

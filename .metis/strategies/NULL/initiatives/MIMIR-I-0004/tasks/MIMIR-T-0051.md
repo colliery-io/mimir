@@ -4,14 +4,14 @@ level: task
 title: "Create Tauri commands for player and character operations"
 short_code: "MIMIR-T-0051"
 created_at: 2025-11-10T18:57:01.053463+00:00
-updated_at: 2025-11-10T18:57:01.053463+00:00
+updated_at: 2025-11-18T01:25:25.612210+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -31,14 +31,16 @@ initiative_id: MIMIR-I-0004
 
 Create Tauri command handlers in the Rust backend to expose player and character operations to the frontend TypeScript application.
 
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] Tauri commands created in `src-tauri/src/commands/player.rs` for all PlayerService operations
-- [ ] Tauri commands created in `src-tauri/src/commands/character.rs` for all CharacterService operations
-- [ ] Commands registered in main.rs tauri::Builder with proper state management
-- [ ] Error handling converts Rust errors to frontend-friendly error messages
-- [ ] All commands accept/return JSON-serializable types with proper serde annotations
-- [ ] Commands handle database connection pooling correctly
+- [x] Tauri commands created in `crates/mimir-dm/src/commands/player.rs` for all PlayerService operations
+- [x] Tauri commands created in `crates/mimir-dm/src/commands/character.rs` for all CharacterService operations
+- [x] Commands registered in main.rs tauri::Builder with proper state management
+- [x] Error handling converts Rust errors to frontend-friendly error messages
+- [x] All commands accept/return JSON-serializable types with proper serde annotations
+- [x] Commands handle database connection pooling correctly via Arc<DatabaseService>
 - [ ] TypeScript type definitions auto-generated or manually created for all commands
 - [ ] Integration tests for key command workflows
 

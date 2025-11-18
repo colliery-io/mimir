@@ -353,7 +353,30 @@ fn main() {
             logs::list_log_files,
             logs::read_log_file,
             logs::tail_log_file,
-            logs::open_logs_folder
+            logs::open_logs_folder,
+            // Player management commands
+            create_player,
+            get_player,
+            list_players,
+            update_player,
+            delete_player,
+            // Character management commands
+            create_character,
+            store_character,
+            get_character,
+            list_characters_for_campaign,
+            get_character_versions,
+            get_character_version,
+            update_character,
+            delete_character,
+            level_up_character,
+            add_spell_to_known,
+            prepare_spells,
+            cast_spell,
+            take_rest,
+            add_item_to_inventory,
+            remove_item_from_inventory,
+            update_character_currency
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

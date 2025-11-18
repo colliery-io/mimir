@@ -4,14 +4,14 @@ level: task
 title: "Implement inventory and equipment management"
 short_code: "MIMIR-T-0050"
 created_at: 2025-11-10T18:57:00.567726+00:00
-updated_at: 2025-11-17T20:58:52.657875+00:00
+updated_at: 2025-11-18T01:19:27.414878+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0004
 ## Objective **[REQUIRED]**
 
 Implement inventory and currency management for character sheets. Focus on tracking items and currency, not dynamic stat calculations (those belong in UI layer).
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
