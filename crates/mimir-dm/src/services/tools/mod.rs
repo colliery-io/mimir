@@ -360,3 +360,6 @@ impl Default for ToolRegistry {
         Self::new()
     }
 }
+
+// Character tools module
+pub mod character_tools;
