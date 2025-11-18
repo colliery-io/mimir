@@ -3,6 +3,7 @@
 //! Generates human-readable markdown character sheets from CharacterData.
 
 use crate::models::character::CharacterData;
+use crate::models::character::data::Currency;
 
 /// Trait for rendering character sheets in various formats
 pub trait CharacterRenderer {
@@ -384,6 +385,7 @@ mod tests {
                     notes: Some("Greater healing".to_string()),
                 },
             ],
+            currency: Currency::default(),
             equipped: EquippedItems {
                 armor: Some("Chain Mail".to_string()),
                 shield: Some("Shield".to_string()),
@@ -467,6 +469,7 @@ mod tests {
                 value: 50.0,
                 notes: Some("Contains all known spells".to_string()),
             }],
+            currency: Currency::default(),
             equipped: EquippedItems {
                 armor: None,
                 shield: None,
@@ -575,6 +578,7 @@ mod tests {
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
+            currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: Personality::default(),
         };

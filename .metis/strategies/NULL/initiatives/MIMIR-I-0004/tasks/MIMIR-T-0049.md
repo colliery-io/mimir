@@ -4,14 +4,14 @@ level: task
 title: "Implement spell management and slot calculation"
 short_code: "MIMIR-T-0049"
 created_at: 2025-11-10T18:57:00.127074+00:00
-updated_at: 2025-11-17T18:46:51.892480+00:00
+updated_at: 2025-11-17T20:46:26.025313+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0004
 ## Objective **[REQUIRED]**
 
 Implement comprehensive spell management including spell learning, preparation, casting, slot tracking, and automatic spell save DC/attack bonus calculation.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -6,7 +6,7 @@ use crate::connection::DbConnection;
 use crate::error::{DbError, Result};
 use crate::models::catalog::{Background, Race};
 use crate::models::character::data::{
-    AbilityScores, CharacterData, EquippedItems, InventoryItem, Personality, Proficiencies,
+    AbilityScores, CharacterData, Currency, EquippedItems, InventoryItem, Personality, Proficiencies,
     SpellData,
 };
 use crate::services::{BackgroundService, RaceService};
@@ -373,6 +373,7 @@ impl<'a> CharacterBuilder<'a> {
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: self.starting_equipment,
+            currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: self.personality,
         })

@@ -136,6 +136,33 @@ impl Default for SpellData {
     }
 }
 
+/// Currency tracking for D&D denominations
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Currency {
+    #[serde(default)]
+    pub copper: i32,
+    #[serde(default)]
+    pub silver: i32,
+    #[serde(default)]
+    pub electrum: i32,
+    #[serde(default)]
+    pub gold: i32,
+    #[serde(default)]
+    pub platinum: i32,
+}
+
+impl Default for Currency {
+    fn default() -> Self {
+        Self {
+            copper: 0,
+            silver: 0,
+            electrum: 0,
+            gold: 0,
+            platinum: 0,
+        }
+    }
+}
+
 /// Inventory item
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct InventoryItem {
@@ -237,6 +264,10 @@ pub struct CharacterData {
     #[serde(default)]
     pub inventory: Vec<InventoryItem>,
 
+    // Currency
+    #[serde(default)]
+    pub currency: Currency,
+
     // Equipment
     #[serde(default)]
     pub equipped: EquippedItems,
@@ -336,6 +367,7 @@ mod tests {
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
+            currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: Personality::default(),
         };
@@ -428,6 +460,7 @@ mod tests {
                 value: 5.0,
                 notes: None,
             }],
+            currency: Currency::default(),
             equipped: EquippedItems {
                 armor: Some("Chain Mail".to_string()),
                 shield: Some("Shield".to_string()),

@@ -223,6 +223,7 @@ mod tests {
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
+            currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: Personality::default(),
         };
@@ -266,6 +267,7 @@ mod tests {
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
+            currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: Personality::default(),
         };
@@ -310,6 +312,7 @@ mod tests {
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
+            currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: Personality::default(),
         };
@@ -353,6 +356,7 @@ mod tests {
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
+            currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: Personality::default(),
         };

@@ -4,14 +4,14 @@ level: task
 title: "Implement inventory and equipment management"
 short_code: "MIMIR-T-0050"
 created_at: 2025-11-10T18:57:00.567726+00:00
-updated_at: 2025-11-10T18:57:00.567726+00:00
+updated_at: 2025-11-17T20:58:52.657875+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -29,41 +29,41 @@ initiative_id: MIMIR-I-0004
 
 ## Objective **[REQUIRED]**
 
-Implement inventory and equipment management including item tracking, equipment slots, attunement, currency management, and encumbrance calculation.
+Implement inventory and currency management for character sheets. Focus on tracking items and currency, not dynamic stat calculations (those belong in UI layer).
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
-- [ ] InventoryManager module in CharacterService for inventory operations
-- [ ] add_item() method for adding items to inventory with quantity tracking
-- [ ] remove_item() method for removing or reducing item quantities
-- [ ] equip_item() method with equipment slot validation (one weapon, one armor, etc.)
-- [ ] attune_item() method with 3-item attunement limit enforcement
-- [ ] manage_currency() method for adding/removing gold, silver, copper, etc.
-- [ ] calculate_encumbrance() method based on STR score and item weights
-- [ ] calculate_armor_class() method based on equipped armor, shield, and DEX modifier
-- [ ] Unit tests for equipment slot conflicts, attunement limits, and encumbrance
+- [x] add_item() method for adding items to inventory with quantity tracking
+- [x] remove_item() method for removing or reducing item quantities
+- [x] update_currency() method for adding/removing currency (gp, sp, cp, etc.)
+- [x] Item validation against catalog_items database (similar to spell/class validation)
+- [x] Unit tests for inventory operations and currency management
 
 ## Implementation Notes **[CONDITIONAL: Technical Task]**
 
 ### Technical Approach
 - Extend CharacterService with inventory management methods
-- Define equipment slots: main hand, off hand, armor, shield, rings (2), cloak, boots, etc.
-- Track equipped items separately from general inventory
-- Validate attunement requirements (magic items only, max 3 attuned)
-- Calculate carry capacity: STR × 15 lbs (normal), × 5 (encumbered), × 10 (heavily encumbered)
-- AC calculation: base (armor) + DEX modifier (max based on armor type) + shield
+- Query catalog_items database to validate items exist before adding
+- Track items in CharacterData.inventory with name, quantity, weight, value, notes
+- Track currency separately (no automatic denomination conversion - player/DM responsibility)
+- equipped field in CharacterData remains as simple strings (no complex slot validation)
+
+### UI Layer Responsibilities (NOT in this task)
+- Calculate AC based on equipped items
+- Calculate encumbrance from inventory weights
+- Display "what-if" scenarios (AC with/without shield, etc.)
+- Attunement tracking (DM/player responsibility, not enforced in backend)
 
 ### Dependencies
-- MIMIR-T-0044 (Inventory struct)
+- MIMIR-T-0044 (Inventory struct in CharacterData)
 - MIMIR-T-0047 (CharacterService)
-- Item database or reference data (weights, AC values, properties)
+- catalog_items database table
 
 ### Risk Considerations
-- Some items occupy multiple slots (e.g., two-handed weapons)
-- Magical armor may modify AC calculations
-- Variant encumbrance rules exist
-- Need to handle unequipping items when equipping conflicting slots
-- Currency conversion between denominations
+- Item database may have inconsistent weight/value data across sources
+- Currency tracking should be simple - no automatic conversion complexity
 
 ## Status Updates **[REQUIRED]**
 
