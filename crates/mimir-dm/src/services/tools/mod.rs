@@ -364,3 +364,6 @@ impl Default for ToolRegistry {
 // Character tools modules
 pub mod character_tools;
 pub mod character_write_tools;
+
+#[cfg(test)]
+mod character_tools_test;
