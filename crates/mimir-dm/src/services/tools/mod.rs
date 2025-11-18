@@ -361,5 +361,6 @@ impl Default for ToolRegistry {
     }
 }
 
-// Character tools module
+// Character tools modules
 pub mod character_tools;
+pub mod character_write_tools;
