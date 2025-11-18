@@ -1,7 +1,7 @@
 // Re-export all existing types from their current locations
 export * from './api'
 // Selectively export from domain to avoid conflicts with api.ts
-export type { 
+export type {
   Document,
   ExitCriterion,
   BoardConfig,
@@ -13,6 +13,9 @@ export type {
   DocumentTemplate
 } from './domain'
 // Campaign, Module, and Session are already exported from api.ts
+
+// Character and player types (full character management system)
+export * from './character'
 
 // Additional shared types specific to this app
 import type { DocumentTemplate } from './domain'

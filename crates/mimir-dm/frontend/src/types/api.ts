@@ -86,13 +86,5 @@ export interface RenderTemplateRequest {
   variables: Record<string, any>
 }
 
-// Character types (for future implementation)
-export interface Character {
-  id: number
-  name: string
-  race: string
-  class: string
-  level: number
-  campaign_id?: number
-  created_at: string
-}
+// Character types moved to ./character.ts
+// (Placeholder removed - now using full character management system)
