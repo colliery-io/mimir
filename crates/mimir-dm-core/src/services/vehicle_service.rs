@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use crate::error::Result;
 use crate::models::catalog::vehicle::{
     CatalogVehicle, VehicleSummary, VehicleFilters, Vehicle, NewCatalogVehicle, VehicleData
 };
@@ -17,7 +18,7 @@ impl<'a> VehicleService<'a> {
     }
 
     /// Search vehicles with filters
-    pub fn search_vehicles(&mut self, filters: VehicleFilters) -> Result<Vec<VehicleSummary>, String> {
+    pub fn search_vehicles(&mut self, filters: VehicleFilters) -> Result<Vec<VehicleSummary>> {
         use crate::schema::catalog_vehicles::dsl::*;
         
         let mut query = catalog_vehicles.into_boxed();
@@ -63,27 +64,24 @@ impl<'a> VehicleService<'a> {
         
         let vehicles = query
             .limit(1000) // Reasonable limit to prevent memory issues
-            .load::<CatalogVehicle>(self.conn)
-            .map_err(|e| format!("Failed to search vehicles: {}", e))?;
+            .load::<CatalogVehicle>(self.conn)?;
         
         Ok(vehicles.iter().map(VehicleSummary::from).collect())
     }
 
     /// Get vehicle by name and source
-    pub fn get_vehicle_by_name_and_source(&mut self, vehicle_name: &str, vehicle_source: &str) -> Result<Option<Vehicle>, String> {
+    pub fn get_vehicle_by_name_and_source(&mut self, vehicle_name: &str, vehicle_source: &str) -> Result<Option<Vehicle>> {
         use crate::schema::catalog_vehicles::dsl::*;
         
         let catalog_vehicle = catalog_vehicles
             .filter(name.eq(vehicle_name))
             .filter(source.eq(vehicle_source))
             .first::<CatalogVehicle>(self.conn)
-            .optional()
-            .map_err(|e| format!("Failed to get vehicle by name and source: {}", e))?;
-        
+            .optional()?;
+
         match catalog_vehicle {
             Some(vehicle_record) => {
-                let parsed_vehicle: Vehicle = serde_json::from_str(&vehicle_record.full_vehicle_json)
-                    .map_err(|e| format!("Failed to parse vehicle JSON: {}", e))?;
+                let parsed_vehicle: Vehicle = serde_json::from_str(&vehicle_record.full_vehicle_json)?;
                 Ok(Some(parsed_vehicle))
             },
             None => Ok(None),
@@ -91,15 +89,14 @@ impl<'a> VehicleService<'a> {
     }
 
     /// Get all unique vehicle types for filtering
-    pub fn get_all_vehicle_types(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_vehicle_types(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_vehicles::dsl::*;
         
         let types: Vec<Option<String>> = catalog_vehicles
             .select(vehicle_type)
             .distinct()
             .filter(vehicle_type.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get vehicle types: {}", e))?;
+            .load(self.conn)?;
         
         let mut result: Vec<String> = types
             .into_iter()
@@ -112,15 +109,14 @@ impl<'a> VehicleService<'a> {
     }
 
     /// Get all unique sizes for filtering
-    pub fn get_all_sizes(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_sizes(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_vehicles::dsl::*;
         
         let sizes: Vec<Option<String>> = catalog_vehicles
             .select(size)
             .distinct()
             .filter(size.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get vehicle sizes: {}", e))?;
+            .load(self.conn)?;
         
         let mut result: Vec<String> = sizes
             .into_iter()
@@ -133,15 +129,14 @@ impl<'a> VehicleService<'a> {
     }
 
     /// Get all unique terrains for filtering
-    pub fn get_all_terrains(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_terrains(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_vehicles::dsl::*;
         
         let terrain_strings: Vec<Option<String>> = catalog_vehicles
             .select(terrain_text)
             .distinct()
             .filter(terrain_text.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get vehicle terrains: {}", e))?;
+            .load(self.conn)?;
         
         let mut all_terrains = std::collections::HashSet::new();
         
@@ -161,14 +156,13 @@ impl<'a> VehicleService<'a> {
     }
 
     /// Get vehicle count by source for statistics
-    pub fn get_vehicle_count_by_source(&mut self) -> Result<Vec<(String, i64)>, String> {
+    pub fn get_vehicle_count_by_source(&mut self) -> Result<Vec<(String, i64)>> {
         use crate::schema::catalog_vehicles::dsl::*;
 
         let counts = catalog_vehicles
             .group_by(source)
             .select((source, diesel::dsl::count_star()))
-            .load::<(String, i64)>(self.conn)
-            .map_err(|e| format!("Failed to get vehicle counts: {}", e))?;
+            .load::<(String, i64)>(self.conn)?;
 
         Ok(counts)
     }
@@ -178,7 +172,7 @@ impl<'a> VehicleService<'a> {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing vehicles from book directory: {:?} (source: {})", book_dir, source);
 
         let mut total_imported = 0;
@@ -211,17 +205,16 @@ impl<'a> VehicleService<'a> {
     }
 
     /// Find vehicle files in a book directory (vehicles/*.json files)
-    fn find_vehicle_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    fn find_vehicle_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         let mut files = Vec::new();
 
         // Check the vehicles directory
         let vehicles_dir = book_dir.join("vehicles");
         if vehicles_dir.exists() && vehicles_dir.is_dir() {
-            let entries = fs::read_dir(&vehicles_dir)
-                .map_err(|e| format!("Failed to read vehicles directory: {}", e))?;
+            let entries = fs::read_dir(&vehicles_dir)?;
 
             for entry in entries {
-                let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+                let entry = entry?;
                 let path = entry.path();
 
                 if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("json") {
@@ -249,14 +242,12 @@ impl<'a> VehicleService<'a> {
         conn: &mut SqliteConnection,
         file_path: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading vehicles from file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+        let content = fs::read_to_string(file_path)?;
 
-        let data: VehicleData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+        let data: VehicleData = serde_json::from_str(&content)?;
 
         if let Some(vehicles) = data.vehicle {
             if !vehicles.is_empty() {
@@ -284,8 +275,7 @@ impl<'a> VehicleService<'a> {
                         .values(new_vehicle)
                         .on_conflict((catalog_vehicles::name, catalog_vehicles::source))
                         .do_nothing()
-                        .execute(conn)
-                        .map_err(|e| format!("Failed to insert vehicle: {}", e))?;
+                        .execute(conn)?;
                 }
 
                 info!("Successfully imported {} vehicles into database", new_vehicles.len());
@@ -302,12 +292,11 @@ impl<'a> VehicleService<'a> {
     pub fn remove_vehicles_from_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing vehicles from source: {}", source);
 
         let deleted = diesel::delete(catalog_vehicles::table.filter(catalog_vehicles::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete vehicles from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} vehicles from source: {}", deleted, source);
         Ok(deleted)

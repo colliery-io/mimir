@@ -1,5 +1,6 @@
 use diesel::prelude::*;
 use tracing::{debug, error, info};
+use crate::error::Result;
 use crate::models::catalog::{ObjectFilters, ObjectSummary, CatalogObject, NewCatalogObject, ObjectData};
 use crate::schema::catalog_objects;
 use std::fs;
@@ -11,7 +12,7 @@ impl ObjectService {
     pub fn search_objects(
         conn: &mut SqliteConnection,
         filters: ObjectFilters,
-    ) -> Result<Vec<ObjectSummary>, String> {
+    ) -> Result<Vec<ObjectSummary>> {
         debug!("Searching objects with filters: {:?}", filters);
 
         let mut query = catalog_objects::table.into_boxed();
@@ -53,11 +54,7 @@ impl ObjectService {
         let objects = query
             .order_by(catalog_objects::name.asc())
             .select(CatalogObject::as_select())
-            .load::<CatalogObject>(conn)
-            .map_err(|e| {
-                error!("Failed to search objects: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .load::<CatalogObject>(conn)?;
 
         debug!("Found {} objects", objects.len());
 
@@ -73,7 +70,7 @@ impl ObjectService {
         conn: &mut SqliteConnection,
         name: &str,
         source: &str,
-    ) -> Result<Option<String>, String> {
+    ) -> Result<Option<String>> {
         debug!("Getting object details for: {} ({})", name, source);
 
         let result = catalog_objects::table
@@ -81,48 +78,36 @@ impl ObjectService {
             .filter(catalog_objects::source.eq(source))
             .select(catalog_objects::full_object_json)
             .first::<String>(conn)
-            .optional()
-            .map_err(|e| {
-                error!("Failed to get object details: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .optional()?;
 
         Ok(result)
     }
 
-    pub fn get_object_sources(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_object_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct object sources");
 
         let sources = catalog_objects::table
             .select(catalog_objects::source)
             .distinct()
             .order_by(catalog_objects::source.asc())
-            .load::<String>(conn)
-            .map_err(|e| {
-                error!("Failed to get object sources: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .load::<String>(conn)?;
 
         debug!("Found {} object sources", sources.len());
         Ok(sources)
     }
 
-    pub fn get_object_count(conn: &mut SqliteConnection) -> Result<i64, String> {
+    pub fn get_object_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting total object count");
 
         let count = catalog_objects::table
             .count()
-            .get_result(conn)
-            .map_err(|e| {
-                error!("Failed to get object count: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .get_result(conn)?;
 
         debug!("Total objects: {}", count);
         Ok(count)
     }
 
-    pub fn get_object_types(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_object_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct object types");
 
         let types: Vec<String> = catalog_objects::table
@@ -130,11 +115,7 @@ impl ObjectService {
             .distinct()
             .filter(catalog_objects::object_type.is_not_null())
             .order_by(catalog_objects::object_type.asc())
-            .load::<Option<String>>(conn)
-            .map_err(|e| {
-                error!("Failed to get object types: {}", e);
-                format!("Database error: {}", e)
-            })?
+            .load::<Option<String>>(conn)?
             .into_iter()
             .filter_map(|t| t)
             .collect();
@@ -143,7 +124,7 @@ impl ObjectService {
         Ok(types)
     }
 
-    pub fn get_object_sizes(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_object_sizes(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct object sizes");
 
         let sizes: Vec<String> = catalog_objects::table
@@ -151,11 +132,7 @@ impl ObjectService {
             .distinct()
             .filter(catalog_objects::size.is_not_null())
             .order_by(catalog_objects::size.asc())
-            .load::<Option<String>>(conn)
-            .map_err(|e| {
-                error!("Failed to get object sizes: {}", e);
-                format!("Database error: {}", e)
-            })?
+            .load::<Option<String>>(conn)?
             .into_iter()
             .filter_map(|s| s)
             .collect();
@@ -169,7 +146,7 @@ impl ObjectService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing objects from book directory: {:?} (source: {})", book_dir, source);
         let mut imported_count = 0;
 
@@ -182,11 +159,10 @@ impl ObjectService {
         info!("Found objects directory: {:?}", objects_dir);
 
         // Read all JSON files in the objects directory
-        let entries = fs::read_dir(&objects_dir)
-            .map_err(|e| format!("Failed to read objects directory: {}", e))?;
+        let entries = fs::read_dir(&objects_dir)?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let entry = entry?;
             let path = entry.path();
 
             if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("json") {
@@ -199,11 +175,9 @@ impl ObjectService {
 
             debug!("Processing object file: {}", filename);
 
-            let content = fs::read_to_string(&path)
-                .map_err(|e| format!("Failed to read file {}: {}", filename, e))?;
+            let content = fs::read_to_string(&path)?;
 
-            let object_data: ObjectData = serde_json::from_str(&content)
-                .map_err(|e| format!("Failed to parse object file {}: {}", filename, e))?;
+            let object_data: ObjectData = serde_json::from_str(&content)?;
 
             // Import objects
             if let Some(objects) = object_data.object {
@@ -242,13 +216,12 @@ impl ObjectService {
     pub fn remove_objects_by_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing objects from source: {}", source);
 
         let deleted = diesel::delete(catalog_objects::table)
             .filter(catalog_objects::source.eq(source))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete objects: {}", e))?;
+            .execute(conn)?;
 
         info!("Removed {} objects from source: {}", deleted, source);
         Ok(deleted)

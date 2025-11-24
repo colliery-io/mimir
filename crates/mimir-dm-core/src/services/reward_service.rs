@@ -1,5 +1,6 @@
 use diesel::prelude::*;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
+use crate::error::Result;
 use crate::models::catalog::{CatalogReward, RewardFilters, RewardSummary, Reward, NewCatalogReward, RewardData};
 use crate::schema::catalog_rewards;
 use std::fs;
@@ -12,16 +13,16 @@ impl RewardService {
     pub fn search_rewards(
         conn: &mut SqliteConnection,
         filters: RewardFilters,
-    ) -> Result<Vec<RewardSummary>, String> {
+    ) -> Result<Vec<RewardSummary>> {
         debug!("Searching rewards with filters: {:?}", filters);
-        
+
         let mut query = catalog_rewards::table.into_boxed();
-        
+
         // Apply name filter
         if let Some(name) = filters.name {
             query = query.filter(catalog_rewards::name.eq(name));
         }
-        
+
         // Apply search filter (searches name, type, and description)
         if let Some(search) = filters.search {
             let search_pattern = format!("%{}%", search.to_lowercase());
@@ -33,31 +34,30 @@ impl RewardService {
                     .or(catalog_rewards::description.like(pattern_clone2))
             );
         }
-        
+
         // Apply reward type filter
         if let Some(reward_types) = filters.reward_types {
             if !reward_types.is_empty() {
                 query = query.filter(catalog_rewards::reward_type.eq_any(reward_types));
             }
         }
-        
+
         // Apply source filter
         if let Some(sources) = filters.sources {
             if !sources.is_empty() {
                 query = query.filter(catalog_rewards::source.eq_any(sources));
             }
         }
-        
+
         // Apply prerequisites filter
         if let Some(has_prerequisites) = filters.has_prerequisites {
             let filter_value = if has_prerequisites { 1 } else { 0 };
             query = query.filter(catalog_rewards::has_prerequisites.eq(filter_value));
         }
-        
+
         let catalog_rewards: Vec<CatalogReward> = query
             .select(CatalogReward::as_select())
-            .load(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
+            .load(conn)?;
         
         let summaries: Vec<RewardSummary> = catalog_rewards
             .into_iter()
@@ -78,25 +78,19 @@ impl RewardService {
     pub fn get_reward_by_id(
         conn: &mut SqliteConnection,
         reward_id: i32,
-    ) -> Result<Option<Reward>, String> {
+    ) -> Result<Option<Reward>> {
         debug!("Getting reward by ID: {}", reward_id);
-        
+
         let catalog_reward: Option<CatalogReward> = catalog_rewards::table
             .find(reward_id)
             .first(conn)
-            .optional()
-            .map_err(|e| format!("Database error: {}", e))?;
-        
+            .optional()?;
+
         match catalog_reward {
             Some(cr) => {
                 // Parse the full JSON back to the original Reward type
-                match serde_json::from_str::<Reward>(&cr.full_reward_json) {
-                    Ok(reward) => Ok(Some(reward)),
-                    Err(e) => {
-                        error!("Failed to parse reward JSON for ID {}: {}", reward_id, e);
-                        Err(format!("Failed to parse reward data: {}", e))
-                    }
-                }
+                let reward = serde_json::from_str::<Reward>(&cr.full_reward_json)?;
+                Ok(Some(reward))
             }
             None => Ok(None),
         }
@@ -107,71 +101,59 @@ impl RewardService {
         conn: &mut SqliteConnection,
         name: &str,
         source: &str,
-    ) -> Result<Option<Reward>, String> {
+    ) -> Result<Option<Reward>> {
         debug!("Getting reward by name '{}' and source '{}'", name, source);
-        
+
         let catalog_reward: Option<CatalogReward> = catalog_rewards::table
             .filter(catalog_rewards::name.eq(name))
             .filter(catalog_rewards::source.eq(source))
             .first(conn)
-            .optional()
-            .map_err(|e| format!("Database error: {}", e))?;
-        
+            .optional()?;
+
         match catalog_reward {
             Some(cr) => {
                 // Parse the full JSON back to the original Reward type
-                match serde_json::from_str::<Reward>(&cr.full_reward_json) {
-                    Ok(reward) => Ok(Some(reward)),
-                    Err(e) => {
-                        error!("Failed to parse reward JSON for '{}' from '{}': {}", name, source, e);
-                        Err(format!("Failed to parse reward data: {}", e))
-                    }
-                }
+                let reward = serde_json::from_str::<Reward>(&cr.full_reward_json)?;
+                Ok(Some(reward))
             }
             None => Ok(None),
         }
     }
     
     /// Get all unique reward types
-    pub fn get_reward_types(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_reward_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting all reward types");
-        
-        let types: Vec<String> = catalog_rewards::table
+
+        let mut types: Vec<String> = catalog_rewards::table
             .select(catalog_rewards::reward_type)
             .distinct()
-            .load(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
-        
-        let mut sorted_types = types;
-        sorted_types.sort();
-        Ok(sorted_types)
+            .load(conn)?;
+
+        types.sort();
+        Ok(types)
     }
-    
+
     /// Get all unique sources
-    pub fn get_sources(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting all sources");
-        
-        let sources: Vec<String> = catalog_rewards::table
+
+        let mut sources: Vec<String> = catalog_rewards::table
             .select(catalog_rewards::source)
             .distinct()
-            .load(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
-        
-        let mut sorted_sources = sources;
-        sorted_sources.sort();
-        Ok(sorted_sources)
+            .load(conn)?;
+
+        sources.sort();
+        Ok(sources)
     }
-    
+
     /// Get total count of rewards
-    pub fn get_reward_count(conn: &mut SqliteConnection) -> Result<i64, String> {
+    pub fn get_reward_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting reward count");
 
-        let count: i64 = catalog_rewards::table
+        catalog_rewards::table
             .count()
             .get_result(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
-
-        Ok(count)
+            .map_err(Into::into)
     }
 
     /// Import all reward data from an uploaded book directory
@@ -179,7 +161,7 @@ impl RewardService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str,
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing rewards from book directory: {:?} (source: {})", book_dir, source);
 
         let rewards_dir = book_dir.join("rewards");
@@ -191,11 +173,10 @@ impl RewardService {
         let mut imported_count = 0;
 
         // Read all JSON files in the rewards directory
-        let entries = fs::read_dir(&rewards_dir)
-            .map_err(|e| format!("Failed to read rewards directory: {}", e))?;
+        let entries = fs::read_dir(&rewards_dir)?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let entry = entry?;
             let path = entry.path();
 
             // Skip fluff files and non-JSON files
@@ -207,11 +188,8 @@ impl RewardService {
 
             debug!("Processing reward file: {:?}", path);
 
-            let content = fs::read_to_string(&path)
-                .map_err(|e| format!("Failed to read file {:?}: {}", path, e))?;
-
-            let reward_data: RewardData = serde_json::from_str(&content)
-                .map_err(|e| format!("Failed to parse reward data from {:?}: {}", path, e))?;
+            let content = fs::read_to_string(&path)?;
+            let reward_data: RewardData = serde_json::from_str(&content)?;
 
             if let Some(rewards) = reward_data.reward {
                 let new_rewards: Vec<NewCatalogReward> = rewards
@@ -225,8 +203,7 @@ impl RewardService {
                 if !new_rewards.is_empty() {
                     let inserted = diesel::insert_into(catalog_rewards::table)
                         .values(&new_rewards)
-                        .execute(conn)
-                        .map_err(|e| format!("Failed to insert rewards: {}", e))?;
+                        .execute(conn)?;
 
                     imported_count += inserted;
                     info!("Imported {} rewards from {:?}", inserted, path);
@@ -242,12 +219,11 @@ impl RewardService {
     pub fn remove_rewards_by_source(
         conn: &mut SqliteConnection,
         source: &str,
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing rewards from source: {}", source);
 
         let deleted = diesel::delete(catalog_rewards::table.filter(catalog_rewards::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete rewards from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} rewards from source: {}", deleted, source);
         Ok(deleted)

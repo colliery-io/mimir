@@ -1,3 +1,4 @@
+use crate::error::Result;
 use crate::models::catalog::{CatalogTrap, TrapFilters, TrapSummary, NewCatalogTrap, TrapData, HazardData, TrapOrHazard};
 use crate::schema::catalog_traps;
 use diesel::prelude::*;
@@ -8,7 +9,7 @@ use std::path::Path;
 pub struct TrapService;
 
 impl TrapService {
-    pub fn search_traps(&self, conn: &mut SqliteConnection, filters: TrapFilters) -> QueryResult<Vec<TrapSummary>> {
+    pub fn search_traps(&self, conn: &mut SqliteConnection, filters: TrapFilters) -> Result<Vec<TrapSummary>> {
         debug!("Searching traps with filters: {:?}", filters);
         
         let mut query = catalog_traps::table.into_boxed();
@@ -58,7 +59,7 @@ impl TrapService {
         Ok(summaries)
     }
     
-    pub fn get_trap_details(&self, conn: &mut SqliteConnection, name: String, source: String) -> QueryResult<Option<CatalogTrap>> {
+    pub fn get_trap_details(&self, conn: &mut SqliteConnection, name: String, source: String) -> Result<Option<CatalogTrap>> {
         debug!("Getting trap details for: {} from {}", name, source);
         
         catalog_traps::table
@@ -66,25 +67,27 @@ impl TrapService {
             .filter(catalog_traps::source.eq(source))
             .first(conn)
             .optional()
+            .map_err(Into::into)
     }
-    
-    pub fn get_trap_sources(&self, conn: &mut SqliteConnection) -> QueryResult<Vec<String>> {
+
+    pub fn get_trap_sources(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let sources: Vec<String> = catalog_traps::table
             .select(catalog_traps::source)
             .distinct()
             .order(catalog_traps::source.asc())
             .load(conn)?;
-        
+
         Ok(sources)
     }
-    
-    pub fn get_trap_count(&self, conn: &mut SqliteConnection) -> QueryResult<i64> {
+
+    pub fn get_trap_count(&self, conn: &mut SqliteConnection) -> Result<i64> {
         catalog_traps::table
             .count()
             .get_result(conn)
+            .map_err(Into::into)
     }
-    
-    pub fn get_trap_types(&self, conn: &mut SqliteConnection) -> QueryResult<Vec<String>> {
+
+    pub fn get_trap_types(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let types: Vec<Option<String>> = catalog_traps::table
             .select(catalog_traps::trap_type)
             .distinct()
@@ -97,8 +100,8 @@ impl TrapService {
         
         Ok(types)
     }
-    
-    pub fn get_trap_categories(&self, conn: &mut SqliteConnection) -> QueryResult<Vec<String>> {
+
+    pub fn get_trap_categories(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let categories: Vec<String> = catalog_traps::table
             .select(catalog_traps::category)
             .distinct()
@@ -113,7 +116,7 @@ impl TrapService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing traps from book directory: {:?} (source: {})", book_dir, source);
 
         let mut total_imported = 0;
@@ -145,11 +148,11 @@ impl TrapService {
         conn: &mut SqliteConnection,
         traps_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         let mut total_imported = 0;
 
-        for entry in fs::read_dir(traps_dir).map_err(|e| format!("Failed to read traps directory: {}", e))? {
-            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        for entry in fs::read_dir(traps_dir)? {
+            let entry = entry?;
             let file_path = entry.path();
 
             if !file_path.is_file() || file_path.extension().and_then(|e| e.to_str()) != Some("json") {
@@ -177,11 +180,11 @@ impl TrapService {
         conn: &mut SqliteConnection,
         hazards_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         let mut total_imported = 0;
 
-        for entry in fs::read_dir(hazards_dir).map_err(|e| format!("Failed to read hazards directory: {}", e))? {
-            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        for entry in fs::read_dir(hazards_dir)? {
+            let entry = entry?;
             let file_path = entry.path();
 
             if !file_path.is_file() || file_path.extension().and_then(|e| e.to_str()) != Some("json") {
@@ -209,14 +212,12 @@ impl TrapService {
         conn: &mut SqliteConnection,
         file_path: &Path,
         _source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading trap file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read trap file: {}", e))?;
+        let content = fs::read_to_string(file_path)?;
 
-        let trap_data: TrapData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse trap JSON: {}", e))?;
+        let trap_data: TrapData = serde_json::from_str(&content)?;
 
         if let Some(traps) = trap_data.trap {
             let traps: Vec<TrapOrHazard> = traps.into_iter().map(TrapOrHazard::Trap).collect();
@@ -248,14 +249,12 @@ impl TrapService {
         conn: &mut SqliteConnection,
         file_path: &Path,
         _source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading hazard file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read hazard file: {}", e))?;
+        let content = fs::read_to_string(file_path)?;
 
-        let hazard_data: HazardData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse hazard JSON: {}", e))?;
+        let hazard_data: HazardData = serde_json::from_str(&content)?;
 
         if let Some(hazards) = hazard_data.hazard {
             let hazards: Vec<TrapOrHazard> = hazards.into_iter().map(TrapOrHazard::Hazard).collect();
@@ -286,12 +285,11 @@ impl TrapService {
     pub fn remove_traps_from_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing traps from source: {}", source);
 
         let deleted = diesel::delete(catalog_traps::table.filter(catalog_traps::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete traps from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} traps from source: {}", deleted, source);
         Ok(deleted)
