@@ -62,11 +62,19 @@
             <h3 class="sidebar-section-title">Application</h3>
             <ul class="sidebar-nav">
               <li>
-                <button 
+                <button
                   @click="activeSection = 'theme'"
                   :class="['nav-item', { active: activeSection === 'theme' }]"
                 >
                   Theme
+                </button>
+              </li>
+              <li>
+                <button
+                  @click="activeSection = 'about'"
+                  :class="['nav-item', { active: activeSection === 'about' }]"
+                >
+                  About
                 </button>
               </li>
             </ul>
@@ -165,7 +173,19 @@
             <p class="content-description">View and monitor application log files</p>
             <LogsSection />
           </div>
-          
+
+          <!-- About -->
+          <div v-else-if="activeSection === 'about'" class="content-section">
+            <h2 class="content-title">About Mimir</h2>
+            <p class="content-description">Application information</p>
+            <div class="about-info">
+              <div class="info-row">
+                <span class="info-label">Version</span>
+                <span class="info-value">{{ appVersion || 'Loading...' }}</span>
+              </div>
+            </div>
+          </div>
+
         </main>
       </div>
     </div>
@@ -187,6 +207,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, reactive } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { getVersion } from '@tauri-apps/api/app'
 import MainLayout from '../shared/components/layout/MainLayout.vue'
 import ThemeSelector from '../shared/components/ui/ThemeSelector.vue'
 import SystemPromptEditor from '@/components/SystemPromptEditor.vue'
@@ -199,6 +220,7 @@ const chatStore = useChatStore()
 const showBookManagementModal = ref(false)
 const showCampaignManagementModal = ref(false)
 const activeSection = ref('theme')
+const appVersion = ref('')
 
 // Provider settings state
 interface OllamaConfig {
@@ -229,7 +251,7 @@ const isSavingSettings = ref(false)
 const settingsSaveMessage = ref('')
 const settingsSaveMessageType = ref<'success' | 'error'>('success')
 
-// Load provider settings on mount
+// Load provider settings and app version on mount
 onMounted(async () => {
   try {
     const settings = await invoke<ProviderSettings>('get_provider_settings')
@@ -246,6 +268,13 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error('Failed to load provider settings:', error)
+  }
+
+  try {
+    appVersion.value = await getVersion()
+  } catch (error) {
+    console.error('Failed to get app version:', error)
+    appVersion.value = 'Unknown'
   }
 })
 
@@ -589,5 +618,30 @@ button:disabled {
 
 select.form-input {
   cursor: pointer;
+}
+
+/* About Section */
+.about-info {
+  background: var(--color-surface-variant);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+}
+
+.info-label {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.info-value {
+  font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  color: var(--color-text);
 }
 </style>
