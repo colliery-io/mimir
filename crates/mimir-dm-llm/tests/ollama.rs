@@ -59,10 +59,12 @@ async fn test_ollama_chat() {
         Message {
             role: "system".to_string(),
             content: "You are a helpful assistant.".to_string(),
+            tool_call_id: None,
         },
         Message {
             role: "user".to_string(),
             content: "What is 2+2?".to_string(),
+            tool_call_id: None,
         },
     ];
 
@@ -149,6 +151,7 @@ async fn test_ollama_unsupported_endpoint() {
     let messages = vec![Message {
         role: "user".to_string(),
         content: "What is the capital of France?".to_string(),
+        tool_call_id: None,
     }];
 
     let response = provider.chat(messages, None, None, None, None, None, None, None).await;
@@ -347,18 +350,22 @@ async fn test_ollama_multiple_messages_chat() {
         Message {
             role: "system".to_string(),
             content: "You are a helpful math tutor.".to_string(),
+            tool_call_id: None,
         },
         Message {
             role: "user".to_string(),
             content: "What is 5 + 3?".to_string(),
+            tool_call_id: None,
         },
         Message {
             role: "assistant".to_string(),
             content: "5 + 3 equals 8.".to_string(),
+            tool_call_id: None,
         },
         Message {
             role: "user".to_string(),
             content: "What about 8 - 2?".to_string(),
+            tool_call_id: None,
         },
     ];
 

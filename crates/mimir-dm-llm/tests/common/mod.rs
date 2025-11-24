@@ -87,6 +87,7 @@ pub mod test_data {
             Message {
                 role: "user".to_string(),
                 content: "Hello, how are you?".to_string(),
+                tool_call_id: None,
             },
         ]
     }
@@ -97,18 +98,22 @@ pub mod test_data {
             Message {
                 role: "system".to_string(),
                 content: "You are a helpful assistant.".to_string(),
+                tool_call_id: None,
             },
             Message {
                 role: "user".to_string(),
                 content: "What is 2 + 2?".to_string(),
+                tool_call_id: None,
             },
             Message {
                 role: "assistant".to_string(),
                 content: "2 + 2 equals 4.".to_string(),
+                tool_call_id: None,
             },
             Message {
                 role: "user".to_string(),
                 content: "What about 3 + 3?".to_string(),
+                tool_call_id: None,
             },
         ]
     }

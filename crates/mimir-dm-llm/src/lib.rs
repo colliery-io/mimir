@@ -43,6 +43,7 @@
 //! let messages = vec![Message {
 //!     role: "user".to_string(),
 //!     content: "Hello, world!".to_string(),
+//!     tool_call_id: None,
 //! }];
 //!
 //! let response = provider.chat(messages, None, None, None, None, None, None, None).await?;

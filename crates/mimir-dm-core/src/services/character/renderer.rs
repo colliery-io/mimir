@@ -972,8 +972,11 @@ mod tests {
         // Check equipment
         assert!(markdown.contains("**Armor:** Chain Mail"));
 
-        // Check inventory table
-        assert!(markdown.contains("| Rations | 10 | 20.0 lbs"));
+        // Check inventory section
+        assert!(markdown.contains("## Inventory"));
+        assert!(markdown.contains("### Rations (x10)"));
+        assert!(markdown.contains("### Healing Potion (x2)"));
+        assert!(markdown.contains("> **Notes:** Greater healing"));
 
         // Check personality
         assert!(markdown.contains("**Traits:** I'm always polite and respectful."));
