@@ -3,6 +3,7 @@
 //! This service provides database-backed action search and retrieval,
 //! following the same pattern as the spell service.
 
+use crate::error::Result;
 use crate::models::catalog::{CatalogAction, ActionFilters, ActionSummary, Action, NewCatalogAction};
 use crate::schema::catalog_actions;
 use diesel::prelude::*;
@@ -17,7 +18,7 @@ impl ActionService {
     pub fn search_actions(
         conn: &mut SqliteConnection,
         filters: ActionFilters,
-    ) -> Result<Vec<ActionSummary>, String> {
+    ) -> Result<Vec<ActionSummary>> {
         debug!("Searching actions with filters: {:?}", filters);
         
         let mut query = catalog_actions::table.into_boxed();
@@ -59,11 +60,7 @@ impl ActionService {
         // Execute query and order by name
         let actions: Vec<CatalogAction> = query
             .order(catalog_actions::name.asc())
-            .load(conn)
-            .map_err(|e| {
-                debug!("Database error searching actions: {}", e);
-                format!("Failed to search actions: {}", e)
-            })?;
+            .load(conn)?;
 
         info!("Found {} actions", actions.len());
         
@@ -80,23 +77,18 @@ impl ActionService {
     pub fn get_action_by_id(
         conn: &mut SqliteConnection,
         action_id: i32,
-    ) -> Result<Option<Action>, String> {
+    ) -> Result<Option<Action>> {
         debug!("Getting action by ID: {}", action_id);
         
         let catalog_action: Option<CatalogAction> = catalog_actions::table
             .find(action_id)
             .first(conn)
-            .optional()
-            .map_err(|e| {
-                debug!("Database error getting action: {}", e);
-                format!("Failed to get action: {}", e)
-            })?;
+            .optional()?;
             
         match catalog_action {
             Some(action) => {
                 // Parse the full JSON back to Action struct
-                let full_action: Action = serde_json::from_str(&action.full_action_json)
-                    .map_err(|e| format!("Failed to parse action JSON: {}", e))?;
+                let full_action: Action = serde_json::from_str(&action.full_action_json)?;
                 Ok(Some(full_action))
             }
             None => Ok(None),
@@ -104,50 +96,38 @@ impl ActionService {
     }
 
     /// Get all unique time types for filter options
-    pub fn get_time_types(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_time_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting unique time types");
-        
+
         let time_types: Vec<String> = catalog_actions::table
             .select(catalog_actions::time_type)
             .distinct()
             .order(catalog_actions::time_type.asc())
-            .load(conn)
-            .map_err(|e| {
-                debug!("Database error getting time types: {}", e);
-                format!("Failed to get time types: {}", e)
-            })?;
-            
+            .load(conn)?;
+
         Ok(time_types)
     }
 
     /// Get all unique sources for filter options
-    pub fn get_sources(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting unique sources");
-        
+
         let sources: Vec<String> = catalog_actions::table
             .select(catalog_actions::source)
             .distinct()
             .order(catalog_actions::source.asc())
-            .load(conn)
-            .map_err(|e| {
-                debug!("Database error getting sources: {}", e);
-                format!("Failed to get sources: {}", e)
-            })?;
-            
+            .load(conn)?;
+
         Ok(sources)
     }
 
     /// Get action count for statistics
-    pub fn get_action_count(conn: &mut SqliteConnection) -> Result<i64, String> {
+    pub fn get_action_count(conn: &mut SqliteConnection) -> Result<i64> {
         use diesel::dsl::count_star;
 
         let count: i64 = catalog_actions::table
             .select(count_star())
-            .first(conn)
-            .map_err(|e| {
-                debug!("Database error counting actions: {}", e);
-                format!("Failed to count actions: {}", e)
-            })?;
+            .first(conn)?;
 
         Ok(count)
     }
@@ -157,7 +137,7 @@ impl ActionService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing actions from book directory: {:?} (source: {})", book_dir, source);
 
         let mut total_imported = 0;
@@ -190,7 +170,7 @@ impl ActionService {
     }
 
     /// Find action JSON files in a book directory
-    fn find_action_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    fn find_action_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         let mut action_files = Vec::new();
 
         let actions_dir = book_dir.join("actions");
@@ -202,11 +182,10 @@ impl ActionService {
         debug!("Found actions directory: {:?}", actions_dir);
 
         // Read all JSON files in the actions directory
-        let entries = fs::read_dir(&actions_dir)
-            .map_err(|e| format!("Failed to read actions directory: {}", e))?;
+        let entries = fs::read_dir(&actions_dir)?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let entry = entry?;
             let path = entry.path();
 
             // Skip fluff files and non-JSON files
@@ -231,14 +210,12 @@ impl ActionService {
         conn: &mut SqliteConnection,
         file_path: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading action file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+        let content = fs::read_to_string(file_path)?;
 
-        let json: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+        let json: serde_json::Value = serde_json::from_str(&content)?;
 
         let mut actions_to_import: Vec<Action> = Vec::new();
 
@@ -316,7 +293,7 @@ impl ActionService {
     fn batch_insert_actions(
         conn: &mut SqliteConnection,
         actions: Vec<NewCatalogAction>,
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         let mut total_inserted = 0;
 
         debug!("Inserting {} actions individually (SQLite limitation)", actions.len());
@@ -332,8 +309,7 @@ impl ActionService {
                     catalog_actions::see_also.eq(&action.see_also),
                     catalog_actions::full_action_json.eq(&action.full_action_json),
                 ))
-                .execute(conn)
-                .map_err(|e| format!("Failed to insert action '{}': {}", action.name, e))?;
+                .execute(conn)?;
 
             total_inserted += inserted;
         }
@@ -346,12 +322,11 @@ impl ActionService {
     pub fn remove_actions_by_source(
         conn: &mut SqliteConnection,
         source: &str,
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing actions from source: {}", source);
 
         let deleted = diesel::delete(catalog_actions::table.filter(catalog_actions::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete actions from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} actions from source: {}", deleted, source);
         Ok(deleted)

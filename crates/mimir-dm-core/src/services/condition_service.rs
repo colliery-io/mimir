@@ -1,5 +1,6 @@
 //! Database-backed condition service
 
+use crate::error::Result;
 use crate::models::catalog::{CatalogCondition, ConditionFilters, ConditionSummary, Condition, Disease, ConditionOrDisease, NewCatalogCondition, ConditionData, DiseaseData};
 use crate::schema::catalog_conditions;
 use diesel::prelude::*;
@@ -12,9 +13,9 @@ pub struct ConditionService;
 impl ConditionService {
     /// Search conditions and diseases using database with filters
     pub fn search_conditions(
-        conn: &mut SqliteConnection, 
+        conn: &mut SqliteConnection,
         filters: ConditionFilters
-    ) -> Result<Vec<ConditionSummary>, String> {
+    ) -> Result<Vec<ConditionSummary>> {
         debug!("Searching conditions with filters: {:?}", filters);
         
         let mut query = catalog_conditions::table.into_boxed();
@@ -54,8 +55,7 @@ impl ConditionService {
         
         let results: Vec<CatalogCondition> = query
             .order(catalog_conditions::name)
-            .load(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
+            .load(conn)?;
         
         let summaries: Vec<ConditionSummary> = results
             .into_iter()
@@ -68,29 +68,26 @@ impl ConditionService {
     
     /// Get a specific condition or disease by ID for modal display
     pub fn get_condition_by_id(
-        conn: &mut SqliteConnection, 
+        conn: &mut SqliteConnection,
         condition_id: i32
-    ) -> Result<Option<ConditionOrDisease>, String> {
+    ) -> Result<Option<ConditionOrDisease>> {
         debug!("Getting condition by ID: {}", condition_id);
         
         let catalog_condition: Option<CatalogCondition> = catalog_conditions::table
             .find(condition_id)
             .first(conn)
-            .optional()
-            .map_err(|e| format!("Database error: {}", e))?;
+            .optional()?;
         
         match catalog_condition {
             Some(condition) => {
                 // Parse the full JSON back to the original type
                 match condition.item_type.as_str() {
                     "Condition" => {
-                        let parsed: Condition = serde_json::from_str(&condition.full_condition_json)
-                            .map_err(|e| format!("Failed to parse condition JSON: {}", e))?;
+                        let parsed: Condition = serde_json::from_str(&condition.full_condition_json)?;
                         Ok(Some(ConditionOrDisease::Condition(parsed)))
                     }
                     "Disease" => {
-                        let parsed: Disease = serde_json::from_str(&condition.full_condition_json)
-                            .map_err(|e| format!("Failed to parse disease JSON: {}", e))?;
+                        let parsed: Disease = serde_json::from_str(&condition.full_condition_json)?;
                         Ok(Some(ConditionOrDisease::Disease(parsed)))
                     }
                     _ => {
@@ -104,43 +101,40 @@ impl ConditionService {
     }
     
     /// Get all available item types for filter dropdowns
-    pub fn get_item_types(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_item_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting condition item types");
-        
+
         let types: Vec<String> = catalog_conditions::table
             .select(catalog_conditions::item_type)
             .distinct()
             .order(catalog_conditions::item_type)
-            .load(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
-        
+            .load(conn)?;
+
         debug!("Found {} condition item types", types.len());
         Ok(types)
     }
     
     /// Get all available sources for filter dropdowns
-    pub fn get_sources(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting condition sources");
-        
+
         let sources: Vec<String> = catalog_conditions::table
             .select(catalog_conditions::source)
             .distinct()
             .order(catalog_conditions::source)
-            .load(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
-        
+            .load(conn)?;
+
         debug!("Found {} condition sources", sources.len());
         Ok(sources)
     }
     
     /// Get condition count for statistics
-    pub fn get_condition_count(conn: &mut SqliteConnection) -> Result<i64, String> {
+    pub fn get_condition_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting condition count");
 
         let count = catalog_conditions::table
             .count()
-            .get_result(conn)
-            .map_err(|e| format!("Database error: {}", e))?;
+            .get_result(conn)?;
 
         debug!("Found {} conditions in database", count);
         Ok(count)
@@ -151,7 +145,7 @@ impl ConditionService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing conditions/diseases from book directory: {:?} (source: {})", book_dir, source);
 
         let mut total_imported = 0;
@@ -176,7 +170,7 @@ impl ConditionService {
         book_dir: &Path,
         subdir: &str,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         let conditions_dir = book_dir.join(subdir);
         if !conditions_dir.exists() || !conditions_dir.is_dir() {
             debug!("No {} directory found in book: {:?}", subdir, book_dir);
@@ -226,7 +220,7 @@ impl ConditionService {
         book_dir: &Path,
         subdir: &str,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         let diseases_dir = book_dir.join(subdir);
         if !diseases_dir.exists() || !diseases_dir.is_dir() {
             debug!("No {} directory found in book: {:?}", subdir, book_dir);
@@ -266,14 +260,12 @@ impl ConditionService {
         conn: &mut SqliteConnection,
         file_path: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading condition file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+        let content = fs::read_to_string(file_path)?;
 
-        let condition_data: ConditionData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse ConditionData from {:?}: {}", file_path, e))?;
+        let condition_data: ConditionData = serde_json::from_str(&content)?;
 
         let mut conditions_to_import: Vec<Condition> = Vec::new();
 
@@ -308,14 +300,12 @@ impl ConditionService {
         conn: &mut SqliteConnection,
         file_path: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading disease file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+        let content = fs::read_to_string(file_path)?;
 
-        let disease_data: DiseaseData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse DiseaseData from {:?}: {}", file_path, e))?;
+        let disease_data: DiseaseData = serde_json::from_str(&content)?;
 
         let mut diseases_to_import: Vec<Disease> = Vec::new();
 
@@ -349,7 +339,7 @@ impl ConditionService {
     fn batch_insert_conditions(
         conn: &mut SqliteConnection,
         conditions: Vec<NewCatalogCondition>,
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         let mut total_inserted = 0;
 
         debug!("Inserting {} conditions individually (SQLite limitation)", conditions.len());
@@ -364,8 +354,7 @@ impl ConditionService {
                     catalog_conditions::description.eq(&condition.description),
                     catalog_conditions::full_condition_json.eq(&condition.full_condition_json),
                 ))
-                .execute(conn)
-                .map_err(|e| format!("Failed to insert condition '{}': {}", condition.name, e))?;
+                .execute(conn)?;
 
             total_inserted += inserted;
         }
@@ -378,12 +367,11 @@ impl ConditionService {
     pub fn remove_conditions_by_source(
         conn: &mut SqliteConnection,
         source: &str,
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing conditions from source: {}", source);
 
         let deleted = diesel::delete(catalog_conditions::table.filter(catalog_conditions::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete conditions from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} conditions from source: {}", deleted, source);
         Ok(deleted)

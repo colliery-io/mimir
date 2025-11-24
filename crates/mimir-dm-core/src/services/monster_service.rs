@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use crate::error::Result;
 use crate::models::catalog::monster::{
     CatalogMonster, MonsterSummary, MonsterFilters, Monster, MonsterFluff,
     NewCatalogMonster, MonsterData, MonsterFluffData
@@ -18,7 +19,7 @@ impl<'a> MonsterService<'a> {
     }
 
     /// Search monsters with filters
-    pub fn search_monsters(&mut self, filters: MonsterFilters) -> Result<Vec<MonsterSummary>, String> {
+    pub fn search_monsters(&mut self, filters: MonsterFilters) -> Result<Vec<MonsterSummary>> {
         use crate::schema::catalog_monsters::dsl::*;
         
         let mut query = catalog_monsters.into_boxed();
@@ -76,27 +77,24 @@ impl<'a> MonsterService<'a> {
         
         let monsters = query
             .limit(1000) // Reasonable limit to prevent memory issues
-            .load::<CatalogMonster>(self.conn)
-            .map_err(|e| format!("Failed to search monsters: {}", e))?;
+            .load::<CatalogMonster>(self.conn)?;
         
         Ok(monsters.iter().map(MonsterSummary::from).collect())
     }
 
     /// Get monster by name and source
-    pub fn get_monster_by_name_and_source(&mut self, monster_name: &str, monster_source: &str) -> Result<Option<Monster>, String> {
+    pub fn get_monster_by_name_and_source(&mut self, monster_name: &str, monster_source: &str) -> Result<Option<Monster>> {
         use crate::schema::catalog_monsters::dsl::*;
         
         let catalog_monster = catalog_monsters
             .filter(name.eq(monster_name))
             .filter(source.eq(monster_source))
             .first::<CatalogMonster>(self.conn)
-            .optional()
-            .map_err(|e| format!("Failed to get monster by name and source: {}", e))?;
+            .optional()?;
         
         match catalog_monster {
             Some(monster_record) => {
-                let parsed_monster: Monster = serde_json::from_str(&monster_record.full_monster_json)
-                    .map_err(|e| format!("Failed to parse monster JSON: {}", e))?;
+                let parsed_monster: Monster = serde_json::from_str(&monster_record.full_monster_json)?;
                 
                 // If fluff data exists, parse and merge it with the monster
                 if let Some(fluff_json_str) = &monster_record.fluff_json {
@@ -116,15 +114,14 @@ impl<'a> MonsterService<'a> {
     }
 
     /// Get all unique sizes for filtering
-    pub fn get_all_sizes(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_sizes(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_monsters::dsl::*;
         
         let sizes: Vec<Option<String>> = catalog_monsters
             .select(size)
             .distinct()
             .filter(size.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get monster sizes: {}", e))?;
+            .load(self.conn)?;
         
         let mut unique_sizes: Vec<String> = sizes
             .into_iter()
@@ -136,15 +133,14 @@ impl<'a> MonsterService<'a> {
     }
 
     /// Get all unique creature types for filtering
-    pub fn get_all_creature_types(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_creature_types(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_monsters::dsl::*;
         
         let types: Vec<Option<String>> = catalog_monsters
             .select(creature_type)
             .distinct()
             .filter(creature_type.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get monster creature types: {}", e))?;
+            .load(self.conn)?;
         
         let mut unique_types: Vec<String> = types
             .into_iter()
@@ -156,15 +152,14 @@ impl<'a> MonsterService<'a> {
     }
 
     /// Get all unique alignments for filtering
-    pub fn get_all_alignments(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_alignments(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_monsters::dsl::*;
         
         let alignments: Vec<Option<String>> = catalog_monsters
             .select(alignment)
             .distinct()
             .filter(alignment.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get monster alignments: {}", e))?;
+            .load(self.conn)?;
         
         let mut unique_alignments: Vec<String> = alignments
             .into_iter()
@@ -176,15 +171,14 @@ impl<'a> MonsterService<'a> {
     }
 
     /// Get CR range (min and max) for filtering
-    pub fn get_cr_range(&mut self) -> Result<(f64, f64), String> {
+    pub fn get_cr_range(&mut self) -> Result<(f64, f64)> {
         use crate::schema::catalog_monsters::dsl::*;
         use diesel::dsl::{min, max};
         
         let result: Option<(Option<f64>, Option<f64>)> = catalog_monsters
             .select((min(cr_numeric), max(cr_numeric)))
             .first(self.conn)
-            .optional()
-            .map_err(|e| format!("Failed to get CR range: {}", e))?;
+            .optional()?;
         
         match result {
             Some((Some(min_cr), Some(max_cr))) => Ok((min_cr, max_cr)),
@@ -193,15 +187,14 @@ impl<'a> MonsterService<'a> {
     }
 
     /// Get monster count by source for statistics
-    pub fn get_monster_count_by_source(&mut self) -> Result<Vec<(String, i64)>, String> {
+    pub fn get_monster_count_by_source(&mut self) -> Result<Vec<(String, i64)>> {
         use crate::schema::catalog_monsters::dsl::*;
         use diesel::dsl::count;
 
         let counts = catalog_monsters
             .group_by(source)
             .select((source, count(id)))
-            .load::<(String, i64)>(self.conn)
-            .map_err(|e| format!("Failed to get monster counts by source: {}", e))?;
+            .load::<(String, i64)>(self.conn)?;
 
         Ok(counts)
     }
@@ -211,7 +204,7 @@ impl<'a> MonsterService<'a> {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing monsters from book directory: {:?} (source: {})", book_dir, source);
 
         let mut total_imported = 0;
@@ -244,17 +237,16 @@ impl<'a> MonsterService<'a> {
     }
 
     /// Find monster files in a book directory (bestiary/*.json files)
-    fn find_monster_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    fn find_monster_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         let mut files = Vec::new();
 
         // Check the bestiary directory
         let bestiary_dir = book_dir.join("bestiary");
         if bestiary_dir.exists() && bestiary_dir.is_dir() {
-            let entries = fs::read_dir(&bestiary_dir)
-                .map_err(|e| format!("Failed to read bestiary directory: {}", e))?;
+            let entries = fs::read_dir(&bestiary_dir)?;
 
             for entry in entries {
-                let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+                let entry = entry?;
                 let path = entry.path();
 
                 if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("json") {
@@ -326,14 +318,12 @@ impl<'a> MonsterService<'a> {
         conn: &mut SqliteConnection,
         file_path: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading monsters from file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
+        let content = fs::read_to_string(file_path)?;
 
-        let data: MonsterData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+        let data: MonsterData = serde_json::from_str(&content)?;
 
         // Load fluff data if available
         let fluff_data = Self::load_monster_fluff_data(file_path);
@@ -374,8 +364,7 @@ impl<'a> MonsterService<'a> {
                     .values(monster)
                     .on_conflict((catalog_monsters::name, catalog_monsters::source))
                     .do_nothing()
-                    .execute(conn)
-                    .map_err(|e| format!("Failed to insert monster: {}", e))?;
+                    .execute(conn)?;
             }
 
             info!("Successfully imported {} monsters into database", new_monsters.len());
@@ -389,12 +378,11 @@ impl<'a> MonsterService<'a> {
     pub fn remove_monsters_from_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing monsters from source: {}", source);
 
         let deleted = diesel::delete(catalog_monsters::table.filter(catalog_monsters::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete monsters from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} monsters from source: {}", deleted, source);
         Ok(deleted)
