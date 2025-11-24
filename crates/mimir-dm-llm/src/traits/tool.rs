@@ -157,10 +157,12 @@ pub trait Tool: Send + Sync {
     
     /// Convert to LLM tool definition
     fn to_llm_tool(&self) -> LlmTool {
+        let name = self.name().to_string();
         LlmTool {
+            name: name.clone(),
             tool_type: "function".to_string(),
             function: ToolFunction {
-                name: self.name().to_string(),
+                name,
                 description: self.description().to_string(),
                 parameters: self.parameters_schema(),
             },

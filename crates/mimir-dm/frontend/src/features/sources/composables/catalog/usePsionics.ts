@@ -8,6 +8,13 @@ export interface PsionicSummary {
   page?: number
 }
 
+export interface PsionicFilters {
+  query?: string
+  psionic_types?: string[]
+  orders?: string[]
+  sources?: string[]
+}
+
 export interface Psionic {
   name: string
   source: string
@@ -33,12 +40,7 @@ export interface PsionicMode {
 }
 
 export function usePsionics() {
-  async function searchPsionics(filters: {
-    query?: string
-    psionic_types?: string[]
-    orders?: string[]
-    sources?: string[]
-  }): Promise<PsionicSummary[]> {
+  async function searchPsionics(filters: PsionicFilters = {}): Promise<PsionicSummary[]> {
     try {
       const results = await invoke<PsionicSummary[]>('search_psionics', {
         query: filters.query || null,
@@ -48,7 +50,6 @@ export function usePsionics() {
       })
       return results || []
     } catch (e) {
-      console.error(`Failed to search psionics: ${e}`)
       return []
     }
   }
@@ -58,7 +59,6 @@ export function usePsionics() {
       const details = await invoke<Psionic>('get_psionic_details', { name, source })
       return details
     } catch (e) {
-      console.error(`Failed to get psionic details: ${e}`)
       return null
     }
   }
@@ -68,7 +68,6 @@ export function usePsionics() {
       const orders = await invoke<string[]>('get_psionic_orders')
       return orders || []
     } catch (e) {
-      console.error(`Failed to get psionic orders: ${e}`)
       return []
     }
   }
@@ -78,7 +77,6 @@ export function usePsionics() {
       const sources = await invoke<string[]>('get_psionic_sources')
       return sources || []
     } catch (e) {
-      console.error(`Failed to get psionic sources: ${e}`)
       return []
     }
   }

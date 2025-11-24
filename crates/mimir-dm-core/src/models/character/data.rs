@@ -4,6 +4,10 @@
 
 use serde::{Deserialize, Serialize};
 
+fn default_speed() -> i32 {
+    30
+}
+
 /// Ability scores with helper methods for modifiers
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AbilityScores {
@@ -167,6 +171,8 @@ impl Default for Currency {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct InventoryItem {
     pub name: String,
+    #[serde(default)]
+    pub source: Option<String>,
     pub quantity: i32,
     #[serde(default)]
     pub weight: f64,
@@ -215,6 +221,17 @@ impl Default for Personality {
     }
 }
 
+/// Individual class level for multiclassing support
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClassLevel {
+    pub class_name: String,
+    pub level: i32,
+    pub subclass: Option<String>,
+    pub hit_dice_type: String,
+    #[serde(default)]
+    pub hit_dice_remaining: i32,
+}
+
 /// Complete character data structure
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CharacterData {
@@ -231,8 +248,7 @@ pub struct CharacterData {
     // Core Identity
     pub race: String,
     pub subrace: Option<String>,
-    pub class: String,
-    pub subclass: Option<String>,
+    pub classes: Vec<ClassLevel>,
     pub background: String,
     pub alignment: Option<String>,
 
@@ -242,8 +258,10 @@ pub struct CharacterData {
     // HP and Resources
     pub max_hp: i32,
     pub current_hp: i32,
-    pub hit_dice_remaining: i32,
-    pub hit_dice_type: String,
+
+    // Movement
+    #[serde(default = "default_speed")]
+    pub speed: i32,
 
     // Proficiencies
     pub proficiencies: Proficiencies,
@@ -299,6 +317,45 @@ impl CharacterData {
     pub fn is_proficient_in_save(&self, save: &str) -> bool {
         self.proficiencies.saves.iter().any(|s| s == save)
     }
+
+    /// Get primary class (first class taken)
+    pub fn primary_class(&self) -> Option<&ClassLevel> {
+        self.classes.first()
+    }
+
+    /// Get primary class name for display
+    pub fn primary_class_name(&self) -> &str {
+        self.classes.first().map(|c| c.class_name.as_str()).unwrap_or("Unknown")
+    }
+
+    /// Get class display string (e.g., "Fighter 3 / Wizard 2")
+    pub fn class_string(&self) -> String {
+        self.classes
+            .iter()
+            .map(|c| format!("{} {}", c.class_name, c.level))
+            .collect::<Vec<_>>()
+            .join(" / ")
+    }
+
+    /// Get total hit dice remaining across all classes
+    pub fn total_hit_dice_remaining(&self) -> i32 {
+        self.classes.iter().map(|c| c.hit_dice_remaining).sum()
+    }
+
+    /// Find a class level by name
+    pub fn get_class(&self, class_name: &str) -> Option<&ClassLevel> {
+        self.classes.iter().find(|c| c.class_name == class_name)
+    }
+
+    /// Find a mutable class level by name
+    pub fn get_class_mut(&mut self, class_name: &str) -> Option<&mut ClassLevel> {
+        self.classes.iter_mut().find(|c| c.class_name == class_name)
+    }
+
+    /// Check if character has a specific class
+    pub fn has_class(&self, class_name: &str) -> bool {
+        self.classes.iter().any(|c| c.class_name == class_name)
+    }
 }
 
 #[cfg(test)]
@@ -346,8 +403,13 @@ mod tests {
             created_at: "2025-01-01".to_string(),
             race: "Human".to_string(),
             subrace: None,
-            class: "Fighter".to_string(),
-            subclass: None,
+            classes: vec![ClassLevel {
+                class_name: "Fighter".to_string(),
+                level: 1,
+                subclass: None,
+                hit_dice_type: "d10".to_string(),
+                hit_dice_remaining: 1,
+            }],
             background: "Soldier".to_string(),
             alignment: Some("Neutral".to_string()),
             abilities: AbilityScores {
@@ -360,8 +422,7 @@ mod tests {
             },
             max_hp: 12,
             current_hp: 12,
-            hit_dice_remaining: 1,
-            hit_dice_type: "d10".to_string(),
+            speed: 30,
             proficiencies: Proficiencies::default(),
             class_features: Vec::new(),
             feats: Vec::new(),
@@ -423,8 +484,13 @@ mod tests {
             created_at: "2025-01-15T10:30:00Z".to_string(),
             race: "Dwarf".to_string(),
             subrace: Some("Mountain".to_string()),
-            class: "Fighter".to_string(),
-            subclass: Some("Champion".to_string()),
+            classes: vec![ClassLevel {
+                class_name: "Fighter".to_string(),
+                level: 3,
+                subclass: Some("Champion".to_string()),
+                hit_dice_type: "d10".to_string(),
+                hit_dice_remaining: 3,
+            }],
             background: "Soldier".to_string(),
             alignment: Some("Lawful Good".to_string()),
             abilities: AbilityScores {
@@ -437,8 +503,7 @@ mod tests {
             },
             max_hp: 28,
             current_hp: 28,
-            hit_dice_remaining: 3,
-            hit_dice_type: "d10".to_string(),
+            speed: 25, // Dwarf speed
             proficiencies: Proficiencies {
                 skills: vec!["Athletics".to_string(), "Intimidation".to_string()],
                 saves: vec!["Strength".to_string(), "Constitution".to_string()],
@@ -455,6 +520,7 @@ mod tests {
             spells: SpellData::default(),
             inventory: vec![InventoryItem {
                 name: "Rations".to_string(),
+                source: None,
                 quantity: 10,
                 weight: 20.0,
                 value: 5.0,
@@ -480,6 +546,7 @@ mod tests {
         assert!(yaml.contains("character_name: Thorin"));
         assert!(yaml.contains("race: Dwarf"));
         assert!(yaml.contains("strength: 16"));
+        assert!(yaml.contains("class_name: Fighter"));
 
         // Test round-trip
         let deserialized: CharacterData =

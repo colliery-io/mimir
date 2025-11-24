@@ -1,6 +1,5 @@
-import { ref } from 'vue'
-import type { Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useCatalogSearch } from './useCatalogSearch'
 
 export interface ObjectSummary {
   name: string
@@ -9,6 +8,13 @@ export interface ObjectSummary {
   size: string
   ac: string
   hp: string
+}
+
+export interface ObjectFilters {
+  query?: string
+  sources?: string[]
+  object_types?: string[]
+  sizes?: string[]
 }
 
 export interface DndObject {
@@ -32,46 +38,20 @@ export interface DndObject {
 }
 
 export function useObjects() {
-  const isObjectsInitialized = ref(false)
-  const isLoading = ref(false)
-  const error: Ref<string | null> = ref(null)
+  const catalog = useCatalogSearch<ObjectSummary, string | null, ObjectFilters>({
+    name: 'object',
+    initializeCommand: 'init_object_catalog',
+    searchCommand: 'search_objects',
+    detailsCommand: 'get_object_details',
+    transformFilters: (filters) => ({
+      search: filters.query || null,
+      sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+      object_types: filters.object_types && filters.object_types.length > 0 ? filters.object_types : null,
+      sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null
+    }),
+  })
 
-  async function initializeObjectCatalog() {
-    if (isObjectsInitialized.value) return
-
-    try {
-      isLoading.value = true
-      error.value = null
-      await invoke('init_object_catalog')
-      isObjectsInitialized.value = true
-    } catch (e) {
-      error.value = `Failed to initialize object catalog: ${e}`
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function searchObjects(filters: { query?: string, sources?: string[], object_types?: string[], sizes?: string[] }) {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const results = await invoke<ObjectSummary[]>('search_objects', {
-        search: filters.query || null,
-        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
-        object_types: filters.object_types && filters.object_types.length > 0 ? filters.object_types : null,
-        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null
-      })
-
-      return results || []
-    } catch (e) {
-      error.value = `Failed to search objects: ${e}`
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
+  // Custom getDetails that parses JSON
   async function getObjectDetails(name: string, source: string): Promise<DndObject | null> {
     try {
       const jsonString = await invoke<string | null>('get_object_details', { name, source })
@@ -82,17 +62,16 @@ export function useObjects() {
       const objectData = JSON.parse(jsonString)
       return objectData as DndObject
     } catch (e) {
-      console.error('Failed to get object details:', e)
       return null
     }
   }
 
   return {
-    isObjectsInitialized,
-    isLoading,
-    error,
-    initializeObjectCatalog,
-    searchObjects,
+    isObjectsInitialized: catalog.isInitialized,
+    isLoading: catalog.isLoading,
+    error: catalog.error,
+    initializeObjectCatalog: catalog.initialize,
+    searchObjects: catalog.search,
     getObjectDetails,
   }
 }

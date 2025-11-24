@@ -8,6 +8,13 @@ export interface CultBoonSummary {
   page?: number
 }
 
+export interface CultBoonFilters {
+  query?: string
+  item_types?: string[]
+  subtypes?: string[]
+  sources?: string[]
+}
+
 export interface Cult {
   name: string
   source: string
@@ -34,22 +41,16 @@ export function useCults() {
     // Database-backed system - no initialization required
   }
 
-  async function searchCults(filters: {
-    query?: string
-    item_types?: string[]
-    subtypes?: string[]
-    sources?: string[]
-  }): Promise<CultBoonSummary[]> {
+  async function searchCults(filters: CultBoonFilters = {}): Promise<CultBoonSummary[]> {
     try {
       const results = await invoke<CultBoonSummary[]>('search_cults', {
-        query: filters.query || null,
-        item_types: filters.item_types || null,
-        subtypes: filters.subtypes || null,
-        sources: filters.sources || null
+        name: filters.query || null,
+        sources: filters.sources || null,
+        categories: filters.subtypes || null,
+        cult_types: filters.item_types || null,
       })
       return results || []
     } catch (e) {
-      console.error(`Failed to search cults: ${e}`)
       return []
     }
   }
@@ -59,7 +60,6 @@ export function useCults() {
       const details = await invoke<Cult>('get_cult_details', { name, source })
       return details
     } catch (e) {
-      console.error(`Failed to get cult details: ${e}`)
       return null
     }
   }
@@ -69,7 +69,6 @@ export function useCults() {
       const details = await invoke<Boon>('get_boon_details', { name, source })
       return details
     } catch (e) {
-      console.error(`Failed to get boon details: ${e}`)
       return null
     }
   }
@@ -79,7 +78,6 @@ export function useCults() {
       const types = await invoke<string[]>('get_cult_types')
       return types || []
     } catch (e) {
-      console.error(`Failed to get cult types: ${e}`)
       return []
     }
   }
@@ -89,7 +87,6 @@ export function useCults() {
       const sources = await invoke<string[]>('get_cult_sources')
       return sources || []
     } catch (e) {
-      console.error(`Failed to get cult sources: ${e}`)
       return []
     }
   }

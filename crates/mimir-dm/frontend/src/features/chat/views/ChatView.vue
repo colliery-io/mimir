@@ -30,7 +30,11 @@
           :is-loading="isLoading"
           :is-cancelling="isCancelling"
           :error="error"
+          :editing-message-id="editingMessageId"
+          :editing-content="editingContent"
           @send="handleSendMessage"
+          @update="handleUpdateMessage"
+          @cancel-edit="handleCancelEdit"
         />
       </div>
       
@@ -65,6 +69,14 @@ const error = computed(() => chatStore.error)
 const conversationTokens = computed(() => chatStore.conversationTokens)
 const maxContextTokens = computed(() => chatStore.modelInfo?.contextLength || 262144)
 const currentSessionId = computed(() => chatStore.currentSessionId)
+const editingMessageId = computed(() => chatStore.editingMessageId)
+
+// Get the content of the message being edited
+const editingContent = computed(() => {
+  if (!editingMessageId.value) return undefined
+  const msg = messages.value.find(m => m.id === editingMessageId.value)
+  return msg?.content
+})
 
 // Calculate last message tokens
 const lastMessageTokens = computed(() => {
@@ -78,6 +90,17 @@ const currentTheme = computed(() => `theme-${themeStore.currentTheme}`)
 // Methods
 const handleSendMessage = async (content: string) => {
   await chatStore.sendMessage(content)
+}
+
+const handleUpdateMessage = async (messageId: string, newContent: string) => {
+  // Edit the message and truncate subsequent messages
+  await chatStore.editMessage(messageId, newContent)
+  // Resend to LLM for new response
+  await chatStore.resendConversation()
+}
+
+const handleCancelEdit = () => {
+  chatStore.cancelEditing()
 }
 
 // Keyboard event handler for escape key cancellation

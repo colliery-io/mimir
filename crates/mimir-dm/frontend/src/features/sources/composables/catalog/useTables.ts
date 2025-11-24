@@ -27,22 +27,24 @@ export interface TableSummary {
   category: string
 }
 
+export interface TableFilters {
+  query?: string
+  sources?: string[]
+  categories?: string[]
+  min_rows?: number
+  max_rows?: number
+}
+
 export function useTables() {
   async function initializeTableCatalog() {
     try {
       await invoke('init_table_catalog')
     } catch (e) {
-      console.error(`Failed to initialize table catalog: ${e}`)
+      // Initialization failed silently
     }
   }
 
-  async function searchTables(filters: {
-    query?: string
-    sources?: string[]
-    categories?: string[]
-    min_rows?: number
-    max_rows?: number
-  }): Promise<TableSummary[]> {
+  async function searchTables(filters: TableFilters = {}): Promise<TableSummary[]> {
     try {
       const results = await invoke<TableSummary[]>('search_tables', {
         query: filters.query || null,
@@ -53,7 +55,6 @@ export function useTables() {
       })
       return results || []
     } catch (e) {
-      console.error(`Failed to search tables: ${e}`)
       return []
     }
   }
@@ -63,7 +64,6 @@ export function useTables() {
       const details = await invoke<Table>('get_table_details', { name, source })
       return details
     } catch (e) {
-      console.error(`Failed to get table details: ${e}`)
       return null
     }
   }
@@ -73,7 +73,6 @@ export function useTables() {
       const categories = await invoke<string[]>('get_table_categories')
       return categories || []
     } catch (e) {
-      console.error(`Failed to get table categories: ${e}`)
       return []
     }
   }
@@ -83,7 +82,6 @@ export function useTables() {
       const sources = await invoke<string[]>('get_table_sources')
       return sources || []
     } catch (e) {
-      console.error(`Failed to get table sources: ${e}`)
       return []
     }
   }

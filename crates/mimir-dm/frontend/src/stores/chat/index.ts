@@ -87,6 +87,36 @@ export const useChatStore = defineStore('chat', () => {
     )
   }
 
+  const startEditing = (messageId: string) => {
+    messagesStore.startEditing(messageId)
+  }
+
+  const cancelEditing = () => {
+    messagesStore.cancelEditing()
+  }
+
+  const editMessage = async (messageId: string, newContent: string) => {
+    await messagesStore.editMessage(
+      messageId,
+      newContent,
+      () => saveCurrentSession(),
+      (tokens) => { tokensStore.totalTokensUsed.value += tokens }
+    )
+  }
+
+  const resendConversation = async (): Promise<void> => {
+    await messagesStore.resendConversation(
+      sessionStore.currentSessionId.value,
+      tokensStore.buildSystemMessage,
+      tokensStore.systemConfig.value.maxTokens || tokensStore.maxResponseTokens.value,
+      tokensStore.systemConfig.value.temperature || 0.3,
+      tokensStore.systemConfig.value.llmEndpoint || 'http://localhost:11434',
+      () => saveCurrentSession(),
+      (tokens) => { tokensStore.totalTokensUsed.value += tokens },
+      (sessionId) => todosStore.loadTodosForSession(sessionId)
+    )
+  }
+
   const clearHistory = async () => {
     if (sessionStore.currentSessionId.value) {
       // Create a new session to replace the current one
@@ -158,6 +188,10 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     cancelMessage,
     deleteMessage,
+    startEditing,
+    cancelEditing,
+    editMessage,
+    resendConversation,
     clearHistory,
     loadSession,
     saveCurrentSession,

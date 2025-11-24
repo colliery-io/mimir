@@ -7,7 +7,7 @@ use tracing::{info, debug, error};
 
 /// Search optional features in the database with filters
 #[tauri::command]
-pub async fn search_optional_features_db(
+pub async fn search_optional_features(
     name: Option<String>,
     feature_types: Option<Vec<String>>,
     sources: Option<Vec<String>>,
@@ -39,7 +39,7 @@ pub async fn search_optional_features_db(
 
 /// Get detailed optional feature information by ID
 #[tauri::command]
-pub async fn get_optional_feature_db(
+pub async fn get_optional_feature(
     id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<OptionalFeature, String> {

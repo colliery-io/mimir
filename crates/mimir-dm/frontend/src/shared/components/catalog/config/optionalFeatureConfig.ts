@@ -54,7 +54,7 @@ export const optionalFeatureConfig: CatalogConfig = {
     }
   ],
   searchCommands: {
-    search: 'search_optional_features_db',
+    search: 'search_optional_features',
     details: 'get_optional_feature_details',
     sources: 'get_optional_feature_sources'
   },

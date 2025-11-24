@@ -23,21 +23,23 @@ export interface RewardSummary {
   has_prerequisites: boolean
 }
 
+export interface RewardFilters {
+  query?: string
+  sources?: string[]
+  reward_types?: string[]
+  has_prerequisites?: boolean
+}
+
 export function useRewards() {
   async function initializeRewardCatalog() {
     try {
       await invoke('initialize_reward_catalog')
     } catch (e) {
-      console.error(`Failed to initialize reward catalog: ${e}`)
+      // Initialization failed silently
     }
   }
 
-  async function searchRewards(filters: {
-    query?: string
-    sources?: string[]
-    reward_types?: string[]
-    has_prerequisites?: boolean
-  }): Promise<RewardSummary[]> {
+  async function searchRewards(filters: RewardFilters = {}): Promise<RewardSummary[]> {
     try {
       const results = await invoke<RewardSummary[]>('search_rewards', {
         query: filters.query || null,
@@ -47,7 +49,6 @@ export function useRewards() {
       })
       return results || []
     } catch (e) {
-      console.error(`Failed to search rewards: ${e}`)
       return []
     }
   }
@@ -57,7 +58,6 @@ export function useRewards() {
       const details = await invoke<Reward>('get_reward_details', { name, source })
       return details
     } catch (e) {
-      console.error(`Failed to get reward details: ${e}`)
       return null
     }
   }
@@ -67,7 +67,6 @@ export function useRewards() {
       const types = await invoke<string[]>('get_reward_types')
       return types || []
     } catch (e) {
-      console.error(`Failed to get reward types: ${e}`)
       return []
     }
   }
@@ -77,7 +76,6 @@ export function useRewards() {
       const sources = await invoke<string[]>('get_reward_sources')
       return sources || []
     } catch (e) {
-      console.error(`Failed to get reward sources: ${e}`)
       return []
     }
   }

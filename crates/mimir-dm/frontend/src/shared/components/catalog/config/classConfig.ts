@@ -77,13 +77,13 @@ export const classConfig: CatalogConfig = {
       type: 'multiselect',
       key: 'sources',
       label: 'Source',
-      apiSource: 'get_class_sources_db'
+      apiSource: 'get_class_sources'
     },
     {
       type: 'multiselect',
       key: 'primary_abilities',
       label: 'Primary Ability',
-      apiSource: 'get_class_primary_abilities_db'
+      apiSource: 'get_class_primary_abilities'
     },
     {
       type: 'checkbox',
@@ -92,9 +92,9 @@ export const classConfig: CatalogConfig = {
     }
   ],
   searchCommands: {
-    search: 'search_classes_db',
-    details: 'get_class_details_db',
-    sources: 'get_class_statistics_db'
+    search: 'search_classes',
+    details: 'get_class_details',
+    sources: 'get_class_statistics'
   },
   emptyMessage: {
     title: 'No classes found',

@@ -2,7 +2,7 @@
 id: create-database-migrations-for
 level: task
 title: "Create database migrations for players and characters tables"
-short_code: "MIMIR-T-0042"
+short_code: "MIMIR-T-0065"
 created_at: 2025-11-10T18:56:57.987210+00:00
 updated_at: 2025-11-11T16:57:11.901232+00:00
 parent: MIMIR-I-0004

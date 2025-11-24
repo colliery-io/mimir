@@ -132,7 +132,7 @@ fn collect_spell_files(content: &mut BookContent, data_dir: &Path, source: &str)
     if !spells_dir.exists() {
         return Ok(());
     }
-    
+
     // Main spell file
     let spell_file = spells_dir.join(format!("spells-{}.json", source.to_lowercase()));
     if spell_file.exists() {
@@ -140,7 +140,7 @@ fn collect_spell_files(content: &mut BookContent, data_dir: &Path, source: &str)
             content.add_json(&format!("spells/spells-{}.json", source.to_lowercase()), &data)?;
         }
     }
-    
+
     // Fluff spell file
     let fluff_file = spells_dir.join(format!("fluff-spells-{}.json", source.to_lowercase()));
     if fluff_file.exists() {
@@ -148,7 +148,22 @@ fn collect_spell_files(content: &mut BookContent, data_dir: &Path, source: &str)
             content.add_json(&format!("spells/fluff-spells-{}.json", source.to_lowercase()), &data)?;
         }
     }
-    
+
+    // Spell-class associations from sources.json
+    // Extract only the entries for this book's source
+    let sources_file = spells_dir.join("sources.json");
+    if sources_file.exists() {
+        if let Ok(sources_data) = parser::load_json_file(&sources_file) {
+            if let Some(source_spells) = sources_data.get(source) {
+                // Create a filtered sources.json with just this book's spell-class mappings
+                let filtered = json!({
+                    source: source_spells.clone()
+                });
+                content.add_json("spells/sources.json", &filtered)?;
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -555,15 +570,105 @@ fn collect_filtered_races(content: &mut BookContent, data_dir: &Path, source: &s
     if !races_file.exists() {
         return Ok(());
     }
-    
+
     let data = parser::load_json_file(&races_file)?;
     let races = parser::filter_by_source(&data, source, "race");
     let subraces = parser::filter_by_source(&data, source, "subrace");
-    
-    if !races.is_empty() || !subraces.is_empty() {
-        let result = json!({ 
+
+    // Build a map of base races for parent lookups
+    let mut race_map: std::collections::HashMap<String, &serde_json::Value> = std::collections::HashMap::new();
+    for race in &races {
+        if let Some(name) = race.get("name").and_then(|n| n.as_str()) {
+            race_map.insert(name.to_string(), race);
+        }
+    }
+
+    // Merge parent race abilities into subraces
+    let merged_subraces: Vec<serde_json::Value> = subraces.iter().map(|subrace| {
+        let mut merged = subrace.clone();
+
+        // Get parent race name
+        if let Some(race_name) = subrace.get("raceName").and_then(|n| n.as_str()) {
+            if let Some(parent_race) = race_map.get(race_name) {
+                // Merge abilities from parent race
+                if let Some(parent_abilities) = parent_race.get("ability") {
+                    let mut merged_abilities = parent_abilities.as_array()
+                        .cloned()
+                        .unwrap_or_default();
+
+                    // Add subrace abilities
+                    if let Some(subrace_abilities) = subrace.get("ability").and_then(|a| a.as_array()) {
+                        merged_abilities.extend(subrace_abilities.clone());
+                    }
+
+                    merged["ability"] = serde_json::Value::Array(merged_abilities);
+                }
+
+                // Inherit size if not specified
+                if merged.get("size").is_none() {
+                    if let Some(size) = parent_race.get("size") {
+                        merged["size"] = size.clone();
+                    }
+                }
+
+                // Inherit speed if not specified
+                if merged.get("speed").is_none() {
+                    if let Some(speed) = parent_race.get("speed") {
+                        merged["speed"] = speed.clone();
+                    }
+                }
+
+                // Inherit darkvision if not specified
+                if merged.get("darkvision").is_none() {
+                    if let Some(darkvision) = parent_race.get("darkvision") {
+                        merged["darkvision"] = darkvision.clone();
+                    }
+                }
+
+                // Inherit languageProficiencies if not specified
+                if merged.get("languageProficiencies").is_none() {
+                    if let Some(langs) = parent_race.get("languageProficiencies") {
+                        merged["languageProficiencies"] = langs.clone();
+                    }
+                }
+
+                // Inherit resist (damage resistances) if not specified
+                if merged.get("resist").is_none() {
+                    if let Some(resist) = parent_race.get("resist") {
+                        merged["resist"] = resist.clone();
+                    }
+                }
+
+                // Inherit toolProficiencies if not specified
+                if merged.get("toolProficiencies").is_none() {
+                    if let Some(tools) = parent_race.get("toolProficiencies") {
+                        merged["toolProficiencies"] = tools.clone();
+                    }
+                }
+
+                // Inherit weaponProficiencies if not specified
+                if merged.get("weaponProficiencies").is_none() {
+                    if let Some(weapons) = parent_race.get("weaponProficiencies") {
+                        merged["weaponProficiencies"] = weapons.clone();
+                    }
+                }
+
+                // Inherit armorProficiencies if not specified
+                if merged.get("armorProficiencies").is_none() {
+                    if let Some(armor) = parent_race.get("armorProficiencies") {
+                        merged["armorProficiencies"] = armor.clone();
+                    }
+                }
+            }
+        }
+
+        merged
+    }).collect();
+
+    if !races.is_empty() || !merged_subraces.is_empty() {
+        let result = json!({
             "race": races,
-            "subrace": subraces
+            "subrace": merged_subraces
         });
         content.add_json(&format!("races/{}.json", source.to_lowercase()), &result)?;
     }

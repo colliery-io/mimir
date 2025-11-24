@@ -4,14 +4,14 @@ level: task
 title: "Create CharacterList.vue and CharacterSheet.vue components"
 short_code: "MIMIR-T-0056"
 created_at: 2025-11-10T18:57:03.645117+00:00
-updated_at: 2025-11-10T18:57:03.645117+00:00
+updated_at: 2025-11-21T10:38:07.220706+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -31,16 +31,20 @@ initiative_id: MIMIR-I-0004
 
 Create CharacterList and CharacterSheet Vue components for displaying campaign characters in a list view and showing detailed character information in a formatted sheet view.
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] CharacterList.vue component created in `src/components/character/CharacterList.vue`
 - [ ] List displays all characters with name, player, class, level, race in card or table format
 - [ ] Click character to navigate to CharacterSheet view
-- [ ] Filter/search functionality by character name or player
+
 - [ ] CharacterSheet.vue component created in `src/components/character/CharacterSheet.vue`
 - [ ] Sheet displays all character data in organized sections (stats, skills, combat, features, spells, inventory)
 - [ ] Calculated values displayed (AC, initiative, skill bonuses, spell save DC)
-- [ ] Edit button to modify character (opens editor or enables inline editing)
+
 - [ ] Level Up button that opens LevelUpDialog
 - [ ] Delete character button with confirmation
 

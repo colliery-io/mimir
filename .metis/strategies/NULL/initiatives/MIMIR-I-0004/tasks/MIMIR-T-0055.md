@@ -4,14 +4,14 @@ level: task
 title: "Create CharacterCreator.vue multi-step wizard"
 short_code: "MIMIR-T-0055"
 created_at: 2025-11-10T18:57:03.055901+00:00
-updated_at: 2025-11-10T18:57:03.055901+00:00
+updated_at: 2025-11-20T10:16:18.971664+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: MIMIR-I-0004
 ## Objective **[REQUIRED]**
 
 Create a multi-step wizard component for character creation guiding users through race selection, class selection, ability scores, background, equipment, and final review.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
-import type { Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useCatalogSearch } from './useCatalogSearch'
 
 export interface ClassSummary {
   name: string
@@ -105,81 +105,51 @@ export interface Class {
 }
 
 export function useClasses() {
-  const isClassesInitialized = ref(false)
-  const isLoading = ref(false)
-  const error: Ref<string | null> = ref(null)
-  const classes = ref<ClassSummary[]>([])
   const classSources = ref<string[]>([])
 
-  async function initializeClassCatalog() {
-    isClassesInitialized.value = true
-  }
+  const catalog = useCatalogSearch<ClassSummary, ClassWithDetails, ClassFilters>({
+    name: 'class',
+    searchCommand: 'search_classes',
+    detailsCommand: 'get_class_details',
+    transformFilters: (filters) => ({
+      filters: {
+        name: filters.name || null,
+        sources: filters.sources || null,
+        has_spellcasting: filters.has_spellcasting || null,
+        primary_abilities: filters.primary_abilities || null,
+      }
+    }),
+  })
 
-  async function searchClasses(filters: ClassFilters): Promise<ClassSummary[]> {
-    if (!isClassesInitialized.value) {
-      await initializeClassCatalog()
-    }
-
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const results = await invoke<ClassSummary[]>('search_classes_db', {
-        filters: {
-          name: filters.name || null,
-          sources: filters.sources || null,
-          has_spellcasting: filters.has_spellcasting || null,
-          primary_abilities: filters.primary_abilities || null,
-        }
-      })
-
-      console.log('search_classes_db returned:', results)
-      console.log('First 5 results detail:', results.slice(0, 5))
-
-      classes.value = results
-      return results
-    } catch (e) {
-      error.value = `Search failed: ${e}`
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
+  // Custom getDetails with different parameter names
   async function getClassDetails(name: string, source: string): Promise<ClassWithDetails | null> {
     try {
-      console.log('getClassDetails called with:', { name, source })
-      const classDetails = await invoke<ClassWithDetails>('get_class_details_db', {
+      const classDetails = await invoke<ClassWithDetails>('get_class_details', {
         className: name,
         classSource: source
       })
-      console.log('getClassDetails returned:', classDetails)
       return classDetails
     } catch (e) {
-      console.error('getClassDetails error:', e)
       return null
     }
   }
 
   async function getSubclassDetails(subclassName: string, className: string, classSource: string): Promise<Subclass | null> {
     try {
-      console.log('getSubclassDetails called with:', { subclassName, className, classSource })
-      const subclassDetails = await invoke<Subclass>('get_subclass_details_db', {
+      const subclassDetails = await invoke<Subclass>('get_subclass_details', {
         subclassName: subclassName,
         className: className,
         classSource: classSource
       })
-      console.log('getSubclassDetails returned:', subclassDetails)
       return subclassDetails
     } catch (e) {
-      console.error('getSubclassDetails error:', e)
       return null
     }
   }
 
   async function getClassSubclasses(className: string, classSource: string): Promise<Subclass[]> {
     try {
-      const subclasses = await invoke<Subclass[]>('get_class_subclasses_db', {
+      const subclasses = await invoke<Subclass[]>('get_class_subclasses', {
         class_name: className,
         class_source: classSource
       })
@@ -190,13 +160,13 @@ export function useClasses() {
   }
 
   return {
-    isClassesInitialized,
-    isLoading,
-    error,
-    classes,
+    isClassesInitialized: catalog.isInitialized,
+    isLoading: catalog.isLoading,
+    error: catalog.error,
+    classes: catalog.results,
     classSources,
-    initializeClassCatalog,
-    searchClasses,
+    initializeClassCatalog: catalog.initialize,
+    searchClasses: catalog.search,
     getClassDetails,
     getSubclassDetails,
     getClassSubclasses,

@@ -3,12 +3,22 @@
 //! This service provides database-backed spell search and retrieval,
 //! replacing the in-memory catalog system.
 
-use crate::models::catalog::{CatalogSpell, SpellFilters, SpellSummary, Spell, NewCatalogSpell, SpellData};
+use crate::models::catalog::{CatalogSpell, SpellFilters, SpellSummary, Spell, NewCatalogSpell, SpellData, Classes, ClassReference};
 use crate::schema::catalog_spells;
 use diesel::prelude::*;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use tracing::{debug, error, info, warn};
+
+/// Spell class data from sources.json
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct SpellSourceEntry {
+    pub class: Option<Vec<ClassReference>>,
+}
+
+/// Map of source -> spell name -> class data
+pub type SpellSources = HashMap<String, HashMap<String, SpellSourceEntry>>;
 
 pub struct SpellService;
 
@@ -186,12 +196,20 @@ impl SpellService {
             return Ok(0);
         }
 
+        // Load spell-class associations from sources.json if it exists
+        let spell_sources = Self::load_spell_sources(book_dir);
+        if spell_sources.is_some() {
+            info!("Loaded spell-class associations from sources.json");
+        } else {
+            info!("No sources.json found, spells will not have class associations");
+        }
+
         info!("Found {} spell files to process", spell_files.len());
 
         for spell_file in spell_files {
             debug!("Processing spell file: {:?}", spell_file);
 
-            match Self::import_spells_from_file(conn, &spell_file, source) {
+            match Self::import_spells_from_file(conn, &spell_file, source, spell_sources.as_ref()) {
                 Ok(count) => {
                     info!("Imported {} spells from {:?}", count, spell_file);
                     total_imported += count;
@@ -205,6 +223,51 @@ impl SpellService {
 
         info!("Successfully imported {} total spells from {}", total_imported, source);
         Ok(total_imported)
+    }
+
+    /// Load spell-class associations from sources.json
+    fn load_spell_sources(book_dir: &Path) -> Option<SpellSources> {
+        info!("Looking for sources.json, book_dir: {:?}", book_dir);
+
+        // Look for sources.json in common locations
+        // Also check parent directories since sources.json is shared across books
+        let mut possible_paths = vec![
+            book_dir.join("data/spells/sources.json"),
+            book_dir.join("spells/sources.json"),
+            book_dir.join("sources.json"),
+        ];
+
+        // Check parent directory (for shared sources.json)
+        if let Some(parent) = book_dir.parent() {
+            possible_paths.push(parent.join("sources.json"));
+            possible_paths.push(parent.join("spells/sources.json"));
+        }
+
+        for path in possible_paths {
+            if path.exists() {
+                debug!("Found sources.json at: {:?}", path);
+                match fs::read_to_string(&path) {
+                    Ok(content) => {
+                        match serde_json::from_str::<SpellSources>(&content) {
+                            Ok(sources) => {
+                                let total_spells: usize = sources.values()
+                                    .map(|m| m.len())
+                                    .sum();
+                                debug!("Loaded {} spell entries from sources.json", total_spells);
+                                return Some(sources);
+                            }
+                            Err(e) => {
+                                warn!("Failed to parse sources.json: {}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to read sources.json: {}", e);
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// Find all spell JSON files in a book directory
@@ -260,7 +323,8 @@ impl SpellService {
     fn import_spells_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
+        spell_sources: Option<&SpellSources>
     ) -> Result<usize, String> {
         debug!("Reading spell file: {:?}", file_path);
 
@@ -322,10 +386,28 @@ impl SpellService {
 
         debug!("Processing {} spells for database import", spells_to_import.len());
 
-        // Transform spells to database format
+        // Transform spells to database format, merging class data from sources.json
         let catalog_spells: Vec<NewCatalogSpell> = spells_to_import
             .into_iter()
-            .map(|spell| NewCatalogSpell::from_spell(spell, source))
+            .map(|mut spell| {
+                // Look up class data from sources.json
+                if let Some(sources) = spell_sources {
+                    if let Some(source_spells) = sources.get(&spell.source) {
+                        if let Some(entry) = source_spells.get(&spell.name) {
+                            if let Some(class_list) = &entry.class {
+                                // Merge class data into spell
+                                spell.classes = Some(Classes {
+                                    from_class_list: Some(class_list.clone()),
+                                    from_subclass: None,
+                                });
+                                debug!("Added {} class associations for spell '{}'",
+                                    class_list.len(), spell.name);
+                            }
+                        }
+                    }
+                }
+                NewCatalogSpell::from_spell(spell, source)
+            })
             .collect();
 
         // Batch insert spells

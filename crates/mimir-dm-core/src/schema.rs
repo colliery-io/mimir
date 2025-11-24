@@ -136,7 +136,7 @@ diesel::table! {
 diesel::table! {
     characters (id) {
         id -> Integer,
-        campaign_id -> Integer,
+        campaign_id -> Nullable<Integer>,
         player_id -> Integer,
         character_name -> Text,
         is_npc -> Integer,
@@ -145,6 +145,8 @@ diesel::table! {
         directory_path -> Text,
         created_at -> Text,
         last_updated_at -> Text,
+        class -> Nullable<Text>,
+        race -> Nullable<Text>,
     }
 }
 

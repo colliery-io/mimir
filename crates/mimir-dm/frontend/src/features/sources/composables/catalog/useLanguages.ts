@@ -8,6 +8,13 @@ export interface LanguageSummary {
   typical_speakers: string
 }
 
+export interface LanguageFilters {
+  query?: string
+  sources?: string[]
+  types?: string[]
+  scripts?: string[]
+}
+
 export interface Language {
   name: string
   source: string
@@ -29,16 +36,11 @@ export function useLanguages() {
     try {
       await invoke('init_language_catalog')
     } catch (e) {
-      console.error(`Failed to initialize language catalog: ${e}`)
+      // Initialization failed silently
     }
   }
 
-  async function searchLanguages(filters: {
-    query?: string
-    sources?: string[]
-    types?: string[]
-    scripts?: string[]
-  }) {
+  async function searchLanguages(filters: LanguageFilters = {}): Promise<LanguageSummary[]> {
     try {
       const results = await invoke<LanguageSummary[]>('search_languages', {
         query: filters.query || null,
@@ -48,7 +50,6 @@ export function useLanguages() {
       })
       return results || []
     } catch (e) {
-      console.error(`Failed to search languages: ${e}`)
       return []
     }
   }
@@ -58,7 +59,6 @@ export function useLanguages() {
       const details = await invoke<Language>('get_language_details', { name, source })
       return details
     } catch (e) {
-      console.error(`Failed to get language details: ${e}`)
       return null
     }
   }
@@ -68,7 +68,6 @@ export function useLanguages() {
       const types = await invoke<string[]>('get_language_types')
       return types || []
     } catch (e) {
-      console.error(`Failed to get language types: ${e}`)
       return []
     }
   }
@@ -78,7 +77,6 @@ export function useLanguages() {
       const scripts = await invoke<string[]>('get_language_scripts')
       return scripts || []
     } catch (e) {
-      console.error(`Failed to get language scripts: ${e}`)
       return []
     }
   }

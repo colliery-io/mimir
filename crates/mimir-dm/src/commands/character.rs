@@ -2,13 +2,18 @@
 
 use tauri::State;
 use mimir_dm_core::models::character::{Character, CharacterData, CharacterVersion};
+use mimir_dm_core::models::character::data::ClassLevel;
 use mimir_dm_core::models::character::data::{InventoryItem, Personality};
 use mimir_dm_core::services::CharacterService;
 use mimir_dm_core::services::character::creation::{CharacterBuilder, AbilityScoreMethod};
 use mimir_dm_core::services::character::level_up::{AsiOrFeat, LevelUpOptions, HpGainMethod};
 use mimir_dm_core::services::character::spell_management::RestType;
+use mimir_dm_core::services::character::renderer::{MarkdownRenderer, CharacterRenderer};
+use mimir_dm_core::services::{SpellService, ItemService};
+use mimir_dm_core::models::catalog::Spell;
 use mimir_dm_core::DatabaseService;
 use std::sync::Arc;
+use std::collections::HashMap;
 use tracing::error;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +36,8 @@ pub struct CreateCharacterRequest {
     pub personality: Option<PersonalityInput>,
     pub skill_proficiencies: Option<Vec<String>>,
     pub equipment: Option<Vec<InventoryItemInput>>,
+    pub cantrips: Option<Vec<String>>,
+    pub known_spells: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,6 +61,7 @@ pub struct PersonalityInput {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InventoryItemInput {
     pub name: String,
+    pub source: Option<String>,
     pub quantity: i32,
     pub weight: f64,
     pub value: f64,
@@ -70,6 +78,8 @@ pub struct LevelUpRequest {
     pub ability_score_improvement: Option<String>, // JSON string with ASI data
     pub feat: Option<String>,
     pub new_spell_slots: Option<String>, // JSON string with spell slot updates
+    pub new_known_spells: Option<Vec<String>>, // Updated known spells list
+    pub new_cantrips: Option<Vec<String>>, // Updated cantrips list
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,6 +89,78 @@ pub struct CurrencyUpdate {
     pub electrum: Option<i32>,
     pub gold: Option<i32>,
     pub platinum: Option<i32>,
+}
+
+/// Create a minimal character for MVP (placeholder until full wizard is implemented)
+#[tauri::command]
+pub async fn create_minimal_character(
+    player_id: i32,
+    character_name: String,
+    race: String,
+    class: String,
+    background: String,
+    campaign_id: Option<i32>,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<Character, String> {
+    use chrono::Utc;
+    use mimir_dm_core::models::character::data::{CharacterData, AbilityScores, Proficiencies, SpellData, Currency, Personality, EquippedItems};
+
+    let mut conn = db_service.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    // Create minimal character data with placeholder values
+    let character_data = CharacterData {
+        character_name: character_name.clone(),
+        player_id,
+        level: 1,
+        experience_points: 0,
+        version: 1,
+        snapshot_reason: Some("Initial character creation".to_string()),
+        created_at: Utc::now().to_rfc3339(),
+        race,
+        subrace: None,
+        classes: vec![ClassLevel {
+            class_name: class,
+            level: 1,
+            subclass: None,
+            hit_dice_type: "d8".to_string(),
+            hit_dice_remaining: 1,
+        }],
+        background,
+        alignment: None,
+        abilities: AbilityScores {
+            strength: 10,
+            dexterity: 10,
+            constitution: 10,
+            intelligence: 10,
+            wisdom: 10,
+            charisma: 10,
+        },
+        max_hp: 10,
+        current_hp: 10,
+        speed: 30,
+        proficiencies: Proficiencies {
+            skills: vec![],
+            saves: vec![],
+            armor: vec![],
+            weapons: vec![],
+            tools: vec![],
+            languages: vec![],
+        },
+        class_features: vec![],
+        feats: vec![],
+        spells: SpellData::default(),
+        inventory: vec![],
+        currency: Currency::default(),
+        equipped: EquippedItems::default(),
+        personality: Personality::default(),
+    };
+
+    let mut char_service = CharacterService::new(&mut conn);
+    char_service.create_character(campaign_id, player_id, "", character_data)
+        .map_err(|e| format!("Failed to create character: {}", e))
 }
 
 /// Create a new character with full builder pattern
@@ -167,6 +249,7 @@ pub async fn create_character(
         for item in equipment {
             builder = builder.add_equipment(InventoryItem {
                 name: item.name,
+                source: item.source,
                 quantity: item.quantity,
                 weight: item.weight,
                 value: item.value,
@@ -176,16 +259,36 @@ pub async fn create_character(
     }
 
     // Build and validate
-    builder.build()
-        .map_err(|e| format!("Failed to build character: {}", e))
+    let mut character_data = builder.build()
+        .map_err(|e| format!("Failed to build character: {}", e))?;
+
+    // Set spells if provided
+    if let Some(cantrips) = request.cantrips {
+        character_data.spells.cantrips = cantrips;
+    }
+    if let Some(known_spells) = request.known_spells {
+        character_data.spells.known_spells = known_spells;
+    }
+
+    // Persist to database using CharacterService
+    let mut char_service = CharacterService::new(&mut conn);
+    char_service.create_character(
+        None, // campaign_id - not assigned yet
+        request.player_id,
+        "", // base_directory - empty for unassigned characters
+        character_data.clone(),
+    )
+    .map_err(|e| format!("Failed to save character: {}", e))?;
+
+    Ok(character_data)
 }
 
 /// Store a created character in the database
 #[tauri::command]
 pub async fn store_character(
-    campaign_id: i32,
+    campaign_id: Option<i32>,
     player_id: i32,
-    campaign_directory: String,
+    base_directory: Option<String>,
     character_data: CharacterData,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Character, String> {
@@ -194,8 +297,11 @@ pub async fn store_character(
         format!("Database connection failed: {}", e)
     })?;
 
+    // Use empty string if no directory provided (for unassigned characters)
+    let directory = base_directory.unwrap_or_default();
+
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.create_character(campaign_id, player_id, &campaign_directory, character_data)
+    char_service.create_character(campaign_id, player_id, &directory, character_data)
         .map_err(|e| format!("Failed to store character: {}", e))
 }
 
@@ -213,6 +319,44 @@ pub async fn get_character(
     let mut char_service = CharacterService::new(&mut conn);
     char_service.get_character(character_id)
         .map_err(|e| format!("Failed to get character: {}", e))
+}
+
+/// Get spell slots for a character based on class rules
+#[tauri::command]
+pub async fn get_character_spell_slots(
+    character_id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<std::collections::HashMap<i32, mimir_dm_core::models::character::data::SpellSlots>, String> {
+    use mimir_dm_core::services::character::calculate_spell_slots;
+
+    let mut conn = db_service.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    // Get character data
+    let mut char_service = CharacterService::new(&mut conn);
+    let (_, char_data) = char_service.get_character(character_id)
+        .map_err(|e| format!("Failed to get character: {}", e))?;
+
+    // Calculate spell slots from class rules
+    calculate_spell_slots(&mut conn, &char_data)
+        .map_err(|e| format!("Failed to calculate spell slots: {}", e))
+}
+
+/// List all characters (including unassigned)
+#[tauri::command]
+pub async fn list_all_characters(
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<Vec<Character>, String> {
+    let mut conn = db_service.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    let mut char_service = CharacterService::new(&mut conn);
+    char_service.list_all_characters()
+        .map_err(|e| format!("Failed to list characters: {}", e))
 }
 
 /// List all characters for a campaign
@@ -298,6 +442,34 @@ pub async fn delete_character(
         .map_err(|e| format!("Failed to delete character: {}", e))
 }
 
+/// Assign a character to a campaign
+#[tauri::command]
+pub async fn assign_character_to_campaign(
+    character_id: i32,
+    campaign_id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<Character, String> {
+    use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
+
+    let mut conn = db_service.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    // Get campaign directory
+    let campaign_directory = {
+        let mut campaign_repo = CampaignRepository::new(&mut conn);
+        let campaign = campaign_repo.find_by_id(campaign_id)
+            .map_err(|e| format!("Failed to find campaign: {}", e))?
+            .ok_or_else(|| format!("Campaign with id {} not found", campaign_id))?;
+        campaign.directory_path
+    };
+
+    let mut char_service = CharacterService::new(&mut conn);
+    char_service.assign_to_campaign(character_id, campaign_id, &campaign_directory)
+        .map_err(|e| format!("Failed to assign character to campaign: {}", e))
+}
+
 /// Level up a character
 #[tauri::command]
 pub async fn level_up_character(
@@ -340,8 +512,31 @@ pub async fn level_up_character(
     };
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.level_up_character(character_id, options)
-        .map_err(|e| format!("Failed to level up character: {}", e))
+    let result = char_service.level_up_character(character_id, options)
+        .map_err(|e| format!("Failed to level up character: {}", e))?;
+
+    // Update spells if provided
+    if request.new_known_spells.is_some() || request.new_cantrips.is_some() {
+        // Get current character data
+        let (_, mut char_data) = char_service.get_character(character_id)
+            .map_err(|e| format!("Failed to get character for spell update: {}", e))?;
+
+        // Update cantrips if provided
+        if let Some(cantrips) = request.new_cantrips {
+            char_data.spells.cantrips = cantrips;
+        }
+
+        // Update known spells if provided
+        if let Some(known) = request.new_known_spells {
+            char_data.spells.known_spells = known;
+        }
+
+        // Save the updated character
+        char_service.update_character(character_id, char_data, Some("Spell selection".to_string()))
+            .map_err(|e| format!("Failed to update spells: {}", e))?;
+    }
+
+    Ok(result)
 }
 
 /// Add a spell to known spells
@@ -482,4 +677,104 @@ pub async fn update_character_currency(
         currency.gold.unwrap_or(0),
         currency.platinum.unwrap_or(0),
     ).map_err(|e| format!("Failed to update currency: {}", e))
+}
+
+/// Update character equipped items
+#[tauri::command]
+pub async fn update_character_equipped(
+    character_id: i32,
+    armor: Option<String>,
+    shield: Option<String>,
+    main_hand: Option<String>,
+    off_hand: Option<String>,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<CharacterVersion, String> {
+    let mut conn = db_service.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    let mut char_service = CharacterService::new(&mut conn);
+    char_service.update_equipped(character_id, armor, shield, main_hand, off_hand)
+        .map_err(|e| format!("Failed to update equipped items: {}", e))
+}
+
+/// Render character sheet as markdown
+#[tauri::command]
+pub async fn render_character_sheet(
+    character_id: i32,
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<String, String> {
+    let mut conn = db_service.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    let mut char_service = CharacterService::new(&mut conn);
+    let (_character, char_data) = char_service.get_character(character_id)
+        .map_err(|e| format!("Failed to get character: {}", e))?;
+
+    // Fetch spell details for all character spells
+    let mut spell_details: HashMap<String, Spell> = HashMap::new();
+
+    // Collect all spell names
+    let mut all_spell_names = Vec::new();
+    all_spell_names.extend(char_data.spells.cantrips.iter().cloned());
+    all_spell_names.extend(char_data.spells.known_spells.iter().cloned());
+
+    // Fetch details for each spell from catalog
+    for spell_name in all_spell_names {
+        // Try to find the spell in the catalog (search by name, use first match)
+        use mimir_dm_core::models::catalog::SpellFilters;
+        let filters = SpellFilters {
+            query: Some(spell_name.clone()),
+            levels: vec![],
+            schools: vec![],
+            sources: vec![],
+            tags: vec![],
+            limit: Some(1),
+            offset: None,
+        };
+
+        // First search to find the spell's source
+        if let Ok(summaries) = SpellService::search_spells(&mut conn, filters) {
+            if let Some(summary) = summaries.first() {
+                // Now get full details with the correct source
+                if let Ok(Some(spell)) = SpellService::get_spell_details(
+                    &mut conn,
+                    &summary.name,
+                    &summary.source,
+                ) {
+                    spell_details.insert(spell_name, spell);
+                }
+            }
+        }
+    }
+
+    // Fetch item details for all inventory items
+    use mimir_dm_core::models::catalog::Item;
+    let mut item_details: HashMap<String, Item> = HashMap::new();
+    let mut item_service = ItemService::new(&mut conn);
+
+    for item in &char_data.inventory {
+        let source = item.source.as_deref().unwrap_or("PHB");
+        let key = format!("{}:{}", item.name, source);
+
+        if let Ok(Some(details)) = item_service.get_item_by_name_and_source(&item.name, source) {
+            item_details.insert(key, details);
+        }
+    }
+
+    let renderer = MarkdownRenderer::new();
+    Ok(renderer.render_with_details(&char_data, &spell_details, &item_details))
+}
+
+/// Write text to a file
+#[tauri::command]
+pub async fn write_text_file(
+    path: String,
+    contents: String,
+) -> Result<(), String> {
+    std::fs::write(&path, contents)
+        .map_err(|e| format!("Failed to write file: {}", e))
 }

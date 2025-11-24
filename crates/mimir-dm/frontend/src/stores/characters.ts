@@ -38,6 +38,26 @@ export const useCharacterStore = defineStore('characters', () => {
   // Actions
 
   /**
+   * Fetch all characters (including unassigned)
+   */
+  const fetchAllCharacters = async () => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const result = await invoke<Character[]>('list_all_characters')
+      characters.value = result
+      return result
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to fetch characters'
+      console.error('Error fetching characters:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Fetch all characters for a campaign
    */
   const fetchCharactersForCampaign = async (campaignId: number) => {
@@ -67,9 +87,11 @@ export const useCharacterStore = defineStore('characters', () => {
     error.value = null
 
     try {
-      const result = await invoke<CharacterWithData>('get_character', {
+      // Backend returns tuple [Character, CharacterData], convert to object
+      const [character, data] = await invoke<[Character, CharacterData]>('get_character', {
         characterId
       })
+      const result: CharacterWithData = { character, data }
       currentCharacter.value = result
 
       // Update in characters list if present
@@ -318,7 +340,7 @@ export const useCharacterStore = defineStore('characters', () => {
     error.value = null
 
     try {
-      const result = await invoke<CharacterVersion>('add_item', {
+      const result = await invoke<CharacterVersion>('add_item_to_inventory', {
         characterId,
         itemName,
         itemSource,
@@ -351,7 +373,7 @@ export const useCharacterStore = defineStore('characters', () => {
     error.value = null
 
     try {
-      const result = await invoke<CharacterVersion>('remove_item', {
+      const result = await invoke<CharacterVersion>('remove_item_from_inventory', {
         characterId,
         itemName,
         quantity
@@ -383,7 +405,7 @@ export const useCharacterStore = defineStore('characters', () => {
     try {
       const result = await invoke<CharacterVersion>('update_character_currency', {
         characterId,
-        update
+        currency: update
       })
 
       // Refresh character data
@@ -393,6 +415,41 @@ export const useCharacterStore = defineStore('characters', () => {
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update currency'
       console.error('Error updating currency:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Update character equipped items
+   */
+  const updateEquipped = async (
+    characterId: number,
+    armor: string | null,
+    shield: string | null,
+    mainHand: string | null,
+    offHand: string | null
+  ) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const result = await invoke<CharacterVersion>('update_character_equipped', {
+        characterId,
+        armor,
+        shield,
+        mainHand,
+        offHand
+      })
+
+      // Refresh character data
+      await getCharacter(characterId)
+
+      return result
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update equipped items'
+      console.error('Error updating equipped items:', e)
       throw e
     } finally {
       loading.value = false
@@ -507,6 +564,7 @@ export const useCharacterStore = defineStore('characters', () => {
     currentCharacterProficiencyBonus,
 
     // Actions
+    fetchAllCharacters,
     fetchCharactersForCampaign,
     getCharacter,
     createCharacter,
@@ -519,6 +577,7 @@ export const useCharacterStore = defineStore('characters', () => {
     addItem,
     removeItem,
     updateCurrency,
+    updateEquipped,
     deleteCharacter,
     getCharacterVersions,
     getCharacterVersion,

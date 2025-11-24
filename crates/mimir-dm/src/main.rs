@@ -10,19 +10,13 @@ mod types;
 use app_init::initialize_app;
 use commands::{logs, *};
 use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
-// use commands::catalog_background::{init_background_catalog, search_backgrounds, get_background_details}; // Replaced by catalog_background_db
 use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
-// use commands::catalog_optionalfeature::{init_optional_feature_catalog, search_optional_features, get_optional_feature_details, get_feature_types}; // Replaced by catalog_optional_feature_db
-// Deity catalog now uses database-backed commands only
-// Object catalog now uses database-backed service
-// Trap catalog now uses database-backed service
-use commands::catalog_language_db::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
-use commands::catalog_reward_db::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
-use commands::catalog_background_db::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
-use commands::catalog_feat_db::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
-use commands::catalog_psionic_db::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
-use commands::catalog_vehicle_db::{search_vehicles_db, get_vehicle_details_db, get_vehicle_types_db, get_vehicle_sizes_db, get_vehicle_terrains_db, get_vehicle_statistics_db};
-// Class catalog now uses database-backed commands only
+use commands::catalog_language::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
+use commands::catalog_reward::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
+use commands::catalog_background::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
+use commands::catalog_feat::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
+use commands::catalog_psionic::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
+use commands::catalog_vehicle::{search_vehicles, get_vehicle_details, get_vehicle_types, get_vehicle_sizes, get_vehicle_terrains, get_vehicle_statistics};
 use mimir_dm_core::{DatabaseService, run_migrations};
 use services::context_service::ContextState;
 use services::llm::{self, LlmService, ConfirmationReceivers, CancellationTokens};
@@ -127,14 +121,6 @@ fn main() {
             
             app.manage(llm_service);
 
-            // All catalogs now use database-backed services (no in-memory state needed)
-            
-            // Vehicle catalog now uses database-backed service (no state needed)
-            
-            // Cult catalog now uses database-backed system
-            
-            // Psionic catalog now uses database-backed service (no state needed)
-            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -229,26 +215,26 @@ fn main() {
             get_condition_sources,
             get_condition_count,
             // Optional feature catalog commands (database-backed)
-            search_optional_features_db,
-            get_optional_feature_db,
+            search_optional_features,
+            get_optional_feature,
             get_optional_feature_details,
             get_optional_feature_types,
             get_optional_feature_sources,
             // Item catalog commands (database-backed)
-            search_items_db,
-            get_item_db,
-            get_item_details_db,
-            get_item_types_db,
-            get_item_rarities_db,
-            get_item_sources_db,
+            search_items,
+            get_item,
+            get_item_details,
+            get_item_types,
+            get_item_rarities,
+            get_item_sources,
             // Monster catalog commands (database-backed)
-            search_monsters_db,
-            get_monster_details_db,
-            get_monster_sizes_db,
-            get_monster_types_db,
-            get_monster_alignments_db,
-            get_monster_cr_range_db,
-            get_monster_statistics_db,
+            search_monsters,
+            get_monster_details,
+            get_monster_sizes,
+            get_monster_types,
+            get_monster_alignments,
+            get_monster_cr_range,
+            get_monster_statistics,
             // Object catalog commands
             search_objects,
             get_object_details,
@@ -283,12 +269,12 @@ fn main() {
             get_reward_types,
             get_reward_sources,
             get_reward_count,
-            // Variant Rule catalog commands (database-backed)
-            commands::catalog_variant_rule_db::search_variant_rules,
-            commands::catalog_variant_rule_db::get_variant_rule,
-            commands::catalog_variant_rule_db::get_variant_rule_details,
-            commands::catalog_variant_rule_db::get_variant_rule_types,
-            commands::catalog_variant_rule_db::get_variant_rule_sources,
+            // Variant Rule catalog commands
+            commands::catalog_variant_rule::search_variant_rules,
+            commands::catalog_variant_rule::get_variant_rule,
+            commands::catalog_variant_rule::get_variant_rule_details,
+            commands::catalog_variant_rule::get_variant_rule_types,
+            commands::catalog_variant_rule::get_variant_rule_sources,
             // Psionic catalog commands
             search_psionics,
             get_psionic_details,
@@ -296,27 +282,27 @@ fn main() {
             get_psionic_orders,
             get_psionic_sources,
             // Deity catalog commands (database-backed)
-            search_deities_db,
-            get_deity_details_db,
-            get_deity_pantheons_db,
-            get_deity_domains_db,
-            get_deity_alignments_db,
-            get_deity_statistics_db,
+            search_deities,
+            get_deity_details,
+            get_deity_pantheons,
+            get_deity_domains,
+            get_deity_alignments,
+            get_deity_statistics,
             // Vehicle catalog commands (database-backed)
-            search_vehicles_db,
-            get_vehicle_details_db,
-            get_vehicle_types_db,
-            get_vehicle_sizes_db,
-            get_vehicle_terrains_db,
-            get_vehicle_statistics_db,
-            // Class catalog commands (database-backed)
-            commands::catalog_class_db::search_classes_db,
-            commands::catalog_class_db::get_class_details_db,
-            commands::catalog_class_db::get_subclass_details_db,
-            commands::catalog_class_db::get_class_subclasses_db,
-            commands::catalog_class_db::get_class_sources_db,
-            commands::catalog_class_db::get_class_primary_abilities_db,
-            commands::catalog_class_db::get_class_statistics_db,
+            search_vehicles,
+            get_vehicle_details,
+            get_vehicle_types,
+            get_vehicle_sizes,
+            get_vehicle_terrains,
+            get_vehicle_statistics,
+            // Class catalog commands
+            commands::catalog_class::search_classes,
+            commands::catalog_class::get_class_details,
+            commands::catalog_class::get_subclass_details,
+            commands::catalog_class::get_class_subclasses,
+            commands::catalog_class::get_class_sources,
+            commands::catalog_class::get_class_primary_abilities,
+            commands::catalog_class::get_class_statistics,
             // Context commands
             update_context,
             get_full_context,
@@ -361,14 +347,18 @@ fn main() {
             update_player,
             delete_player,
             // Character management commands
+            create_minimal_character,
             create_character,
             store_character,
             get_character,
+            get_character_spell_slots,
+            list_all_characters,
             list_characters_for_campaign,
             get_character_versions,
             get_character_version,
             update_character,
             delete_character,
+            assign_character_to_campaign,
             level_up_character,
             add_spell_to_known,
             prepare_spells,
@@ -376,7 +366,10 @@ fn main() {
             take_rest,
             add_item_to_inventory,
             remove_item_from_inventory,
-            update_character_currency
+            update_character_currency,
+            update_character_equipped,
+            render_character_sheet,
+            write_text_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -157,7 +157,7 @@ fn test_create_character_basic() {
     // Store character
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
         .unwrap();
 
     assert_eq!(character.character_name, "Gandalf");
@@ -188,7 +188,7 @@ fn test_get_character() {
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
         .unwrap();
 
     // Get character
@@ -227,7 +227,7 @@ fn test_list_characters_for_campaign() {
 
         let mut char_service = CharacterService::new(&mut conn);
         char_service
-            .create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data)
+            .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
             .unwrap();
     }
 
@@ -262,7 +262,7 @@ fn test_character_versioning() {
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
         .unwrap();
 
     // Get initial version
@@ -316,7 +316,7 @@ fn test_delete_character() {
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
         .unwrap();
 
     // Delete character
@@ -353,7 +353,7 @@ fn test_update_character_data() {
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
         .unwrap();
 
     // Update character

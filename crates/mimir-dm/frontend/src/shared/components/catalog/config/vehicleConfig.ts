@@ -113,25 +113,25 @@ export const vehicleConfig: CatalogConfig = {
       type: 'multiselect',
       key: 'vehicle_types',
       label: 'Vehicle Type',
-      apiSource: 'get_vehicle_types_db'
+      apiSource: 'get_vehicle_types'
     },
     {
       type: 'multiselect',
       key: 'sizes',
       label: 'Size',
-      apiSource: 'get_vehicle_sizes_db'
+      apiSource: 'get_vehicle_sizes'
     },
     {
       type: 'multiselect',
       key: 'terrains',
       label: 'Terrain',
-      apiSource: 'get_vehicle_terrains_db'
+      apiSource: 'get_vehicle_terrains'
     }
   ],
   searchCommands: {
-    search: 'search_vehicles_db',
-    details: 'get_vehicle_details_db',
-    sources: 'get_vehicle_statistics_db'
+    search: 'search_vehicles',
+    details: 'get_vehicle_details',
+    sources: 'get_vehicle_statistics'
   },
   emptyMessage: {
     title: 'No vehicles found',

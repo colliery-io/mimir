@@ -29,6 +29,7 @@ interface MessagesState {
   isLoading: Ref<boolean>
   isCancelling: Ref<boolean>
   error: Ref<string | null>
+  editingMessageId: Ref<string | null>
 }
 
 interface MessagesComputed {
@@ -53,6 +54,24 @@ interface MessagesActions {
   ) => Promise<void>
   cancelMessage: (currentSessionId: string | null) => Promise<void>
   deleteMessage: (messageId: string, onSaveSession: () => Promise<void>, onTokensUpdate: (tokensToSubtract: number) => void) => Promise<void>
+  startEditing: (messageId: string) => void
+  cancelEditing: () => void
+  editMessage: (
+    messageId: string,
+    newContent: string,
+    onSaveSession: () => Promise<void>,
+    onTokensUpdate: (tokensToSubtract: number) => void
+  ) => Promise<void>
+  resendConversation: (
+    currentSessionId: string | null,
+    buildSystemMessage: () => ChatMessage,
+    maxTokens: number,
+    temperature: number,
+    llmEndpoint: string,
+    onSaveSession: () => Promise<void>,
+    onTokensUpdate: (tokens: number) => void,
+    onTodosLoad: (sessionId: string) => Promise<void>
+  ) => Promise<void>
   clearMessages: () => void
   addMessage: (message: ChatMessage) => void
 }
@@ -63,6 +82,7 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
   const isLoading = ref(false)
   const isCancelling = ref(false)
   const error = ref<string | null>(null)
+  const editingMessageId = ref<string | null>(null)
 
   // Computed
   const lastMessage = computed(() => {
@@ -287,8 +307,132 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
     }
   }
 
+  const startEditing = (messageId: string) => {
+    editingMessageId.value = messageId
+  }
+
+  const cancelEditing = () => {
+    editingMessageId.value = null
+  }
+
+  const editMessage = async (
+    messageId: string,
+    newContent: string,
+    onSaveSession: () => Promise<void>,
+    onTokensUpdate: (tokensToSubtract: number) => void
+  ) => {
+    const idx = messages.value.findIndex(m => m.id === messageId)
+    if (idx === -1) return
+
+    // Update the message content
+    messages.value[idx].content = newContent.trim()
+
+    // Remove all messages after the edited message and calculate token reduction
+    let tokensToRemove = 0
+    const removedMessages = messages.value.splice(idx + 1)
+    for (const msg of removedMessages) {
+      if (msg.tokenUsage) {
+        tokensToRemove += msg.tokenUsage.total
+      }
+    }
+
+    if (tokensToRemove > 0) {
+      onTokensUpdate(-tokensToRemove)
+    }
+
+    // Clear editing state
+    editingMessageId.value = null
+
+    // Save the updated session
+    await onSaveSession()
+  }
+
+  const resendConversation = async (
+    currentSessionId: string | null,
+    buildSystemMessage: () => ChatMessage,
+    maxTokens: number,
+    temperature: number,
+    llmEndpoint: string,
+    onSaveSession: () => Promise<void>,
+    onTokensUpdate: (tokens: number) => void,
+    onTodosLoad: (sessionId: string) => Promise<void>
+  ): Promise<void> => {
+    if (isLoading.value || messages.value.length === 0) return
+
+    if (!currentSessionId) {
+      console.error('Cannot resend: no active session')
+      error.value = 'No active chat session. Please refresh the page.'
+      return
+    }
+
+    error.value = null
+    isCancelling.value = false
+    isLoading.value = true
+
+    try {
+      const systemMessage = buildSystemMessage()
+
+      const conversationMessages = messages.value.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+
+      const apiMessages = [
+        { role: systemMessage.role, content: systemMessage.content },
+        ...conversationMessages
+      ]
+
+      const { useSharedContextStore } = await import('../sharedContext')
+      const contextStore = useSharedContextStore()
+      const campaignDirectoryPath = contextStore.campaign?.directory_path || null
+
+      const response = await invoke<ChatResponseWithUsage>('send_chat_message', {
+        messages: apiMessages,
+        maxTokens: maxTokens,
+        temperature: temperature,
+        enableTools: true,
+        sessionId: currentSessionId,
+        ollamaUrl: llmEndpoint,
+        campaignDirectoryPath: campaignDirectoryPath
+      })
+
+      const assistantMessage: ChatMessage = {
+        id: `msg_${Date.now()}_assistant`,
+        role: 'assistant',
+        content: response.content,
+        timestamp: Date.now(),
+        tokenUsage: {
+          prompt: response.prompt_tokens,
+          completion: response.completion_tokens,
+          total: response.total_tokens
+        }
+      }
+
+      messages.value.push(assistantMessage)
+
+      try {
+        await onSaveSession()
+      } catch (saveError) {
+        console.warn('Failed to save assistant message:', saveError)
+      }
+
+      onTokensUpdate(response.total_tokens)
+
+      if (currentSessionId) {
+        await onTodosLoad(currentSessionId)
+      }
+
+    } catch (err) {
+      console.error('Failed to resend conversation:', err)
+      error.value = String(err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const clearMessages = () => {
     messages.value = []
+    editingMessageId.value = null
   }
 
   const addMessage = (message: ChatMessage) => {
@@ -301,6 +445,7 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
     isLoading,
     isCancelling,
     error,
+    editingMessageId,
 
     // Computed
     lastMessage,
@@ -310,6 +455,10 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
     sendMessage,
     cancelMessage,
     deleteMessage,
+    startEditing,
+    cancelEditing,
+    editMessage,
+    resendConversation,
     clearMessages,
     addMessage
   }

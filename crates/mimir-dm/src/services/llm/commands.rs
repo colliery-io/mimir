@@ -99,6 +99,7 @@ pub async fn send_chat_message(
         .map(|msg| mimir_dm_llm::Message {
             role: msg.role,
             content: msg.content,
+            tool_call_id: None,
         })
         .collect();
 

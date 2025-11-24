@@ -37,7 +37,9 @@ use crate::traits::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct OllamaChatMessage {
     role: String,
-    content: String,
+    /// Content may be missing when tool_calls are present
+    #[serde(default)]
+    content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_calls: Option<Vec<ToolCall>>,
 }
@@ -257,7 +259,7 @@ impl LlmProvider for OllamaProvider {
             .into_iter()
             .map(|msg| OllamaChatMessage {
                 role: msg.role,
-                content: msg.content,
+                content: Some(msg.content),
                 tool_calls: None,
             })
             .collect();
@@ -346,9 +348,10 @@ impl LlmProvider for OllamaProvider {
             })?;
 
         // Calculate thinking block size
-        let thinking_block_size = if ollama_response.message.content.contains("<thinking>") {
-            let thinking_start = ollama_response.message.content.find("<thinking>").unwrap_or(0);
-            let thinking_end = ollama_response.message.content.rfind("</thinking>").unwrap_or(ollama_response.message.content.len());
+        let content = ollama_response.message.content.clone().unwrap_or_default();
+        let thinking_block_size = if content.contains("<thinking>") {
+            let thinking_start = content.find("<thinking>").unwrap_or(0);
+            let thinking_end = content.rfind("</thinking>").unwrap_or(content.len());
             if thinking_end > thinking_start {
                 thinking_end - thinking_start + "</thinking>".len()
             } else {
@@ -358,8 +361,8 @@ impl LlmProvider for OllamaProvider {
             0
         };
 
-        debug!("Ollama API response: content_length={} thinking_block_size={} tool_calls={}", 
-            ollama_response.message.content.len(),
+        debug!("Ollama API response: content_length={} thinking_block_size={} tool_calls={}",
+            content.len(),
             thinking_block_size,
             ollama_response.message.tool_calls.is_some()
         );
@@ -388,7 +391,7 @@ impl LlmProvider for OllamaProvider {
         );
 
         Ok(ChatResponse {
-            content: ollama_response.message.content,
+            content,
             usage,
             timing,
             model: self.config.model.clone(),

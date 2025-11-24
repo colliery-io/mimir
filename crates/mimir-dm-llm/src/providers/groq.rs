@@ -73,7 +73,9 @@ struct GroqChatRequest {
 struct GroqChatMessage {
     #[allow(dead_code)]
     role: String,
-    content: String,
+    /// Content may be missing when tool_calls are present
+    #[serde(default)]
+    content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_calls: Option<Vec<ToolCall>>,
 }
@@ -277,6 +279,11 @@ impl LlmProvider for GroqProvider {
             request.model
         );
 
+        // Debug: log the actual request being sent
+        if let Ok(json) = serde_json::to_string_pretty(&request) {
+            debug!("Groq request JSON: {}", json);
+        }
+
         let response: GroqChatResponse = self.make_request("chat/completions", request).await?;
 
         // Extract the first choice
@@ -286,7 +293,7 @@ impl LlmProvider for GroqProvider {
             .ok_or_else(|| LlmError::ProviderError("No choices in response".to_string()))?;
 
         Ok(ChatResponse {
-            content: choice.message.content.clone(),
+            content: choice.message.content.clone().unwrap_or_default(),
             usage: Some(Usage {
                 prompt_tokens: response.usage.prompt_tokens,
                 completion_tokens: response.usage.completion_tokens,
@@ -317,6 +324,7 @@ impl LlmProvider for GroqProvider {
         let messages = vec![Message {
             role: "user".to_string(),
             content: prompt,
+            tool_call_id: None,
         }];
 
         let request = GroqChatRequest {
@@ -342,7 +350,7 @@ impl LlmProvider for GroqProvider {
             .ok_or_else(|| LlmError::ProviderError("No choices in response".to_string()))?;
 
         Ok(CompletionResponse {
-            text: choice.message.content.clone(),
+            text: choice.message.content.clone().unwrap_or_default(),
             usage: Some(Usage {
                 prompt_tokens: response.usage.prompt_tokens,
                 completion_tokens: response.usage.completion_tokens,
@@ -452,5 +460,139 @@ mod tests {
 
         let provider = GroqProvider::new(config).unwrap();
         assert_eq!(provider.base_url, "https://api.groq.com/openai/v1");
+    }
+
+    #[test]
+    fn test_parse_response_with_content_only() {
+        let json = r#"{
+            "id": "chatcmpl-123",
+            "object": "chat.completion",
+            "created": 1234567890,
+            "model": "llama-3.3-70b-versatile",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "Hello, world!"
+                },
+                "finish_reason": "stop"
+            }],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15
+            }
+        }"#;
+
+        let response: GroqChatResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.choices[0].message.content, Some("Hello, world!".to_string()));
+        assert!(response.choices[0].message.tool_calls.is_none());
+    }
+
+    #[test]
+    fn test_parse_response_with_tool_calls_no_content() {
+        let json = r#"{
+            "id": "chatcmpl-456",
+            "object": "chat.completion",
+            "created": 1234567890,
+            "model": "llama-3.3-70b-versatile",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "tool_calls": [{
+                        "id": "call_abc123",
+                        "type": "function",
+                        "function": {
+                            "name": "get_weather",
+                            "arguments": "{\"location\": \"San Francisco\"}"
+                        }
+                    }]
+                },
+                "finish_reason": "tool_calls"
+            }],
+            "usage": {
+                "prompt_tokens": 20,
+                "completion_tokens": 10,
+                "total_tokens": 30
+            }
+        }"#;
+
+        let response: GroqChatResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.choices[0].message.content, None);
+        assert!(response.choices[0].message.tool_calls.is_some());
+        let tool_calls = response.choices[0].message.tool_calls.as_ref().unwrap();
+        assert_eq!(tool_calls.len(), 1);
+        assert_eq!(tool_calls[0].function.name, "get_weather");
+    }
+
+    #[test]
+    fn test_parse_response_with_content_and_tool_calls() {
+        let json = r#"{
+            "id": "chatcmpl-789",
+            "object": "chat.completion",
+            "created": 1234567890,
+            "model": "llama-3.3-70b-versatile",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "I'll check the weather for you.",
+                    "tool_calls": [{
+                        "id": "call_def456",
+                        "type": "function",
+                        "function": {
+                            "name": "get_weather",
+                            "arguments": "{\"location\": \"New York\"}"
+                        }
+                    }]
+                },
+                "finish_reason": "tool_calls"
+            }],
+            "usage": {
+                "prompt_tokens": 25,
+                "completion_tokens": 15,
+                "total_tokens": 40
+            }
+        }"#;
+
+        let response: GroqChatResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.choices[0].message.content, Some("I'll check the weather for you.".to_string()));
+        assert!(response.choices[0].message.tool_calls.is_some());
+    }
+
+    #[test]
+    fn test_parse_response_with_null_content() {
+        let json = r#"{
+            "id": "chatcmpl-999",
+            "object": "chat.completion",
+            "created": 1234567890,
+            "model": "llama-3.3-70b-versatile",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [{
+                        "id": "call_ghi789",
+                        "type": "function",
+                        "function": {
+                            "name": "create_character",
+                            "arguments": "{\"name\": \"Barf\"}"
+                        }
+                    }]
+                },
+                "finish_reason": "tool_calls"
+            }],
+            "usage": {
+                "prompt_tokens": 30,
+                "completion_tokens": 20,
+                "total_tokens": 50
+            }
+        }"#;
+
+        let response: GroqChatResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.choices[0].message.content, None);
+        assert!(response.choices[0].message.tool_calls.is_some());
     }
 }

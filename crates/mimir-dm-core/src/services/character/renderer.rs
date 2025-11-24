@@ -3,11 +3,19 @@
 //! Generates human-readable markdown character sheets from CharacterData.
 
 use crate::models::character::CharacterData;
-use crate::models::character::data::Currency;
+use crate::models::catalog::{Spell, Item};
+use std::collections::HashMap;
 
 /// Trait for rendering character sheets in various formats
 pub trait CharacterRenderer {
     fn render(&self, character: &CharacterData) -> String;
+    fn render_with_spells(&self, character: &CharacterData, spell_details: &HashMap<String, Spell>) -> String;
+    fn render_with_details(
+        &self,
+        character: &CharacterData,
+        spell_details: &HashMap<String, Spell>,
+        item_details: &HashMap<String, Item>,
+    ) -> String;
 }
 
 /// Markdown renderer for character sheets
@@ -19,15 +27,9 @@ impl MarkdownRenderer {
     }
 
     fn render_header(&self, character: &CharacterData) -> String {
-        let subclass = character
-            .subclass
-            .as_ref()
-            .map(|s| format!(" ({})", s))
-            .unwrap_or_default();
-
         format!(
-            "# {} - Level {} {}{}\n\n",
-            character.character_name, character.level, character.class, subclass
+            "# {} - Level {} {}\n\n",
+            character.character_name, character.level, character.class_string()
         )
     }
 
@@ -84,27 +86,224 @@ impl MarkdownRenderer {
 
     fn render_combat_stats(&self, character: &CharacterData) -> String {
         let mut output = String::from("## Combat Stats\n\n");
-        output.push_str(&format!("- **HP:** {} / {}\n", character.current_hp, character.max_hp));
-        output.push_str(&format!(
-            "- **Hit Dice:** {}{} remaining\n",
-            character.hit_dice_remaining, character.hit_dice_type
-        ));
-        output.push_str(&format!("- **Proficiency Bonus:** +{}\n\n", character.proficiency_bonus()));
+
+        let dex_mod = character.abilities.dex_modifier();
+        let wis_mod = character.abilities.wis_modifier();
+        let prof_bonus = character.proficiency_bonus();
+
+        // Calculate AC (base 10 + DEX, note armor if equipped)
+        let base_ac = 10 + dex_mod;
+        let shield_bonus = if character.equipped.shield.is_some() { 2 } else { 0 };
+        let ac = base_ac + shield_bonus;
+
+        // Calculate Passive Perception
+        let perception_prof = character.proficiencies.skills.iter()
+            .any(|s| s.to_lowercase() == "perception");
+        let passive_perception = 10 + wis_mod + if perception_prof { prof_bonus } else { 0 };
+
+        // Core combat stats in a compact format
+        output.push_str(&format!("| AC | Initiative | Speed | Passive Perception |\n"));
+        output.push_str(&format!("|:--:|:----------:|:-----:|:------------------:|\n"));
+        output.push_str(&format!("| {} | {:+} | 30 ft | {} |\n\n", ac, dex_mod, passive_perception));
+
+        // Note armor if equipped
+        if let Some(armor) = &character.equipped.armor {
+            output.push_str(&format!("*Armor: {}*\n\n", armor));
+        }
+
+        // HP and Hit Dice
+        output.push_str(&format!("**HP:** {} / {}\n", character.current_hp, character.max_hp));
+
+        // Render hit dice for each class
+        let hit_dice_str = character.classes
+            .iter()
+            .map(|c| format!("{}{}", c.hit_dice_remaining, c.hit_dice_type))
+            .collect::<Vec<_>>()
+            .join(", ");
+        output.push_str(&format!("**Hit Dice:** {}\n", hit_dice_str));
+        output.push_str(&format!("**Proficiency Bonus:** +{}\n\n", prof_bonus));
+
+        output
+    }
+
+    fn render_attacks(&self, character: &CharacterData) -> String {
+        let equipped = &character.equipped;
+
+        // Only render if character has weapons equipped
+        if equipped.main_hand.is_none() && equipped.off_hand.is_none() {
+            return String::new();
+        }
+
+        let mut output = String::from("## Attacks\n\n");
+        let prof_bonus = character.proficiency_bonus();
+        let str_mod = character.abilities.str_modifier();
+        let dex_mod = character.abilities.dex_modifier();
+
+        output.push_str("| Name | Attack Bonus | Damage/Type |\n");
+        output.push_str("|------|:------------:|-------------|\n");
+
+        // Main hand weapon
+        if let Some(weapon) = &equipped.main_hand {
+            let weapon_lower = weapon.to_lowercase();
+
+            // Determine if finesse or ranged (use DEX), otherwise STR
+            let is_finesse_or_ranged = weapon_lower.contains("rapier")
+                || weapon_lower.contains("dagger")
+                || weapon_lower.contains("shortsword")
+                || weapon_lower.contains("scimitar")
+                || weapon_lower.contains("whip")
+                || weapon_lower.contains("bow")
+                || weapon_lower.contains("crossbow")
+                || weapon_lower.contains("dart")
+                || weapon_lower.contains("sling");
+
+            let ability_mod = if is_finesse_or_ranged && dex_mod > str_mod {
+                dex_mod
+            } else if is_finesse_or_ranged && weapon_lower.contains("bow") {
+                dex_mod
+            } else {
+                str_mod
+            };
+
+            let attack_bonus = prof_bonus + ability_mod;
+
+            // Estimate damage based on common weapons
+            let damage = match weapon_lower.as_str() {
+                w if w.contains("greatsword") || w.contains("maul") => format!("2d6{:+}", ability_mod),
+                w if w.contains("greataxe") => format!("1d12{:+}", ability_mod),
+                w if w.contains("longsword") || w.contains("warhammer") || w.contains("battleaxe") => format!("1d8{:+}", ability_mod),
+                w if w.contains("rapier") => format!("1d8{:+}", ability_mod),
+                w if w.contains("shortsword") || w.contains("scimitar") => format!("1d6{:+}", ability_mod),
+                w if w.contains("dagger") => format!("1d4{:+}", ability_mod),
+                w if w.contains("quarterstaff") || w.contains("spear") => format!("1d6{:+}", ability_mod),
+                w if w.contains("longbow") => format!("1d8{:+}", ability_mod),
+                w if w.contains("shortbow") || w.contains("light crossbow") => format!("1d6{:+}", ability_mod),
+                w if w.contains("heavy crossbow") => format!("1d10{:+}", ability_mod),
+                w if w.contains("handaxe") || w.contains("javelin") || w.contains("mace") => format!("1d6{:+}", ability_mod),
+                _ => format!("1d6{:+}", ability_mod), // Default
+            };
+
+            output.push_str(&format!("| {} | {:+} | {} |\n", weapon, attack_bonus, damage));
+        }
+
+        // Off hand weapon (if different from shield)
+        if let Some(weapon) = &equipped.off_hand {
+            let weapon_lower = weapon.to_lowercase();
+            if !weapon_lower.contains("shield") {
+                let _ability_mod = str_mod; // Off-hand typically doesn't add ability to damage
+                let attack_bonus = prof_bonus + str_mod;
+
+                let damage = match weapon_lower.as_str() {
+                    w if w.contains("dagger") => "1d4".to_string(),
+                    w if w.contains("shortsword") => "1d6".to_string(),
+                    w if w.contains("handaxe") => "1d6".to_string(),
+                    _ => "1d6".to_string(),
+                };
+
+                output.push_str(&format!("| {} | {:+} | {} |\n", weapon, attack_bonus, damage));
+            }
+        }
+
+        output.push('\n');
+        output
+    }
+
+    fn render_saving_throws(&self, character: &CharacterData) -> String {
+        let mut output = String::from("## Saving Throws\n\n");
+        let abilities = &character.abilities;
+        let prof_bonus = character.proficiency_bonus();
+        let saves = &character.proficiencies.saves;
+
+        let save_data = [
+            ("STR", abilities.str_modifier(), saves.iter().any(|s| s.to_lowercase().contains("str"))),
+            ("DEX", abilities.dex_modifier(), saves.iter().any(|s| s.to_lowercase().contains("dex"))),
+            ("CON", abilities.con_modifier(), saves.iter().any(|s| s.to_lowercase().contains("con"))),
+            ("INT", abilities.int_modifier(), saves.iter().any(|s| s.to_lowercase().contains("int"))),
+            ("WIS", abilities.wis_modifier(), saves.iter().any(|s| s.to_lowercase().contains("wis"))),
+            ("CHA", abilities.cha_modifier(), saves.iter().any(|s| s.to_lowercase().contains("cha"))),
+        ];
+
+        output.push_str("| Save | Mod | Prof |\n");
+        output.push_str("|------|----:|:----:|\n");
+
+        for (name, modifier, is_prof) in save_data {
+            let total = modifier + if is_prof { prof_bonus } else { 0 };
+            let prof_marker = if is_prof { "●" } else { "○" };
+            output.push_str(&format!("| {} | {:+} | {} |\n", name, total, prof_marker));
+        }
+
+        output.push('\n');
+        output
+    }
+
+    fn render_skills(&self, character: &CharacterData) -> String {
+        let mut output = String::from("## Skills\n\n");
+        let abilities = &character.abilities;
+        let prof_bonus = character.proficiency_bonus();
+        let skill_profs = &character.proficiencies.skills;
+
+        // All 18 skills with their ability
+        let skills = [
+            ("Acrobatics", "DEX", abilities.dex_modifier()),
+            ("Animal Handling", "WIS", abilities.wis_modifier()),
+            ("Arcana", "INT", abilities.int_modifier()),
+            ("Athletics", "STR", abilities.str_modifier()),
+            ("Deception", "CHA", abilities.cha_modifier()),
+            ("History", "INT", abilities.int_modifier()),
+            ("Insight", "WIS", abilities.wis_modifier()),
+            ("Intimidation", "CHA", abilities.cha_modifier()),
+            ("Investigation", "INT", abilities.int_modifier()),
+            ("Medicine", "WIS", abilities.wis_modifier()),
+            ("Nature", "INT", abilities.int_modifier()),
+            ("Perception", "WIS", abilities.wis_modifier()),
+            ("Performance", "CHA", abilities.cha_modifier()),
+            ("Persuasion", "CHA", abilities.cha_modifier()),
+            ("Religion", "INT", abilities.int_modifier()),
+            ("Sleight of Hand", "DEX", abilities.dex_modifier()),
+            ("Stealth", "DEX", abilities.dex_modifier()),
+            ("Survival", "WIS", abilities.wis_modifier()),
+        ];
+
+        output.push_str("| Skill | Mod | Prof |\n");
+        output.push_str("|-------|----:|:----:|\n");
+
+        for (name, _ability, modifier) in skills {
+            let is_prof = skill_profs.iter().any(|s| s.to_lowercase() == name.to_lowercase());
+            let total = modifier + if is_prof { prof_bonus } else { 0 };
+            let prof_marker = if is_prof { "●" } else { "○" };
+            output.push_str(&format!("| {} | {:+} | {} |\n", name, total, prof_marker));
+        }
+
+        output.push('\n');
+        output
+    }
+
+    fn render_currency(&self, character: &CharacterData) -> String {
+        let currency = &character.currency;
+
+        // Only render if character has any currency
+        if currency.copper == 0 && currency.silver == 0 && currency.gold == 0 && currency.platinum == 0 {
+            return String::new();
+        }
+
+        let mut output = String::from("## Currency\n\n");
+        output.push_str("| PP | GP | SP | CP |\n");
+        output.push_str("|---:|---:|---:|---:|\n");
+        output.push_str(&format!("| {} | {} | {} | {} |\n\n",
+            currency.platinum, currency.gold, currency.silver, currency.copper));
 
         output
     }
 
     fn render_proficiencies(&self, character: &CharacterData) -> String {
-        let mut output = String::from("## Proficiencies\n\n");
         let prof = &character.proficiencies;
 
-        if !prof.skills.is_empty() {
-            output.push_str(&format!("**Skills:** {}  \n", prof.skills.join(", ")));
+        // Check if any proficiencies to render (excluding skills/saves which have their own sections)
+        if prof.armor.is_empty() && prof.weapons.is_empty() && prof.tools.is_empty() && prof.languages.is_empty() {
+            return String::new();
         }
 
-        if !prof.saves.is_empty() {
-            output.push_str(&format!("**Saves:** {}  \n", prof.saves.join(", ")));
-        }
+        let mut output = String::from("## Other Proficiencies & Languages\n\n");
 
         if !prof.armor.is_empty() {
             output.push_str(&format!("**Armor:** {}  \n", prof.armor.join(", ")));
@@ -154,7 +353,7 @@ impl MarkdownRenderer {
         output
     }
 
-    fn render_spells(&self, character: &CharacterData) -> String {
+    fn render_spells(&self, character: &CharacterData, spell_details: &HashMap<String, Spell>) -> String {
         let spells = &character.spells;
 
         // Only render if character has any spells
@@ -184,25 +383,171 @@ impl MarkdownRenderer {
             output.push('\n');
         }
 
-        // Cantrips
+        // Cantrips with full details
         if !spells.cantrips.is_empty() {
-            output.push_str("**Cantrips:**  \n");
-            output.push_str(&format!("{}  \n\n", spells.cantrips.join(", ")));
+            output.push_str("### Cantrips\n\n");
+            for spell_name in &spells.cantrips {
+                if let Some(spell) = spell_details.get(spell_name) {
+                    output.push_str(&self.render_spell_detail(spell));
+                } else {
+                    output.push_str(&format!("**{}**\n\n", spell_name));
+                }
+            }
         }
 
-        // Known spells
+        // Known spells with full details, grouped by level
         if !spells.known_spells.is_empty() {
-            output.push_str("**Known Spells:**  \n");
-            output.push_str(&format!("{}  \n\n", spells.known_spells.join(", ")));
+            output.push_str("### Known Spells\n\n");
+
+            // Group spells by level
+            let mut spells_by_level: HashMap<u8, Vec<&str>> = HashMap::new();
+            for spell_name in &spells.known_spells {
+                let level = spell_details.get(spell_name)
+                    .map(|s| s.level)
+                    .unwrap_or(1);
+                spells_by_level.entry(level).or_default().push(spell_name);
+            }
+
+            // Sort and output by level
+            let mut levels: Vec<_> = spells_by_level.keys().collect();
+            levels.sort();
+
+            for level in levels {
+                output.push_str(&format!("#### {} Level\n\n", Self::ordinal(*level)));
+                if let Some(spell_names) = spells_by_level.get(level) {
+                    for spell_name in spell_names {
+                        if let Some(spell) = spell_details.get(*spell_name) {
+                            output.push_str(&self.render_spell_detail(spell));
+                        } else {
+                            output.push_str(&format!("**{}**\n\n", spell_name));
+                        }
+                    }
+                }
+            }
         }
 
-        // Prepared spells
+        // Prepared spells (just list names since details are above)
         if !spells.prepared_spells.is_empty() {
-            output.push_str("**Prepared Spells:**  \n");
+            output.push_str("### Prepared Spells\n\n");
             output.push_str(&format!("{}  \n\n", spells.prepared_spells.join(", ")));
         }
 
         output
+    }
+
+    fn render_spell_detail(&self, spell: &Spell) -> String {
+        let mut output = String::new();
+
+        // Spell name and level/school
+        let level_str = if spell.level == 0 {
+            format!("{} cantrip", spell.school.as_str())
+        } else {
+            format!("{} level {}", Self::ordinal(spell.level), spell.school.as_str().to_lowercase())
+        };
+        output.push_str(&format!("**{}**  \n", spell.name));
+        output.push_str(&format!("*{}*\n\n", level_str));
+
+        // Casting time
+        let casting_time = spell.time.first()
+            .map(|t| {
+                let base = format!("{} {}", t.number, t.unit);
+                if let Some(condition) = &t.condition {
+                    format!("{} ({})", base, condition)
+                } else {
+                    base
+                }
+            })
+            .unwrap_or_else(|| "Unknown".to_string());
+        output.push_str(&format!("**Casting Time:** {}  \n", casting_time));
+
+        // Range
+        let range = match &spell.range {
+            crate::models::catalog::SpellRange::Point { distance, .. } => {
+                if let Some(amount) = distance.amount {
+                    format!("{} {}", amount, distance.distance_type)
+                } else {
+                    distance.distance_type.clone()
+                }
+            },
+            crate::models::catalog::SpellRange::Special { range_type } => range_type.clone(),
+        };
+        output.push_str(&format!("**Range:** {}  \n", range));
+
+        // Components
+        let mut comp_parts = Vec::new();
+        if spell.components.v.unwrap_or(false) {
+            comp_parts.push("V".to_string());
+        }
+        if spell.components.s.unwrap_or(false) {
+            comp_parts.push("S".to_string());
+        }
+        if let Some(material) = &spell.components.m {
+            let material_text = match material {
+                crate::models::catalog::MaterialComponent::Text(text) => format!("M ({})", text),
+                crate::models::catalog::MaterialComponent::Object { text, cost, .. } => {
+                    if let Some(cost) = cost {
+                        format!("M ({}, {} gp)", text, cost)
+                    } else {
+                        format!("M ({})", text)
+                    }
+                },
+                crate::models::catalog::MaterialComponent::Bool(_) => "M".to_string(),
+            };
+            comp_parts.push(material_text);
+        }
+        output.push_str(&format!("**Components:** {}  \n", comp_parts.join(", ")));
+
+        // Duration
+        let duration = spell.duration.first()
+            .map(|d| {
+                let mut dur_str = String::new();
+                if d.concentration.unwrap_or(false) {
+                    dur_str.push_str("Concentration, up to ");
+                }
+                if let Some(value) = &d.duration {
+                    if let Some(amount) = value.amount {
+                        dur_str.push_str(&format!("{} {}", amount, value.value_type));
+                    } else {
+                        dur_str.push_str(&value.value_type);
+                    }
+                } else {
+                    dur_str.push_str(&d.duration_type);
+                }
+                dur_str
+            })
+            .unwrap_or_else(|| "Instantaneous".to_string());
+        output.push_str(&format!("**Duration:** {}  \n\n", duration));
+
+        // Description
+        for entry in &spell.entries {
+            if let Some(text) = entry.as_str() {
+                output.push_str(text);
+                output.push_str("\n\n");
+            } else if let Some(obj) = entry.as_object() {
+                // Handle structured entries like lists
+                if let Some(entries) = obj.get("entries").and_then(|e| e.as_array()) {
+                    for e in entries {
+                        if let Some(text) = e.as_str() {
+                            output.push_str(&format!("- {}\n", text));
+                        }
+                    }
+                    output.push('\n');
+                }
+            }
+        }
+
+        output.push_str("---\n\n");
+        output
+    }
+
+    fn ordinal(n: u8) -> String {
+        match n {
+            0 => "Cantrip".to_string(),
+            1 => "1st".to_string(),
+            2 => "2nd".to_string(),
+            3 => "3rd".to_string(),
+            _ => format!("{}th", n),
+        }
     }
 
     fn render_equipment(&self, character: &CharacterData) -> String {
@@ -240,27 +585,115 @@ impl MarkdownRenderer {
     }
 
     fn render_inventory(&self, character: &CharacterData) -> String {
+        self.render_inventory_with_details(character, &HashMap::new())
+    }
+
+    fn render_inventory_with_details(&self, character: &CharacterData, item_details: &HashMap<String, Item>) -> String {
         if character.inventory.is_empty() {
             return String::new();
         }
 
         let mut output = String::from("## Inventory\n\n");
-        output.push_str("| Item | Qty | Weight | Value | Notes |\n");
-        output.push_str("|------|-----|--------|-------|-------|\n");
 
         for item in &character.inventory {
-            output.push_str(&format!(
-                "| {} | {} | {:.1} lbs | {:.1} gp | {} |\n",
-                item.name,
-                item.quantity,
-                item.weight,
-                item.value,
-                item.notes.as_deref().unwrap_or("")
-            ));
+            // Item header with quantity
+            if item.quantity > 1 {
+                output.push_str(&format!("### {} (x{})\n\n", item.name, item.quantity));
+            } else {
+                output.push_str(&format!("### {}\n\n", item.name));
+            }
+
+            // Custom notes (flavor text) - displayed prominently
+            if let Some(notes) = &item.notes {
+                output.push_str(&format!("> **Notes:** {}\n\n", notes));
+            }
+
+            // Get item details from catalog
+            let key = format!("{}:{}", item.name, item.source.as_deref().unwrap_or("PHB"));
+            if let Some(details) = item_details.get(&key) {
+                // Item type and rarity
+                let mut meta = Vec::new();
+                if let Some(item_type) = &details.item_type {
+                    meta.push(item_type.clone());
+                }
+                if let Some(rarity) = &details.rarity {
+                    meta.push(rarity.clone());
+                }
+                if !meta.is_empty() {
+                    output.push_str(&format!("*{}*\n\n", meta.join(", ")));
+                }
+
+                // Stats
+                let mut stats = Vec::new();
+                if let Some(ac) = details.ac {
+                    stats.push(format!("**AC:** {}", ac));
+                }
+                if let Some(dmg) = &details.dmg1 {
+                    let dmg_str = if let Some(dmg_type) = &details.dmg_type {
+                        format!("{} {}", dmg, dmg_type)
+                    } else {
+                        dmg.clone()
+                    };
+                    stats.push(format!("**Damage:** {}", dmg_str));
+                }
+                if let Some(range) = &details.range {
+                    stats.push(format!("**Range:** {}", range));
+                }
+                if let Some(weight) = details.weight {
+                    stats.push(format!("**Weight:** {} lb", weight));
+                }
+                if let Some(value) = details.value {
+                    stats.push(format!("**Value:** {} gp", value));
+                }
+                if !stats.is_empty() {
+                    output.push_str(&format!("{}\n\n", stats.join(" | ")));
+                }
+
+                // Properties
+                if let Some(props) = &details.property {
+                    if !props.is_empty() {
+                        output.push_str(&format!("**Properties:** {}\n\n", props.join(", ")));
+                    }
+                }
+
+                // Description entries
+                if let Some(entries) = &details.entries {
+                    for entry in entries {
+                        output.push_str(&format!("{}\n\n", self.format_entry(entry)));
+                    }
+                }
+            } else {
+                // Fallback to basic info if no details found
+                output.push_str(&format!(
+                    "**Weight:** {:.1} lbs | **Value:** {:.1} gp\n\n",
+                    item.weight, item.value
+                ));
+            }
         }
 
-        output.push('\n');
         output
+    }
+
+    fn format_entry(&self, entry: &serde_json::Value) -> String {
+        match entry {
+            serde_json::Value::String(s) => s.clone(),
+            serde_json::Value::Object(obj) => {
+                if let Some(entries) = obj.get("entries").and_then(|e| e.as_array()) {
+                    entries.iter()
+                        .map(|e| self.format_entry(e))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                } else if let Some(items) = obj.get("items").and_then(|i| i.as_array()) {
+                    items.iter()
+                        .map(|i| format!("- {}", self.format_entry(i)))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                } else {
+                    String::new()
+                }
+            }
+            _ => String::new(),
+        }
     }
 
     fn render_personality(&self, character: &CharacterData) -> String {
@@ -300,18 +733,36 @@ impl MarkdownRenderer {
 
 impl CharacterRenderer for MarkdownRenderer {
     fn render(&self, character: &CharacterData) -> String {
+        // Use empty spell and item details for backward compatibility
+        self.render_with_details(character, &HashMap::new(), &HashMap::new())
+    }
+
+    fn render_with_spells(&self, character: &CharacterData, spell_details: &HashMap<String, Spell>) -> String {
+        self.render_with_details(character, spell_details, &HashMap::new())
+    }
+
+    fn render_with_details(
+        &self,
+        character: &CharacterData,
+        spell_details: &HashMap<String, Spell>,
+        item_details: &HashMap<String, Item>,
+    ) -> String {
         let mut output = String::new();
 
         output.push_str(&self.render_header(character));
         output.push_str(&self.render_metadata(character));
         output.push_str(&self.render_ability_scores(character));
         output.push_str(&self.render_combat_stats(character));
+        output.push_str(&self.render_attacks(character));
+        output.push_str(&self.render_saving_throws(character));
+        output.push_str(&self.render_skills(character));
         output.push_str(&self.render_proficiencies(character));
         output.push_str(&self.render_class_features(character));
         output.push_str(&self.render_feats(character));
-        output.push_str(&self.render_spells(character));
+        output.push_str(&self.render_spells(character, spell_details));
         output.push_str(&self.render_equipment(character));
-        output.push_str(&self.render_inventory(character));
+        output.push_str(&self.render_inventory_with_details(character, item_details));
+        output.push_str(&self.render_currency(character));
         output.push_str(&self.render_personality(character));
 
         output
@@ -325,7 +776,7 @@ mod tests {
         AbilityScores, EquippedItems, InventoryItem, Personality, Proficiencies, SpellData,
         SpellSlots,
     };
-    use std::collections::HashMap;
+    use crate::models::character::data::{ClassLevel, Currency};
 
     fn create_sample_fighter() -> CharacterData {
         CharacterData {
@@ -338,8 +789,13 @@ mod tests {
             created_at: "2025-01-15T10:30:00Z".to_string(),
             race: "Dwarf".to_string(),
             subrace: Some("Mountain".to_string()),
-            class: "Fighter".to_string(),
-            subclass: Some("Champion".to_string()),
+            classes: vec![ClassLevel {
+                class_name: "Fighter".to_string(),
+                level: 3,
+                subclass: Some("Champion".to_string()),
+                hit_dice_type: "d10".to_string(),
+                hit_dice_remaining: 3,
+            }],
             background: "Soldier".to_string(),
             alignment: Some("Lawful Good".to_string()),
             abilities: AbilityScores {
@@ -352,8 +808,6 @@ mod tests {
             },
             max_hp: 28,
             current_hp: 28,
-            hit_dice_remaining: 3,
-            hit_dice_type: "d10".to_string(),
             proficiencies: Proficiencies {
                 skills: vec!["Athletics".to_string(), "Intimidation".to_string()],
                 saves: vec!["Strength".to_string(), "Constitution".to_string()],
@@ -372,6 +826,7 @@ mod tests {
             inventory: vec![
                 InventoryItem {
                     name: "Rations".to_string(),
+                    source: None,
                     quantity: 10,
                     weight: 20.0,
                     value: 5.0,
@@ -379,6 +834,7 @@ mod tests {
                 },
                 InventoryItem {
                     name: "Healing Potion".to_string(),
+                    source: None,
                     quantity: 2,
                     weight: 1.0,
                     value: 50.0,
@@ -386,6 +842,7 @@ mod tests {
                 },
             ],
             currency: Currency::default(),
+            speed: 25, // Dwarf speed
             equipped: EquippedItems {
                 armor: Some("Chain Mail".to_string()),
                 shield: Some("Shield".to_string()),
@@ -416,8 +873,13 @@ mod tests {
             created_at: "2025-01-15T11:00:00Z".to_string(),
             race: "Elf".to_string(),
             subrace: Some("High".to_string()),
-            class: "Wizard".to_string(),
-            subclass: Some("School of Evocation".to_string()),
+            classes: vec![ClassLevel {
+                class_name: "Wizard".to_string(),
+                level: 3,
+                subclass: Some("School of Evocation".to_string()),
+                hit_dice_type: "d6".to_string(),
+                hit_dice_remaining: 3,
+            }],
             background: "Sage".to_string(),
             alignment: Some("Neutral Good".to_string()),
             abilities: AbilityScores {
@@ -430,8 +892,6 @@ mod tests {
             },
             max_hp: 15,
             current_hp: 15,
-            hit_dice_remaining: 3,
-            hit_dice_type: "d6".to_string(),
             proficiencies: Proficiencies {
                 skills: vec!["Arcana".to_string(), "History".to_string(), "Investigation".to_string()],
                 saves: vec!["Intelligence".to_string(), "Wisdom".to_string()],
@@ -464,12 +924,14 @@ mod tests {
             },
             inventory: vec![InventoryItem {
                 name: "Spellbook".to_string(),
+                source: None,
                 quantity: 1,
                 weight: 3.0,
                 value: 50.0,
                 notes: Some("Contains all known spells".to_string()),
             }],
             currency: Currency::default(),
+            speed: 30, // Elf speed
             equipped: EquippedItems {
                 armor: None,
                 shield: None,
@@ -487,7 +949,7 @@ mod tests {
         let markdown = renderer.render(&fighter);
 
         // Check header
-        assert!(markdown.contains("# Thorin Ironforge - Level 3 Fighter (Champion)"));
+        assert!(markdown.contains("# Thorin Ironforge - Level 3 Fighter 3"));
 
         // Check metadata
         assert!(markdown.contains("**Race:** Dwarf (Mountain)"));
@@ -500,8 +962,9 @@ mod tests {
         assert!(markdown.contains("**HP:** 28 / 28"));
         assert!(markdown.contains("**Proficiency Bonus:** +2"));
 
-        // Check proficiencies
-        assert!(markdown.contains("**Skills:** Athletics, Intimidation"));
+        // Check skills table
+        assert!(markdown.contains("| Athletics |"));
+        assert!(markdown.contains("| Intimidation |"));
 
         // Check class features
         assert!(markdown.contains("Fighting Style (Defense)"));
@@ -530,15 +993,15 @@ mod tests {
         assert!(markdown.contains("Level 2: 2 / 2"));
 
         // Check cantrips
-        assert!(markdown.contains("**Cantrips:**"));
+        assert!(markdown.contains("### Cantrips"));
         assert!(markdown.contains("Fire Bolt"));
 
         // Check known spells
-        assert!(markdown.contains("**Known Spells:**"));
+        assert!(markdown.contains("### Known Spells"));
         assert!(markdown.contains("Magic Missile"));
 
         // Check prepared spells
-        assert!(markdown.contains("**Prepared Spells:**"));
+        assert!(markdown.contains("### Prepared Spells"));
         assert!(markdown.contains("Fireball"));
     }
 
@@ -557,8 +1020,13 @@ mod tests {
             created_at: "2025-01-01".to_string(),
             race: "Human".to_string(),
             subrace: None,
-            class: "Fighter".to_string(),
-            subclass: None,
+            classes: vec![ClassLevel {
+                class_name: "Fighter".to_string(),
+                level: 1,
+                subclass: None,
+                hit_dice_type: "d10".to_string(),
+                hit_dice_remaining: 1,
+            }],
             background: "Folk Hero".to_string(),
             alignment: None,
             abilities: AbilityScores {
@@ -571,14 +1039,13 @@ mod tests {
             },
             max_hp: 12,
             current_hp: 12,
-            hit_dice_remaining: 1,
-            hit_dice_type: "d10".to_string(),
             proficiencies: Proficiencies::default(),
             class_features: Vec::new(),
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
             currency: Currency::default(),
+            speed: 30, // Human speed
             equipped: EquippedItems::default(),
             personality: Personality::default(),
         };

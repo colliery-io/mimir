@@ -12,60 +12,83 @@ type Result<T> = std::result::Result<T, DbError>;
 
 /// Calculate spell slots for a character based on class levels and multiclassing
 ///
-/// Queries the class's spell slot progression table from the database
+/// Uses PHB multiclass spellcaster rules to calculate total caster level
 /// Returns HashMap of spell level to SpellSlots (max slots)
 pub fn calculate_spell_slots(
-    conn: &mut DbConnection,
+    _conn: &mut DbConnection,
     character: &CharacterData,
 ) -> Result<HashMap<i32, SpellSlots>> {
-    // For now, assume single class - multiclass would require tracking class levels separately
-    // TODO: Extend CharacterData to track multiclass levels
+    // Calculate total caster level using multiclass rules
+    let mut caster_level = 0;
 
-    let mut class_service = crate::services::ClassService::new(conn);
+    for class in &character.classes {
+        let class_name = class.class_name.to_lowercase();
+        let level = class.level;
 
-    let class = class_service
-        .get_class_by_name_and_source(&character.class, "PHB") // TODO: Track class source in CharacterData
-        .map_err(|e| DbError::InvalidData(format!("Failed to get class: {}", e)))?
-        .ok_or_else(|| {
-            DbError::InvalidData(format!(
-                "Class '{}' from 'PHB' not found in database. Please import the appropriate rulebook first.",
-                character.class
-            ))
-        })?;
-
-    // Parse spell slot progression from classTableGroups
-    if let Some(table_groups) = &class.class_table_groups {
-        // Find the spell progression table (has rowsSpellProgression field)
-        for group in table_groups {
-            if let Some(rows) = group.get("rowsSpellProgression") {
-                    if let Some(rows_array) = rows.as_array() {
-                        // Character level is 1-indexed, array is 0-indexed
-                        let level_index = (character.level - 1).max(0) as usize;
-
-                        if level_index < rows_array.len() {
-                            if let Some(slot_row) = rows_array[level_index].as_array() {
-                                let mut slots = HashMap::new();
-
-                                // Each column is a spell level (1st, 2nd, 3rd, etc.)
-                                for (spell_level, slot_count) in slot_row.iter().enumerate() {
-                                    if let Some(count) = slot_count.as_i64() {
-                                        if count > 0 {
-                                            let spell_level_num = (spell_level + 1) as i32;
-                                            slots.insert(spell_level_num, SpellSlots::new(count as i32));
-                                        }
-                                    }
-                                }
-
-                                return Ok(slots);
-                            }
-                        }
+        // Full casters: contribute full level
+        if matches!(class_name.as_str(), "bard" | "cleric" | "druid" | "sorcerer" | "wizard") {
+            caster_level += level;
+        }
+        // Half casters: contribute level / 2 (round down)
+        else if matches!(class_name.as_str(), "paladin" | "ranger") {
+            caster_level += level / 2;
+        }
+        // Third casters (subclass dependent, but check by subclass name patterns)
+        else if class_name == "fighter" || class_name == "rogue" {
+            // Eldritch Knight (Fighter) and Arcane Trickster (Rogue) are 1/3 casters
+            // Check subclass
+            if let Some(subclass) = &class.subclass {
+                let sub_lower = subclass.to_lowercase();
+                if sub_lower.contains("eldritch knight") || sub_lower.contains("arcane trickster") {
+                    caster_level += level / 3;
                 }
             }
         }
+        // Warlock uses pact magic (separate system), doesn't contribute to multiclass slots
+        // Artificer would be half caster but round up - not implemented here
     }
 
-    // No spell progression found - non-spellcasting class
-    Ok(HashMap::new())
+    if caster_level == 0 {
+        return Ok(HashMap::new());
+    }
+
+    // Multiclass Spellcaster table (same as full caster progression)
+    // Format: [1st, 2nd, 3rd, 4th, 5th, 6th, 7th, 8th, 9th]
+    let slot_table: Vec<Vec<i32>> = vec![
+        vec![2, 0, 0, 0, 0, 0, 0, 0, 0], // Level 1
+        vec![3, 0, 0, 0, 0, 0, 0, 0, 0], // Level 2
+        vec![4, 2, 0, 0, 0, 0, 0, 0, 0], // Level 3
+        vec![4, 3, 0, 0, 0, 0, 0, 0, 0], // Level 4
+        vec![4, 3, 2, 0, 0, 0, 0, 0, 0], // Level 5
+        vec![4, 3, 3, 0, 0, 0, 0, 0, 0], // Level 6
+        vec![4, 3, 3, 1, 0, 0, 0, 0, 0], // Level 7
+        vec![4, 3, 3, 2, 0, 0, 0, 0, 0], // Level 8
+        vec![4, 3, 3, 3, 1, 0, 0, 0, 0], // Level 9
+        vec![4, 3, 3, 3, 2, 0, 0, 0, 0], // Level 10
+        vec![4, 3, 3, 3, 2, 1, 0, 0, 0], // Level 11
+        vec![4, 3, 3, 3, 2, 1, 0, 0, 0], // Level 12
+        vec![4, 3, 3, 3, 2, 1, 1, 0, 0], // Level 13
+        vec![4, 3, 3, 3, 2, 1, 1, 0, 0], // Level 14
+        vec![4, 3, 3, 3, 2, 1, 1, 1, 0], // Level 15
+        vec![4, 3, 3, 3, 2, 1, 1, 1, 0], // Level 16
+        vec![4, 3, 3, 3, 2, 1, 1, 1, 1], // Level 17
+        vec![4, 3, 3, 3, 3, 1, 1, 1, 1], // Level 18
+        vec![4, 3, 3, 3, 3, 2, 1, 1, 1], // Level 19
+        vec![4, 3, 3, 3, 3, 2, 2, 1, 1], // Level 20
+    ];
+
+    let level_index = (caster_level - 1).min(19) as usize;
+    let slot_row = &slot_table[level_index];
+
+    let mut slots = HashMap::new();
+    for (i, &count) in slot_row.iter().enumerate() {
+        if count > 0 {
+            let spell_level = (i + 1) as i32;
+            slots.insert(spell_level, SpellSlots::new(count));
+        }
+    }
+
+    Ok(slots)
 }
 
 /// Calculate spell save DC for a character
@@ -189,21 +212,24 @@ mod tests {
         conn
     }
 
-    #[test]
-    fn test_spell_slot_calculation_level_1() {
-        let mut conn = setup_test_db();
-        let character = CharacterData {
+    fn create_test_wizard(level: i32) -> CharacterData {
+        CharacterData {
             character_name: "Test Wizard".to_string(),
             player_id: 1,
-            level: 1,
+            level,
             experience_points: 0,
             version: 1,
             snapshot_reason: None,
             created_at: "2025-01-01".to_string(),
             race: "Human".to_string(),
             subrace: None,
-            class: "Wizard".to_string(),
-            subclass: None,
+            classes: vec![ClassLevel {
+                class_name: "Wizard".to_string(),
+                level,
+                subclass: None,
+                hit_dice_type: "d6".to_string(),
+                hit_dice_remaining: level,
+            }],
             background: "Sage".to_string(),
             alignment: Some("Neutral Good".to_string()),
             abilities: AbilityScores {
@@ -214,19 +240,24 @@ mod tests {
                 wisdom: 13,
                 charisma: 10,
             },
-            max_hp: 8,
-            current_hp: 8,
-            hit_dice_remaining: 1,
-            hit_dice_type: "d6".to_string(),
+            max_hp: 6 + (level - 1) * 4,
+            current_hp: 6 + (level - 1) * 4,
             proficiencies: Proficiencies::default(),
             class_features: Vec::new(),
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: Vec::new(),
             currency: Currency::default(),
+            speed: 30, // Human speed
             equipped: EquippedItems::default(),
             personality: Personality::default(),
-        };
+        }
+    }
+
+    #[test]
+    fn test_spell_slot_calculation_level_1() {
+        let mut conn = setup_test_db();
+        let character = create_test_wizard(1);
 
         let slots = calculate_spell_slots(&mut conn, &character).unwrap();
         assert_eq!(slots.len(), 1);
@@ -236,41 +267,7 @@ mod tests {
     #[test]
     fn test_spell_slot_calculation_level_5() {
         let mut conn = setup_test_db();
-        let character = CharacterData {
-            character_name: "Test Wizard".to_string(),
-            player_id: 1,
-            level: 5,
-            experience_points: 6500,
-            version: 1,
-            snapshot_reason: None,
-            created_at: "2025-01-01".to_string(),
-            race: "Human".to_string(),
-            subrace: None,
-            class: "Wizard".to_string(),
-            subclass: None,
-            background: "Sage".to_string(),
-            alignment: Some("Neutral Good".to_string()),
-            abilities: AbilityScores {
-                strength: 8,
-                dexterity: 14,
-                constitution: 12,
-                intelligence: 16,
-                wisdom: 13,
-                charisma: 10,
-            },
-            max_hp: 22,
-            current_hp: 22,
-            hit_dice_remaining: 5,
-            hit_dice_type: "d6".to_string(),
-            proficiencies: Proficiencies::default(),
-            class_features: Vec::new(),
-            feats: Vec::new(),
-            spells: SpellData::default(),
-            inventory: Vec::new(),
-            currency: Currency::default(),
-            equipped: EquippedItems::default(),
-            personality: Personality::default(),
-        };
+        let character = create_test_wizard(5);
 
         let slots = calculate_spell_slots(&mut conn, &character).unwrap();
         assert_eq!(slots.len(), 3);
@@ -281,41 +278,7 @@ mod tests {
 
     #[test]
     fn test_spell_save_dc_calculation() {
-        let character = CharacterData {
-            character_name: "Test Wizard".to_string(),
-            player_id: 1,
-            level: 5,
-            experience_points: 6500,
-            version: 1,
-            snapshot_reason: None,
-            created_at: "2025-01-01".to_string(),
-            race: "Human".to_string(),
-            subrace: None,
-            class: "Wizard".to_string(),
-            subclass: None,
-            background: "Sage".to_string(),
-            alignment: Some("Neutral Good".to_string()),
-            abilities: AbilityScores {
-                strength: 8,
-                dexterity: 14,
-                constitution: 12,
-                intelligence: 16,
-                wisdom: 13,
-                charisma: 10,
-            },
-            max_hp: 22,
-            current_hp: 22,
-            hit_dice_remaining: 5,
-            hit_dice_type: "d6".to_string(),
-            proficiencies: Proficiencies::default(),
-            class_features: Vec::new(),
-            feats: Vec::new(),
-            spells: SpellData::default(),
-            inventory: Vec::new(),
-            currency: Currency::default(),
-            equipped: EquippedItems::default(),
-            personality: Personality::default(),
-        };
+        let character = create_test_wizard(5);
 
         let dc = calculate_spell_save_dc(&character, "intelligence");
         // Level 5 = +3 proficiency, Int 16 = +3 modifier
@@ -325,41 +288,7 @@ mod tests {
 
     #[test]
     fn test_spell_attack_bonus_calculation() {
-        let character = CharacterData {
-            character_name: "Test Wizard".to_string(),
-            player_id: 1,
-            level: 5,
-            experience_points: 6500,
-            version: 1,
-            snapshot_reason: None,
-            created_at: "2025-01-01".to_string(),
-            race: "Human".to_string(),
-            subrace: None,
-            class: "Wizard".to_string(),
-            subclass: None,
-            background: "Sage".to_string(),
-            alignment: Some("Neutral Good".to_string()),
-            abilities: AbilityScores {
-                strength: 8,
-                dexterity: 14,
-                constitution: 12,
-                intelligence: 16,
-                wisdom: 13,
-                charisma: 10,
-            },
-            max_hp: 22,
-            current_hp: 22,
-            hit_dice_remaining: 5,
-            hit_dice_type: "d6".to_string(),
-            proficiencies: Proficiencies::default(),
-            class_features: Vec::new(),
-            feats: Vec::new(),
-            spells: SpellData::default(),
-            inventory: Vec::new(),
-            currency: Currency::default(),
-            equipped: EquippedItems::default(),
-            personality: Personality::default(),
-        };
+        let character = create_test_wizard(5);
 
         let bonus = calculate_spell_attack_bonus(&character, "intelligence");
         // Level 5 = +3 proficiency, Int 16 = +3 modifier

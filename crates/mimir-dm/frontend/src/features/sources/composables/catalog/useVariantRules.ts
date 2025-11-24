@@ -15,12 +15,14 @@ export interface VariantRuleSummary {
   page?: number
 }
 
+export interface VariantRuleFilters {
+  query?: string
+  types?: string[]
+  sources?: string[]
+}
+
 export function useVariantRules() {
-  async function searchVariantRules(filters: {
-    query?: string
-    types?: string[]
-    sources?: string[]
-  }): Promise<VariantRuleSummary[]> {
+  async function searchVariantRules(filters: VariantRuleFilters = {}): Promise<VariantRuleSummary[]> {
     try {
       const results = await invoke<VariantRuleSummary[]>('search_variant_rules', {
         query: filters.query || null,
@@ -29,7 +31,6 @@ export function useVariantRules() {
       })
       return results || []
     } catch (e) {
-      console.error(`Failed to search variant rules: ${e}`)
       return []
     }
   }
@@ -39,7 +40,6 @@ export function useVariantRules() {
       const details = await invoke<VariantRule>('get_variant_rule_details', { name, source })
       return details
     } catch (e) {
-      console.error(`Failed to get variant rule details: ${e}`)
       return null
     }
   }
@@ -49,7 +49,6 @@ export function useVariantRules() {
       const types = await invoke<string[]>('get_variant_rule_types')
       return types || []
     } catch (e) {
-      console.error(`Failed to get variant rule types: ${e}`)
       return []
     }
   }
@@ -59,7 +58,6 @@ export function useVariantRules() {
       const sources = await invoke<string[]>('get_variant_rule_sources')
       return sources || []
     } catch (e) {
-      console.error(`Failed to get variant rule sources: ${e}`)
       return []
     }
   }

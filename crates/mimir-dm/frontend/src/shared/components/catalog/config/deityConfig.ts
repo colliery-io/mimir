@@ -88,25 +88,25 @@ export const deityConfig: CatalogConfig = {
       type: 'multiselect',
       key: 'pantheons',
       label: 'Pantheon',
-      apiSource: 'get_deity_pantheons_db'
+      apiSource: 'get_deity_pantheons'
     },
     {
       type: 'multiselect',
       key: 'alignments',
       label: 'Alignment',
-      apiSource: 'get_deity_alignments_db'
+      apiSource: 'get_deity_alignments'
     },
     {
       type: 'multiselect',
       key: 'domains',
       label: 'Domains',
-      apiSource: 'get_deity_domains_db'
+      apiSource: 'get_deity_domains'
     }
   ],
   searchCommands: {
-    search: 'search_deities_db',
-    details: 'get_deity_details_db',
-    sources: 'get_deity_statistics_db'
+    search: 'search_deities',
+    details: 'get_deity_details',
+    sources: 'get_deity_statistics'
   },
   emptyMessage: {
     title: 'No deities found',

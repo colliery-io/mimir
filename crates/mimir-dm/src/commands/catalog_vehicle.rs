@@ -3,110 +3,110 @@ use tauri::State;
 use tracing::{debug, error};
 
 use mimir_dm_core::DatabaseService;
-use mimir_dm_core::services::DeityService;
-use mimir_dm_core::models::catalog::deity::{DeitySummary, DeityFilters, Deity};
+use mimir_dm_core::services::VehicleService;
+use mimir_dm_core::models::catalog::vehicle::{VehicleSummary, VehicleFilters, Vehicle};
 
-/// Search deities from database with filters
+/// Search vehicles from database with filters
 #[tauri::command]
-pub async fn search_deities_db(
-    filters: DeityFilters,
+pub async fn search_vehicles(
+    filters: VehicleFilters,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<Vec<DeitySummary>, String> {
-    debug!("Searching deities with filters: {:?}", filters);
+) -> Result<Vec<VehicleSummary>, String> {
+    debug!("Searching vehicles with filters: {:?}", filters);
 
     let mut conn = db_service.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    let mut service = DeityService::new(&mut conn);
-    service.search_deities(filters)
+    let mut service = VehicleService::new(&mut conn);
+    service.search_vehicles(filters)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get deity details by name and source
+/// Get vehicle details by name and source
 #[tauri::command]
-pub async fn get_deity_details_db(
-    deity_name: String,
-    deity_source: String,
+pub async fn get_vehicle_details(
+    vehicle_name: String,
+    vehicle_source: String,
     db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<Option<Deity>, String> {
-    debug!("Getting deity details for name: {}, source: {}", deity_name, deity_source);
+) -> Result<Option<Vehicle>, String> {
+    debug!("Getting vehicle details for name: {}, source: {}", vehicle_name, vehicle_source);
 
     let mut conn = db_service.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    let mut service = DeityService::new(&mut conn);
-    service.get_deity_by_name_and_source(&deity_name, &deity_source)
+    let mut service = VehicleService::new(&mut conn);
+    service.get_vehicle_by_name_and_source(&vehicle_name, &vehicle_source)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get all pantheons for filter dropdowns
+/// Get all vehicle types for filter dropdowns
 #[tauri::command]
-pub async fn get_deity_pantheons_db(
-    db_service: State<'_, Arc<DatabaseService>>,
-) -> Result<Vec<String>, String> {
-    debug!("Getting all deity pantheons");
-
-    let mut conn = db_service.get_connection().map_err(|e| {
-        error!("Failed to get database connection: {}", e);
-        format!("Database connection failed: {}", e)
-    })?;
-
-    let mut service = DeityService::new(&mut conn);
-    service.get_all_pantheons()
-        .map_err(|e| format!("Database query failed: {}", e))
-}
-
-/// Get all domains for filter dropdowns
-#[tauri::command]
-pub async fn get_deity_domains_db(
+pub async fn get_vehicle_types(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
-    debug!("Getting all deity domains");
+    debug!("Getting all vehicle types");
 
     let mut conn = db_service.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    let mut service = DeityService::new(&mut conn);
-    service.get_all_domains()
+    let mut service = VehicleService::new(&mut conn);
+    service.get_all_vehicle_types()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get all alignments for filter dropdowns
+/// Get all vehicle sizes for filter dropdowns
 #[tauri::command]
-pub async fn get_deity_alignments_db(
+pub async fn get_vehicle_sizes(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
-    debug!("Getting all deity alignments");
+    debug!("Getting all vehicle sizes");
 
     let mut conn = db_service.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    let mut service = DeityService::new(&mut conn);
-    service.get_all_alignments()
+    let mut service = VehicleService::new(&mut conn);
+    service.get_all_sizes()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get deity count by source for statistics
+/// Get all vehicle terrains for filter dropdowns
 #[tauri::command]
-pub async fn get_deity_statistics_db(
+pub async fn get_vehicle_terrains(
+    db_service: State<'_, Arc<DatabaseService>>,
+) -> Result<Vec<String>, String> {
+    debug!("Getting all vehicle terrains");
+
+    let mut conn = db_service.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    let mut service = VehicleService::new(&mut conn);
+    service.get_all_terrains()
+        .map_err(|e| format!("Database query failed: {}", e))
+}
+
+/// Get vehicle count by source for statistics
+#[tauri::command]
+pub async fn get_vehicle_statistics(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<(String, i64)>, String> {
-    debug!("Getting deity statistics");
+    debug!("Getting vehicle statistics");
 
     let mut conn = db_service.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    let mut service = DeityService::new(&mut conn);
-    service.get_deity_count_by_source()
+    let mut service = VehicleService::new(&mut conn);
+    service.get_vehicle_count_by_source()
         .map_err(|e| format!("Database query failed: {}", e))
 }

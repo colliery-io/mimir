@@ -127,30 +127,16 @@ impl SessionManager {
         messages
             .iter()
             .find(|msg| msg.role == "user")
-            .map(|msg| {
-                let content = msg.content.trim();
-                if content.len() > 60 {
-                    format!("{}...", &content[..57])
-                } else {
-                    content.to_string()
-                }
-            })
+            .map(|msg| msg.content.trim().to_string())
             .unwrap_or_else(|| "New chat".to_string())
     }
-    
+
     /// Generate title from first user message
     fn generate_title(messages: &[ChatMessage]) -> String {
         messages
             .iter()
             .find(|msg| msg.role == "user")
-            .map(|msg| {
-                let content = msg.content.trim();
-                if content.len() > 50 {
-                    format!("{}...", &content[..47])
-                } else {
-                    content.to_string()
-                }
-            })
+            .map(|msg| msg.content.trim().to_string())
             .unwrap_or_else(|| "New chat".to_string())
     }
     

@@ -1,6 +1,4 @@
-import { ref } from 'vue'
-import type { Ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { useCatalogSearch } from './useCatalogSearch'
 
 export interface ConditionSummary {
   name: string
@@ -25,65 +23,24 @@ export interface ConditionFilters {
 }
 
 export function useConditions() {
-  const isConditionsInitialized = ref(false)
-  const isLoading = ref(false)
-  const error: Ref<string | null> = ref(null)
-  const conditions = ref<ConditionSummary[]>([])
-
-  async function initializeConditionCatalog() {
-    if (isConditionsInitialized.value) return
-
-    try {
-      isLoading.value = true
-      error.value = null
-      await invoke('init_condition_catalog')
-      isConditionsInitialized.value = true
-    } catch (e) {
-      error.value = `Failed to initialize condition catalog: ${e}`
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function searchConditions(filters: ConditionFilters = {}): Promise<ConditionSummary[]> {
-    if (!isConditionsInitialized.value) {
-      await initializeConditionCatalog()
-    }
-
-    try {
-      isLoading.value = true
-      error.value = null
-      const results = await invoke<ConditionSummary[]>('search_conditions', {
-        query: filters.query,
-        sources: filters.sources,
-        typeFilter: filters.type_filter
-      })
-      conditions.value = results
-      return results
-    } catch (e) {
-      error.value = `Failed to search conditions: ${e}`
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function getConditionDetails(name: string, source: string): Promise<ConditionWithDetails | null> {
-    try {
-      const details = await invoke<ConditionWithDetails>('get_condition_details', { name, source })
-      return details
-    } catch (e) {
-      return null
-    }
-  }
+  const catalog = useCatalogSearch<ConditionSummary, ConditionWithDetails, ConditionFilters>({
+    name: 'condition',
+    searchCommand: 'search_conditions',
+    detailsCommand: 'get_condition',
+    transformFilters: (filters) => ({
+      query: filters.query,
+      sources: filters.sources,
+      typeFilter: filters.type_filter
+    }),
+  })
 
   return {
-    isConditionsInitialized,
-    isLoading,
-    error,
-    conditions,
-    initializeConditionCatalog,
-    searchConditions,
-    getConditionDetails,
+    isConditionsInitialized: catalog.isInitialized,
+    isLoading: catalog.isLoading,
+    error: catalog.error,
+    conditions: catalog.results,
+    initializeConditionCatalog: catalog.initialize,
+    searchConditions: catalog.search,
+    getConditionDetails: catalog.getDetails,
   }
 }

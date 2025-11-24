@@ -27,6 +27,22 @@
     
     <!-- Regular message bubble -->
     <div v-else class="message-bubble">
+      <!-- Action buttons for user messages -->
+      <div v-if="message.role === 'user'" class="message-actions">
+        <button @click="handleEdit" class="action-btn" title="Edit message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button @click="handleDelete" class="action-btn action-btn-danger" title="Delete message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+
       <!-- Thinking blocks (if any) -->
       <div v-if="thinkingBlocks.length > 0" class="thinking-blocks">
         <div
@@ -168,6 +184,15 @@ const handleConfirm = async (confirmationId: string) => {
 const handleReject = async (confirmationId: string) => {
   await chatStore.rejectToolAction(confirmationId)
 }
+
+// Handle message edit/delete
+const handleEdit = () => {
+  chatStore.startEditing(props.message.id)
+}
+
+const handleDelete = async () => {
+  await chatStore.deleteMessage(props.message.id)
+}
 </script>
 
 <style scoped>
@@ -198,8 +223,32 @@ const handleReject = async (confirmationId: string) => {
 }
 
 .user-message .message-bubble {
-  @apply text-white;
+  @apply text-white relative;
   background-color: var(--color-primary-500);
+}
+
+.message-actions {
+  @apply absolute flex gap-1 opacity-0 transition-opacity;
+  top: 4px;
+  right: 4px;
+}
+
+.user-message:hover .message-actions {
+  @apply opacity-100;
+}
+
+.action-btn {
+  @apply p-1 rounded transition-colors;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.action-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.8);
 }
 
 .assistant-message .message-bubble {

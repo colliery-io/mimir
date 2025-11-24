@@ -28,6 +28,8 @@ use uuid::Uuid;
 use crate::services::chat_logger::ChatLogger;
 use mimir_dm_core::DatabaseService;
 use crate::services::tools::ToolRegistry;
+use crate::services::tools::character_write_tools::CreateCharacterTool;
+use crate::services::tools::character_tools::ListPlayersTool;
 use crate::app_init::AppPaths;
 
 /// Provider enum that wraps concrete provider implementations
@@ -166,7 +168,7 @@ pub struct LlmService {
     model_name: String,
     provider_type: ProviderType,
     pub(super) tool_registry: Arc<ToolRegistry>,
-    _db_service: Arc<DatabaseService>,
+    pub(super) db_service: Arc<DatabaseService>,
     /// Channel senders for pending confirmations (shared globally)
     confirmation_receivers: ConfirmationReceivers,
     /// App handle for emitting events
@@ -218,12 +220,21 @@ impl LlmService {
         tool_registry.register(Arc::new(todo_tool));
         info!("Registered TodoListTool with configurable state manager");
 
+        // Register character tools (work without campaign)
+        let list_players_tool = ListPlayersTool::new(db_service.clone());
+        tool_registry.register(Arc::new(list_players_tool));
+        info!("Registered ListPlayersTool");
+
+        let create_character_tool = CreateCharacterTool::new(db_service.clone());
+        tool_registry.register(Arc::new(create_character_tool));
+        info!("Registered CreateCharacterTool");
+
         Ok(Self {
             provider,
             model_name,
             provider_type,
             tool_registry: Arc::new(tool_registry),
-            _db_service: db_service,
+            db_service,
             confirmation_receivers,
             app_handle: Some(app_handle),
             todo_state_manager,

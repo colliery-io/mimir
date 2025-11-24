@@ -33,9 +33,9 @@ impl<'a> CharacterService<'a> {
     /// Create a new character
     pub fn create_character(
         &mut self,
-        campaign_id: i32,
+        campaign_id: Option<i32>,
         player_id: i32,
-        campaign_directory: &str,
+        base_directory: &str,
         character_data: CharacterData,
     ) -> Result<Character> {
         // Validate inputs
@@ -43,24 +43,29 @@ impl<'a> CharacterService<'a> {
             return Err(DbError::InvalidData("Character name cannot be empty".to_string()));
         }
 
-        // Create character directory
-        let char_dir = self.create_character_directory(campaign_directory, &character_data.character_name)?;
-        let directory_path = char_dir.to_string_lossy().to_string();
-
-        // Create initial version
-        let version_number = 1;
-        let file_path = self.get_version_file_path(&char_dir, &character_data.character_name, version_number);
-
-        // Serialize character data to YAML
+        // Serialize character data to YAML (always needed for database)
         let yaml_data = serde_yaml::to_string(&character_data)
             .map_err(|e| DbError::InvalidData(format!("Failed to serialize character data: {}", e)))?;
 
-        // Generate markdown
-        let renderer = MarkdownRenderer::new();
-        let markdown = renderer.render(&character_data);
+        let version_number = 1;
+        let (directory_path, file_path_str) = if campaign_id.is_some() && !base_directory.is_empty() {
+            // Character is assigned to a campaign with valid directory - create files
+            let char_dir = self.create_character_directory(base_directory, &character_data.character_name)?;
+            let directory_path = char_dir.to_string_lossy().to_string();
+            let file_path = self.get_version_file_path(&char_dir, &character_data.character_name, version_number);
 
-        // Write files
-        self.write_character_files(&file_path, &yaml_data, &markdown)?;
+            // Generate markdown
+            let renderer = MarkdownRenderer::new();
+            let markdown = renderer.render(&character_data);
+
+            // Write files to disk
+            self.write_character_files(&file_path, &yaml_data, &markdown)?;
+
+            (directory_path, file_path.to_string_lossy().to_string())
+        } else {
+            // Character is unassigned or no directory specified - skip file creation, store only in database
+            ("".to_string(), "".to_string())
+        };
 
         // Create database record for character
         let mut char_repo = CharacterRepository::new(self.conn);
@@ -70,6 +75,8 @@ impl<'a> CharacterService<'a> {
             character_name: character_data.character_name.clone(),
             is_npc: Some(0), // Default to PC
             directory_path,
+            class: Some(character_data.primary_class_name().to_string()),
+            race: Some(character_data.race.clone()),
         };
 
         let character = char_repo.create(new_character)?;
@@ -79,7 +86,7 @@ impl<'a> CharacterService<'a> {
         let new_version = NewCharacterVersion {
             character_id: character.id,
             version_number,
-            file_path: file_path.to_string_lossy().to_string(),
+            file_path: file_path_str,
             character_data: yaml_data,
             snapshot_reason: character_data.snapshot_reason.clone(),
             level: character_data.level,
@@ -134,26 +141,31 @@ impl<'a> CharacterService<'a> {
             ver_repo.get_next_version_number(character_id)?
         };
 
-        // Get character directory
-        let char_dir = Path::new(&character.directory_path);
-        let file_path = self.get_version_file_path(char_dir, &character_data.character_name, version_number);
-
         // Serialize character data to YAML
         let yaml_data = serde_yaml::to_string(&character_data)
             .map_err(|e| DbError::InvalidData(format!("Failed to serialize character data: {}", e)))?;
 
-        // Generate markdown
-        let renderer = MarkdownRenderer::new();
-        let markdown = renderer.render(&character_data);
+        // Only write files if character has a directory assigned
+        let file_path_str = if !character.directory_path.is_empty() {
+            let char_dir = Path::new(&character.directory_path);
+            let file_path = self.get_version_file_path(char_dir, &character_data.character_name, version_number);
 
-        // Write files
-        self.write_character_files(&file_path, &yaml_data, &markdown)?;
+            // Generate markdown
+            let renderer = MarkdownRenderer::new();
+            let markdown = renderer.render(&character_data);
+
+            // Write files
+            self.write_character_files(&file_path, &yaml_data, &markdown)?;
+            file_path.to_string_lossy().to_string()
+        } else {
+            String::new()
+        };
 
         // Create version record
         let new_version = NewCharacterVersion {
             character_id,
             version_number,
-            file_path: file_path.to_string_lossy().to_string(),
+            file_path: file_path_str,
             character_data: yaml_data,
             snapshot_reason,
             level: character_data.level,
@@ -171,6 +183,8 @@ impl<'a> CharacterService<'a> {
             current_level: Some(character_data.level),
             current_version: Some(version_number),
             last_updated_at: Some(chrono::Utc::now().to_rfc3339()),
+            campaign_id: None,
+            directory_path: None,
         };
 
         let mut char_repo = CharacterRepository::new(self.conn);
@@ -198,6 +212,81 @@ impl<'a> CharacterService<'a> {
         char_repo.delete(character_id)?;
 
         Ok(())
+    }
+
+    /// Assign a character to a campaign
+    /// Creates character files in the campaign directory structure
+    pub fn assign_to_campaign(
+        &mut self,
+        character_id: i32,
+        campaign_id: i32,
+        campaign_directory: &str,
+    ) -> Result<Character> {
+        // Get the character
+        let character = {
+            let mut char_repo = CharacterRepository::new(self.conn);
+            char_repo.find_by_id(character_id)?
+                .ok_or_else(|| DbError::NotFound {
+                    entity_type: "Character".to_string(),
+                    id: character_id.to_string(),
+                })?
+        };
+
+        // Verify character is not already assigned
+        if character.campaign_id.is_some() {
+            return Err(DbError::InvalidData(
+                "Character is already assigned to a campaign".to_string()
+            ));
+        }
+
+        // Create character directory
+        let char_dir = self.create_character_directory(campaign_directory, &character.character_name)?;
+        let directory_path = char_dir.to_string_lossy().to_string();
+
+        // Get all versions and write them to files
+        let versions = {
+            let mut ver_repo = CharacterVersionRepository::new(self.conn);
+            ver_repo.list_for_character(character_id)?
+        };
+
+        let renderer = MarkdownRenderer::new();
+
+        for version in &versions {
+            // Parse character data
+            let character_data: CharacterData = serde_yaml::from_str(&version.character_data)
+                .map_err(|e| DbError::InvalidData(format!("Failed to parse character data: {}", e)))?;
+
+            // Generate file path and content
+            let file_path = self.get_version_file_path(&char_dir, &character.character_name, version.version_number);
+            let markdown = renderer.render(&character_data);
+
+            // Write file
+            self.write_character_files(&file_path, &version.character_data, &markdown)?;
+
+            // Update version's file_path in database
+            let mut ver_repo = CharacterVersionRepository::new(self.conn);
+            ver_repo.update_file_path(version.id, file_path.to_string_lossy().to_string())?;
+        }
+
+        // Update character with campaign_id and directory_path
+        let update = UpdateCharacter {
+            character_name: None,
+            is_npc: None,
+            current_level: None,
+            current_version: None,
+            last_updated_at: Some(chrono::Utc::now().to_rfc3339()),
+            campaign_id: Some(Some(campaign_id)),
+            directory_path: Some(directory_path),
+        };
+
+        let mut char_repo = CharacterRepository::new(self.conn);
+        char_repo.update(character_id, update)
+    }
+
+    /// List all characters (including unassigned)
+    pub fn list_all_characters(&mut self) -> Result<Vec<Character>> {
+        let mut char_repo = CharacterRepository::new(self.conn);
+        char_repo.list_all()
     }
 
     /// List all characters for a campaign
@@ -243,8 +332,8 @@ impl<'a> CharacterService<'a> {
         // Get class info from database
         let class_info = ClassInfo::get(self.conn, &options.class_name, &options.class_source)?;
 
-        // Check if this is multiclassing
-        let is_multiclass = char_data.class.to_lowercase() != options.class_name.to_lowercase();
+        // Check if this is multiclassing (adding a new class or leveling existing one)
+        let is_multiclass = !char_data.has_class(&options.class_name);
 
         // Validate multiclass prerequisites
         if is_multiclass {
@@ -267,15 +356,26 @@ impl<'a> CharacterService<'a> {
         char_data.max_hp += hp_gain;
         char_data.current_hp += hp_gain;
 
-        // Increment level
+        // Increment total level
         char_data.level += 1;
 
-        // Update hit dice
-        if !is_multiclass {
-            char_data.hit_dice_remaining += 1;
+        // Update class levels and hit dice
+        if is_multiclass {
+            // Adding a new class
+            use crate::models::character::data::ClassLevel;
+            char_data.classes.push(ClassLevel {
+                class_name: options.class_name.clone(),
+                level: 1,
+                subclass: None,
+                hit_dice_type: class_info.hit_die.clone(),
+                hit_dice_remaining: 1,
+            });
         } else {
-            // For multiclass, this gets more complex - for now, just increment
-            char_data.hit_dice_remaining += 1;
+            // Leveling existing class
+            if let Some(class_level) = char_data.get_class_mut(&options.class_name) {
+                class_level.level += 1;
+                class_level.hit_dice_remaining += 1;
+            }
         }
 
         // Check if this level grants ASI/Feat
@@ -309,14 +409,9 @@ impl<'a> CharacterService<'a> {
 
         // Update subclass if provided
         if let Some(subclass) = &options.subclass_choice {
-            char_data.subclass = Some(subclass.clone());
-        }
-
-        // Update class if multiclassing
-        if is_multiclass {
-            // For now, just append to class string
-            // In a real implementation, you'd track class levels separately
-            char_data.class = format!("{} / {}", char_data.class, options.class_name);
+            if let Some(class_level) = char_data.get_class_mut(&options.class_name) {
+                class_level.subclass = Some(subclass.clone());
+            }
         }
 
         // Update spell slots if character is a spellcaster
@@ -380,11 +475,19 @@ impl<'a> CharacterService<'a> {
                 spell_name, spell_source
             )))?;
 
-        // Validate spell is available for character's class
-        if !spell_management::validate_spell_for_class(self.conn, &spell, &char_data.class)? {
+        // Validate spell is available for any of character's classes
+        let class_names: Vec<String> = char_data.classes.iter().map(|c| c.class_name.clone()).collect();
+        let mut valid_for_any_class = false;
+        for class_name in &class_names {
+            if spell_management::validate_spell_for_class(self.conn, &spell, class_name)? {
+                valid_for_any_class = true;
+                break;
+            }
+        }
+        if !valid_for_any_class {
             return Err(DbError::InvalidData(format!(
-                "Spell '{}' is not available for class '{}'",
-                spell_name, char_data.class
+                "Spell '{}' is not available for any of character's classes: {}",
+                spell_name, char_data.class_string()
             )));
         }
 
@@ -504,8 +607,8 @@ impl<'a> CharacterService<'a> {
         match rest_type {
             RestType::Short => {
                 // Short rest restores warlock spell slots
-                // Check if character is a warlock
-                if char_data.class.to_lowercase().contains("warlock") {
+                // Check if character has warlock levels
+                if char_data.has_class("Warlock") {
                     // Restore all spell slots for warlock
                     for slots in char_data.spells.spell_slots.values_mut() {
                         slots.recover_all();
@@ -523,10 +626,20 @@ impl<'a> CharacterService<'a> {
                 // Also restore HP
                 char_data.current_hp = char_data.max_hp;
 
-                // Restore hit dice (restore half of max, minimum 1)
-                let max_hit_dice = char_data.level;
-                let restored = (max_hit_dice / 2).max(1);
-                char_data.hit_dice_remaining = (char_data.hit_dice_remaining + restored).min(max_hit_dice);
+                // Restore hit dice (restore half of max for each class, minimum 1 total)
+                let total_restored = (char_data.level / 2).max(1);
+                let mut remaining_to_restore = total_restored;
+
+                for class_level in &mut char_data.classes {
+                    let max_for_class = class_level.level;
+                    let can_restore = max_for_class - class_level.hit_dice_remaining;
+                    let to_restore = can_restore.min(remaining_to_restore);
+                    class_level.hit_dice_remaining += to_restore;
+                    remaining_to_restore -= to_restore;
+                    if remaining_to_restore <= 0 {
+                        break;
+                    }
+                }
             }
         }
 
@@ -579,6 +692,7 @@ impl<'a> CharacterService<'a> {
             // New item - add to inventory
             char_data.inventory.push(crate::models::character::data::InventoryItem {
                 name: item_name.to_string(),
+                source: Some(item_source.to_string()),
                 quantity,
                 weight,
                 value,
@@ -659,6 +773,28 @@ impl<'a> CharacterService<'a> {
 
         // Create new version
         let snapshot_reason = Some("Updated currency".to_string());
+        self.update_character(character_id, char_data, snapshot_reason)
+    }
+
+    /// Update character's equipped items
+    pub fn update_equipped(
+        &mut self,
+        character_id: i32,
+        armor: Option<String>,
+        shield: Option<String>,
+        main_hand: Option<String>,
+        off_hand: Option<String>,
+    ) -> Result<CharacterVersion> {
+        let (_character, mut char_data) = self.get_character(character_id)?;
+
+        // Update equipped items
+        char_data.equipped.armor = armor;
+        char_data.equipped.shield = shield;
+        char_data.equipped.main_hand = main_hand;
+        char_data.equipped.off_hand = off_hand;
+
+        // Create new version
+        let snapshot_reason = Some("Updated equipped items".to_string());
         self.update_character(character_id, char_data, snapshot_reason)
     }
 
@@ -799,6 +935,7 @@ mod tests {
     }
 
     fn create_test_character_data() -> CharacterData {
+        use crate::models::character::data::ClassLevel;
         CharacterData {
             character_name: "Test Character".to_string(),
             player_id: 1,
@@ -809,8 +946,13 @@ mod tests {
             created_at: chrono::Utc::now().to_rfc3339(),
             race: "Human".to_string(),
             subrace: None,
-            class: "Fighter".to_string(),
-            subclass: None,
+            classes: vec![ClassLevel {
+                class_name: "Fighter".to_string(),
+                level: 1,
+                subclass: None,
+                hit_dice_type: "d10".to_string(),
+                hit_dice_remaining: 1,
+            }],
             background: "Soldier".to_string(),
             alignment: Some("Lawful Good".to_string()),
             abilities: AbilityScores {
@@ -823,8 +965,6 @@ mod tests {
             },
             max_hp: 12,
             current_hp: 12,
-            hit_dice_remaining: 1,
-            hit_dice_type: "d10".to_string(),
             proficiencies: Proficiencies {
                 skills: vec!["Athletics".to_string(), "Intimidation".to_string()],
                 saves: vec!["Strength".to_string(), "Constitution".to_string()],
@@ -838,6 +978,7 @@ mod tests {
             spells: SpellData::default(),
             inventory: vec![],
             currency: Currency::default(),
+            speed: 30, // Human speed
             equipped: EquippedItems {
                 armor: None,
                 shield: None,
@@ -867,11 +1008,11 @@ mod tests {
         character_data.player_id = player_id;
 
         let character = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         assert_eq!(character.character_name, "Test Character");
-        assert_eq!(character.campaign_id, campaign_id);
+        assert_eq!(character.campaign_id, Some(campaign_id));
         assert_eq!(character.player_id, player_id);
         assert_eq!(character.is_npc, 0);
         assert_eq!(character.current_level, 1);
@@ -905,7 +1046,7 @@ mod tests {
         character_data.character_name = "".to_string();
         character_data.player_id = player_id;
 
-        let result = service.create_character(campaign_id, player_id, campaign_dir, character_data);
+        let result = service.create_character(Some(campaign_id), player_id, campaign_dir, character_data);
         assert!(result.is_err());
     }
 
@@ -923,7 +1064,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         let (character, data) = service
@@ -934,7 +1075,7 @@ mod tests {
         assert_eq!(data.character_name, "Test Character");
         assert_eq!(data.level, 1);
         assert_eq!(data.race, "Human");
-        assert_eq!(data.class, "Fighter");
+        assert_eq!(data.primary_class_name(), "Fighter");
     }
 
     #[test]
@@ -960,7 +1101,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data.clone())
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data.clone())
             .expect("Failed to create character");
 
         // Update character (level up)
@@ -1004,7 +1145,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         let char_dir = Path::new(&created.directory_path);
@@ -1035,12 +1176,12 @@ mod tests {
         let mut char1 = create_test_character_data();
         char1.character_name = "Character 1".to_string();
         char1.player_id = player_id;
-        service.create_character(campaign_id, player_id, campaign_dir, char1).unwrap();
+        service.create_character(Some(campaign_id), player_id, campaign_dir, char1).unwrap();
 
         let mut char2 = create_test_character_data();
         char2.character_name = "Character 2".to_string();
         char2.player_id = player_id;
-        service.create_character(campaign_id, player_id, campaign_dir, char2).unwrap();
+        service.create_character(Some(campaign_id), player_id, campaign_dir, char2).unwrap();
 
         let characters = service
             .list_characters_for_campaign(campaign_id)
@@ -1063,7 +1204,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data.clone())
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data.clone())
             .expect("Failed to create character");
 
         // Create a second version
@@ -1095,7 +1236,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data.clone())
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data.clone())
             .expect("Failed to create character");
 
         // Create a second version
@@ -1131,7 +1272,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Try to get non-existent version
@@ -1153,7 +1294,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up with HP roll
@@ -1194,7 +1335,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up with average HP
@@ -1232,7 +1373,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up to 2, 3 (no ASI)
@@ -1286,7 +1427,7 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up to 4 with feat
@@ -1335,7 +1476,7 @@ mod tests {
         character_data.abilities.strength = 16;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Multiclass into Barbarian
@@ -1353,7 +1494,7 @@ mod tests {
         // Get updated character
         let (_character, data) = service.get_character(created.id).expect("Failed to get character");
         assert_eq!(data.level, 2);
-        assert!(data.class.contains("Barbarian"));
+        assert!(data.has_class("Barbarian"));
     }
 
     #[test]
@@ -1374,7 +1515,7 @@ mod tests {
         character_data.abilities.wisdom = 12;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Try to multiclass into Monk (should fail due to low WIS)
@@ -1407,7 +1548,7 @@ mod tests {
         character_data.abilities.strength = 19;
 
         let created = service
-            .create_character(campaign_id, player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up to 4 with +2 STR

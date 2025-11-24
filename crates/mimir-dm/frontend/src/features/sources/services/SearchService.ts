@@ -251,7 +251,7 @@ class SearchServiceClass {
     filters?: SearchFilters['equipment']
   ): Promise<ItemSummary[]> {
     const { invoke } = await import('@tauri-apps/api/core')
-    const results = await invoke<ItemSummary[]>('search_items_db', {
+    const results = await invoke<ItemSummary[]>('search_items', {
       name: query,
       sources: sources,
       item_types: filters?.type ? [filters.type] : undefined,
@@ -272,7 +272,7 @@ class SearchServiceClass {
     filters?: SearchFilters['magicItems']
   ): Promise<ItemSummary[]> {
     const { invoke } = await import('@tauri-apps/api/core')
-    const results = await invoke<ItemSummary[]>('search_items_db', {
+    const results = await invoke<ItemSummary[]>('search_items', {
       name: query,
       sources: sources,
       item_types: undefined,
@@ -351,7 +351,7 @@ class SearchServiceClass {
   
   private async searchOptionalFeatures(query?: string, sources?: string[]): Promise<OptionalFeatureSummary[]> {
     const { invoke } = await import('@tauri-apps/api/core')
-    const results = await invoke<OptionalFeatureSummary[]>('search_optional_features_db', {
+    const results = await invoke<OptionalFeatureSummary[]>('search_optional_features', {
       name: query,
       sources: sources,
       feature_types: undefined,
@@ -566,7 +566,7 @@ class SearchServiceClass {
           return await this.spells.getSpellDetails(name, source)
         case 'item':
           const { invoke } = await import('@tauri-apps/api/core')
-          return await invoke('get_item_details_db', { itemName: name, itemSource: source })
+          return await invoke('get_item_details', { itemName: name, itemSource: source })
         case 'monster':
           return await this.monsters.getMonsterDetails(name, source)
         case 'class':

@@ -7,7 +7,7 @@
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5173",
-    "frontendDist": "./frontend/dist"
+    "frontendDist": "frontend/dist"
   },
   "app": {
     "windows": [
@@ -37,6 +37,7 @@
             "core:path:allow-resolve-directory",
             "core:path:default",
             "dialog:allow-open",
+            "dialog:allow-save",
             "dialog:allow-message",
             "dialog:allow-confirm"
           ]

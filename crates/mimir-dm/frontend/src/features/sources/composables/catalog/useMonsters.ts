@@ -1,5 +1,4 @@
-import { ref } from 'vue'
-import type { Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 export interface MonsterSummary {
@@ -38,73 +37,67 @@ export interface Monster {
   name: string
   source: string
   size: string[]
-  type: any
-  alignment?: any[]
-  ac: any[]
-  hp: any
-  speed: any
+  type: unknown
+  alignment?: unknown[]
+  ac: unknown[]
+  hp: unknown
+  speed: unknown
   str: number
   dex: number
   con: number
   int: number
   wis: number
   cha: number
-  save?: any
-  skill?: any
+  save?: unknown
+  skill?: unknown
   senses?: string[]
   languages?: string[]
   cr: string
-  trait?: any[]
-  action?: any[]
-  legendary?: any[]
-  immune?: any[]
-  resist?: any[]
-  vulnerable?: any[]
+  trait?: unknown[]
+  action?: unknown[]
+  legendary?: unknown[]
+  immune?: unknown[]
+  resist?: unknown[]
+  vulnerable?: unknown[]
   conditionImmune?: string[]
-  spellcasting?: any[]
+  spellcasting?: unknown[]
   entries?: string[]
-  fluffEntries?: any[]
-  fluffImages?: any[]
-  fluff_images?: any[]
+  fluffEntries?: unknown[]
+  fluffImages?: unknown[]
+  fluff_images?: unknown[]
 }
 
 export function useMonsters() {
-  const isMonstersInitialized = ref(false)
+  const isMonstersInitialized = ref(true)
   const isLoading = ref(false)
   const error: Ref<string | null> = ref(null)
   const monsters = ref<MonsterSummary[]>([])
 
   async function initializeMonsterCatalog() {
-    if (isMonstersInitialized.value) return
-
-    try {
-      isLoading.value = true
-      error.value = null
-      await invoke('initialize_monster_catalog')
-      isMonstersInitialized.value = true
-    } catch (e) {
-      error.value = `Failed to initialize monster catalog: ${e}`
-    } finally {
-      isLoading.value = false
-    }
+    // No initialization needed for DB-backed catalog
   }
 
   async function searchMonsters(filters: MonsterFilters): Promise<MonsterSummary[]> {
-    if (!isMonstersInitialized.value) {
-      await initializeMonsterCatalog()
-    }
-
     try {
       isLoading.value = true
       error.value = null
 
+      // Transform to backend MonsterFilters format
+      const backendFilters = {
+        name: filters.query || null,
+        sources: filters.sources?.length ? filters.sources : null,
+        creature_types: filters.types?.length ? filters.types : null,
+        sizes: filters.sizes?.length ? filters.sizes : null,
+        min_cr: filters.min_cr ?? null,
+        max_cr: filters.max_cr ?? null,
+        alignments: null,
+        min_hp: null,
+        max_hp: null,
+        environment: null,
+      }
+
       const results = await invoke<MonsterSummary[]>('search_monsters', {
-        query: filters.query || null,
-        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
-        types: filters.types && filters.types.length > 0 ? filters.types : null,
-        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
-        minCr: filters.min_cr !== undefined ? filters.min_cr : null,
-        maxCr: filters.max_cr !== undefined ? filters.max_cr : null,
+        filters: backendFilters
       })
 
       monsters.value = results
@@ -119,7 +112,10 @@ export function useMonsters() {
 
   async function getMonsterDetails(name: string, source: string): Promise<Monster | null> {
     try {
-      const monster = await invoke<Monster>('get_monster_details', { name, source })
+      const monster = await invoke<Monster>('get_monster_details', {
+        monsterName: name,
+        monsterSource: source
+      })
       return monster
     } catch (e) {
       return null

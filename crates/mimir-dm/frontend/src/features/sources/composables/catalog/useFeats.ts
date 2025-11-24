@@ -8,6 +8,12 @@ export interface FeatSummary {
   brief?: string
 }
 
+export interface FeatFilters {
+  query?: string
+  sources?: string[]
+  has_prerequisites?: boolean
+}
+
 export interface Feat {
   name: string
   source: string
@@ -31,11 +37,7 @@ export interface Feat {
 }
 
 export function useFeats() {
-  async function searchFeats(params: {
-    query?: string
-    sources?: string[]
-    has_prerequisites?: boolean
-  } = {}) {
+  async function searchFeats(params: FeatFilters = {}): Promise<FeatSummary[]> {
     try {
       const results = await invoke<FeatSummary[]>('search_feats', {
         query: params.query,
@@ -44,12 +46,11 @@ export function useFeats() {
       })
       return results || []
     } catch (e) {
-      console.error('Error searching feats:', e)
       return []
     }
   }
 
-  async function getFeatDetails(name: string, source: string) {
+  async function getFeatDetails(name: string, source: string): Promise<Feat | null> {
     try {
       const feat = await invoke<Feat>('get_feat_details', { name, source })
       return feat

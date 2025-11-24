@@ -8,7 +8,7 @@ use mimir_dm_core::models::catalog::monster::{MonsterSummary, MonsterFilters, Mo
 
 /// Search monsters from database with filters
 #[tauri::command]
-pub async fn search_monsters_db(
+pub async fn search_monsters(
     filters: MonsterFilters,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<MonsterSummary>, String> {
@@ -26,7 +26,7 @@ pub async fn search_monsters_db(
 
 /// Get monster details by name and source
 #[tauri::command]
-pub async fn get_monster_details_db(
+pub async fn get_monster_details(
     monster_name: String,
     monster_source: String,
     db_service: State<'_, Arc<DatabaseService>>,
@@ -45,7 +45,7 @@ pub async fn get_monster_details_db(
 
 /// Get all monster sizes for filter dropdowns
 #[tauri::command]
-pub async fn get_monster_sizes_db(
+pub async fn get_monster_sizes(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all monster sizes");
@@ -62,7 +62,7 @@ pub async fn get_monster_sizes_db(
 
 /// Get all monster creature types for filter dropdowns
 #[tauri::command]
-pub async fn get_monster_types_db(
+pub async fn get_monster_types(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all monster creature types");
@@ -79,7 +79,7 @@ pub async fn get_monster_types_db(
 
 /// Get all monster alignments for filter dropdowns
 #[tauri::command]
-pub async fn get_monster_alignments_db(
+pub async fn get_monster_alignments(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all monster alignments");
@@ -96,7 +96,7 @@ pub async fn get_monster_alignments_db(
 
 /// Get monster CR range for filter sliders
 #[tauri::command]
-pub async fn get_monster_cr_range_db(
+pub async fn get_monster_cr_range(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<(f64, f64), String> {
     debug!("Getting monster CR range");
@@ -113,7 +113,7 @@ pub async fn get_monster_cr_range_db(
 
 /// Get monster count by source for statistics
 #[tauri::command]
-pub async fn get_monster_statistics_db(
+pub async fn get_monster_statistics(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<(String, i64)>, String> {
     debug!("Getting monster statistics");

@@ -23,7 +23,7 @@ export interface Player {
 
 export interface Character {
   id: number
-  campaign_id: number
+  campaign_id: number | null
   player_id: number
   character_name: string
   is_npc: number
@@ -32,6 +32,8 @@ export interface Character {
   current_version: number
   created_at: string
   last_updated_at: string
+  class: string | null
+  race: string | null
 }
 
 export interface CharacterVersion {
@@ -49,6 +51,14 @@ export interface CharacterVersion {
 // Character Data Types
 // ============================================================================
 
+export interface ClassLevel {
+  class_name: string
+  level: number
+  subclass: string | null
+  hit_dice_type: string
+  hit_dice_remaining: number
+}
+
 export interface CharacterData {
   character_name: string
   player_id: number
@@ -59,15 +69,13 @@ export interface CharacterData {
   created_at: string
   race: string
   subrace: string | null
-  class: string
-  subclass: string | null
+  classes: ClassLevel[]
   background: string
   alignment: string | null
   abilities: AbilityScores
   max_hp: number
   current_hp: number
-  hit_dice_remaining: number
-  hit_dice_type: string
+  speed: number
   proficiencies: Proficiencies
   class_features: string[]
   feats: string[]
@@ -110,6 +118,7 @@ export interface SpellSlots {
 
 export interface InventoryItem {
   name: string
+  source: string | null
   quantity: number
   weight: number
   value: number
@@ -179,6 +188,7 @@ export interface PersonalityInput {
 
 export interface InventoryItemInput {
   name: string
+  source: string | null
   quantity: number
   weight: number
   value: number
@@ -198,6 +208,8 @@ export interface LevelUpRequest {
   ability_score_improvement: string | null  // JSON string with ASI data
   feat: string | null
   new_spell_slots: string | null  // JSON string with spell slot updates
+  new_known_spells: string[] | null  // Updated known spells list
+  new_cantrips: string[] | null  // Updated cantrips list
 }
 
 export interface AsiOrFeat {

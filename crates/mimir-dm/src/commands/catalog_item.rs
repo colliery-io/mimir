@@ -6,7 +6,7 @@ use mimir_dm_core::DatabaseService;
 use tracing::{info, debug, error};
 
 #[tauri::command]
-pub async fn search_items_db(
+pub async fn search_items(
     name: Option<String>,
     item_types: Option<Vec<String>>,
     rarities: Option<Vec<String>>,
@@ -41,7 +41,7 @@ pub async fn search_items_db(
 }
 
 #[tauri::command]
-pub async fn get_item_db(
+pub async fn get_item(
     item_id: i32,
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Option<Item>, String> {
@@ -58,7 +58,7 @@ pub async fn get_item_db(
 }
 
 #[tauri::command]
-pub async fn get_item_details_db(
+pub async fn get_item_details(
     item_name: String,
     item_source: String,
     db_service: State<'_, Arc<DatabaseService>>,
@@ -76,7 +76,7 @@ pub async fn get_item_details_db(
 }
 
 #[tauri::command]
-pub async fn get_item_types_db(
+pub async fn get_item_types(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all item types");
@@ -95,7 +95,7 @@ pub async fn get_item_types_db(
 }
 
 #[tauri::command]
-pub async fn get_item_rarities_db(
+pub async fn get_item_rarities(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all item rarities");
@@ -114,7 +114,7 @@ pub async fn get_item_rarities_db(
 }
 
 #[tauri::command]
-pub async fn get_item_sources_db(
+pub async fn get_item_sources(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all item sources");

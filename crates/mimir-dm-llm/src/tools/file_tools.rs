@@ -246,6 +246,7 @@ Security: All file operations restricted to application data directory",
         );
         
         crate::traits::provider::Tool {
+            name: self.name().to_string(),
             tool_type: "function".to_string(),
             function: crate::traits::provider::ToolFunction {
                 name: self.name().to_string(),
@@ -380,6 +381,7 @@ Security: Restricted to application data directory, requires confirmation",
         );
         
         crate::traits::provider::Tool {
+            name: self.name().to_string(),
             tool_type: "function".to_string(),
             function: crate::traits::provider::ToolFunction {
                 name: self.name().to_string(),
@@ -930,6 +932,7 @@ Security: Restricted to application data directory, atomic operations",
         );
         
         crate::traits::provider::Tool {
+            name: self.name().to_string(),
             tool_type: "function".to_string(),
             function: crate::traits::provider::ToolFunction {
                 name: self.name().to_string(),

@@ -82,13 +82,13 @@ export const itemConfig: CatalogConfig = {
       type: 'multiselect',
       key: 'item_types',
       label: 'Item Type',
-      apiSource: 'get_item_types_db'
+      apiSource: 'get_item_types'
     },
     {
       type: 'multiselect',
       key: 'rarities',
       label: 'Rarity',
-      apiSource: 'get_item_rarities_db'
+      apiSource: 'get_item_rarities'
     },
     {
       type: 'range',
@@ -100,9 +100,9 @@ export const itemConfig: CatalogConfig = {
     }
   ],
   searchCommands: {
-    search: 'search_items_db',
-    details: 'get_item_details_db',
-    sources: 'get_item_sources_db'
+    search: 'search_items',
+    details: 'get_item_details',
+    sources: 'get_item_sources'
   },
   emptyMessage: {
     title: 'No items found',

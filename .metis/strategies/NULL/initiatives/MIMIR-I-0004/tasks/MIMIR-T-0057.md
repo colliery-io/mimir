@@ -4,14 +4,14 @@ level: task
 title: "Create LevelUpDialog.vue component"
 short_code: "MIMIR-T-0057"
 created_at: 2025-11-10T18:57:04.213847+00:00
-updated_at: 2025-11-10T18:57:04.213847+00:00
+updated_at: 2025-11-22T03:48:50.763932+00:00
 parent: MIMIR-I-0004
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: MIMIR-I-0004
 ## Objective **[REQUIRED]**
 
 Create a LevelUpDialog Vue component that guides users through the level-up process, including HP rolls, ASI/feat selection, class feature acquisition, and spell learning.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

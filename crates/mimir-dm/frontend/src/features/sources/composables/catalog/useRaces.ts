@@ -1,6 +1,6 @@
-import { ref } from 'vue'
-import type { Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useCatalogSearch } from './useCatalogSearch'
 
 export interface RaceSummary {
   name: string
@@ -75,49 +75,21 @@ export interface RaceWithDetails {
 }
 
 export function useRaces() {
-  const isRacesInitialized = ref(false)
-  const isLoading = ref(false)
-  const error: Ref<string | null> = ref(null)
-  const races = ref<RaceSummary[]>([])
+  const catalog = useCatalogSearch<RaceSummary, string | null, RaceFilters>({
+    name: 'race',
+    initializeCommand: 'init_race_catalog',
+    searchCommand: 'search_races',
+    detailsCommand: 'get_race_details',
+    transformFilters: (filters) => ({
+      search: filters.query || null,
+      sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
+      sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
+      has_darkvision: filters.has_darkvision !== undefined ? filters.has_darkvision : null,
+      has_flight: filters.has_flight !== undefined ? filters.has_flight : null,
+    }),
+  })
 
-  async function initializeRaceCatalog() {
-    if (isRacesInitialized.value) return
-
-    try {
-      isLoading.value = true
-      error.value = null
-      await invoke('init_race_catalog')
-      isRacesInitialized.value = true
-    } catch (e) {
-      error.value = `Failed to initialize race catalog: ${e}`
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function searchRaces(filters: RaceFilters = {}): Promise<RaceSummary[]> {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const results = await invoke<RaceSummary[]>('search_races', {
-        search: filters.query || null,
-        sources: filters.sources && filters.sources.length > 0 ? filters.sources : null,
-        sizes: filters.sizes && filters.sizes.length > 0 ? filters.sizes : null,
-        has_darkvision: filters.has_darkvision !== undefined ? filters.has_darkvision : null,
-        has_flight: filters.has_flight !== undefined ? filters.has_flight : null,
-      })
-
-      races.value = results
-      return results
-    } catch (e) {
-      error.value = `Search failed: ${e}`
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
+  // Custom getDetails that parses JSON
   async function getRaceDetails(name: string, source: string): Promise<RaceWithDetails | null> {
     try {
       const jsonString = await invoke<string | null>('get_race_details', { name, source })
@@ -134,18 +106,17 @@ export function useRaces() {
         fluff: null
       } as RaceWithDetails
     } catch (e) {
-      console.error('Failed to get race details:', e)
       return null
     }
   }
 
   return {
-    isRacesInitialized,
-    isLoading,
-    error,
-    races,
-    initializeRaceCatalog,
-    searchRaces,
+    isRacesInitialized: catalog.isInitialized,
+    isLoading: catalog.isLoading,
+    error: catalog.error,
+    races: catalog.results,
+    initializeRaceCatalog: catalog.initialize,
+    searchRaces: catalog.search,
     getRaceDetails,
   }
 }

@@ -19,6 +19,14 @@ use tracing::{debug, error, info, warn};
 use crate::services::chat_logger::ChatTokenUsage;
 use crate::services::tools::ToolRegistry;
 use crate::services::llm::LlmService;
+use crate::services::tools::character_tools::{
+    GetCharacterTool, ListCampaignCharactersTool, GetCharacterStatsTool,
+    CheckSpellSlotsTool, ListPlayersTool,
+};
+use crate::services::tools::character_write_tools::{
+    UpdateCharacterHpTool, AddInventoryItemTool, CastSpellTool,
+    CreateCharacterTool, UpdateCharacterTool, TakeRestTool,
+};
 
 // Model name is now retrieved from LlmService, not a constant
 
@@ -169,6 +177,43 @@ impl<'a> ChatProcessor<'a> {
         Self { llm }
     }
 
+    /// Build a campaign-specific tool registry with all tools
+    fn build_campaign_tool_registry(&self, campaign_dir: &str) -> ToolRegistry {
+        let campaign_file_config =
+            Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
+                campaign_dir,
+            )));
+
+        let mut registry = ToolRegistry::new();
+
+        // File tools
+        registry.register(Arc::new(ReadFileTool::new(campaign_file_config.clone())));
+        registry.register(Arc::new(WriteFileTool::new(campaign_file_config.clone())));
+        registry.register(Arc::new(ListFilesTool::new(campaign_file_config.clone())));
+        registry.register(Arc::new(EditFileTool::new(campaign_file_config.clone())));
+
+        // Todo tool
+        let todo_tool = TodoListTool::new(self.llm.todo_state_manager.clone());
+        registry.register(Arc::new(todo_tool));
+
+        // Character read tools
+        registry.register(Arc::new(GetCharacterTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(ListCampaignCharactersTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(GetCharacterStatsTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(CheckSpellSlotsTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(ListPlayersTool::new(self.llm.db_service.clone())));
+
+        // Character write tools
+        registry.register(Arc::new(UpdateCharacterHpTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(AddInventoryItemTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(CastSpellTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(CreateCharacterTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(UpdateCharacterTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(TakeRestTool::new(self.llm.db_service.clone())));
+
+        registry
+    }
+
     /// Process a chat message with optional tool support
     pub async fn process_chat(
         &self,
@@ -271,6 +316,7 @@ impl<'a> ChatProcessor<'a> {
                     provider_messages.push(mimir_dm_llm::Message {
                         role: "assistant".to_string(),
                         content: response.content.clone(),
+                        tool_call_id: None,
                     });
 
                     // Execute tool calls
@@ -351,35 +397,11 @@ impl<'a> ChatProcessor<'a> {
         _session_id: &str,
     ) -> Vec<mimir_dm_llm::Tool> {
         if let Some(campaign_dir) = campaign_directory_path {
-            // Create campaign-specific file tools
             info!(
-                "Configuring file tools for campaign directory: {}",
+                "Configuring tools for campaign directory: {}",
                 campaign_dir
             );
-            let campaign_file_config =
-                Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
-                    campaign_dir,
-                )));
-
-            // Create a temporary tool registry with campaign-specific tools
-            let mut campaign_tool_registry = ToolRegistry::new();
-            campaign_tool_registry.register(Arc::new(ReadFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(WriteFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(ListFilesTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(EditFileTool::new(
-                campaign_file_config.clone(),
-            )));
-
-            // Register TodoListTool with the same state manager as the main service
-            let todo_tool = TodoListTool::new(self.llm.todo_state_manager.clone());
-            campaign_tool_registry.register(Arc::new(todo_tool));
-
+            let campaign_tool_registry = self.build_campaign_tool_registry(campaign_dir);
             campaign_tool_registry.get_tool_definitions()
         } else {
             // Use default tools from the main registry
@@ -396,28 +418,7 @@ impl<'a> ChatProcessor<'a> {
         chat_logger: &Option<Arc<crate::services::chat_logger::ChatLogger>>,
     ) {
         let system_rules = if let Some(campaign_dir) = campaign_directory_path {
-            // Generate system rules for campaign-specific tools
-            let campaign_file_config =
-                Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
-                    campaign_dir,
-                )));
-            let mut campaign_tool_registry = ToolRegistry::new();
-            campaign_tool_registry.register(Arc::new(ReadFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(WriteFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(ListFilesTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(EditFileTool::new(
-                campaign_file_config.clone(),
-            )));
-
-            let todo_tool = TodoListTool::new(self.llm.todo_state_manager.clone());
-            campaign_tool_registry.register(Arc::new(todo_tool));
-
+            let campaign_tool_registry = self.build_campaign_tool_registry(campaign_dir);
             campaign_tool_registry
                 .generate_system_rules_with_directory(Some(session_id), Some(campaign_dir))
         } else {
@@ -448,6 +449,7 @@ impl<'a> ChatProcessor<'a> {
                         mimir_dm_llm::Message {
                             role: "system".to_string(),
                             content: system_content.clone(),
+                            tool_call_id: None,
                         },
                     );
                 }
@@ -456,6 +458,7 @@ impl<'a> ChatProcessor<'a> {
                 provider_messages.push(mimir_dm_llm::Message {
                     role: "system".to_string(),
                     content: system_content.clone(),
+                    tool_call_id: None,
                 });
             }
 
@@ -744,7 +747,12 @@ impl<'a> ChatProcessor<'a> {
         info!("=== Processing {} tool calls ===", tool_calls.len());
         for (idx, tool_call) in tool_calls.iter().enumerate() {
             let tool_name = &tool_call.function.name;
-            let mut tool_args = tool_call.function.arguments.clone();
+            // Parse arguments - some providers return them as a JSON string
+            let mut tool_args = if let Some(s) = tool_call.function.arguments.as_str() {
+                serde_json::from_str(s).unwrap_or_else(|_| tool_call.function.arguments.clone())
+            } else {
+                tool_call.function.arguments.clone()
+            };
 
             info!(
                 "Processing tool call {}/{}: {}",
@@ -758,11 +766,15 @@ impl<'a> ChatProcessor<'a> {
 
             // Inject session_id for todo_write tool if session_id is provided
             if tool_name == "todo_write" {
-                tool_args.as_object_mut().unwrap().insert(
-                    "session_id".to_string(),
-                    serde_json::Value::String(session_id.to_string()),
-                );
-                debug!("Injected session_id '{}' into todo_write tool", session_id);
+                if let Some(obj) = tool_args.as_object_mut() {
+                    obj.insert(
+                        "session_id".to_string(),
+                        serde_json::Value::String(session_id.to_string()),
+                    );
+                    debug!("Injected session_id '{}' into todo_write tool", session_id);
+                } else {
+                    warn!("todo_write tool arguments is not an object, cannot inject session_id");
+                }
             }
 
             // Extract key parameters for logging
@@ -798,6 +810,7 @@ impl<'a> ChatProcessor<'a> {
                                 provider_messages.push(mimir_dm_llm::Message {
                                     role: "tool".to_string(),
                                     content: format!("Action cancelled by user: {}", tool_name),
+                                    tool_call_id: Some(tool_call.id.clone()),
                                 });
                                 continue;
                             }
@@ -808,6 +821,7 @@ impl<'a> ChatProcessor<'a> {
                             provider_messages.push(mimir_dm_llm::Message {
                                 role: "tool".to_string(),
                                 content: format!("Confirmation failed: {}", e),
+                                tool_call_id: Some(tool_call.id.clone()),
                             });
                             continue;
                         }
@@ -820,6 +834,7 @@ impl<'a> ChatProcessor<'a> {
                     provider_messages.push(mimir_dm_llm::Message {
                         role: "tool".to_string(),
                         content: "Tool configuration error: missing action description".to_string(),
+                        tool_call_id: Some(tool_call.id.clone()),
                     });
                     continue;
                 }
@@ -858,6 +873,7 @@ impl<'a> ChatProcessor<'a> {
             provider_messages.push(mimir_dm_llm::Message {
                 role: "tool".to_string(),
                 content: tool_result.clone(),
+                tool_call_id: Some(tool_call.id.clone()),
             });
         }
 
@@ -884,27 +900,7 @@ impl<'a> ChatProcessor<'a> {
         campaign_directory_path: Option<&str>,
     ) -> (bool, Option<ActionDescription>) {
         if let Some(campaign_dir) = campaign_directory_path {
-            let campaign_file_config =
-                Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
-                    campaign_dir,
-                )));
-            let mut campaign_tool_registry = ToolRegistry::new();
-            campaign_tool_registry.register(Arc::new(ReadFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(WriteFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(ListFilesTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(EditFileTool::new(
-                campaign_file_config.clone(),
-            )));
-
-            let todo_tool = TodoListTool::new(self.llm.todo_state_manager.clone());
-            campaign_tool_registry.register(Arc::new(todo_tool));
-
+            let campaign_tool_registry = self.build_campaign_tool_registry(campaign_dir);
             (
                 campaign_tool_registry.requires_confirmation(tool_name),
                 campaign_tool_registry.get_action_description(tool_name, tool_args),
@@ -936,28 +932,7 @@ impl<'a> ChatProcessor<'a> {
         let execution_start = Instant::now();
 
         let tool_result = if let Some(campaign_dir) = campaign_directory_path {
-            // Use campaign-specific tools for execution
-            let campaign_file_config =
-                Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
-                    campaign_dir,
-                )));
-            let mut campaign_tool_registry = ToolRegistry::new();
-            campaign_tool_registry.register(Arc::new(ReadFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(WriteFileTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(ListFilesTool::new(
-                campaign_file_config.clone(),
-            )));
-            campaign_tool_registry.register(Arc::new(EditFileTool::new(
-                campaign_file_config.clone(),
-            )));
-
-            let todo_tool = TodoListTool::new(self.llm.todo_state_manager.clone());
-            campaign_tool_registry.register(Arc::new(todo_tool));
-
+            let campaign_tool_registry = self.build_campaign_tool_registry(campaign_dir);
             match campaign_tool_registry
                 .execute_tool(tool_name, tool_args.clone())
                 .await

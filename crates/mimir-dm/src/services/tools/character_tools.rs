@@ -4,6 +4,7 @@
 
 use async_trait::async_trait;
 use mimir_dm_core::{DatabaseService, services::CharacterService};
+use mimir_dm_core::services::player_service::PlayerService;
 use mimir_dm_llm::ToolTrait;
 use serde_json::{json, Value};
 use std::error::Error;
@@ -86,8 +87,14 @@ Output includes:
             "experience_points": char_data.experience_points,
             "race": char_data.race,
             "subrace": char_data.subrace,
-            "class": char_data.class,
-            "subclass": char_data.subclass,
+            "class": char_data.primary_class_name(),
+            "classes": char_data.classes.iter().map(|c| json!({
+                "class_name": c.class_name,
+                "level": c.level,
+                "subclass": c.subclass,
+                "hit_dice_type": c.hit_dice_type,
+                "hit_dice_remaining": c.hit_dice_remaining
+            })).collect::<Vec<_>>(),
             "background": char_data.background,
             "alignment": char_data.alignment,
             "abilities": {
@@ -119,8 +126,7 @@ Output includes:
             "hit_points": {
                 "current": char_data.current_hp,
                 "maximum": char_data.max_hp,
-                "hit_dice_remaining": char_data.hit_dice_remaining,
-                "hit_dice_type": char_data.hit_dice_type
+                "total_hit_dice_remaining": char_data.total_hit_dice_remaining()
             },
             "proficiency_bonus": char_data.proficiency_bonus(),
             "proficiencies": {
@@ -241,7 +247,7 @@ Output format:
                         "character_name": char_data.character_name,
                         "level": char_data.level,
                         "race": char_data.race,
-                        "class": char_data.class,
+                        "class": char_data.primary_class_name(),
                         "hit_points": {
                             "current": char_data.current_hp,
                             "maximum": char_data.max_hp
@@ -445,7 +451,7 @@ Output format:
         let result = json!({
             "character_id": character.id,
             "character_name": char_data.character_name,
-            "class": char_data.class,
+            "class": char_data.primary_class_name(),
             "level": char_data.level,
             "spell_slots": char_data.spells.spell_slots,
             "prepared_spells_count": char_data.spells.prepared_spells.len(),
@@ -455,6 +461,64 @@ Output format:
         });
 
         debug!("Checked spell slots for character: {} (ID: {})", char_data.character_name, character.id);
+        Ok(serde_json::to_string_pretty(&result)?)
+    }
+}
+
+/// Tool for listing all players
+pub struct ListPlayersTool {
+    db_service: Arc<DatabaseService>,
+}
+
+impl ListPlayersTool {
+    pub fn new(db_service: Arc<DatabaseService>) -> Self {
+        Self { db_service }
+    }
+}
+
+#[async_trait]
+impl ToolTrait for ListPlayersTool {
+    fn name(&self) -> &str {
+        "list_players"
+    }
+
+    fn description(&self) -> &str {
+        "List all players in the system with their IDs and names.
+
+When to use:
+- Before creating a character to find the correct player_id
+- To see which players exist in the system
+- To look up a player by name
+
+Output:
+- Array of player objects with id, name, and email"
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {},
+            "required": []
+        })
+    }
+
+    async fn execute(&self, _arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
+        let mut conn = self.db_service.get_connection()
+            .map_err(|e| format!("Failed to get database connection: {}", e))?;
+
+        let mut player_service = PlayerService::new(&mut conn);
+        let players = player_service.list_players()
+            .map_err(|e| format!("Failed to list players: {}", e))?;
+
+        let result: Vec<Value> = players.iter().map(|p| {
+            json!({
+                "id": p.id,
+                "name": p.name,
+                "email": p.email
+            })
+        }).collect();
+
+        debug!("Listed {} players", result.len());
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }

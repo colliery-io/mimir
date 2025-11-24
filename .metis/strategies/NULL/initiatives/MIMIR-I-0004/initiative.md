@@ -4,14 +4,14 @@ level: initiative
 title: "Character Creation and Management System"
 short_code: "MIMIR-I-0004"
 created_at: 2025-11-10T04:27:39.110957+00:00
-updated_at: 2025-11-10T18:56:24.160489+00:00
+updated_at: 2025-11-21T10:35:19.414779+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/ready"
+  - "#phase/active"
 
 
 exit_criteria_met: false

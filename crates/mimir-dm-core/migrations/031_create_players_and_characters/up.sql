@@ -27,7 +27,7 @@ CREATE INDEX idx_campaign_players_player ON campaign_players(player_id);
 -- Characters table (character metadata)
 CREATE TABLE characters (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    campaign_id INTEGER NOT NULL,
+    campaign_id INTEGER,
     player_id INTEGER NOT NULL,
     character_name TEXT NOT NULL,
     is_npc INTEGER NOT NULL DEFAULT 0,

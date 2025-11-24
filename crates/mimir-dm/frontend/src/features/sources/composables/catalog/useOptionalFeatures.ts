@@ -1,5 +1,4 @@
-import { ref } from 'vue'
-import type { Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 export interface OptionalFeatureSummary {
@@ -18,53 +17,41 @@ export interface OptionalFeatureFilters {
 }
 
 export function useOptionalFeatures() {
-  const isOptionalFeaturesInitialized = ref(false)
+  const isOptionalFeaturesInitialized = ref(true)
   const isLoading = ref(false)
   const error: Ref<string | null> = ref(null)
   const optionalFeatures = ref<OptionalFeatureSummary[]>([])
 
   async function initializeOptionalFeatureCatalog() {
-    if (isOptionalFeaturesInitialized.value) return
-
-    try {
-      isLoading.value = true
-      error.value = null
-      await invoke('init_optional_feature_catalog')
-      isOptionalFeaturesInitialized.value = true
-    } catch (e) {
-      error.value = `Failed to initialize optional feature catalog: ${e}`
-    } finally {
-      isLoading.value = false
-    }
+    // No initialization needed for DB-backed catalog
   }
 
-  async function searchOptionalFeatures(filters: OptionalFeatureFilters = {}): Promise<OptionalFeatureSummary[]> {
-    if (!isOptionalFeaturesInitialized.value) {
-      await initializeOptionalFeatureCatalog()
-    }
-
+  async function searchOptionalFeatures(filters: OptionalFeatureFilters): Promise<OptionalFeatureSummary[]> {
     try {
       isLoading.value = true
       error.value = null
+
       const results = await invoke<OptionalFeatureSummary[]>('search_optional_features', {
-        query: filters.query,
-        sources: filters.sources,
-        featureTypes: filters.feature_types
+        name: filters.query || null,
+        feature_types: filters.feature_types?.length ? filters.feature_types : null,
+        sources: filters.sources?.length ? filters.sources : null,
+        grants_spells: null,
       })
+
       optionalFeatures.value = results
       return results
     } catch (e) {
-      error.value = `Failed to search optional features: ${e}`
+      error.value = `Search failed: ${e}`
       return []
     } finally {
       isLoading.value = false
     }
   }
 
-  async function getOptionalFeatureDetails(name: string, source: string): Promise<any | null> {
+  async function getOptionalFeatureDetails(name: string, source: string): Promise<unknown | null> {
     try {
-      const details = await invoke('get_optional_feature_details', { name, source })
-      return details
+      const feature = await invoke<unknown>('get_optional_feature_details', { name, source })
+      return feature
     } catch (e) {
       return null
     }

@@ -35,20 +35,22 @@ export interface VehicleSummary {
   speed?: string
 }
 
+export interface VehicleFilters {
+  query?: string
+  types?: string[]
+  sources?: string[]
+  terrains?: string[]
+  sizes?: string[]
+}
+
 export function useVehicles() {
   async function initializeVehicleCatalog() {
     // No-op: database-backed vehicle catalog doesn't need initialization
   }
 
-  async function searchVehicles(filters: {
-    query?: string
-    types?: string[]
-    sources?: string[]
-    terrains?: string[]
-    sizes?: string[]
-  }): Promise<VehicleSummary[]> {
+  async function searchVehicles(filters: VehicleFilters = {}): Promise<VehicleSummary[]> {
     try {
-      const results = await invoke<VehicleSummary[]>('search_vehicles_db', {
+      const results = await invoke<VehicleSummary[]>('search_vehicles', {
         filters: {
           name: filters.query || null,
           sources: filters.sources || null,
@@ -59,57 +61,51 @@ export function useVehicles() {
       })
       return results || []
     } catch (e) {
-      console.error(`Failed to search vehicles: ${e}`)
       return []
     }
   }
 
   async function getVehicleDetails(name: string, source: string): Promise<Vehicle | null> {
     try {
-      const details = await invoke<Vehicle>('get_vehicle_details_db', { vehicleName: name, vehicleSource: source })
+      const details = await invoke<Vehicle>('get_vehicle_details', { vehicleName: name, vehicleSource: source })
       return details
     } catch (e) {
-      console.error(`Failed to get vehicle details: ${e}`)
       return null
     }
   }
 
   async function getVehicleTypes(): Promise<string[]> {
     try {
-      const types = await invoke<string[]>('get_vehicle_types_db')
+      const types = await invoke<string[]>('get_vehicle_types')
       return types || []
     } catch (e) {
-      console.error(`Failed to get vehicle types: ${e}`)
       return []
     }
   }
 
   async function getVehicleTerrains(): Promise<string[]> {
     try {
-      const terrains = await invoke<string[]>('get_vehicle_terrains_db')
+      const terrains = await invoke<string[]>('get_vehicle_terrains')
       return terrains || []
     } catch (e) {
-      console.error(`Failed to get vehicle terrains: ${e}`)
       return []
     }
   }
 
   async function getVehicleSizes(): Promise<string[]> {
     try {
-      const sizes = await invoke<string[]>('get_vehicle_sizes_db')
+      const sizes = await invoke<string[]>('get_vehicle_sizes')
       return sizes || []
     } catch (e) {
-      console.error(`Failed to get vehicle sizes: ${e}`)
       return []
     }
   }
 
   async function getVehicleSources(): Promise<string[]> {
     try {
-      const sources = await invoke<[string, number][]>('get_vehicle_statistics_db')
+      const sources = await invoke<[string, number][]>('get_vehicle_statistics')
       return (sources || []).map(([source, _count]) => source)
     } catch (e) {
-      console.error(`Failed to get vehicle sources: ${e}`)
       return []
     }
   }

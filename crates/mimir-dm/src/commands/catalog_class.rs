@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 /// Search classes with database backend
 #[tauri::command]
-pub async fn search_classes_db(
+pub async fn search_classes(
     db_service: State<'_, Arc<DatabaseService>>,
     filters: ClassFilters,
 ) -> Result<Vec<ClassSummary>, String> {
@@ -21,7 +21,7 @@ pub async fn search_classes_db(
 
 /// Get class details by name and source (for base classes)
 #[tauri::command]
-pub async fn get_class_details_db(
+pub async fn get_class_details(
     db_service: State<'_, Arc<DatabaseService>>,
     #[allow(non_snake_case)]
     className: String,
@@ -37,7 +37,7 @@ pub async fn get_class_details_db(
 
 /// Get subclass details by subclass name, class name and source
 #[tauri::command]
-pub async fn get_subclass_details_db(
+pub async fn get_subclass_details(
     db_service: State<'_, Arc<DatabaseService>>,
     #[allow(non_snake_case)]
     subclassName: String,
@@ -55,7 +55,7 @@ pub async fn get_subclass_details_db(
 
 /// Get all subclasses for a class
 #[tauri::command]
-pub async fn get_class_subclasses_db(
+pub async fn get_class_subclasses(
     db_service: State<'_, Arc<DatabaseService>>,
     #[allow(non_snake_case)]
     className: String,
@@ -71,7 +71,7 @@ pub async fn get_class_subclasses_db(
 
 /// Get unique class sources
 #[tauri::command]
-pub async fn get_class_sources_db(
+pub async fn get_class_sources(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     let mut conn = db_service.get_connection()
@@ -83,7 +83,7 @@ pub async fn get_class_sources_db(
 
 /// Get unique primary abilities
 #[tauri::command]
-pub async fn get_class_primary_abilities_db(
+pub async fn get_class_primary_abilities(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<String>, String> {
     let mut conn = db_service.get_connection()
@@ -95,7 +95,7 @@ pub async fn get_class_primary_abilities_db(
 
 /// Get class statistics (count by source)
 #[tauri::command]
-pub async fn get_class_statistics_db(
+pub async fn get_class_statistics(
     db_service: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<(String, i64)>, String> {
     let mut conn = db_service.get_connection()

@@ -66,7 +66,8 @@ const emit = defineEmits<{
   select: [table: TableSummary]
 }>()
 
-function getCategoryClass(category: string): string {
+function getCategoryClass(category: string | undefined): string {
+  if (!category) return 'category-general'
   switch (category.toLowerCase()) {
     case 'madness':
       return 'category-madness'

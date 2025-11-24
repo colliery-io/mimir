@@ -21,7 +21,7 @@ pub use data::{
 #[diesel(belongs_to(crate::models::player::Player, foreign_key = player_id))]
 pub struct Character {
     pub id: i32,
-    pub campaign_id: i32,
+    pub campaign_id: Option<i32>,
     pub player_id: i32,
     pub character_name: String,
     pub is_npc: i32,
@@ -30,17 +30,21 @@ pub struct Character {
     pub directory_path: String,
     pub created_at: String,
     pub last_updated_at: String,
+    pub class: Option<String>,
+    pub race: Option<String>,
 }
 
 /// New character for insertion
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = characters)]
 pub struct NewCharacter {
-    pub campaign_id: i32,
+    pub campaign_id: Option<i32>,
     pub player_id: i32,
     pub character_name: String,
     pub is_npc: Option<i32>,
     pub directory_path: String,
+    pub class: Option<String>,
+    pub race: Option<String>,
 }
 
 /// Character update structure
@@ -52,6 +56,8 @@ pub struct UpdateCharacter {
     pub current_level: Option<i32>,
     pub current_version: Option<i32>,
     pub last_updated_at: Option<String>,
+    pub campaign_id: Option<Option<i32>>,
+    pub directory_path: Option<String>,
 }
 
 /// Database model for character versions (full character data)

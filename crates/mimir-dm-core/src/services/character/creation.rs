@@ -6,7 +6,7 @@ use crate::connection::DbConnection;
 use crate::error::{DbError, Result};
 use crate::models::catalog::{Background, Race};
 use crate::models::character::data::{
-    AbilityScores, CharacterData, Currency, EquippedItems, InventoryItem, Personality, Proficiencies,
+    AbilityScores, CharacterData, ClassLevel, Currency, EquippedItems, InventoryItem, Personality, Proficiencies,
     SpellData,
 };
 use crate::services::{BackgroundService, RaceService};
@@ -306,7 +306,7 @@ impl<'a> CharacterBuilder<'a> {
         }
 
         // Extract speed from race
-        let _speed = if let Some(speed_value) = &race.speed {
+        let speed = if let Some(speed_value) = &race.speed {
             if let Some(speed_num) = speed_value.as_i64() {
                 speed_num as i32
             } else if let Some(obj) = speed_value.as_object() {
@@ -349,7 +349,7 @@ impl<'a> CharacterBuilder<'a> {
         // Calculate starting HP: max hit die + CON modifier
         let max_hp = class_info.hit_die_value + base_abilities.con_modifier();
 
-        Ok(CharacterData {
+        let mut character_data = CharacterData {
             character_name,
             player_id,
             level: 1,
@@ -359,15 +359,19 @@ impl<'a> CharacterBuilder<'a> {
             created_at: chrono::Utc::now().to_rfc3339(),
             race: race_name,
             subrace: self.subrace_name,
-            class,
-            subclass: self.subclass,
+            classes: vec![ClassLevel {
+                class_name: class,
+                level: 1,
+                subclass: self.subclass,
+                hit_dice_type: class_info.hit_die,
+                hit_dice_remaining: 1,
+            }],
             background: background_name,
             alignment: self.alignment,
             abilities: base_abilities,
             max_hp,
             current_hp: max_hp,
-            hit_dice_remaining: 1,
-            hit_dice_type: class_info.hit_die,
+            speed,
             proficiencies: self.proficiencies,
             class_features: Vec::new(), // TODO: Extract from class data
             feats: Vec::new(),
@@ -376,7 +380,14 @@ impl<'a> CharacterBuilder<'a> {
             currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: self.personality,
-        })
+        };
+
+        // Initialize spell slots from class data
+        if let Ok(spell_slots) = super::spell_management::calculate_spell_slots(self.conn, &character_data) {
+            character_data.spells.spell_slots = spell_slots;
+        }
+
+        Ok(character_data)
     }
 
     // Helper method to add class proficiencies (same as before)
@@ -717,7 +728,7 @@ mod tests {
 
         assert_eq!(character_data.character_name, "Test Character");
         assert_eq!(character_data.race, "Human");
-        assert_eq!(character_data.class, "Fighter");
+        assert_eq!(character_data.primary_class_name(), "Fighter");
         assert_eq!(character_data.background, "Soldier");
         assert_eq!(character_data.level, 1);
 
@@ -760,10 +771,10 @@ mod tests {
             .expect("Failed to build character");
 
         assert_eq!(character_data.character_name, "Test Character 2");
-        assert_eq!(character_data.class, "Wizard");
+        assert_eq!(character_data.primary_class_name(), "Wizard");
 
         // Wizard should have d6 hit die
-        assert_eq!(character_data.hit_dice_type, "d6");
+        assert_eq!(character_data.classes[0].hit_dice_type, "d6");
     }
 
     #[test]

@@ -55,6 +55,8 @@ pub struct ToolFunction {
 /// Tool definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tool {
+    /// Name of the tool (required for some providers like Groq)
+    pub name: String,
     /// Type of tool (usually "function")
     #[serde(rename = "type")]
     pub tool_type: String,
@@ -65,6 +67,8 @@ pub struct Tool {
 /// Tool call in response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCall {
+    /// Unique identifier for this tool call
+    pub id: String,
     /// Function to call
     pub function: ToolCallFunction,
 }
@@ -133,10 +137,13 @@ pub struct Usage {
 /// Message structure for chat requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
-    /// Message role (system, user, assistant)
+    /// Message role (system, user, assistant, tool)
     pub role: String,
     /// Message content
     pub content: String,
+    /// Tool call ID (required for tool role messages in OpenAI-compatible APIs)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 /// Error type for LLM operations

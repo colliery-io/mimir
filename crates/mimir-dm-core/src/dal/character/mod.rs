@@ -51,6 +51,14 @@ impl<'a> CharacterRepository<'a> {
         Ok(())
     }
 
+    /// List all characters (including unassigned)
+    pub fn list_all(&mut self) -> Result<Vec<Character>> {
+        characters::table
+            .order_by(characters::character_name)
+            .load(self.conn)
+            .map_err(Into::into)
+    }
+
     /// List all characters for a campaign
     pub fn list_for_campaign(&mut self, campaign_id: i32) -> Result<Vec<Character>> {
         characters::table
@@ -147,5 +155,13 @@ impl<'a> CharacterVersionRepository<'a> {
     pub fn get_next_version_number(&mut self, character_id: i32) -> Result<i32> {
         let latest = self.find_latest(character_id)?;
         Ok(latest.map(|v| v.version_number + 1).unwrap_or(1))
+    }
+
+    /// Update the file path for a specific version
+    pub fn update_file_path(&mut self, version_id: i32, file_path: String) -> Result<()> {
+        diesel::update(character_versions::table.find(version_id))
+            .set(character_versions::file_path.eq(file_path))
+            .execute(self.conn)?;
+        Ok(())
     }
 }

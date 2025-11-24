@@ -74,6 +74,22 @@ const routes: RouteRecordRaw[] = [
     path: '/settings',
     name: 'settings',
     component: () => import('../../views/SettingsView.vue')
+  },
+  {
+    path: '/players',
+    name: 'players',
+    component: () => import('../../features/players/views/PlayerListView.vue')
+  },
+  {
+    path: '/characters',
+    name: 'characters',
+    component: () => import('../../features/characters/views/CharacterListView.vue')
+  },
+  {
+    path: '/characters/:id',
+    name: 'character-sheet',
+    component: () => import('../../features/characters/views/CharacterSheetView.vue'),
+    props: true
   }
 ]
 
