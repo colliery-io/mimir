@@ -1,11 +1,12 @@
 use diesel::prelude::*;
+use crate::error::Result;
 use crate::models::catalog::deity::{
     CatalogDeity, DeitySummary, DeityFilters, Deity, NewCatalogDeity, DeityData
 };
 use crate::schema::catalog_deities;
 use std::fs;
 use std::path::Path;
-use tracing::{error, info, debug};
+use tracing::{info, debug};
 
 pub struct DeityService<'a> {
     pub conn: &'a mut SqliteConnection,
@@ -17,11 +18,11 @@ impl<'a> DeityService<'a> {
     }
 
     /// Search deities with filters
-    pub fn search_deities(&mut self, filters: DeityFilters) -> Result<Vec<DeitySummary>, String> {
+    pub fn search_deities(&mut self, filters: DeityFilters) -> Result<Vec<DeitySummary>> {
         use crate::schema::catalog_deities::dsl::*;
-        
+
         let mut query = catalog_deities.into_boxed();
-        
+
         // Filter by name (partial match)
         if let Some(name_filter) = &filters.name {
             if !name_filter.is_empty() {
@@ -29,28 +30,28 @@ impl<'a> DeityService<'a> {
                 query = query.filter(name.like(search_pattern));
             }
         }
-        
+
         // Filter by sources
         if let Some(source_filters) = &filters.sources {
             if !source_filters.is_empty() {
                 query = query.filter(source.eq_any(source_filters));
             }
         }
-        
+
         // Filter by pantheons
         if let Some(pantheon_filters) = &filters.pantheons {
             if !pantheon_filters.is_empty() {
                 query = query.filter(pantheon.eq_any(pantheon_filters));
             }
         }
-        
+
         // Filter by alignments
         if let Some(alignment_filters) = &filters.alignments {
             if !alignment_filters.is_empty() {
                 query = query.filter(alignment.eq_any(alignment_filters));
             }
         }
-        
+
         // Filter by domains (partial match in comma-separated string)
         if let Some(domain_filters) = &filters.domains {
             if !domain_filters.is_empty() {
@@ -60,30 +61,27 @@ impl<'a> DeityService<'a> {
                 }
             }
         }
-        
+
         let deities = query
             .limit(1000) // Reasonable limit to prevent memory issues
-            .load::<CatalogDeity>(self.conn)
-            .map_err(|e| format!("Failed to search deities: {}", e))?;
-        
+            .load::<CatalogDeity>(self.conn)?;
+
         Ok(deities.iter().map(DeitySummary::from).collect())
     }
 
     /// Get deity by name and source
-    pub fn get_deity_by_name_and_source(&mut self, deity_name: &str, deity_source: &str) -> Result<Option<Deity>, String> {
+    pub fn get_deity_by_name_and_source(&mut self, deity_name: &str, deity_source: &str) -> Result<Option<Deity>> {
         use crate::schema::catalog_deities::dsl::*;
-        
+
         let catalog_deity = catalog_deities
             .filter(name.eq(deity_name))
             .filter(source.eq(deity_source))
             .first::<CatalogDeity>(self.conn)
-            .optional()
-            .map_err(|e| format!("Failed to get deity by name and source: {}", e))?;
-        
+            .optional()?;
+
         match catalog_deity {
             Some(deity_record) => {
-                let parsed_deity: Deity = serde_json::from_str(&deity_record.full_deity_json)
-                    .map_err(|e| format!("Failed to parse deity JSON: {}", e))?;
+                let parsed_deity: Deity = serde_json::from_str(&deity_record.full_deity_json)?;
                 Ok(Some(parsed_deity))
             },
             None => Ok(None),
@@ -91,41 +89,39 @@ impl<'a> DeityService<'a> {
     }
 
     /// Get all unique pantheons for filtering
-    pub fn get_all_pantheons(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_pantheons(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_deities::dsl::*;
-        
+
         let pantheons: Vec<Option<String>> = catalog_deities
             .select(pantheon)
             .distinct()
             .filter(pantheon.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get pantheons: {}", e))?;
-        
+            .load(self.conn)?;
+
         let mut result: Vec<String> = pantheons
             .into_iter()
-            .filter_map(|p| p)
+            .flatten()
             .filter(|p| !p.is_empty())
             .collect();
-        
+
         result.sort();
         Ok(result)
     }
 
     /// Get all unique domains for filtering
-    pub fn get_all_domains(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_domains(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_deities::dsl::*;
-        
+
         let domain_strings: Vec<Option<String>> = catalog_deities
             .select(domains)
             .distinct()
             .filter(domains.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get domains: {}", e))?;
-        
+            .load(self.conn)?;
+
         let mut all_domains = std::collections::HashSet::new();
-        
+
         // Parse comma-separated domains
-        for domain_str in domain_strings.into_iter().filter_map(|d| d) {
+        for domain_str in domain_strings.into_iter().flatten() {
             for domain in domain_str.split(',') {
                 let trimmed = domain.trim();
                 if !trimmed.is_empty() {
@@ -133,42 +129,40 @@ impl<'a> DeityService<'a> {
                 }
             }
         }
-        
+
         let mut result: Vec<String> = all_domains.into_iter().collect();
         result.sort();
         Ok(result)
     }
 
     /// Get all unique alignments for filtering
-    pub fn get_all_alignments(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_all_alignments(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_deities::dsl::*;
-        
+
         let alignments: Vec<Option<String>> = catalog_deities
             .select(alignment)
             .distinct()
             .filter(alignment.is_not_null())
-            .load(self.conn)
-            .map_err(|e| format!("Failed to get alignments: {}", e))?;
-        
+            .load(self.conn)?;
+
         let mut result: Vec<String> = alignments
             .into_iter()
-            .filter_map(|a| a)
+            .flatten()
             .filter(|a| !a.is_empty())
             .collect();
-        
+
         result.sort();
         Ok(result)
     }
 
     /// Get deity statistics by source
-    pub fn get_deity_count_by_source(&mut self) -> Result<Vec<(String, i64)>, String> {
+    pub fn get_deity_count_by_source(&mut self) -> Result<Vec<(String, i64)>> {
         use crate::schema::catalog_deities::dsl::*;
 
         let counts = catalog_deities
             .group_by(source)
             .select((source, diesel::dsl::count_star()))
-            .load::<(String, i64)>(self.conn)
-            .map_err(|e| format!("Failed to get deity counts: {}", e))?;
+            .load::<(String, i64)>(self.conn)?;
 
         Ok(counts)
     }
@@ -178,7 +172,7 @@ impl<'a> DeityService<'a> {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing deities from book directory: {:?} (source: {})", book_dir, source);
 
         let mut total_imported = 0;
@@ -200,7 +194,7 @@ impl<'a> DeityService<'a> {
                     total_imported += count;
                 }
                 Err(e) => {
-                    error!("Failed to import deities from {:?}: {}", deity_file, e);
+                    debug!("Failed to import deities from {:?}: {}", deity_file, e);
                     // Continue processing other files instead of failing completely
                 }
             }
@@ -211,17 +205,16 @@ impl<'a> DeityService<'a> {
     }
 
     /// Find deity files in a book directory (deities/*.json files)
-    fn find_deity_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    fn find_deity_files(book_dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         let mut files = Vec::new();
 
         // Check the deities directory
         let deities_dir = book_dir.join("deities");
         if deities_dir.exists() && deities_dir.is_dir() {
-            let entries = fs::read_dir(&deities_dir)
-                .map_err(|e| format!("Failed to read deities directory: {}", e))?;
+            let entries = fs::read_dir(&deities_dir)?;
 
             for entry in entries {
-                let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+                let entry = entry?;
                 let path = entry.path();
 
                 if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("json") {
@@ -246,14 +239,11 @@ impl<'a> DeityService<'a> {
         conn: &mut SqliteConnection,
         file_path: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         debug!("Reading deities from file: {:?}", file_path);
 
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read file {:?}: {}", file_path, e))?;
-
-        let data: DeityData = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse JSON from {:?}: {}", file_path, e))?;
+        let content = fs::read_to_string(file_path)?;
+        let data: DeityData = serde_json::from_str(&content)?;
 
         if let Some(deities) = data.deity {
             if !deities.is_empty() {
@@ -282,8 +272,7 @@ impl<'a> DeityService<'a> {
                         .values(deity)
                         .on_conflict((catalog_deities::name, catalog_deities::source))
                         .do_nothing()
-                        .execute(conn)
-                        .map_err(|e| format!("Failed to insert deity: {}", e))?;
+                        .execute(conn)?;
                 }
 
                 info!("Successfully imported {} deities into database", new_deities.len());
@@ -300,12 +289,11 @@ impl<'a> DeityService<'a> {
     pub fn remove_deities_from_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing deities from source: {}", source);
 
         let deleted = diesel::delete(catalog_deities::table.filter(catalog_deities::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete deities from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} deities from source: {}", deleted, source);
         Ok(deleted)
