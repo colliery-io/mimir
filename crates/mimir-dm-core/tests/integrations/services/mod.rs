@@ -1,4 +1,9 @@
+mod background;
 mod campaigns;
+mod character;
+mod class;
+mod feat;
 mod modules;
 mod player;
-mod character;
+mod race;
+mod spell;
