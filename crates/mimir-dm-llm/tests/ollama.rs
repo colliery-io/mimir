@@ -5,8 +5,23 @@ use mimir_dm_llm::{
 };
 use std::collections::HashMap;
 
+/// Check if Ollama is available by attempting to connect
+async fn is_ollama_available() -> bool {
+    let client = reqwest::Client::new();
+    client
+        .get("http://localhost:11434/api/tags")
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+        .is_ok()
+}
+
 #[tokio::test]
 async fn test_ollama_completion() {
+    if !is_ollama_available().await {
+        eprintln!("Skipping test: Ollama not available at http://localhost:11434");
+        return;
+    }
     println!("Starting completion test");
     let config = ModelConfig {
         name: "llama3.1".to_string(),
@@ -37,7 +52,11 @@ async fn test_ollama_completion() {
 
 #[tokio::test]
 async fn test_ollama_chat() {
-    
+    if !is_ollama_available().await {
+        eprintln!("Skipping test: Ollama not available at http://localhost:11434");
+        return;
+    }
+
     println!("Starting chat test");
     let config = ModelConfig {
         name: "llama3.1".to_string(),
@@ -81,7 +100,11 @@ async fn test_ollama_chat() {
 
 #[tokio::test]
 async fn test_ollama_embeddings() {
-    
+    if !is_ollama_available().await {
+        eprintln!("Skipping test: Ollama not available at http://localhost:11434");
+        return;
+    }
+
     let config = ModelConfig {
         name: "nomic-embed-text".to_string(),
         supported_endpoints: vec![EndpointType::Embedding],
@@ -195,7 +218,11 @@ async fn test_ollama_invalid_endpoint() {
 
 #[tokio::test]
 async fn test_ollama_missing_model() {
-    
+    if !is_ollama_available().await {
+        eprintln!("Skipping test: Ollama not available at http://localhost:11434");
+        return;
+    }
+
     let config = ModelConfig {
         name: "non-existent-model".to_string(),
         model: "non-existent-model".to_string(),
@@ -231,7 +258,11 @@ async fn test_ollama_missing_model() {
 
 #[tokio::test]
 async fn test_ollama_rate_limiting() {
-    
+    if !is_ollama_available().await {
+        eprintln!("Skipping test: Ollama not available at http://localhost:11434");
+        return;
+    }
+
     let config = ModelConfig {
         name: "llama3.1-local".to_string(),
         model: "llama3.1".to_string(),
@@ -286,9 +317,13 @@ async fn test_ollama_rate_limiting() {
     }
 }
 
-#[tokio::test] 
+#[tokio::test]
 async fn test_ollama_embedding_dimensions() {
-    
+    if !is_ollama_available().await {
+        eprintln!("Skipping test: Ollama not available at http://localhost:11434");
+        return;
+    }
+
     let config = ModelConfig {
         name: "nomic-embed-text".to_string(),
         supported_endpoints: vec![EndpointType::Embedding],
@@ -329,7 +364,11 @@ async fn test_ollama_embedding_dimensions() {
 
 #[tokio::test]
 async fn test_ollama_multiple_messages_chat() {
-    
+    if !is_ollama_available().await {
+        eprintln!("Skipping test: Ollama not available at http://localhost:11434");
+        return;
+    }
+
     let config = ModelConfig {
         name: "llama3.1".to_string(),
         model: "llama3.1".to_string(),
