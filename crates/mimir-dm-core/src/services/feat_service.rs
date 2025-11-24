@@ -1,5 +1,6 @@
 use diesel::prelude::*;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
+use crate::error::Result;
 use crate::models::catalog::{FeatFilters, FeatSummary, CatalogFeat, NewCatalogFeat, FeatData};
 use crate::schema::catalog_feats;
 use std::fs;
@@ -11,7 +12,7 @@ impl FeatService {
     pub fn search_feats(
         conn: &mut SqliteConnection,
         filters: FeatFilters,
-    ) -> Result<Vec<FeatSummary>, String> {
+    ) -> Result<Vec<FeatSummary>> {
         debug!("Searching feats with filters: {:?}", filters);
 
         let mut query = catalog_feats::table.into_boxed();
@@ -47,11 +48,7 @@ impl FeatService {
 
         let feats = query
             .select(CatalogFeat::as_select())
-            .load::<CatalogFeat>(conn)
-            .map_err(|e| {
-                error!("Database feat search failed: {}", e);
-                format!("Database feat search failed: {}", e)
-            })?;
+            .load::<CatalogFeat>(conn)?;
 
         Ok(feats.iter().map(FeatSummary::from).collect())
     }
@@ -60,7 +57,7 @@ impl FeatService {
         conn: &mut SqliteConnection,
         name: &str,
         source: &str,
-    ) -> Result<CatalogFeat, String> {
+    ) -> Result<CatalogFeat> {
         catalog_feats::table
             .filter(
                 catalog_feats::name.eq(name)
@@ -68,32 +65,23 @@ impl FeatService {
             )
             .select(CatalogFeat::as_select())
             .first::<CatalogFeat>(conn)
-            .map_err(|e| {
-                error!("Feat not found: {} from {}: {}", name, source, e);
-                format!("Feat not found: {} from {}", name, source)
-            })
+            .map_err(Into::into)
     }
 
-    pub fn get_feat_sources(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_feat_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         catalog_feats::table
             .select(catalog_feats::source)
             .distinct()
             .order(catalog_feats::source.asc())
             .load::<String>(conn)
-            .map_err(|e| {
-                error!("Failed to get feat sources: {}", e);
-                format!("Failed to get feat sources: {}", e)
-            })
+            .map_err(Into::into)
     }
 
-    pub fn get_feat_count(conn: &mut SqliteConnection) -> Result<i64, String> {
+    pub fn get_feat_count(conn: &mut SqliteConnection) -> Result<i64> {
         catalog_feats::table
             .count()
             .get_result::<i64>(conn)
-            .map_err(|e| {
-                error!("Failed to get feat count: {}", e);
-                format!("Failed to get feat count: {}", e)
-            })
+            .map_err(Into::into)
     }
 
     /// Import all feat data from an uploaded book directory
@@ -101,7 +89,7 @@ impl FeatService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing feats from book directory: {:?} (source: {})", book_dir, source);
         let mut imported_count = 0;
 
@@ -114,11 +102,10 @@ impl FeatService {
         info!("Found feats directory: {:?}", feats_dir);
 
         // Read all JSON files in the feats directory
-        let entries = fs::read_dir(&feats_dir)
-            .map_err(|e| format!("Failed to read feats directory: {}", e))?;
+        let entries = fs::read_dir(&feats_dir)?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let entry = entry?;
             let path = entry.path();
 
             if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("json") {
@@ -127,11 +114,8 @@ impl FeatService {
 
             debug!("Processing feat file: {:?}", path);
 
-            let content = fs::read_to_string(&path)
-                .map_err(|e| format!("Failed to read feat file {:?}: {}", path, e))?;
-
-            let feat_data: FeatData = serde_json::from_str(&content)
-                .map_err(|e| format!("Failed to parse feat data from {:?}: {}", path, e))?;
+            let content = fs::read_to_string(&path)?;
+            let feat_data: FeatData = serde_json::from_str(&content)?;
 
             if let Some(feats) = feat_data.feat {
                 let new_feats: Vec<NewCatalogFeat> = feats
@@ -145,8 +129,7 @@ impl FeatService {
                 if !new_feats.is_empty() {
                     let inserted = diesel::insert_into(catalog_feats::table)
                         .values(&new_feats)
-                        .execute(conn)
-                        .map_err(|e| format!("Failed to insert feats: {}", e))?;
+                        .execute(conn)?;
 
                     imported_count += inserted;
                     info!("Imported {} feats from {:?}", inserted, path);
@@ -162,13 +145,12 @@ impl FeatService {
     pub fn remove_feats_by_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing feats from source: {}", source);
 
         let deleted = diesel::delete(catalog_feats::table)
             .filter(catalog_feats::source.eq(source))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete feats: {}", e))?;
+            .execute(conn)?;
 
         info!("Removed {} feats from source: {}", deleted, source);
         Ok(deleted)

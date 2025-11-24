@@ -1,5 +1,6 @@
 use diesel::prelude::*;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
+use crate::error::Result;
 use crate::models::catalog::{BackgroundFilters, BackgroundSummary, CatalogBackground, NewCatalogBackground, BackgroundData};
 use crate::schema::catalog_backgrounds;
 use std::fs;
@@ -11,7 +12,7 @@ impl BackgroundService {
     pub fn search_backgrounds(
         conn: &mut SqliteConnection,
         filters: BackgroundFilters,
-    ) -> Result<Vec<BackgroundSummary>, String> {
+    ) -> Result<Vec<BackgroundSummary>> {
         debug!("Searching backgrounds with filters: {:?}", filters);
 
         let mut query = catalog_backgrounds::table.into_boxed();
@@ -47,11 +48,7 @@ impl BackgroundService {
 
         let backgrounds = query
             .select(CatalogBackground::as_select())
-            .load::<CatalogBackground>(conn)
-            .map_err(|e| {
-                error!("Database background search failed: {}", e);
-                format!("Database background search failed: {}", e)
-            })?;
+            .load::<CatalogBackground>(conn)?;
 
         Ok(backgrounds.iter().map(BackgroundSummary::from).collect())
     }
@@ -60,7 +57,7 @@ impl BackgroundService {
         conn: &mut SqliteConnection,
         name: &str,
         source: &str,
-    ) -> Result<CatalogBackground, String> {
+    ) -> Result<CatalogBackground> {
 
         catalog_backgrounds::table
             .filter(
@@ -69,33 +66,23 @@ impl BackgroundService {
             )
             .select(CatalogBackground::as_select())
             .first::<CatalogBackground>(conn)
-            .map_err(|e| {
-                error!("Background not found: {} from {}: {}", name, source, e);
-                format!("Background not found: {} from {}", name, source)
-            })
+            .map_err(Into::into)
     }
 
-    pub fn get_background_sources(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
-
+    pub fn get_background_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         catalog_backgrounds::table
             .select(catalog_backgrounds::source)
             .distinct()
             .order(catalog_backgrounds::source.asc())
             .load::<String>(conn)
-            .map_err(|e| {
-                error!("Failed to get background sources: {}", e);
-                format!("Failed to get background sources: {}", e)
-            })
+            .map_err(Into::into)
     }
 
-    pub fn get_background_count(conn: &mut SqliteConnection) -> Result<i64, String> {
+    pub fn get_background_count(conn: &mut SqliteConnection) -> Result<i64> {
         catalog_backgrounds::table
             .count()
             .get_result::<i64>(conn)
-            .map_err(|e| {
-                error!("Failed to get background count: {}", e);
-                format!("Failed to get background count: {}", e)
-            })
+            .map_err(Into::into)
     }
 
     /// Import all background data from an uploaded book directory
@@ -103,7 +90,7 @@ impl BackgroundService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing backgrounds from book directory: {:?} (source: {})", book_dir, source);
         let mut imported_count = 0;
 
@@ -116,11 +103,10 @@ impl BackgroundService {
         info!("Found backgrounds directory: {:?}", backgrounds_dir);
 
         // Read all JSON files in the backgrounds directory
-        let entries = fs::read_dir(&backgrounds_dir)
-            .map_err(|e| format!("Failed to read backgrounds directory: {}", e))?;
+        let entries = fs::read_dir(&backgrounds_dir)?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let entry = entry?;
             let path = entry.path();
 
             if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("json") {
@@ -129,11 +115,8 @@ impl BackgroundService {
 
             debug!("Processing background file: {:?}", path);
 
-            let content = fs::read_to_string(&path)
-                .map_err(|e| format!("Failed to read background file {:?}: {}", path, e))?;
-
-            let background_data: BackgroundData = serde_json::from_str(&content)
-                .map_err(|e| format!("Failed to parse background data from {:?}: {}", path, e))?;
+            let content = fs::read_to_string(&path)?;
+            let background_data: BackgroundData = serde_json::from_str(&content)?;
 
             if let Some(backgrounds) = background_data.background {
                 let new_backgrounds: Vec<NewCatalogBackground> = backgrounds
@@ -147,8 +130,7 @@ impl BackgroundService {
                 if !new_backgrounds.is_empty() {
                     let inserted = diesel::insert_into(catalog_backgrounds::table)
                         .values(&new_backgrounds)
-                        .execute(conn)
-                        .map_err(|e| format!("Failed to insert backgrounds: {}", e))?;
+                        .execute(conn)?;
 
                     imported_count += inserted;
                     info!("Imported {} backgrounds from {:?}", inserted, path);
@@ -164,12 +146,11 @@ impl BackgroundService {
     pub fn remove_backgrounds_by_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing backgrounds from source: {}", source);
 
         let deleted = diesel::delete(catalog_backgrounds::table.filter(catalog_backgrounds::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete backgrounds from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         info!("Removed {} backgrounds from source: {}", deleted, source);
         Ok(deleted)

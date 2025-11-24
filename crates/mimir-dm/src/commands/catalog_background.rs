@@ -23,7 +23,8 @@ pub async fn search_backgrounds(
         has_tools,
     };
 
-    let backgrounds = BackgroundService::search_backgrounds(&mut conn, filters)?;
+    let backgrounds = BackgroundService::search_backgrounds(&mut conn, filters)
+        .map_err(|e| e.to_string())?;
     
     // Convert to JSON for frontend
     let json_backgrounds: Vec<serde_json::Value> = backgrounds
@@ -45,7 +46,8 @@ pub async fn get_background_details(
         format!("Database connection failed: {}", e)
     })?;
 
-    let background = BackgroundService::get_background_by_name_and_source(&mut conn, &name, &source)?;
+    let background = BackgroundService::get_background_by_name_and_source(&mut conn, &name, &source)
+        .map_err(|e| e.to_string())?;
     
     // Parse the full JSON data
     let full_data: serde_json::Value = serde_json::from_str(&background.full_background_json)
@@ -64,6 +66,7 @@ pub async fn get_background_sources(
     })?;
 
     BackgroundService::get_background_sources(&mut conn)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -76,4 +79,5 @@ pub async fn get_background_count(
     })?;
 
     BackgroundService::get_background_count(&mut conn)
+        .map_err(|e| e.to_string())
 }

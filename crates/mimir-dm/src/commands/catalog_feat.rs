@@ -23,7 +23,8 @@ pub async fn search_feats(
         has_prerequisites,
     };
 
-    let feats = FeatService::search_feats(&mut conn, filters)?;
+    let feats = FeatService::search_feats(&mut conn, filters)
+        .map_err(|e| e.to_string())?;
     
     // Convert to JSON for frontend
     let json_feats: Vec<serde_json::Value> = feats
@@ -45,7 +46,8 @@ pub async fn get_feat_details(
         format!("Database connection failed: {}", e)
     })?;
 
-    let feat = FeatService::get_feat_by_name_and_source(&mut conn, &name, &source)?;
+    let feat = FeatService::get_feat_by_name_and_source(&mut conn, &name, &source)
+        .map_err(|e| e.to_string())?;
     
     // Parse the full JSON data
     let full_data: serde_json::Value = serde_json::from_str(&feat.full_feat_json)
@@ -64,6 +66,7 @@ pub async fn get_feat_sources(
     })?;
 
     FeatService::get_feat_sources(&mut conn)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -76,4 +79,5 @@ pub async fn get_feat_count(
     })?;
 
     FeatService::get_feat_count(&mut conn)
+        .map_err(|e| e.to_string())
 }

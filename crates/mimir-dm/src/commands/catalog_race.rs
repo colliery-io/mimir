@@ -27,7 +27,8 @@ pub async fn search_races(
         has_flight,
     };
 
-    let results = RaceService::search_races(&mut conn, filters)?;
+    let results = RaceService::search_races(&mut conn, filters)
+        .map_err(|e| e.to_string())?;
 
     // Convert RaceSummary to JSON values for frontend compatibility
     let json_results: Vec<serde_json::Value> = results
@@ -50,6 +51,7 @@ pub async fn get_race_details(
     })?;
 
     RaceService::get_race_details(&mut conn, &name, &source)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -62,6 +64,7 @@ pub async fn get_race_sources(
     })?;
 
     RaceService::get_race_sources(&mut conn)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -74,6 +77,7 @@ pub async fn get_race_count(
     })?;
 
     RaceService::get_race_count(&mut conn)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -86,4 +90,5 @@ pub async fn get_race_sizes(
     })?;
 
     RaceService::get_race_sizes(&mut conn)
+        .map_err(|e| e.to_string())
 }

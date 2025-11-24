@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use crate::error::Result;
 use crate::models::catalog::class::{
     CatalogClass, CatalogSubclass,
     ClassSummary, ClassFilters, Class, Subclass, ClassFluff, SubclassFluff,
@@ -19,17 +20,17 @@ impl<'a> ClassService<'a> {
     }
 
     /// Search classes and subclasses with filters, returning unified rows
-    pub fn search_classes(&mut self, filters: ClassFilters) -> Result<Vec<ClassSummary>, String> {
+    pub fn search_classes(&mut self, filters: ClassFilters) -> Result<Vec<ClassSummary>> {
         let mut results = Vec::new();
-        
+
         // First, get base classes
         let base_classes = self.search_base_classes(&filters)?;
         results.extend(base_classes);
-        
+
         // Then, get subclasses
         let subclass_rows = self.search_subclass_rows(&filters)?;
         results.extend(subclass_rows);
-        
+
         // Sort by class name first, then by subclass name (None values first)
         results.sort_by(|a, b| {
             match a.name.cmp(&b.name) {
@@ -45,30 +46,30 @@ impl<'a> ClassService<'a> {
                 other => other,
             }
         });
-        
+
         Ok(results)
     }
-    
+
     /// Search base classes only
-    fn search_base_classes(&mut self, filters: &ClassFilters) -> Result<Vec<ClassSummary>, String> {
+    fn search_base_classes(&mut self, filters: &ClassFilters) -> Result<Vec<ClassSummary>> {
         use crate::schema::catalog_classes::dsl::*;
-        
+
         let mut query = catalog_classes.into_boxed();
-        
+
         // Filter by name (partial match on class name)
         if let Some(name_filter) = &filters.name {
             if !name_filter.is_empty() {
                 query = query.filter(name.like(format!("%{}%", name_filter)));
             }
         }
-        
+
         // Filter by sources
         if let Some(source_list) = &filters.sources {
             if !source_list.is_empty() {
                 query = query.filter(source.eq_any(source_list));
             }
         }
-        
+
         // Filter by spellcasting ability
         if let Some(has_spell) = filters.has_spellcasting {
             if has_spell {
@@ -77,27 +78,26 @@ impl<'a> ClassService<'a> {
                 query = query.filter(spellcasting_ability.is_null());
             }
         }
-        
+
         // Filter by primary abilities
         if let Some(abilities) = &filters.primary_abilities {
             if !abilities.is_empty() {
                 query = query.filter(primary_ability.eq_any(abilities));
             }
         }
-        
+
         let classes = query
             .select(CatalogClass::as_select())
             .limit(1000)
-            .load::<CatalogClass>(self.conn)
-            .map_err(|e| format!("Failed to search base classes: {}", e))?;
-        
+            .load::<CatalogClass>(self.conn)?;
+
         Ok(classes.iter().map(ClassSummary::from).collect())
     }
-    
+
     /// Search subclasses and return them as unified rows
-    fn search_subclass_rows(&mut self, filters: &ClassFilters) -> Result<Vec<ClassSummary>, String> {
+    fn search_subclass_rows(&mut self, filters: &ClassFilters) -> Result<Vec<ClassSummary>> {
         use crate::schema::{catalog_classes, catalog_subclasses};
-        
+
         // Join subclasses with their base classes
         let results = catalog_subclasses::table
             .inner_join(catalog_classes::table.on(
@@ -105,8 +105,7 @@ impl<'a> ClassService<'a> {
                     .and(catalog_subclasses::class_source.eq(catalog_classes::source))
             ))
             .select((CatalogSubclass::as_select(), CatalogClass::as_select()))
-            .load::<(CatalogSubclass, CatalogClass)>(self.conn)
-            .map_err(|e| format!("Failed to search subclasses: {}", e))?;
+            .load::<(CatalogSubclass, CatalogClass)>(self.conn)?;
         
         let mut subclass_summaries = Vec::new();
         
@@ -163,29 +162,27 @@ impl<'a> ClassService<'a> {
     }
 
     /// Get class by name and source
-    pub fn get_class_by_name_and_source(&mut self, class_name: &str, class_source: &str) -> Result<Option<Class>, String> {
+    pub fn get_class_by_name_and_source(&mut self, class_name: &str, class_source: &str) -> Result<Option<Class>> {
         use crate::schema::catalog_classes::dsl::*;
-        
+
         let catalog_class = catalog_classes
             .filter(name.eq(class_name))
             .filter(source.eq(class_source))
             .select(CatalogClass::as_select())
             .first::<CatalogClass>(self.conn)
-            .optional()
-            .map_err(|e| format!("Failed to get class by name and source: {}", e))?;
-        
+            .optional()?;
+
         match catalog_class {
             Some(class_record) => {
-                let mut parsed_class: Class = serde_json::from_str(&class_record.full_class_json)
-                    .map_err(|e| format!("Failed to parse class JSON: {}", e))?;
-                
+                let mut parsed_class: Class = serde_json::from_str(&class_record.full_class_json)?;
+
                 // Add fluff data if available
                 if let Some(fluff_json_str) = &class_record.fluff_json {
                     if let Ok(class_fluff) = serde_json::from_str::<ClassFluff>(&fluff_json_str) {
                         parsed_class.fluff = Some(class_fluff);
                     }
                 }
-                
+
                 Ok(Some(parsed_class))
             }
             None => Ok(None)
@@ -193,22 +190,20 @@ impl<'a> ClassService<'a> {
     }
 
     /// Get subclass by subclass name, class name and source
-    pub fn get_subclass_by_name(&mut self, subclass_name: &str, _class_name: &str, _class_source: &str) -> Result<Option<Subclass>, String> {
+    pub fn get_subclass_by_name(&mut self, subclass_name: &str, _class_name: &str, _class_source: &str) -> Result<Option<Subclass>> {
         use crate::schema::catalog_subclasses::dsl::*;
-        
+
         let subclass_record = catalog_subclasses
             .filter(name.eq(subclass_name))
             .filter(crate::schema::catalog_subclasses::class_name.eq(class_name))
             .filter(crate::schema::catalog_subclasses::class_source.eq(class_source))
             .select(CatalogSubclass::as_select())
             .first::<CatalogSubclass>(self.conn)
-            .optional()
-            .map_err(|e| format!("Failed to get subclass: {}", e))?;
-        
+            .optional()?;
+
         match subclass_record {
             Some(record) => {
-                let mut parsed_subclass: Subclass = serde_json::from_str(&record.full_subclass_json)
-                    .map_err(|e| format!("Failed to parse subclass JSON: {}", e))?;
+                let mut parsed_subclass: Subclass = serde_json::from_str(&record.full_subclass_json)?;
                 
                 // Add fluff data - first try subclass-specific fluff, then fall back to parent class fluff
                 let mut fluff_loaded = false;
@@ -248,75 +243,70 @@ impl<'a> ClassService<'a> {
     }
 
     /// Get all subclasses for a class
-    pub fn get_subclasses_for_class(&mut self, _class_name: &str, _class_source: &str) -> Result<Vec<Subclass>, String> {
+    pub fn get_subclasses_for_class(&mut self, _class_name: &str, _class_source: &str) -> Result<Vec<Subclass>> {
         use crate::schema::catalog_subclasses::dsl::*;
         
         let subclass_records = catalog_subclasses
             .filter(crate::schema::catalog_subclasses::class_name.eq(class_name))
             .filter(crate::schema::catalog_subclasses::class_source.eq(class_source))
             .select(CatalogSubclass::as_select())
-            .load::<CatalogSubclass>(self.conn)
-            .map_err(|e| format!("Failed to get subclasses: {}", e))?;
-        
+            .load::<CatalogSubclass>(self.conn)?;
+
         let mut result = Vec::new();
         for subclass_record in subclass_records {
-            let parsed_subclass: Subclass = serde_json::from_str(&subclass_record.full_subclass_json)
-                .map_err(|e| format!("Failed to parse subclass JSON: {}", e))?;
+            let parsed_subclass: Subclass = serde_json::from_str(&subclass_record.full_subclass_json)?;
             result.push(parsed_subclass);
         }
-        
+
         Ok(result)
     }
 
     /// Get unique sources for classes
-    pub fn get_class_sources(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_class_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_classes::dsl::*;
-        
+
         let sources = catalog_classes
             .select(source)
             .distinct()
             .order_by(source)
-            .load::<String>(self.conn)
-            .map_err(|e| format!("Failed to get class sources: {}", e))?;
-        
+            .load::<String>(self.conn)?;
+
         Ok(sources)
     }
 
     /// Get unique primary abilities
-    pub fn get_primary_abilities(&mut self) -> Result<Vec<String>, String> {
+    pub fn get_primary_abilities(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_classes::dsl::*;
-        
+
         let abilities = catalog_classes
             .select(primary_ability)
             .distinct()
             .filter(primary_ability.is_not_null())
             .order_by(primary_ability)
-            .load::<Option<String>>(self.conn)
-            .map_err(|e| format!("Failed to get primary abilities: {}", e))?
+            .load::<Option<String>>(self.conn)?
             .into_iter()
             .filter_map(|ability| ability)
             .collect();
-        
+
         Ok(abilities)
     }
 
     /// Get class count by source for statistics
-    pub fn get_class_count_by_source(&mut self) -> Result<Vec<(String, i64)>, String> {
+    pub fn get_class_count_by_source(&mut self) -> Result<Vec<(String, i64)>> {
         use crate::schema::catalog_classes::dsl::*;
-        
+
         let counts = catalog_classes
             .group_by(source)
             .select((source, diesel::dsl::count_star()))
-            .load::<(String, i64)>(self.conn)
-            .map_err(|e| format!("Failed to get class counts: {}", e))?;
-        
+            .load::<(String, i64)>(self.conn)?;
+
         Ok(counts)
     }
-    
+
     /// Populate subclass intro description from the introductory subclass feature
-    fn populate_subclass_intro_description(&mut self, subclass: &mut Subclass, record: &CatalogSubclass) -> Result<(), String> {
+    fn populate_subclass_intro_description(&mut self, subclass: &mut Subclass, record: &CatalogSubclass) -> Result<()> {
         use crate::schema::catalog_subclass_features::dsl::*;
-        
+
         // Look for the introductory subclass feature (usually at level 3, with the same name as the subclass)
         let intro_feature = catalog_subclass_features
             .filter(name.eq(&subclass.name))
@@ -327,8 +317,7 @@ impl<'a> ClassService<'a> {
             .order_by(level.asc()) // Get the earliest level if multiple matches
             .select(full_feature_json)
             .first::<String>(self.conn)
-            .optional()
-            .map_err(|e| format!("Failed to get subclass intro feature: {}", e))?;
+            .optional()?;
         
         if let Some(feature_json) = intro_feature {
             if let Ok(feature_data) = serde_json::from_str::<serde_json::Value>(&feature_json) {
@@ -452,7 +441,7 @@ impl<'a> ClassService<'a> {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         use crate::schema::{catalog_classes, catalog_subclasses, catalog_class_features, catalog_subclass_features};
 
         info!("Importing classes from book: {}", source);
@@ -478,8 +467,7 @@ impl<'a> ClassService<'a> {
 
             debug!("Searching for class files in: {:?}", search_dir);
 
-            let entries = fs::read_dir(search_dir)
-                .map_err(|e| format!("Failed to read directory {:?}: {}", search_dir, e))?;
+            let entries = fs::read_dir(search_dir)?;
 
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -510,8 +498,7 @@ impl<'a> ClassService<'a> {
                 if is_main_class_file || is_class_named_file || is_main_book_file {
                     debug!("Processing class file: {:?}", path);
 
-                    let content = fs::read_to_string(&path)
-                        .map_err(|e| format!("Failed to read file {:?}: {}", path, e))?;
+                    let content = fs::read_to_string(&path)?;
 
                     // Try to parse as ClassData structure first
                     if let Ok(class_data) = serde_json::from_str::<ClassData>(&content) {
@@ -545,8 +532,7 @@ impl<'a> ClassService<'a> {
                                     .values(&new_class)
                                     .on_conflict((catalog_classes::name, catalog_classes::source))
                                     .do_nothing()
-                                    .execute(conn)
-                                    .map_err(|e| format!("Failed to insert class: {}", e))?;
+                                    .execute(conn)?;
 
                                 total_imported += 1;
                                 debug!("Imported class: {} ({})", class.name, source);
@@ -583,8 +569,7 @@ impl<'a> ClassService<'a> {
                                     .values(&new_subclass)
                                     .on_conflict((catalog_subclasses::name, catalog_subclasses::class_name, catalog_subclasses::source))
                                     .do_nothing()
-                                    .execute(conn)
-                                    .map_err(|e| format!("Failed to insert subclass: {}", e))?;
+                                    .execute(conn)?;
 
                                 debug!("Imported subclass: {} ({})", subclass.name, source);
                             }
@@ -609,8 +594,7 @@ impl<'a> ClassService<'a> {
                                 diesel::insert_into(catalog_class_features::table)
                                     .values(&new_feature)
                                     .on_conflict_do_nothing()
-                                    .execute(conn)
-                                    .map_err(|e| format!("Failed to insert class feature: {}", e))?;
+                                    .execute(conn)?;
 
                                 debug!("Imported class feature: {} ({})", feature.name, source);
                             }
@@ -635,8 +619,7 @@ impl<'a> ClassService<'a> {
                                 diesel::insert_into(catalog_subclass_features::table)
                                     .values(&new_feature)
                                     .on_conflict_do_nothing()
-                                    .execute(conn)
-                                    .map_err(|e| format!("Failed to insert subclass feature: {}", e))?;
+                                    .execute(conn)?;
 
                                 debug!("Imported subclass feature: {} ({})", feature.name, source);
                             }
@@ -661,8 +644,7 @@ impl<'a> ClassService<'a> {
                                 .values(&new_class)
                                 .on_conflict((catalog_classes::name, catalog_classes::source))
                                 .do_nothing()
-                                .execute(conn)
-                                .map_err(|e| format!("Failed to insert class: {}", e))?;
+                                .execute(conn)?;
 
                             total_imported += 1;
                             debug!("Imported class: {} ({})", class.name, source);
@@ -682,8 +664,7 @@ impl<'a> ClassService<'a> {
                 if is_feature_file {
                     debug!("Processing class feature file: {:?}", path);
 
-                    let content = fs::read_to_string(&path)
-                        .map_err(|e| format!("Failed to read feature file {:?}: {}", path, e))?;
+                    let content = fs::read_to_string(&path)?;
 
                     if let Ok(feature_data) = serde_json::from_str::<ClassFeatureData>(&content) {
                         if let Some(features) = &feature_data.class_feature {
@@ -704,8 +685,7 @@ impl<'a> ClassService<'a> {
                                 diesel::insert_into(catalog_class_features::table)
                                     .values(&new_feature)
                                     .on_conflict_do_nothing()
-                                    .execute(conn)
-                                    .map_err(|e| format!("Failed to insert class feature: {}", e))?;
+                                    .execute(conn)?;
 
                                 debug!("Imported class feature: {} ({})", feature.name, source);
                             }
@@ -716,8 +696,7 @@ impl<'a> ClassService<'a> {
                 if is_subclass_feature_file {
                     debug!("Processing subclass feature file: {:?}", path);
 
-                    let content = fs::read_to_string(&path)
-                        .map_err(|e| format!("Failed to read subclass feature file {:?}: {}", path, e))?;
+                    let content = fs::read_to_string(&path)?;
 
                     if let Ok(feature_data) = serde_json::from_str::<ClassFeatureData>(&content) {
                         if let Some(subclass_features) = &feature_data.subclass_feature {
@@ -738,8 +717,7 @@ impl<'a> ClassService<'a> {
                                 diesel::insert_into(catalog_subclass_features::table)
                                     .values(&new_feature)
                                     .on_conflict_do_nothing()
-                                    .execute(conn)
-                                    .map_err(|e| format!("Failed to insert subclass feature: {}", e))?;
+                                    .execute(conn)?;
 
                                 debug!("Imported subclass feature: {} ({})", feature.name, source);
                             }
@@ -757,27 +735,23 @@ impl<'a> ClassService<'a> {
     pub fn remove_classes_from_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         use crate::schema::{catalog_classes, catalog_subclasses, catalog_class_features, catalog_subclass_features};
 
         info!("Removing classes from source: {}", source);
 
         // Delete in reverse dependency order
         let subclass_features_deleted = diesel::delete(catalog_subclass_features::table.filter(catalog_subclass_features::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete subclass features from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         let class_features_deleted = diesel::delete(catalog_class_features::table.filter(catalog_class_features::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete class features from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         let subclasses_deleted = diesel::delete(catalog_subclasses::table.filter(catalog_subclasses::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete subclasses from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         let classes_deleted = diesel::delete(catalog_classes::table.filter(catalog_classes::source.eq(source)))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete classes from source {}: {}", source, e))?;
+            .execute(conn)?;
 
         let total_deleted = classes_deleted + subclasses_deleted + class_features_deleted + subclass_features_deleted;
         info!("Removed {} total class-related items from source: {}", total_deleted, source);

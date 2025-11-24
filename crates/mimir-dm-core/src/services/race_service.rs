@@ -1,5 +1,6 @@
 use diesel::prelude::*;
 use tracing::{debug, error, info};
+use crate::error::Result;
 use crate::models::catalog::{RaceFilters, RaceSummary, CatalogRace, NewCatalogRace, RaceData};
 use crate::schema::catalog_races;
 use std::fs;
@@ -11,7 +12,7 @@ impl RaceService {
     pub fn search_races(
         conn: &mut SqliteConnection,
         filters: RaceFilters,
-    ) -> Result<Vec<RaceSummary>, String> {
+    ) -> Result<Vec<RaceSummary>> {
         debug!("Searching races with filters: {:?}", filters);
 
         let mut query = catalog_races::table.into_boxed();
@@ -63,11 +64,7 @@ impl RaceService {
         let races = query
             .order_by(catalog_races::name.asc())
             .select(CatalogRace::as_select())
-            .load::<CatalogRace>(conn)
-            .map_err(|e| {
-                error!("Failed to search races: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .load::<CatalogRace>(conn)?;
 
         debug!("Found {} races", races.len());
 
@@ -83,7 +80,7 @@ impl RaceService {
         conn: &mut SqliteConnection,
         name: &str,
         source: &str,
-    ) -> Result<Option<String>, String> {
+    ) -> Result<Option<String>> {
         debug!("Getting race details for: {} ({})", name, source);
 
         let result = catalog_races::table
@@ -91,48 +88,36 @@ impl RaceService {
             .filter(catalog_races::source.eq(source))
             .select(catalog_races::full_race_json)
             .first::<String>(conn)
-            .optional()
-            .map_err(|e| {
-                error!("Failed to get race details: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .optional()?;
 
         Ok(result)
     }
 
-    pub fn get_race_sources(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_race_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct race sources");
 
         let sources = catalog_races::table
             .select(catalog_races::source)
             .distinct()
             .order_by(catalog_races::source.asc())
-            .load::<String>(conn)
-            .map_err(|e| {
-                error!("Failed to get race sources: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .load::<String>(conn)?;
 
         debug!("Found {} race sources", sources.len());
         Ok(sources)
     }
 
-    pub fn get_race_count(conn: &mut SqliteConnection) -> Result<i64, String> {
+    pub fn get_race_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting total race count");
 
         let count = catalog_races::table
             .count()
-            .get_result(conn)
-            .map_err(|e| {
-                error!("Failed to get race count: {}", e);
-                format!("Database error: {}", e)
-            })?;
+            .get_result(conn)?;
 
         debug!("Total races: {}", count);
         Ok(count)
     }
 
-    pub fn get_race_sizes(conn: &mut SqliteConnection) -> Result<Vec<String>, String> {
+    pub fn get_race_sizes(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct race sizes");
 
         let sizes: Vec<String> = catalog_races::table
@@ -140,11 +125,7 @@ impl RaceService {
             .distinct()
             .filter(catalog_races::size.is_not_null())
             .order_by(catalog_races::size.asc())
-            .load::<Option<String>>(conn)
-            .map_err(|e| {
-                error!("Failed to get race sizes: {}", e);
-                format!("Database error: {}", e)
-            })?
+            .load::<Option<String>>(conn)?
             .into_iter()
             .filter_map(|s| s)
             .collect();
@@ -158,7 +139,7 @@ impl RaceService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Importing races from book directory: {:?} (source: {})", book_dir, source);
         let mut imported_count = 0;
 
@@ -171,11 +152,10 @@ impl RaceService {
         info!("Found races directory: {:?}", races_dir);
 
         // Read all JSON files in the races directory
-        let entries = fs::read_dir(&races_dir)
-            .map_err(|e| format!("Failed to read races directory: {}", e))?;
+        let entries = fs::read_dir(&races_dir)?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let entry = entry?;
             let path = entry.path();
 
             if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("json") {
@@ -194,11 +174,8 @@ impl RaceService {
 
             debug!("Processing race file: {}", filename);
 
-            let content = fs::read_to_string(&path)
-                .map_err(|e| format!("Failed to read file {}: {}", filename, e))?;
-
-            let race_data: RaceData = serde_json::from_str(&content)
-                .map_err(|e| format!("Failed to parse race file {}: {}", filename, e))?;
+            let content = fs::read_to_string(&path)?;
+            let race_data: RaceData = serde_json::from_str(&content)?;
 
             // Import main races
             if let Some(races) = race_data.race {
@@ -270,13 +247,12 @@ impl RaceService {
     pub fn remove_races_by_source(
         conn: &mut SqliteConnection,
         source: &str
-    ) -> Result<usize, String> {
+    ) -> Result<usize> {
         info!("Removing races from source: {}", source);
 
         let deleted = diesel::delete(catalog_races::table)
             .filter(catalog_races::source.eq(source))
-            .execute(conn)
-            .map_err(|e| format!("Failed to delete races: {}", e))?;
+            .execute(conn)?;
 
         info!("Removed {} races from source: {}", deleted, source);
         Ok(deleted)

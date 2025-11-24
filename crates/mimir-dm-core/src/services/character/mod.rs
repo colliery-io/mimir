@@ -468,8 +468,7 @@ impl<'a> CharacterService<'a> {
         let (_character, mut char_data) = self.get_character(character_id)?;
 
         // Get spell details from database
-        let spell = crate::services::SpellService::get_spell_details(self.conn, spell_name, spell_source)
-            .map_err(|e| DbError::InvalidData(e))?
+        let spell = crate::services::SpellService::get_spell_details(self.conn, spell_name, spell_source)?
             .ok_or_else(|| DbError::InvalidData(format!(
                 "Spell '{}' from '{}' not found in database. Please import the appropriate rulebook first.",
                 spell_name, spell_source

@@ -120,8 +120,7 @@ impl<'a> CharacterBuilder<'a> {
         subrace: Option<String>,
     ) -> Result<Self> {
         // Verify race exists in database
-        let race_json = RaceService::get_race_details(self.conn, race_name, source)
-            .map_err(|e| DbError::InvalidData(e))?
+        let race_json = RaceService::get_race_details(self.conn, race_name, source)?
             .ok_or_else(|| {
                 DbError::InvalidData(format!("Race '{}' from '{}' not found in database. Please import the appropriate rulebook first.", race_name, source))
             })?;
@@ -272,8 +271,7 @@ impl<'a> CharacterBuilder<'a> {
             .ok_or_else(|| DbError::InvalidData("Ability scores are required".to_string()))?;
 
         // Get race data from database and apply racial bonuses
-        let race_json = RaceService::get_race_details(self.conn, &race_name, &race_source)
-            .map_err(|e| DbError::InvalidData(e))?
+        let race_json = RaceService::get_race_details(self.conn, &race_name, &race_source)?
             .ok_or_else(|| DbError::InvalidData("Race data not found".to_string()))?;
 
         let race: Race = serde_json::from_str(&race_json)
