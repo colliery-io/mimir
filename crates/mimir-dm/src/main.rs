@@ -33,7 +33,7 @@ fn main() {
             paths
         }
         Err(e) => {
-            eprintln!("Failed to initialize application: {}", e);
+            error!("Failed to initialize application: {}", e);
             std::process::exit(1);
         }
     };
@@ -46,16 +46,35 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
             // Initialize database service from core
-
-            let db_service = DatabaseService::new(
+            let db_service = match DatabaseService::new(
                 &app_paths.database_path_str(),
                 app_paths.is_memory_db
-            ).expect("Failed to initialize database service");
+            ) {
+                Ok(service) => {
+                    info!("Database service initialized successfully");
+                    service
+                }
+                Err(e) => {
+                    error!("Failed to initialize database service: {}", e);
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Database initialization failed: {}", e)
+                    )));
+                }
+            };
 
             // Run migrations
             info!("Running database migrations...");
-            let mut conn = db_service.get_connection()
-                .expect("Failed to get connection for migrations");
+            let mut conn = match db_service.get_connection() {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("Failed to get database connection for migrations: {}", e);
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Database connection failed: {}", e)
+                    )));
+                }
+            };
             match run_migrations(&mut *conn) {
                 Ok(_) => info!("Database migrations completed successfully"),
                 Err(e) => warn!("Database migration warning: {}", e),
@@ -372,5 +391,8 @@ fn main() {
             write_text_file
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| {
+            error!("Failed to run Tauri application: {}", e);
+            std::process::exit(1);
+        });
 }
