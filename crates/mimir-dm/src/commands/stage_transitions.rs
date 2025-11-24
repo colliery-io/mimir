@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use tauri::State;
+use tracing::warn;
 use mimir_dm_core::{
     models::campaign::{
         documents::{NewDocument},
@@ -64,7 +65,7 @@ pub fn create_stage_documents(
             let template = match TemplateRepository::get_latest(conn, template_id) {
                 Ok(t) => t,
                 Err(_) => {
-                    eprintln!("Warning: Template '{}' not found, skipping document creation", template_id);
+                    warn!(template_id = %template_id, "Template not found, skipping document creation");
                     continue;
                 }
             };
@@ -77,14 +78,14 @@ pub fn create_stage_documents(
             let content = match process_template_content(&template, None) {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!("Failed to render template {}: {}", template_id, e);
+                    warn!(template_id = %template_id, error = %e, "Failed to render template");
                     continue;
                 }
             };
             
             // Write file to disk
             if let Err(e) = fs::write(&file_path, content) {
-                eprintln!("Failed to write document file {}: {}", file_path.display(), e);
+                warn!(path = %file_path.display(), error = %e, "Failed to write document file");
                 continue;
             }
             

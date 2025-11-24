@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tera::{Context, Tera};
+use tracing::debug;
 
 pub struct TemplateService<'a> {
     conn: &'a mut DbConnection,
@@ -89,7 +90,7 @@ impl<'a> TemplateService<'a> {
         // Write the file
         fs::write(&full_path, rendered_content)?;
         
-        println!("Generated document at: {}", full_path.display());
+        debug!(path = %full_path.display(), "Generated document");
         Ok(file_path)
     }
     

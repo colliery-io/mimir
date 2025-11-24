@@ -17,6 +17,7 @@ use crate::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
+use tracing::{debug, warn};
 
 pub struct CampaignService<'a> {
     conn: &'a mut DbConnection,
@@ -58,7 +59,7 @@ impl<'a> CampaignService<'a> {
             Err(e) => {
                 // Rollback: try to remove the created directory
                 if let Err(remove_err) = fs::remove_dir_all(&campaign_path) {
-                    eprintln!("Failed to cleanup campaign directory after database error: {}", remove_err);
+                    warn!(path = %campaign_path.display(), error = %remove_err, "Failed to cleanup campaign directory after database error");
                 }
                 return Err(e);
             }
@@ -66,7 +67,7 @@ impl<'a> CampaignService<'a> {
         
         // Create initial documents for the concept stage
         if let Err(e) = self.create_initial_documents(&campaign) {
-            eprintln!("Failed to create initial documents: {}", e);
+            warn!(campaign_id = campaign.id, error = %e, "Failed to create initial documents");
             // Continue anyway - campaign is created, documents can be created later
         }
         
@@ -105,7 +106,7 @@ impl<'a> CampaignService<'a> {
         
         // Create stage-specific documents
         if let Err(e) = self.create_stage_documents(&updated_campaign, new_stage) {
-            eprintln!("Failed to create stage documents: {}", e);
+            warn!(campaign_id = campaign_id, stage = new_stage, error = %e, "Failed to create stage documents");
             // Continue anyway - transition succeeded
         }
         
@@ -159,8 +160,7 @@ impl<'a> CampaignService<'a> {
         // Optionally delete campaign directory
         if delete_files {
             if let Err(e) = std::fs::remove_dir_all(&campaign.directory_path) {
-                eprintln!("Warning: Failed to delete campaign directory {}: {}", 
-                         campaign.directory_path, e);
+                warn!(path = %campaign.directory_path, error = %e, "Failed to delete campaign directory");
                 // Continue - database deletion succeeded
             }
         }
@@ -263,7 +263,7 @@ impl<'a> CampaignService<'a> {
             )));
         }
         
-        println!("Creating campaign directory structure at: {}", campaign_path.display());
+        debug!(path = %campaign_path.display(), "Creating campaign directory structure");
         
         // Create main campaign directory
         fs::create_dir_all(&campaign_path)?;
@@ -288,7 +288,7 @@ impl<'a> CampaignService<'a> {
         for dir in directories {
             let dir_path = campaign_path.join(dir);
             fs::create_dir_all(&dir_path)?;
-            println!("Created directory: {}", dir_path.display());
+            debug!(path = %dir_path.display(), "Created directory");
         }
         
         // Create initial README
@@ -300,7 +300,7 @@ impl<'a> CampaignService<'a> {
         
         fs::write(campaign_path.join("README.md"), readme_content)?;
         
-        println!("Successfully created campaign directory structure");
+        debug!("Successfully created campaign directory structure");
         Ok(campaign_path)
     }
     
@@ -362,13 +362,13 @@ impl<'a> CampaignService<'a> {
             };
             
             if let Err(e) = DocumentRepository::create(self.conn, new_doc) {
-                eprintln!("Failed to create {} document: {}", doc_type, e);
+                warn!(document_type = %doc_type, error = %e, "Failed to create document");
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Create stage-specific documents when transitioning
     fn create_stage_documents(&mut self, campaign: &Campaign, stage: &str) -> Result<()> {
         // Get the board definition
@@ -456,10 +456,10 @@ impl<'a> CampaignService<'a> {
             };
             
             if let Err(e) = DocumentRepository::create(self.conn, new_doc) {
-                eprintln!("Failed to create {} document: {}", doc_type, e);
+                warn!(document_type = %doc_type, error = %e, "Failed to create document");
             }
         }
-        
+
         Ok(())
     }
 }
