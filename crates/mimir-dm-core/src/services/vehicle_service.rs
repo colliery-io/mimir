@@ -1,3 +1,8 @@
+//! Vehicle catalog service.
+//!
+//! Provides database-backed vehicle search, retrieval, and import functionality.
+//! Supports filtering by name, type, size, terrain, and source.
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::vehicle::{
@@ -8,6 +13,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{error, info, debug};
 
+/// Service for searching and managing vehicles in the catalog.
 pub struct VehicleService<'a> {
     pub conn: &'a mut SqliteConnection,
 }

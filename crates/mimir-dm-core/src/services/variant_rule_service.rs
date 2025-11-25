@@ -1,3 +1,8 @@
+//! Variant rule catalog service.
+//!
+//! Provides database-backed variant rule search, retrieval, and import functionality.
+//! Supports filtering by name, rule type, and source.
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::variant_rule::{
@@ -7,6 +12,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
 
+/// Service for searching and managing variant rules in the catalog.
 pub struct VariantRuleService<'a> {
     pub conn: &'a mut SqliteConnection,
 }

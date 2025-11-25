@@ -1,3 +1,8 @@
+//! Trap and hazard catalog service.
+//!
+//! Provides database-backed trap and hazard search, retrieval, and import functionality.
+//! Supports filtering by name, source, category, and trap type.
+
 use crate::error::Result;
 use crate::models::catalog::{CatalogTrap, TrapFilters, TrapSummary, NewCatalogTrap, TrapData, HazardData, TrapOrHazard};
 use crate::schema::catalog_traps;
@@ -6,6 +11,7 @@ use tracing::{debug, info, error, warn};
 use std::fs;
 use std::path::Path;
 
+/// Service for searching and managing traps and hazards in the catalog.
 pub struct TrapService;
 
 impl TrapService {

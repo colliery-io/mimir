@@ -1,3 +1,8 @@
+//! Psionic catalog service.
+//!
+//! Provides database-backed psionic search, retrieval, and import functionality.
+//! Supports filtering by name, psionic type, order, and source.
+
 use crate::error::Result;
 use crate::models::catalog::{CatalogPsionic, NewCatalogPsionic, PsionicFilters, PsionicSummary, Psionic};
 use crate::schema::catalog_psionics;
@@ -6,6 +11,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
 
+/// Service for searching and managing psionics in the catalog.
 pub struct PsionicService;
 
 impl PsionicService {

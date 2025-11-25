@@ -1,3 +1,8 @@
+//! Reward catalog service.
+//!
+//! Provides database-backed reward search, retrieval, and import functionality.
+//! Supports filtering by name, type, prerequisites, and source.
+
 use diesel::prelude::*;
 use tracing::{debug, info};
 use crate::error::Result;
@@ -6,6 +11,7 @@ use crate::schema::catalog_rewards;
 use std::fs;
 use std::path::Path;
 
+/// Service for searching and managing rewards in the catalog.
 pub struct RewardService;
 
 impl RewardService {

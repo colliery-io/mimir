@@ -1,3 +1,8 @@
+//! Table catalog service.
+//!
+//! Provides database-backed table search, retrieval, and import functionality.
+//! Supports filtering by name, category, and source.
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::table::{
@@ -8,6 +13,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
 
+/// Service for searching and managing tables in the catalog.
 pub struct TableService<'a> {
     pub conn: &'a mut SqliteConnection,
 }

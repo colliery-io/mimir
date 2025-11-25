@@ -1,3 +1,8 @@
+//! Deity catalog service.
+//!
+//! Provides database-backed deity search, retrieval, and import functionality.
+//! Supports filtering by name, pantheon, alignment, domains, and source.
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::deity::{
@@ -8,6 +13,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{info, debug};
 
+/// Service for searching and managing deities in the catalog.
 pub struct DeityService<'a> {
     pub conn: &'a mut SqliteConnection,
 }

@@ -1,3 +1,8 @@
+//! Cult and boon catalog service.
+//!
+//! Provides database-backed cult and boon search, retrieval, and import functionality.
+//! Supports filtering by name, source, category, and cult type.
+
 use crate::error::Result;
 use crate::models::catalog::cult::{CatalogCult, CultFilters, CultBoonSummary, NewCatalogCult, CultData, BoonData};
 use crate::schema::catalog_cults;
@@ -6,6 +11,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
 
+/// Service for searching and managing cults and boons in the catalog.
 pub struct CultService;
 
 impl CultService {

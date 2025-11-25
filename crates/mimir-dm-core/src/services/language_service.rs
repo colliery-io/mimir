@@ -1,3 +1,8 @@
+//! Language catalog service.
+//!
+//! Provides database-backed language search, retrieval, and import functionality.
+//! Supports filtering by name, type, script, and source.
+
 use diesel::prelude::*;
 use tracing::{debug, info};
 use crate::error::Result;
@@ -6,6 +11,7 @@ use crate::schema::catalog_languages;
 use std::fs;
 use std::path::Path;
 
+/// Service for searching and managing languages in the catalog.
 pub struct LanguageService;
 
 impl LanguageService {

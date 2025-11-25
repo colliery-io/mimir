@@ -1,3 +1,8 @@
+//! Optional feature catalog service.
+//!
+//! Provides database-backed optional feature search, retrieval, and import functionality.
+//! Supports filtering by name, feature type, source, and spell-granting features.
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::optionalfeature::{
@@ -7,6 +12,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
 
+/// Service for searching and managing optional features in the catalog.
 pub struct OptionalFeatureService<'a> {
     pub conn: &'a mut SqliteConnection,
 }
