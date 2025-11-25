@@ -32,10 +32,10 @@ Allow users to select and switch between different LLM models within a provider 
 ## Acceptance Criteria
 
 - [ ] Settings UI displays a dropdown/selector for available models
-- [ ] For Ollama: Query available models via the `/api/tags` endpoint
-- [ ] For Groq: Show list of supported models from configuration
-- [ ] Selected model persists across application restarts
-- [ ] Model change takes effect immediately for new chat sessions
+- [x] For Ollama: Query available models via the `/api/tags` endpoint (backend complete)
+- [x] For Groq: Show list of supported models from configuration (backend complete)
+- [x] Selected model persists across application restarts (backend complete)
+- [x] Model change takes effect immediately for new chat sessions (backend complete)
 - [ ] Display model metadata where available (parameter count, quantization, context window)
 - [ ] Handle gracefully when selected model becomes unavailable
 
@@ -69,4 +69,20 @@ Allow users to select and switch between different LLM models within a provider 
 
 ## Status Updates
 
-*To be added during implementation*
+### 2025-11-25: Backend Implementation Complete
+
+Completed all backend changes for model selection:
+
+**Changes Made:**
+- Added `model` field to `OllamaConfig` and `GroqConfig` in `provider_settings.rs`
+- Implemented `list_models()` for `GroqProvider` with static list of available models
+- Updated `LlmService` to use configured model instead of hardcoded `OLLAMA_MODEL`/`GROQ_MODEL` constants
+- Renamed constants to `DEFAULT_OLLAMA_MODEL`/`DEFAULT_GROQ_MODEL` for fallback behavior
+- Updated `list_available_models` Tauri command to use provider's `list_models()` method
+- Added `list_models` delegation to `Provider` enum
+
+**Commit:** f8fceca - "Add model selection support for LLM providers"
+
+**Remaining Work:**
+- Frontend Vue UI for model selection in Settings view
+- Display model metadata where available
