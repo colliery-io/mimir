@@ -234,4 +234,58 @@ mod tests {
         let loaded = ProviderSettings::load(&config_dir).unwrap();
         assert_eq!(loaded.provider_type, ProviderType::Ollama);
     }
+
+    #[test]
+    fn test_save_and_load_ollama_with_model() {
+        let temp_dir = tempdir().unwrap();
+        let config_dir = temp_dir.path().to_path_buf();
+
+        let settings = ProviderSettings {
+            provider_type: ProviderType::Ollama,
+            ollama_config: Some(OllamaConfig {
+                base_url: "http://localhost:11434".to_string(),
+                model: Some("llama3.2".to_string()),
+            }),
+            groq_config: None,
+            tool_confirmation_timeout_secs: 60,
+        };
+
+        // Save
+        settings.save(&config_dir).unwrap();
+
+        // Load
+        let loaded = ProviderSettings::load(&config_dir).unwrap();
+        assert_eq!(loaded.provider_type, ProviderType::Ollama);
+        assert!(loaded.ollama_config.is_some());
+        let ollama_config = loaded.ollama_config.unwrap();
+        assert_eq!(ollama_config.base_url, "http://localhost:11434");
+        assert_eq!(ollama_config.model, Some("llama3.2".to_string()));
+    }
+
+    #[test]
+    fn test_load_legacy_settings_without_model() {
+        // Test backwards compatibility with settings files that don't have a model field
+        let temp_dir = tempdir().unwrap();
+        let config_dir = temp_dir.path().to_path_buf();
+
+        // Write a legacy settings file without model field
+        let legacy_json = r#"{
+            "provider_type": "ollama",
+            "ollama_config": {
+                "base_url": "http://localhost:11434"
+            },
+            "tool_confirmation_timeout_secs": 60
+        }"#;
+
+        let config_path = config_dir.join("provider_settings.json");
+        fs::write(&config_path, legacy_json).unwrap();
+
+        // Load should succeed and model should be None
+        let loaded = ProviderSettings::load(&config_dir).unwrap();
+        assert_eq!(loaded.provider_type, ProviderType::Ollama);
+        assert!(loaded.ollama_config.is_some());
+        let ollama_config = loaded.ollama_config.unwrap();
+        assert_eq!(ollama_config.base_url, "http://localhost:11434");
+        assert_eq!(ollama_config.model, None);
+    }
 }

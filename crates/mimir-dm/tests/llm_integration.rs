@@ -2,6 +2,7 @@
 
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig},
+    providers::groq::GroqProvider,
     providers::ollama::OllamaProvider,
     LlmProvider,
 };
@@ -364,4 +365,51 @@ async fn test_model_download_with_progress() {
     );
 
     println!("✅ Model download test completed and cleaned up successfully");
+}
+
+#[tokio::test]
+async fn test_groq_list_models() {
+    // Create Groq provider with a dummy API key (list_models doesn't need authentication)
+    let mut config_map = HashMap::new();
+    config_map.insert("api_key".to_string(), "test-api-key".to_string());
+
+    let config = ModelConfig {
+        name: "groq-test".to_string(),
+        supported_endpoints: vec![EndpointType::Chat],
+        provider: "groq".to_string(),
+        model: "llama-3.3-70b-versatile".to_string(),
+        config: Some(config_map),
+        limit: None,
+    };
+
+    let provider = GroqProvider::new(config).expect("Failed to create Groq provider");
+
+    // Groq's list_models returns a static list, so this should always succeed
+    let models = provider
+        .list_models()
+        .await
+        .expect("Groq list_models should return static list");
+
+    // Verify we got some models
+    assert!(
+        !models.is_empty(),
+        "Groq should return at least one model"
+    );
+
+    // Verify expected models are in the list
+    let model_names: Vec<&str> = models.iter().map(|m| m.name.as_str()).collect();
+
+    assert!(
+        model_names.contains(&"llama-3.3-70b-versatile"),
+        "Should include llama-3.3-70b-versatile. Found: {:?}",
+        model_names
+    );
+
+    assert!(
+        model_names.contains(&"mixtral-8x7b-32768"),
+        "Should include mixtral-8x7b-32768. Found: {:?}",
+        model_names
+    );
+
+    println!("✅ Groq list_models test passed with {} models", models.len());
 }
