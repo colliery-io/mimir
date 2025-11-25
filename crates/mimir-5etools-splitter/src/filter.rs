@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 /// Trait for filtering content by source
 pub trait SourceFilter {
+    /// Filters content items by their source identifier.
     fn filter_by_source(&self, source: &str) -> Vec<Value>;
 }
 

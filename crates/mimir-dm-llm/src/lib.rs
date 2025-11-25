@@ -56,7 +56,9 @@
 
 pub mod config;
 pub mod traits;
+/// LLM provider implementations.
 pub mod providers;
+/// Tool implementations for LLM function calling.
 pub mod tools;
 
 // Re-export commonly used types from config

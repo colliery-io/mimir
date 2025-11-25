@@ -126,6 +126,7 @@ impl<'a> VariantRuleService<'a> {
         Ok(result)
     }
 
+    /// Gets all unique source books containing variant rules.
     pub fn get_variant_rule_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_variant_rules::dsl::*;
 

@@ -14,6 +14,7 @@ pub struct PlayerRepository<'a> {
 }
 
 impl<'a> PlayerRepository<'a> {
+    /// Creates a new player repository with the given database connection.
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }
@@ -66,6 +67,7 @@ pub struct CampaignPlayerRepository<'a> {
 }
 
 impl<'a> CampaignPlayerRepository<'a> {
+    /// Creates a new campaign-player repository with the given database connection.
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }

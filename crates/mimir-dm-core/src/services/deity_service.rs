@@ -15,10 +15,12 @@ use tracing::{info, debug};
 
 /// Service for searching and managing deities in the catalog.
 pub struct DeityService<'a> {
+    /// Database connection reference.
     pub conn: &'a mut SqliteConnection,
 }
 
 impl<'a> DeityService<'a> {
+    /// Creates a new deity service with the given database connection.
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }

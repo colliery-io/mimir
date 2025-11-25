@@ -8,6 +8,7 @@ use crate::{
 };
 use diesel::prelude::*;
 
+/// Repository for campaign document CRUD operations.
 pub struct DocumentRepository;
 
 impl DocumentRepository {

@@ -15,6 +15,7 @@ use tracing::{debug, info};
 
 /// Service for searching and managing tables in the catalog.
 pub struct TableService<'a> {
+    /// Database connection reference.
     pub conn: &'a mut SqliteConnection,
 }
 

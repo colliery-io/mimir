@@ -8,6 +8,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, error, info};
 
+/// Service for searching and managing conditions and diseases in the catalog.
 pub struct ConditionService;
 
 impl ConditionService {

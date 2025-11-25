@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use tera::{Context, Tera};
 use tracing::debug;
 
+/// Service for template rendering and document generation.
 pub struct TemplateService<'a> {
     conn: &'a mut DbConnection,
 }

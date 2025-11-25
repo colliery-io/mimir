@@ -124,6 +124,7 @@ pub struct TodoListTool {
 }
 
 impl TodoListTool {
+    /// Creates a new todo list tool with the given state manager.
     pub fn new(state_manager: TodoStateManager) -> Self {
         Self { state_manager }
     }

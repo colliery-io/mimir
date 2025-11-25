@@ -16,7 +16,9 @@ use std::fs;
 use std::path::Path;
 use tracing::{error, info, warn, debug};
 
+/// Service for searching and managing monsters in the catalog.
 pub struct MonsterService<'a> {
+    /// Database connection reference.
     pub conn: &'a mut SqliteConnection,
 }
 

@@ -196,6 +196,7 @@ pub struct ReadFileTool {
 }
 
 impl ReadFileTool {
+    /// Creates a new read file tool with the given configuration.
     pub fn new(config: Arc<FileToolsConfig>) -> Self {
         Self { config }
     }
@@ -330,6 +331,7 @@ pub struct WriteFileTool {
 }
 
 impl WriteFileTool {
+    /// Creates a new write file tool with the given configuration.
     pub fn new(config: Arc<FileToolsConfig>) -> Self {
         Self { config }
     }
@@ -521,6 +523,7 @@ pub struct ListFilesTool {
 }
 
 impl ListFilesTool {
+    /// Creates a new list files tool with the given configuration.
     pub fn new(config: Arc<FileToolsConfig>) -> Self {
         Self { config }
     }
@@ -716,6 +719,7 @@ pub struct EditFileTool {
 }
 
 impl EditFileTool {
+    /// Creates a new edit file tool with the given configuration.
     pub fn new(config: Arc<FileToolsConfig>) -> Self {
         Self { config }
     }

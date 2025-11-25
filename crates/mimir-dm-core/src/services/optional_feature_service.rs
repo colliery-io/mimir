@@ -14,6 +14,7 @@ use tracing::{debug, info};
 
 /// Service for searching and managing optional features in the catalog.
 pub struct OptionalFeatureService<'a> {
+    /// Database connection reference.
     pub conn: &'a mut SqliteConnection,
 }
 
@@ -129,6 +130,7 @@ impl<'a> OptionalFeatureService<'a> {
         Ok(result)
     }
 
+    /// Gets all unique source books containing optional features.
     pub fn get_optional_feature_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_optional_features::dsl::*;
 

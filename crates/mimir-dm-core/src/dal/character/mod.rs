@@ -14,6 +14,7 @@ pub struct CharacterRepository<'a> {
 }
 
 impl<'a> CharacterRepository<'a> {
+    /// Creates a new character repository with the given database connection.
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }
@@ -105,6 +106,7 @@ pub struct CharacterVersionRepository<'a> {
 }
 
 impl<'a> CharacterVersionRepository<'a> {
+    /// Creates a new character version repository with the given database connection.
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }

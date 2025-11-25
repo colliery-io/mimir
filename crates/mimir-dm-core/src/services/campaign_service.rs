@@ -19,6 +19,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
 
+/// Service for campaign-related business logic operations.
 pub struct CampaignService<'a> {
     conn: &'a mut DbConnection,
 }

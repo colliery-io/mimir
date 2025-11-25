@@ -149,7 +149,9 @@ pub fn validate_spell_for_class(
 /// Rest type for spell slot restoration
 #[derive(Debug, Clone, PartialEq)]
 pub enum RestType {
+    /// Short rest - typically 1 hour
     Short,
+    /// Long rest - typically 8 hours
     Long,
 }
 

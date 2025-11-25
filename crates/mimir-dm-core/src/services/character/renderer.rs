@@ -6,10 +6,13 @@ use crate::models::character::CharacterData;
 use crate::models::catalog::{Spell, Item};
 use std::collections::HashMap;
 
-/// Trait for rendering character sheets in various formats
+/// Trait for rendering character sheets in various formats.
 pub trait CharacterRenderer {
+    /// Renders a basic character sheet.
     fn render(&self, character: &CharacterData) -> String;
+    /// Renders a character sheet with spell details.
     fn render_with_spells(&self, character: &CharacterData, spell_details: &HashMap<String, Spell>) -> String;
+    /// Renders a character sheet with spell and item details.
     fn render_with_details(
         &self,
         character: &CharacterData,
@@ -22,6 +25,7 @@ pub trait CharacterRenderer {
 pub struct MarkdownRenderer;
 
 impl MarkdownRenderer {
+    /// Creates a new markdown renderer.
     pub fn new() -> Self {
         Self
     }

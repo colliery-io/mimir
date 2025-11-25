@@ -12,6 +12,7 @@ use std::fs;
 use tera::Tera;
 use serde_json::json;
 
+/// Service for session management within modules.
 pub struct SessionService;
 
 impl SessionService {

@@ -17,6 +17,7 @@ use tracing::{info, warn, debug};
 
 /// Service for searching and managing character classes and subclasses.
 pub struct ClassService<'a> {
+    /// Database connection reference.
     pub conn: &'a mut SqliteConnection,
 }
 

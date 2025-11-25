@@ -13,15 +13,17 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, error, info, warn};
 
-/// Spell class data from sources.json
+/// Spell class data from sources.json.
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct SpellSourceEntry {
+    /// Class references for the spell.
     pub class: Option<Vec<ClassReference>>,
 }
 
-/// Map of source -> spell name -> class data
+/// Map of source -> spell name -> class data.
 pub type SpellSources = HashMap<String, HashMap<String, SpellSourceEntry>>;
 
+/// Service for searching and managing spells in the catalog.
 pub struct SpellService;
 
 impl SpellService {
@@ -529,10 +531,12 @@ impl SpellService {
 /// a stateful interface that holds the database connection, enabling trait
 /// implementation while maintaining backward compatibility with existing code.
 pub struct SpellServiceStateful<'a> {
+    /// Database connection reference.
     pub conn: &'a mut SqliteConnection,
 }
 
 impl<'a> SpellServiceStateful<'a> {
+    /// Creates a new stateful spell service with the given database connection.
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }

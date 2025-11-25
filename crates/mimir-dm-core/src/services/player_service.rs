@@ -12,6 +12,7 @@ use crate::{
     models::player::{NewCampaignPlayer, NewPlayer, Player, UpdatePlayer},
 };
 
+/// Service for player-related business logic operations.
 pub struct PlayerService<'a> {
     conn: &'a mut DbConnection,
 }

@@ -135,6 +135,7 @@ impl PsionicService {
         Ok(filtered_orders)
     }
 
+    /// Gets all unique source books containing psionics.
     pub fn get_all_psionic_sources(
         conn: &mut SqliteConnection,
     ) -> Result<Vec<String>> {

@@ -91,6 +91,7 @@ impl ObjectService {
         Ok(result)
     }
 
+    /// Gets all unique source books containing objects.
     pub fn get_object_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct object sources");
 
@@ -104,6 +105,7 @@ impl ObjectService {
         Ok(sources)
     }
 
+    /// Gets the total count of objects in the catalog.
     pub fn get_object_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting total object count");
 
@@ -115,6 +117,7 @@ impl ObjectService {
         Ok(count)
     }
 
+    /// Gets all unique object types.
     pub fn get_object_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct object types");
 
@@ -132,6 +135,7 @@ impl ObjectService {
         Ok(types)
     }
 
+    /// Gets all unique object sizes.
     pub fn get_object_sizes(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct object sizes");
 

@@ -34,7 +34,7 @@ pub use models::campaign::{
 // Re-export DAL traits
 pub use dal::traits::{Repository, AsyncRepository};
 
-// Embed migrations
+/// Embedded database migrations for automatic schema updates.
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 /// Run all pending migrations on the database

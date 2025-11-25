@@ -15,10 +15,12 @@ use tracing::{error, info, debug};
 
 /// Service for searching and managing vehicles in the catalog.
 pub struct VehicleService<'a> {
+    /// Database connection reference.
     pub conn: &'a mut SqliteConnection,
 }
 
 impl<'a> VehicleService<'a> {
+    /// Creates a new vehicle service with the given database connection.
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }
