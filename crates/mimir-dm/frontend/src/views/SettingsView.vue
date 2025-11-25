@@ -146,45 +146,25 @@
 
             <!-- Model Selection (shown for both providers) -->
             <div class="form-group">
-              <label for="model-select" class="form-label">Model</label>
-              <div class="model-select-container">
-                <select
-                  id="model-select"
-                  class="form-input"
-                  :value="getCurrentModel()"
-                  @change="setCurrentModel(($event.target as HTMLSelectElement).value || undefined)"
-                  :disabled="isLoadingModels"
-                >
-                  <option value="">{{ isLoadingModels ? 'Loading models...' : 'Use default model' }}</option>
-                  <option
-                    v-for="model in availableModels"
-                    :key="model.name"
-                    :value="model.name"
-                  >
-                    {{ model.name }}
-                  </option>
-                </select>
-                <button
-                  type="button"
-                  class="refresh-button"
-                  @click="fetchAvailableModels"
-                  :disabled="isLoadingModels"
-                  title="Refresh model list"
-                >
-                  <span v-if="isLoadingModels" class="loading-spinner-small"></span>
-                  <span v-else>Refresh</span>
-                </button>
-              </div>
+              <label for="model-input" class="form-label">Model</label>
+              <input
+                id="model-input"
+                type="text"
+                class="form-input"
+                :value="getCurrentModel() || ''"
+                @input="setCurrentModel(($event.target as HTMLInputElement).value || undefined)"
+                :placeholder="providerSettings.provider_type === 'ollama' ? 'llama3.2' : 'llama-3.3-70b-versatile'"
+              />
               <p class="input-help">
                 <template v-if="providerSettings.provider_type === 'ollama'">
-                  Select from models installed in your local Ollama instance.
-                  If empty, ensure Ollama is running and models are installed.
+                  Enter the name of an Ollama model (e.g., <code>llama3.2</code>, <code>mistral</code>, <code>qwen2.5:14b</code>).
+                  Leave empty to use the default.
                 </template>
                 <template v-else>
-                  Select a Groq-supported model. Different models have varying capabilities and speed.
+                  Enter a Groq model name (e.g., <code>llama-3.3-70b-versatile</code>, <code>mixtral-8x7b-32768</code>).
+                  Leave empty to use the default.
                 </template>
               </p>
-              <p v-if="modelsLoadError" class="input-error">{{ modelsLoadError }}</p>
             </div>
 
             <div class="form-actions">
@@ -282,10 +262,6 @@ interface ProviderSettings {
   groq_config: GroqConfig
 }
 
-interface ModelInfo {
-  name: string
-}
-
 const providerSettings = reactive<ProviderSettings>({
   provider_type: 'ollama',
   ollama_config: {
@@ -298,10 +274,6 @@ const providerSettings = reactive<ProviderSettings>({
   }
 })
 
-// Available models for the current provider
-const availableModels = ref<ModelInfo[]>([])
-const isLoadingModels = ref(false)
-const modelsLoadError = ref('')
 
 const isSavingSettings = ref(false)
 const settingsSaveMessage = ref('')
@@ -375,23 +347,6 @@ const saveProviderSettings = async () => {
   }
 }
 
-// Fetch available models from the current provider
-const fetchAvailableModels = async () => {
-  isLoadingModels.value = true
-  modelsLoadError.value = ''
-
-  try {
-    const models = await invoke<ModelInfo[]>('list_available_models')
-    availableModels.value = models
-  } catch (error) {
-    console.error('Failed to fetch available models:', error)
-    modelsLoadError.value = `Failed to load models: ${error}`
-    availableModels.value = []
-  } finally {
-    isLoadingModels.value = false
-  }
-}
-
 // Get the current model for the active provider
 const getCurrentModel = () => {
   if (providerSettings.provider_type === 'ollama') {
@@ -416,21 +371,14 @@ const handleProviderTypeChange = () => {
   if (providerSettings.provider_type === 'ollama' && !providerSettings.ollama_config.base_url) {
     providerSettings.ollama_config.base_url = 'http://localhost:11434'
   }
-
-  // Clear available models - they'll be fetched after saving and reloading
-  availableModels.value = []
-  modelsLoadError.value = ''
 }
 
-// Open modals based on section selection, and fetch models for provider-config
+// Open modals based on section selection
 watch(activeSection, (newSection) => {
   if (newSection === 'import-books') {
     showBookManagementModal.value = true
   } else if (newSection === 'manage-campaigns') {
     showCampaignManagementModal.value = true
-  } else if (newSection === 'provider-config') {
-    // Fetch available models when entering provider config
-    fetchAvailableModels()
   }
 })
 
@@ -716,71 +664,6 @@ button:disabled {
 
 select.form-input {
   cursor: pointer;
-}
-
-/* Model selector styles */
-.model-select-container {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: center;
-}
-
-.model-select-container select.form-input {
-  flex: 1;
-}
-
-.refresh-button {
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-surface-variant);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  min-width: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.refresh-button:hover:not(:disabled) {
-  background: var(--color-gray-200);
-  border-color: var(--color-border-hover);
-}
-
-.refresh-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.theme-dark .refresh-button:hover:not(:disabled) {
-  background: var(--color-gray-700);
-}
-
-.loading-spinner-small {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary-500);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.input-error {
-  font-size: 0.875rem;
-  color: var(--color-error-600);
-  margin-top: var(--spacing-sm);
-}
-
-.theme-dark .input-error {
-  color: var(--color-error-400);
 }
 
 /* About Section */
