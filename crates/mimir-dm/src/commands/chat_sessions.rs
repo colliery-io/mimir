@@ -1,6 +1,8 @@
-//! Chat session management commands
-//! 
-//! Handles persistent storage and retrieval of chat sessions as JSON files
+//! Chat session management commands.
+//!
+//! Handles persistent storage and retrieval of chat sessions as JSON files.
+//! Sessions are stored in the user's data directory with an index file for
+//! efficient listing.
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -255,7 +257,15 @@ pub fn init_session_manager(app_paths: &AppPaths) -> Result<SessionManager> {
     SessionManager::new(app_paths)
 }
 
-/// Tauri command: List all chat sessions
+/// List all chat sessions.
+///
+/// Returns metadata for all stored chat sessions, sorted by most recently updated.
+///
+/// # Returns
+/// Vector of `ChatSessionMetadata` objects with session info and message counts.
+///
+/// # Errors
+/// Returns error string if session index cannot be read.
 #[tauri::command]
 pub async fn list_chat_sessions(
     session_manager: SessionManagerState<'_>,
@@ -268,7 +278,16 @@ pub async fn list_chat_sessions(
         })
 }
 
-/// Tauri command: Load a specific chat session
+/// Load a specific chat session with all messages.
+///
+/// # Parameters
+/// - `session_id` - UUID of the session to load
+///
+/// # Returns
+/// Complete `ChatSession` if found, or `None` if session doesn't exist.
+///
+/// # Errors
+/// Returns error string if session file cannot be read.
 #[tauri::command]
 pub async fn load_chat_session(
     session_manager: SessionManagerState<'_>,
@@ -282,7 +301,16 @@ pub async fn load_chat_session(
         })
 }
 
-/// Tauri command: Save a chat session
+/// Save a chat session to disk.
+///
+/// Persists the session and updates the sessions index.
+/// Auto-generates a title from the first user message if not set.
+///
+/// # Parameters
+/// - `session` - Complete session data to save
+///
+/// # Errors
+/// Returns error string if session cannot be written.
 #[tauri::command]
 pub async fn save_chat_session(
     session_manager: SessionManagerState<'_>,
@@ -296,7 +324,15 @@ pub async fn save_chat_session(
         })
 }
 
-/// Tauri command: Create a new chat session
+/// Create a new chat session.
+///
+/// Creates an empty session with a new UUID and initializes chat logging.
+///
+/// # Returns
+/// New `ChatSession` with unique ID and timestamp.
+///
+/// # Errors
+/// Returns error string if session cannot be created.
 #[tauri::command]
 pub async fn create_chat_session(
     session_manager: SessionManagerState<'_>,
@@ -332,7 +368,18 @@ pub async fn create_chat_session(
     Ok(session)
 }
 
-/// Tauri command: Delete a chat session
+/// Delete a chat session.
+///
+/// Removes the session file and updates the sessions index.
+///
+/// # Parameters
+/// - `session_id` - UUID of the session to delete
+///
+/// # Returns
+/// Boolean indicating whether a session was deleted.
+///
+/// # Errors
+/// Returns error string if deletion fails.
 #[tauri::command]
 pub async fn delete_chat_session(
     session_manager: SessionManagerState<'_>,

@@ -1,4 +1,7 @@
-//! Session todo query and configuration commands
+//! Session todo query and configuration commands.
+//!
+//! Provides Tauri commands for retrieving and configuring session-based
+//! todo items managed by the LLM service.
 
 use crate::{
     services::llm::LlmService,
@@ -11,7 +14,18 @@ use tauri::State;
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 
-/// Get todos for a specific session from the LLM service's ephemeral state
+/// Get todos for a specific session from the LLM service's ephemeral state.
+///
+/// Retrieves the list of todo items associated with a chat session.
+///
+/// # Parameters
+/// - `session_id` - Unique identifier of the chat session
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `TodoItem` objects.
+///
+/// # Notes
+/// Returns an empty list if the LLM service is not initialized.
 #[tauri::command]
 pub async fn get_session_todos(
     llm_service: State<'_, Arc<Mutex<Option<LlmService>>>>,
@@ -31,7 +45,19 @@ pub async fn get_session_todos(
     }
 }
 
-/// Configure where todos should be stored
+/// Configure where todos should be stored on disk.
+///
+/// Sets the filesystem path where todo items will be persisted.
+///
+/// # Parameters
+/// - `storage_path` - Filesystem path for todo storage
+///
+/// # Returns
+/// `ApiResponse` indicating success or failure.
+///
+/// # Errors
+/// Returns error response if the LLM service is not initialized
+/// or if the storage path configuration fails.
 #[tauri::command]
 pub async fn configure_todo_storage(
     llm_service: State<'_, Arc<Mutex<Option<LlmService>>>>,

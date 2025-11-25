@@ -1,4 +1,7 @@
-//! Log file management commands
+//! Log file management commands.
+//!
+//! Provides Tauri commands for listing, reading, and tailing application
+//! and chat session log files.
 
 use crate::app_init::AppPaths;
 use crate::types::ApiResponse;
@@ -10,35 +13,60 @@ use tracing::{info, debug};
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
+/// Information about a single log file.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LogFileInfo {
+    /// File name without path.
     pub name: String,
+    /// Absolute path to the file.
     pub full_path: String,
+    /// File size in bytes.
     pub size: u64,
+    /// Last modification timestamp.
     pub modified: String,
+    /// Whether this is the current active log file.
     pub is_current: bool,
 }
 
+/// Response containing lists of available log files.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LogFilesResponse {
+    /// Application log files (mimir.log*).
     pub application_logs: Vec<LogFileInfo>,
+    /// Chat session log files.
     pub chat_logs: Vec<LogFileInfo>,
 }
 
+/// Contents of a log file with pagination info.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LogContent {
+    /// Log lines for the requested range.
     pub lines: Vec<String>,
+    /// Total number of lines in the file.
     pub total_lines: usize,
+    /// Current byte position for tailing.
     pub position: u64,
 }
 
+/// Response from tailing a log file.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LogTailResponse {
+    /// New lines since last position.
     pub new_lines: Vec<String>,
+    /// New byte position for next tail call.
     pub new_position: u64,
 }
 
-/// List all available log files in both application and chat directories
+/// List all available log files in both application and chat directories.
+///
+/// Returns lists of application logs (mimir.log*) and chat session logs,
+/// sorted by modification time with newest first.
+///
+/// # Returns
+/// `ApiResponse` containing `LogFilesResponse` with both log categories.
+///
+/// # Errors
+/// Returns error string if directory reading fails.
 #[tauri::command]
 pub async fn list_log_files(
     app_paths: State<'_, Arc<AppPaths>>
@@ -144,7 +172,21 @@ pub async fn list_log_files(
     Ok(ApiResponse::success(response))
 }
 
-/// Read content from a log file with pagination
+/// Read content from a log file with pagination.
+///
+/// Returns a range of lines from the specified log file.
+/// Validates the file name to prevent directory traversal attacks.
+///
+/// # Parameters
+/// - `file_name` - Name of the log file (not a path)
+/// - `offset` - Line number to start from (0-indexed)
+/// - `limit` - Maximum number of lines to return
+///
+/// # Returns
+/// `ApiResponse` containing `LogContent` with lines and metadata.
+///
+/// # Errors
+/// Returns error response if file name is invalid or file cannot be read.
 #[tauri::command]
 pub async fn read_log_file(
     file_name: String,
@@ -201,7 +243,20 @@ pub async fn read_log_file(
     }))
 }
 
-/// Tail a log file - get new content since last position
+/// Tail a log file - get new content since last position.
+///
+/// Returns lines appended to the log since the specified byte position.
+/// Handles file rotation by detecting if the file has shrunk.
+///
+/// # Parameters
+/// - `file_name` - Name of the log file (not a path)
+/// - `last_position` - Byte position from previous read
+///
+/// # Returns
+/// `ApiResponse` containing `LogTailResponse` with new lines and position.
+///
+/// # Errors
+/// Returns error response if file name is invalid or file cannot be read.
 #[tauri::command]
 pub async fn tail_log_file(
     file_name: String,
@@ -259,7 +314,15 @@ pub async fn tail_log_file(
 }
 
 
-/// Open the chat logs directory in the system file explorer
+/// Open the chat logs directory in the system file explorer.
+///
+/// Creates the chat logs directory if it doesn't exist.
+///
+/// # Returns
+/// `ApiResponse` indicating success.
+///
+/// # Errors
+/// Returns error string if directory creation fails.
 #[tauri::command]
 pub async fn open_logs_folder(
     app_paths: State<'_, Arc<AppPaths>>

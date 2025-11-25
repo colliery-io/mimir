@@ -1,6 +1,21 @@
+//! Window management commands.
+//!
+//! Provides Tauri commands for opening and managing auxiliary windows
+//! such as debug panels, chat windows, and log viewers.
+
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow};
 use tracing::info;
 
+/// Open the context debug window.
+///
+/// Creates or focuses the context debug panel showing current context state.
+/// If the window already exists, it will be focused instead of creating a new one.
+///
+/// # Parameters
+/// - `app` - Tauri application handle for window management
+///
+/// # Errors
+/// Returns an error string if window creation or focus fails.
 #[tauri::command]
 pub async fn open_context_debug_window(app: AppHandle) -> Result<(), String> {
     info!("Opening context debug window");
@@ -31,6 +46,16 @@ pub async fn open_context_debug_window(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Open the chat window.
+///
+/// Creates or focuses the LLM chat interface window.
+/// If the window already exists, it will be focused instead of creating a new one.
+///
+/// # Parameters
+/// - `app` - Tauri application handle for window management
+///
+/// # Errors
+/// Returns an error string if window creation or focus fails.
 #[tauri::command]
 pub async fn open_chat_window(app: AppHandle) -> Result<(), String> {
     info!("Opening chat window");
@@ -61,6 +86,17 @@ pub async fn open_chat_window(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Open a log viewer window for a specific log file.
+///
+/// Creates or focuses a log viewer window for the specified file.
+/// Each log file gets its own window instance.
+///
+/// # Parameters
+/// - `app` - Tauri application handle for window management
+/// - `file_name` - Name of the log file to view
+///
+/// # Errors
+/// Returns an error string if window creation or focus fails.
 #[tauri::command]
 pub async fn open_log_viewer_window(app: AppHandle, file_name: String) -> Result<(), String> {
     info!("Opening log viewer window for file: {}", file_name);

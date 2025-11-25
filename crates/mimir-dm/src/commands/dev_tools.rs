@@ -1,4 +1,7 @@
-//! Development tools and commands
+//! Development tools and commands.
+//!
+//! Provides Tauri commands for development-only functionality such as
+//! test data management and debugging features.
 
 use crate::app_init::AppPaths;
 use crate::{
@@ -10,14 +13,27 @@ use std::sync::Arc;
 use tauri::State;
 use tracing::info;
 
-/// Check if we're in development mode
+/// Check if the application is running in development mode.
+///
+/// Returns true if this is a development build.
+///
+/// # Returns
+/// Boolean indicating development mode status.
 #[tauri::command]
 pub async fn is_dev_mode() -> Result<bool, String> {
     Ok(is_dev_build())
 }
 
-
-/// Remove the development test book
+/// Remove all embedded development test books.
+///
+/// Deletes the test book directories created during development.
+/// Only works when running in development mode.
+///
+/// # Returns
+/// `ApiResponse` indicating success.
+///
+/// # Errors
+/// Returns error response if not in development mode or deletion fails.
 #[tauri::command]
 pub async fn remove_dev_test_book(
     app_paths: State<'_, Arc<AppPaths>>

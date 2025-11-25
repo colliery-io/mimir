@@ -1,4 +1,7 @@
-//! Board configuration commands
+//! Board configuration commands.
+//!
+//! Provides Tauri commands for retrieving board configuration data including
+//! stages, transitions, and stage metadata for the workflow board UI.
 
 use crate::types::ApiResponse;
 use mimir_dm_core::domain::BoardRegistry;
@@ -33,7 +36,19 @@ pub struct TransitionRule {
     pub allowed: bool,
 }
 
-/// Get the configuration for a specific board type
+/// Get the complete configuration for a specific board type.
+///
+/// Returns all stages, their metadata, document requirements, and valid transitions.
+/// Used to render the workflow board UI and determine available actions.
+///
+/// # Parameters
+/// - `board_type` - The board type identifier (e.g., "session", "campaign")
+///
+/// # Returns
+/// `ApiResponse` containing `BoardConfiguration` with stages and transitions.
+///
+/// # Errors
+/// Returns error response if the board type is not found.
 #[tauri::command]
 pub async fn get_board_configuration(board_type: String) -> Result<ApiResponse<BoardConfiguration>, String> {
     info!("Getting configuration for board type: {}", board_type);
@@ -100,7 +115,20 @@ pub async fn get_board_configuration(board_type: String) -> Result<ApiResponse<B
     Ok(ApiResponse::success(configuration))
 }
 
-/// Get the next valid stage for a given board and current stage
+/// Get the next valid stage for a given board and current stage.
+///
+/// Returns the default next stage in the workflow, if one exists.
+/// Used to determine the primary advancement path.
+///
+/// # Parameters
+/// - `board_type` - The board type identifier
+/// - `current_stage` - The current stage key
+///
+/// # Returns
+/// `ApiResponse` containing the next stage key, or `None` if at the end.
+///
+/// # Errors
+/// Returns error response if the board type is not found.
 #[tauri::command]
 pub async fn get_next_stage(board_type: String, current_stage: String) -> Result<ApiResponse<Option<String>>, String> {
     info!("Getting next stage for board '{}' from stage '{}'", board_type, current_stage);

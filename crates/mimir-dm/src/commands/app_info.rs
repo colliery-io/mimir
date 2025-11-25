@@ -1,4 +1,7 @@
-//! Application info commands
+//! Application info commands.
+//!
+//! Provides Tauri commands for retrieving application configuration
+//! and path information.
 
 use crate::app_init::AppPaths;
 use crate::types::ApiResponse;
@@ -6,14 +9,25 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::State;
 
+/// Application configuration and path information.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppInfo {
+    /// Path to the SQLite database file.
     pub database_path: String,
+    /// Root application directory.
     pub app_dir: String,
+    /// Configuration directory for settings.
     pub config_dir: String,
+    /// Data directory for user content.
     pub data_dir: String,
 }
 
+/// Get application path and configuration information.
+///
+/// Returns paths to important application directories and files.
+///
+/// # Returns
+/// `ApiResponse` containing `AppInfo` with all relevant paths.
 #[tauri::command]
 pub async fn get_app_info(
     app_paths: State<'_, Arc<AppPaths>>
@@ -27,11 +41,27 @@ pub async fn get_app_info(
     Ok(ApiResponse::success(app_info))
 }
 
+/// Simple greeting command for testing.
+///
+/// # Parameters
+/// - `name` - Name to include in greeting
+///
+/// # Returns
+/// Greeting message string.
 #[tauri::command]
 pub async fn greet(name: String) -> String {
     format!("Hello, {}! Welcome to Mimir.", name)
 }
 
+/// Get the default directory for campaign storage.
+///
+/// Returns the user's Documents folder with "Mimir Campaigns" appended.
+///
+/// # Returns
+/// `ApiResponse` containing the default campaigns directory path.
+///
+/// # Errors
+/// Returns error response if user directories cannot be determined.
 #[tauri::command]
 pub async fn get_default_campaigns_directory() -> Result<ApiResponse<String>, String> {
     use directories::UserDirs;
