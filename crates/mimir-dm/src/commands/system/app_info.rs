@@ -3,10 +3,9 @@
 //! Provides Tauri commands for retrieving application configuration
 //! and path information.
 
-use crate::app_init::AppPaths;
+use crate::state::AppState;
 use crate::types::ApiResponse;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tauri::State;
 
 /// Application configuration and path information.
@@ -30,13 +29,13 @@ pub struct AppInfo {
 /// `ApiResponse` containing `AppInfo` with all relevant paths.
 #[tauri::command]
 pub async fn get_app_info(
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<AppInfo>, String> {
     let app_info = AppInfo {
-        database_path: app_paths.database_path_str(),
-        app_dir: app_paths.app_dir.to_string_lossy().to_string(),
-        config_dir: app_paths.config_dir.to_string_lossy().to_string(),
-        data_dir: app_paths.data_dir.to_string_lossy().to_string(),
+        database_path: state.paths.database_path_str(),
+        app_dir: state.paths.app_dir.to_string_lossy().to_string(),
+        config_dir: state.paths.config_dir.to_string_lossy().to_string(),
+        data_dir: state.paths.data_dir.to_string_lossy().to_string(),
     };
     Ok(ApiResponse::success(app_info))
 }

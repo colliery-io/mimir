@@ -3,12 +3,11 @@
 //! Provides Tauri commands for retrieving and serving book content from the local
 //! archive structure. Handles JSON content extraction and base64 image encoding.
 
-use crate::app_init::AppPaths;
+use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use tauri::State;
 use tracing::{error, info};
 
@@ -32,12 +31,12 @@ use tracing::{error, info};
 #[tauri::command]
 pub async fn get_book_content(
     book_id: String,
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<serde_json::Value>, ApiError> {
     info!("Getting book content for: {}", book_id);
 
     // Get book directory
-    let book_dir = app_paths.data_dir.join("books").join(&book_id);
+    let book_dir = state.paths.data_dir.join("books").join(&book_id);
 
     info!("Looking for book at: {:?}", book_dir);
 
@@ -107,11 +106,11 @@ pub async fn get_book_content(
 pub async fn serve_book_image(
     book_id: String,
     image_path: String,
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<String>, ApiError> {
     info!("Serving image {} from book {}", image_path, book_id);
 
-    let books_dir = app_paths.data_dir.join("books");
+    let books_dir = state.paths.data_dir.join("books");
 
     // Sanitize inputs to prevent directory traversal
     let sanitized_book = book_id.replace("..", "").replace("/", "").replace("\\", "");

@@ -4,13 +4,12 @@
 //! Supports resolving references to spells, items, creatures, classes, races,
 //! feats, and backgrounds with preview generation for tooltips.
 
-use crate::app_init::AppPaths;
+use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, info};
 
@@ -47,14 +46,14 @@ pub async fn lookup_reference(
     ref_type: String,
     ref_name: String,
     ref_source: Option<String>,
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<ReferenceData>, ApiError> {
     info!(
         "Looking up reference: {} '{}' from {:?}",
         ref_type, ref_name, ref_source
     );
 
-    let books_dir = app_paths.data_dir.join("books");
+    let books_dir = state.paths.data_dir.join("books");
 
     // Determine which book to search in
     let source_book = ref_source.as_deref().unwrap_or("PHB").to_lowercase();

@@ -3,12 +3,10 @@
 //! Provides Tauri commands for retrieving and configuring session-based
 //! todo items managed by the LLM service.
 
-use crate::{services::llm::LlmService, types::ApiResponse};
+use crate::{state::AppState, types::ApiResponse};
 use mimir_dm_llm::TodoItem;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tauri::State;
-use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 
 /// Get todos for a specific session from the LLM service's ephemeral state.
@@ -25,12 +23,12 @@ use tracing::{debug, info, warn};
 /// Returns an empty list if the LLM service is not initialized.
 #[tauri::command]
 pub async fn get_session_todos(
-    llm_service: State<'_, Arc<Mutex<Option<LlmService>>>>,
+    state: State<'_, AppState>,
     session_id: String,
 ) -> Result<ApiResponse<Vec<TodoItem>>, String> {
     info!("Getting todos for session: {}", session_id);
 
-    let service = llm_service.lock().await;
+    let service = state.llm.lock().await;
 
     if let Some(llm) = service.as_ref() {
         let todos = llm.get_session_todos(&session_id);
@@ -57,12 +55,12 @@ pub async fn get_session_todos(
 /// or if the storage path configuration fails.
 #[tauri::command]
 pub async fn configure_todo_storage(
-    llm_service: State<'_, Arc<Mutex<Option<LlmService>>>>,
+    state: State<'_, AppState>,
     storage_path: String,
 ) -> Result<ApiResponse<()>, String> {
     info!("Configuring todo storage path: {}", storage_path);
 
-    let service = llm_service.lock().await;
+    let service = state.llm.lock().await;
 
     if let Some(llm) = service.as_ref() {
         let path = PathBuf::from(storage_path);

@@ -3,13 +3,12 @@
 //! Provides Tauri commands for listing, reading, and tailing application
 //! and chat session log files.
 
-use crate::app_init::AppPaths;
+use crate::state::AppState;
 use crate::types::ApiResponse;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, info};
 
@@ -69,11 +68,11 @@ pub struct LogTailResponse {
 /// Returns error string if directory reading fails.
 #[tauri::command]
 pub async fn list_log_files(
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<LogFilesResponse>, String> {
     info!("Listing log files");
 
-    let logs_dir = &app_paths.logs_dir;
+    let logs_dir = &state.paths.logs_dir;
     let chat_logs_dir = logs_dir.join("chat_sessions");
 
     let mut application_logs = Vec::new();
@@ -202,7 +201,7 @@ pub async fn read_log_file(
     file_name: String,
     offset: usize,
     limit: usize,
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<LogContent>, String> {
     debug!(
         "Reading log file: {} (offset: {}, limit: {})",
@@ -216,9 +215,9 @@ pub async fn read_log_file(
 
     // Determine file path - check application logs first, then chat logs
     let file_path = if file_name.starts_with("mimir.log") {
-        app_paths.logs_dir.join(&file_name)
+        state.paths.logs_dir.join(&file_name)
     } else if file_name.ends_with(".log") {
-        app_paths.logs_dir.join("chat_sessions").join(&file_name)
+        state.paths.logs_dir.join("chat_sessions").join(&file_name)
     } else {
         return Ok(ApiResponse::error("Invalid log file type".to_string()));
     };
@@ -281,7 +280,7 @@ pub async fn read_log_file(
 pub async fn tail_log_file(
     file_name: String,
     last_position: u64,
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<LogTailResponse>, String> {
     // Validate file name
     if file_name.contains("..") || file_name.contains("/") || file_name.contains("\\") {
@@ -290,9 +289,9 @@ pub async fn tail_log_file(
 
     // Determine file path - check application logs first, then chat logs
     let file_path = if file_name.starts_with("mimir.log") {
-        app_paths.logs_dir.join(&file_name)
+        state.paths.logs_dir.join(&file_name)
     } else if file_name.ends_with(".log") {
-        app_paths.logs_dir.join("chat_sessions").join(&file_name)
+        state.paths.logs_dir.join("chat_sessions").join(&file_name)
     } else {
         return Ok(ApiResponse::error("Invalid log file type".to_string()));
     };
@@ -350,9 +349,9 @@ pub async fn tail_log_file(
 /// Returns error string if directory creation fails.
 #[tauri::command]
 pub async fn open_logs_folder(
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<()>, String> {
-    let chat_logs_dir = app_paths.logs_dir.join("chat_sessions");
+    let chat_logs_dir = state.paths.logs_dir.join("chat_sessions");
 
     // Create the directory if it doesn't exist
     if !chat_logs_dir.exists() {
