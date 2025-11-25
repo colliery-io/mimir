@@ -1,13 +1,12 @@
 //! Book archive upload functionality
 
-use crate::app_init::AppPaths;
+use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
 use super::catalog_import::import_all_catalogs_from_book;
 use super::book_library::BookInfo;
 use super::book_content::find_book_content_file;
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{error, info, warn};
 use tar::Archive;
@@ -15,15 +14,13 @@ use flate2::read::GzDecoder;
 use diesel::prelude::*;
 use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
-use mimir_dm_core::DatabaseService;
 use chrono::Utc;
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit)
 #[tauri::command]
 pub async fn upload_book_archive(
     archive_path: String,
-    db_service: State<'_, Arc<DatabaseService>>,
-    app_paths: State<'_, Arc<AppPaths>>
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<BookInfo>, ApiError> {
     info!("Uploading book archive from: {}", archive_path);
 
@@ -40,7 +37,7 @@ pub async fn upload_book_archive(
     let mut archive = Archive::new(tar);
 
     // Create books directory if it doesn't exist
-    let books_dir = app_paths.data_dir.join("books");
+    let books_dir = state.paths.data_dir.join("books");
     if !books_dir.exists() {
         fs::create_dir_all(&books_dir)
             .map_err(|e| format!("Failed to create books directory: {}", e))?;
@@ -93,7 +90,7 @@ pub async fn upload_book_archive(
         .ok_or_else(|| "No book directory found in archive".to_string())?;
 
     // Check database for collision before doing any work
-    match db_service.get_connection() {
+    match state.db.get_connection() {
         Ok(mut conn) => {
             let existing: Result<UploadedBook, _> = uploaded_books::table
                 .filter(uploaded_books::id.eq(&book_id))
@@ -131,7 +128,7 @@ pub async fn upload_book_archive(
     }
 
     // Create archives directory if it doesn't exist
-    let archives_dir = app_paths.data_dir.join("archives");
+    let archives_dir = state.paths.data_dir.join("archives");
     if !archives_dir.exists() {
         fs::create_dir_all(&archives_dir)
             .map_err(|e| format!("Failed to create archives directory: {}", e))?;
@@ -152,7 +149,7 @@ pub async fn upload_book_archive(
         metadata_json: book_metadata.map(|m| m.to_string()),
     };
 
-    match db_service.get_connection() {
+    match state.db.get_connection() {
         Ok(mut conn) => {
             match diesel::insert_into(uploaded_books::table)
                 .values(&new_book)
@@ -180,7 +177,7 @@ pub async fn upload_book_archive(
     if let Err(e) = fs::copy(&archive_file, &archive_destination) {
         error!("Failed to copy archive after database insert: {}", e);
         // Clean up database record
-        if let Ok(mut conn) = db_service.get_connection() {
+        if let Ok(mut conn) = state.db.get_connection() {
             let _ = diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
                 .execute(&mut conn);
         }
@@ -195,7 +192,7 @@ pub async fn upload_book_archive(
         error!("Failed to move book directory after database insert: {}", e);
         // Clean up archive and database record
         let _ = fs::remove_file(&archive_destination);
-        if let Ok(mut conn) = db_service.get_connection() {
+        if let Ok(mut conn) = state.db.get_connection() {
             let _ = diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
                 .execute(&mut conn);
         }
@@ -205,7 +202,7 @@ pub async fn upload_book_archive(
     info!("Successfully imported book '{}'", book_name);
 
     // Import catalog content automatically
-    match db_service.get_connection() {
+    match state.db.get_connection() {
         Ok(mut catalog_conn) => {
             import_all_catalogs_from_book(&mut catalog_conn, &final_book_dir, &book_id);
         }

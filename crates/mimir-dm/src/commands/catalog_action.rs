@@ -1,9 +1,8 @@
 //! Database-backed action catalog commands
 
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::{Action, ActionFilters, ActionSummary};
 use mimir_dm_core::services::ActionService;
-use mimir_dm_core::DatabaseService;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error, info};
 
@@ -14,7 +13,7 @@ pub async fn search_actions(
     search: Option<String>,
     time_types: Option<Vec<String>>,
     sources: Option<Vec<String>>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<ActionSummary>, String> {
     debug!("Database action search - name: {:?}, search: {:?}, time_types: {:?}, sources: {:?}",
            name, search, time_types, sources);
@@ -26,7 +25,7 @@ pub async fn search_actions(
         sources,
     };
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during action search: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -47,11 +46,11 @@ pub async fn search_actions(
 #[tauri::command]
 pub async fn get_action(
     action_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<Action>, String> {
     debug!("Getting action by ID: {}", action_id);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting action: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -68,11 +67,11 @@ pub async fn get_action(
 /// Get all available time types for filter dropdowns
 #[tauri::command]
 pub async fn get_action_time_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting action time types");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting time types: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -89,11 +88,11 @@ pub async fn get_action_time_types(
 /// Get all available sources for filter dropdowns
 #[tauri::command]
 pub async fn get_action_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting action sources");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting sources: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -110,11 +109,11 @@ pub async fn get_action_sources(
 /// Get action count for statistics
 #[tauri::command]
 pub async fn get_action_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
     debug!("Getting action count");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting action count: {}", e);
         format!("Database connection failed: {}", e)
     })?;

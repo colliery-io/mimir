@@ -1,16 +1,15 @@
 //! Database-backed language catalog commands
 
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::{Language, LanguageFilters, LanguageSummary};
 use mimir_dm_core::services::LanguageService;
-use mimir_dm_core::DatabaseService;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error, info};
 
 /// Search languages using database with filters
 #[tauri::command]
 pub async fn search_languages(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
     query: Option<String>,
     language_types: Option<Vec<String>>,
     scripts: Option<Vec<String>>,
@@ -27,7 +26,7 @@ pub async fn search_languages(
         sources,
     };
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during language search: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -47,13 +46,13 @@ pub async fn search_languages(
 /// Get a specific language by name and source for modal display
 #[tauri::command]
 pub async fn get_language_details(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
     name: String,
     source: String,
 ) -> Result<Language, String> {
     debug!("Getting language details for '{}' from '{}'", name, source);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting language: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -71,11 +70,11 @@ pub async fn get_language_details(
 /// Get all available language types for filter dropdowns
 #[tauri::command]
 pub async fn get_language_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting language types");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting language types: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -92,11 +91,11 @@ pub async fn get_language_types(
 /// Get all available scripts for filter dropdowns
 #[tauri::command]
 pub async fn get_language_scripts(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting language scripts");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting scripts: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -113,11 +112,11 @@ pub async fn get_language_scripts(
 /// Get all available sources for filter dropdowns
 #[tauri::command]
 pub async fn get_language_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting language sources");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting sources: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -134,11 +133,11 @@ pub async fn get_language_sources(
 /// Get language count for statistics
 #[tauri::command]
 pub async fn get_language_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
     debug!("Getting language count");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting language count: {}", e);
         format!("Database connection failed: {}", e)
     })?;

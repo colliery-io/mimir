@@ -1,8 +1,7 @@
-use tauri::State;
-use mimir_dm_core::services::ObjectService;
-use mimir_dm_core::DatabaseService;
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::ObjectFilters;
-use std::sync::Arc;
+use mimir_dm_core::services::ObjectService;
+use tauri::State;
 use tracing::error;
 
 #[tauri::command]
@@ -11,9 +10,9 @@ pub async fn search_objects(
     sources: Option<Vec<String>>,
     object_types: Option<Vec<String>>,
     sizes: Option<Vec<String>>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -41,9 +40,9 @@ pub async fn search_objects(
 pub async fn get_object_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -54,9 +53,9 @@ pub async fn get_object_details(
 
 #[tauri::command]
 pub async fn get_object_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -67,9 +66,9 @@ pub async fn get_object_sources(
 
 #[tauri::command]
 pub async fn get_object_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -80,9 +79,9 @@ pub async fn get_object_count(
 
 #[tauri::command]
 pub async fn get_object_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -93,9 +92,9 @@ pub async fn get_object_types(
 
 #[tauri::command]
 pub async fn get_object_sizes(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;

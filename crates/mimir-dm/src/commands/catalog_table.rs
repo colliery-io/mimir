@@ -1,10 +1,9 @@
 //! Database-backed table catalog commands
 
-use std::sync::Arc;
-use tauri::State;
-use mimir_dm_core::DatabaseService;
+use crate::state::AppState;
+use mimir_dm_core::models::catalog::table::{Table, TableFilters, TableSummary};
 use mimir_dm_core::services::TableService;
-use mimir_dm_core::models::catalog::table::{TableFilters, Table, TableSummary};
+use tauri::State;
 use tracing::{debug, info};
 
 /// Search tables using database with filters
@@ -13,12 +12,12 @@ pub async fn search_tables(
     query: Option<String>,
     categories: Option<Vec<String>>,
     sources: Option<Vec<String>>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<TableSummary>, String> {
     debug!("Database table search - query: {:?}, categories: {:?}, sources: {:?}",
            query, categories, sources);
 
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut service = TableService::new(&mut conn);
@@ -40,11 +39,11 @@ pub async fn search_tables(
 #[tauri::command]
 pub async fn get_table(
     id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<Table>, String> {
     debug!("Getting table by ID: {}", id);
 
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut service = TableService::new(&mut conn);
@@ -58,11 +57,11 @@ pub async fn get_table(
 pub async fn get_table_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<Table>, String> {
     debug!("Getting table details: {} from {}", name, source);
 
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut service = TableService::new(&mut conn);
@@ -74,11 +73,11 @@ pub async fn get_table_details(
 /// Get available table categories for filter dropdown
 #[tauri::command]
 pub async fn get_table_categories(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting table categories from database");
 
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut service = TableService::new(&mut conn);
@@ -93,11 +92,11 @@ pub async fn get_table_categories(
 /// Get available table sources for filter dropdown
 #[tauri::command]
 pub async fn get_table_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting table sources from database");
 
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut service = TableService::new(&mut conn);

@@ -1,17 +1,16 @@
-use std::sync::Arc;
-use tauri::State;
-use mimir_dm_core::DatabaseService;
+use crate::state::AppState;
+use mimir_dm_core::models::catalog::variant_rule::{VariantRule, VariantRuleFilters};
 use mimir_dm_core::services::VariantRuleService;
-use mimir_dm_core::models::catalog::variant_rule::{VariantRuleFilters, VariantRule};
+use tauri::State;
 
 #[tauri::command]
 pub async fn search_variant_rules(
     query: Option<String>,
     rule_types: Option<Vec<String>>,
     sources: Option<Vec<String>>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     
     let mut service = VariantRuleService::new(&mut conn);
@@ -37,9 +36,9 @@ pub async fn search_variant_rules(
 #[tauri::command]
 pub async fn get_variant_rule(
     id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<VariantRule>, String> {
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     
     let mut service = VariantRuleService::new(&mut conn);
@@ -52,9 +51,9 @@ pub async fn get_variant_rule(
 pub async fn get_variant_rule_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<VariantRule>, String> {
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     
     let mut service = VariantRuleService::new(&mut conn);
@@ -65,9 +64,9 @@ pub async fn get_variant_rule_details(
 
 #[tauri::command]
 pub async fn get_variant_rule_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     
     let mut service = VariantRuleService::new(&mut conn);
@@ -78,9 +77,9 @@ pub async fn get_variant_rule_types(
 
 #[tauri::command]
 pub async fn get_variant_rule_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     
     let mut service = VariantRuleService::new(&mut conn);

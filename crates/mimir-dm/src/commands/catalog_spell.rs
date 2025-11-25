@@ -1,9 +1,8 @@
 //! Database-backed spell catalog commands
 
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::{Spell, SpellFilters, SpellSummary};
 use mimir_dm_core::services::SpellService;
-use mimir_dm_core::DatabaseService;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error, info};
 
@@ -17,7 +16,7 @@ pub async fn search_spells(
     tags: Option<Vec<String>>,
     limit: Option<i32>,
     offset: Option<i32>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<SpellSummary>, String> {
     debug!("Database spell search - query: {:?}, sources: {:?}, levels: {:?}",
            query, sources, levels);
@@ -32,7 +31,7 @@ pub async fn search_spells(
         offset,
     };
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during spell search: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -54,11 +53,11 @@ pub async fn search_spells(
 pub async fn get_spell_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<Spell>, String> {
     debug!("Getting spell details from database: {} from {}", name, source);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during spell details fetch: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -82,11 +81,11 @@ pub async fn get_spell_details(
 /// Get available spell sources for filter dropdown
 #[tauri::command]
 pub async fn get_spell_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting spell sources from database");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during spell sources fetch: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -106,11 +105,11 @@ pub async fn get_spell_sources(
 /// Get available spell schools for filter dropdown
 #[tauri::command]
 pub async fn get_spell_schools(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting spell schools from database");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during spell schools fetch: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -130,11 +129,11 @@ pub async fn get_spell_schools(
 /// Get spell statistics by source
 #[tauri::command]
 pub async fn get_spell_statistics(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<(String, i64)>, String> {
     debug!("Getting spell statistics from database");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during spell statistics fetch: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -154,11 +153,11 @@ pub async fn get_spell_statistics(
 /// Get total number of spells in the database
 #[tauri::command]
 pub async fn get_spell_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
     debug!("Getting total spell count from database");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during spell count fetch: {}", e);
         format!("Database connection failed: {}", e)
     })?;

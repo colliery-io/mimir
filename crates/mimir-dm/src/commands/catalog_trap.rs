@@ -1,7 +1,6 @@
-use mimir_dm_core::DatabaseService;
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::{CatalogTrap, TrapFilters, TrapSummary};
 use mimir_dm_core::services::TrapService;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error};
 
@@ -11,18 +10,18 @@ pub async fn search_traps(
     sources: Option<Vec<String>>,
     categories: Option<Vec<String>>,
     trap_types: Option<Vec<String>>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<TrapSummary>, String> {
     debug!("search_traps called with search: {:?}", search);
-    
+
     let filters = TrapFilters {
         search,
         sources,
         categories,
         trap_types,
     };
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -40,11 +39,11 @@ pub async fn search_traps(
 pub async fn get_trap_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<CatalogTrap>, String> {
     debug!("get_trap_details called for: {} from {}", name, source);
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -60,11 +59,11 @@ pub async fn get_trap_details(
 
 #[tauri::command]
 pub async fn get_trap_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("get_trap_sources called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -80,11 +79,11 @@ pub async fn get_trap_sources(
 
 #[tauri::command]
 pub async fn get_trap_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
     debug!("get_trap_count called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -100,11 +99,11 @@ pub async fn get_trap_count(
 
 #[tauri::command]
 pub async fn get_trap_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("get_trap_types called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -120,11 +119,11 @@ pub async fn get_trap_types(
 
 #[tauri::command]
 pub async fn get_trap_categories(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("get_trap_categories called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)

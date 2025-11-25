@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use crate::state::AppState;
 use tauri::State;
 use tracing::warn;
 use mimir_dm_core::{
@@ -13,7 +13,6 @@ use mimir_dm_core::{
         template_documents::TemplateRepository,
     },
     DbConnection,
-    DatabaseService,
 };
 use std::path::PathBuf;
 use std::fs;
@@ -135,9 +134,9 @@ fn process_template_content(
 #[tauri::command]
 pub async fn initialize_stage_documents(
     campaign_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<ApiResponse<Vec<String>>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = state.db.get_connection().map_err(|e| e.to_string())?;
 
     // Get the campaign
     let mut campaign_repo = CampaignRepository::new(&mut *conn);

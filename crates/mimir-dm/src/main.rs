@@ -5,6 +5,7 @@ mod commands;
 mod embedded_test_book;
 mod seed_templates;
 mod services;
+mod state;
 mod types;
 
 use app_init::initialize_app;
@@ -88,40 +89,43 @@ fn main() {
             }
             drop(conn); // Release connection after seeding
 
+            // Build all state components
             let db_service = Arc::new(db_service);
-            let db_service_clone = Arc::clone(&db_service);
-            app.manage(db_service);
-
-            // Register AppPaths as Tauri state
             let app_paths_state = Arc::new(app_paths);
-            app.manage(app_paths_state.clone());
-
-            // Initialize context service
             let context_state = ContextState::new();
-            app.manage(context_state);
 
-            // Initialize session manager
             let session_manager = commands::chat_sessions::init_session_manager(&app_paths_state)
                 .map_err(|e| {
                     error!("Failed to initialize session manager: {}", e);
                     e
                 })?;
-            app.manage(session_manager);
-            
-            // Create shared confirmation receivers for LLM tools
+
             let confirmation_receivers: ConfirmationReceivers = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
             let cancellation_tokens: CancellationTokens = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
-            let confirmation_receivers_clone = Arc::clone(&confirmation_receivers);
-            app.manage(confirmation_receivers);
-            app.manage(cancellation_tokens);
-            
-            // Initialize LLM service
-            let app_handle = app.handle().clone();
             let llm_service = Arc::new(tokio::sync::Mutex::new(None::<LlmService>));
-            let llm_service_clone = Arc::clone(&llm_service);
+
+            // Clone references needed for async LLM initialization
+            let db_service_clone = Arc::clone(&db_service);
             let app_paths_clone = Arc::clone(&app_paths_state);
+            let confirmation_receivers_clone = Arc::clone(&confirmation_receivers);
+            let llm_service_clone = Arc::clone(&llm_service);
+
+            // Create consolidated AppState
+            let app_state = state::AppState::new(
+                db_service,
+                app_paths_state,
+                context_state,
+                session_manager,
+                confirmation_receivers,
+                cancellation_tokens,
+                llm_service,
+            );
+
+            // Single state registration
+            app.manage(app_state);
 
             // Spawn async task to initialize LLM
+            let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 info!("Starting LLM service initialization...");
                 match llm::initialize_llm(app_handle, db_service_clone, confirmation_receivers_clone, app_paths_clone).await {
@@ -133,12 +137,9 @@ fn main() {
                     Err(e) => {
                         error!("Failed to initialize LLM service: {}", e);
                         warn!("Application will continue without LLM functionality");
-                        // Don't fail app startup if LLM fails to initialize
                     }
                 }
             });
-            
-            app.manage(llm_service);
 
             Ok(())
         })

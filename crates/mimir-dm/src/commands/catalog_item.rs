@@ -1,9 +1,8 @@
-use tauri::State;
-use std::sync::Arc;
-use mimir_dm_core::models::catalog::item::{ItemSummary, ItemFilters, Item};
+use crate::state::AppState;
+use mimir_dm_core::models::catalog::item::{Item, ItemFilters, ItemSummary};
 use mimir_dm_core::services::item_service::ItemService;
-use mimir_dm_core::DatabaseService;
-use tracing::{info, debug, error};
+use tauri::State;
+use tracing::{debug, error, info};
 
 #[tauri::command]
 pub async fn search_items(
@@ -13,12 +12,12 @@ pub async fn search_items(
     sources: Option<Vec<String>>,
     min_value: Option<f64>,
     max_value: Option<f64>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<ItemSummary>, String> {
-    debug!("Searching items with name: {:?}, item_types: {:?}, rarities: {:?}, sources: {:?}", 
+    debug!("Searching items with name: {:?}, item_types: {:?}, rarities: {:?}, sources: {:?}",
            name, item_types, rarities, sources);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -43,11 +42,11 @@ pub async fn search_items(
 #[tauri::command]
 pub async fn get_item(
     item_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<Item>, String> {
     debug!("Getting item details for ID: {}", item_id);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -61,11 +60,11 @@ pub async fn get_item(
 pub async fn get_item_details(
     item_name: String,
     item_source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<Item>, String> {
     debug!("Getting item details for name: {}, source: {}", item_name, item_source);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -77,11 +76,11 @@ pub async fn get_item_details(
 
 #[tauri::command]
 pub async fn get_item_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all item types");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -96,11 +95,11 @@ pub async fn get_item_types(
 
 #[tauri::command]
 pub async fn get_item_rarities(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all item rarities");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -115,11 +114,11 @@ pub async fn get_item_rarities(
 
 #[tauri::command]
 pub async fn get_item_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all item sources");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;

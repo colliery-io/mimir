@@ -1,20 +1,18 @@
-use std::sync::Arc;
+use crate::state::AppState;
+use mimir_dm_core::models::catalog::deity::{Deity, DeityFilters, DeitySummary};
+use mimir_dm_core::services::DeityService;
 use tauri::State;
 use tracing::{debug, error};
-
-use mimir_dm_core::DatabaseService;
-use mimir_dm_core::services::DeityService;
-use mimir_dm_core::models::catalog::deity::{DeitySummary, DeityFilters, Deity};
 
 /// Search deities from database with filters
 #[tauri::command]
 pub async fn search_deities(
     filters: DeityFilters,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<DeitySummary>, String> {
     debug!("Searching deities with filters: {:?}", filters);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -29,11 +27,11 @@ pub async fn search_deities(
 pub async fn get_deity_details(
     deity_name: String,
     deity_source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<Deity>, String> {
     debug!("Getting deity details for name: {}, source: {}", deity_name, deity_source);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -46,11 +44,11 @@ pub async fn get_deity_details(
 /// Get all pantheons for filter dropdowns
 #[tauri::command]
 pub async fn get_deity_pantheons(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all deity pantheons");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -63,11 +61,11 @@ pub async fn get_deity_pantheons(
 /// Get all domains for filter dropdowns
 #[tauri::command]
 pub async fn get_deity_domains(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all deity domains");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -80,11 +78,11 @@ pub async fn get_deity_domains(
 /// Get all alignments for filter dropdowns
 #[tauri::command]
 pub async fn get_deity_alignments(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all deity alignments");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -97,11 +95,11 @@ pub async fn get_deity_alignments(
 /// Get deity count by source for statistics
 #[tauri::command]
 pub async fn get_deity_statistics(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<(String, i64)>, String> {
     debug!("Getting deity statistics");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;

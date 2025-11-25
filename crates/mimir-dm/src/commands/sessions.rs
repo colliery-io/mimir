@@ -1,11 +1,10 @@
 //! Session-related Tauri commands
 
-use mimir_dm_core::DatabaseService;
+use crate::state::AppState;
 use crate::types::ApiResponse;
-use mimir_dm_core::services::SessionService;
 use mimir_dm_core::domain::BoardRegistry;
+use mimir_dm_core::services::SessionService;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tauri::State;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -25,9 +24,9 @@ pub struct SessionResponse {
 #[tauri::command]
 pub async fn create_session(
     request: CreateSessionRequest,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<SessionResponse, String> {
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     
     let session = SessionService::create_session(
@@ -55,11 +54,11 @@ pub struct SessionListResponse {
 #[tauri::command]
 pub async fn list_module_sessions(
     request: ListSessionsRequest,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<SessionListResponse, String> {
     use mimir_dm_core::dal::campaign::sessions::SessionRepository;
 
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     let mut repo = SessionRepository::new(&mut conn);
     let sessions = repo.list_by_module(request.module_id)
@@ -78,11 +77,11 @@ pub struct TransitionSessionRequest {
 #[tauri::command]
 pub async fn transition_session_status(
     request: TransitionSessionRequest,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<SessionResponse, String> {
     use mimir_dm_core::dal::campaign::sessions::SessionRepository;
 
-    let mut conn = db_service.get_connection()
+    let mut conn = state.db.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     let mut repo = SessionRepository::new(&mut conn);
     let session = repo.transition_status(request.session_id, &request.new_status)

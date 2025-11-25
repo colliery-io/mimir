@@ -1,9 +1,8 @@
-use tauri::State;
-use mimir_dm_core::models::catalog::optionalfeature::{OptionalFeatureSummary, OptionalFeatureFilters, OptionalFeature};
+use crate::state::AppState;
+use mimir_dm_core::models::catalog::optionalfeature::{OptionalFeature, OptionalFeatureFilters, OptionalFeatureSummary};
 use mimir_dm_core::services::OptionalFeatureService;
-use mimir_dm_core::DatabaseService;
-use std::sync::Arc;
-use tracing::{info, debug, error};
+use tauri::State;
+use tracing::{debug, error, info};
 
 /// Search optional features in the database with filters
 #[tauri::command]
@@ -12,12 +11,12 @@ pub async fn search_optional_features(
     feature_types: Option<Vec<String>>,
     sources: Option<Vec<String>>,
     grants_spells: Option<bool>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<OptionalFeatureSummary>, String> {
-    debug!("Searching optional features with name: {:?}, feature_types: {:?}, sources: {:?}, grants_spells: {:?}", 
+    debug!("Searching optional features with name: {:?}, feature_types: {:?}, sources: {:?}, grants_spells: {:?}",
            name, feature_types, sources, grants_spells);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -41,11 +40,11 @@ pub async fn search_optional_features(
 #[tauri::command]
 pub async fn get_optional_feature(
     id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<OptionalFeature, String> {
     debug!("Getting optional feature details for ID: {}", id);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -62,11 +61,11 @@ pub async fn get_optional_feature(
 pub async fn get_optional_feature_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<OptionalFeature, String> {
     debug!("Getting optional feature details for name: {}, source: {}", name, source);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -81,11 +80,11 @@ pub async fn get_optional_feature_details(
 /// Get all available feature types for filtering
 #[tauri::command]
 pub async fn get_optional_feature_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all optional feature types");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -101,11 +100,11 @@ pub async fn get_optional_feature_types(
 /// Get all available sources for filtering
 #[tauri::command]
 pub async fn get_optional_feature_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting all optional feature sources");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;

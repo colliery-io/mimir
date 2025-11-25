@@ -9,10 +9,9 @@ use mimir_dm_core::services::character::creation::{CharacterBuilder, AbilityScor
 use mimir_dm_core::services::character::level_up::{AsiOrFeat, LevelUpOptions, HpGainMethod};
 use mimir_dm_core::services::character::spell_management::RestType;
 use mimir_dm_core::services::character::renderer::{MarkdownRenderer, CharacterRenderer};
+use crate::state::AppState;
 use mimir_dm_core::services::{SpellService, ItemService};
 use mimir_dm_core::models::catalog::Spell;
-use mimir_dm_core::DatabaseService;
-use std::sync::Arc;
 use std::collections::HashMap;
 use tracing::error;
 use serde::{Deserialize, Serialize};
@@ -100,12 +99,12 @@ pub async fn create_minimal_character(
     class: String,
     background: String,
     campaign_id: Option<i32>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Character, String> {
     use chrono::Utc;
     use mimir_dm_core::models::character::data::{CharacterData, AbilityScores, Proficiencies, SpellData, Currency, Personality, EquippedItems};
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -167,9 +166,9 @@ pub async fn create_minimal_character(
 #[tauri::command]
 pub async fn create_character(
     request: CreateCharacterRequest,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterData, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -290,9 +289,9 @@ pub async fn store_character(
     player_id: i32,
     base_directory: Option<String>,
     character_data: CharacterData,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Character, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -309,9 +308,9 @@ pub async fn store_character(
 #[tauri::command]
 pub async fn get_character(
     character_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<(Character, CharacterData), String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -325,11 +324,11 @@ pub async fn get_character(
 #[tauri::command]
 pub async fn get_character_spell_slots(
     character_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<std::collections::HashMap<i32, mimir_dm_core::models::character::data::SpellSlots>, String> {
     use mimir_dm_core::services::character::calculate_spell_slots;
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -347,9 +346,9 @@ pub async fn get_character_spell_slots(
 /// List all characters (including unassigned)
 #[tauri::command]
 pub async fn list_all_characters(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<Character>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -363,9 +362,9 @@ pub async fn list_all_characters(
 #[tauri::command]
 pub async fn list_characters_for_campaign(
     campaign_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<Character>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -379,9 +378,9 @@ pub async fn list_characters_for_campaign(
 #[tauri::command]
 pub async fn get_character_versions(
     character_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<CharacterVersion>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -396,9 +395,9 @@ pub async fn get_character_versions(
 pub async fn get_character_version(
     character_id: i32,
     version: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterData, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -414,9 +413,9 @@ pub async fn update_character(
     character_id: i32,
     character_data: CharacterData,
     snapshot_reason: Option<String>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -430,9 +429,9 @@ pub async fn update_character(
 #[tauri::command]
 pub async fn delete_character(
     character_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -447,11 +446,11 @@ pub async fn delete_character(
 pub async fn assign_character_to_campaign(
     character_id: i32,
     campaign_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Character, String> {
     use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -475,9 +474,9 @@ pub async fn assign_character_to_campaign(
 pub async fn level_up_character(
     character_id: i32,
     request: LevelUpRequest,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -546,9 +545,9 @@ pub async fn add_spell_to_known(
     spell_name: String,
     spell_source: String,
     is_cantrip: bool,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -564,9 +563,9 @@ pub async fn prepare_spells(
     character_id: i32,
     spell_names: Vec<String>,
     spellcasting_ability: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -583,9 +582,9 @@ pub async fn cast_spell(
     spell_name: String,
     spell_level: i32,
     is_ritual: bool,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -600,9 +599,9 @@ pub async fn cast_spell(
 pub async fn take_rest(
     character_id: i32,
     rest_type: String, // "short" or "long"
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -626,9 +625,9 @@ pub async fn add_item_to_inventory(
     item_source: String,
     quantity: i32,
     notes: Option<String>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -644,9 +643,9 @@ pub async fn remove_item_from_inventory(
     character_id: i32,
     item_name: String,
     quantity: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -661,9 +660,9 @@ pub async fn remove_item_from_inventory(
 pub async fn update_character_currency(
     character_id: i32,
     currency: CurrencyUpdate,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -687,9 +686,9 @@ pub async fn update_character_equipped(
     shield: Option<String>,
     main_hand: Option<String>,
     off_hand: Option<String>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -703,9 +702,9 @@ pub async fn update_character_equipped(
 #[tauri::command]
 pub async fn render_character_sheet(
     character_id: i32,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<String, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;

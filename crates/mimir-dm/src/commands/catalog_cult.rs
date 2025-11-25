@@ -1,7 +1,6 @@
-use mimir_dm_core::DatabaseService;
-use mimir_dm_core::models::catalog::cult::{CatalogCult, CultFilters, CultBoonSummary};
+use crate::state::AppState;
+use mimir_dm_core::models::catalog::cult::{CatalogCult, CultBoonSummary, CultFilters};
 use mimir_dm_core::services::CultService;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error};
 
@@ -11,18 +10,18 @@ pub async fn search_cults(
     sources: Option<Vec<String>>,
     categories: Option<Vec<String>>,
     cult_types: Option<Vec<String>>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<CultBoonSummary>, String> {
     debug!("search_cults called with name: {:?}", name);
-    
+
     let filters = CultFilters {
         name,
         source: sources,
         category: categories,
         cult_type: cult_types,
     };
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -40,11 +39,11 @@ pub async fn search_cults(
 pub async fn get_cult_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<CatalogCult>, String> {
     debug!("get_cult_details called for: {} from {}", name, source);
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -60,11 +59,11 @@ pub async fn get_cult_details(
 
 #[tauri::command]
 pub async fn get_cult_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("get_cult_sources called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -80,11 +79,11 @@ pub async fn get_cult_sources(
 
 #[tauri::command]
 pub async fn get_cult_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
     debug!("get_cult_count called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -100,11 +99,11 @@ pub async fn get_cult_count(
 
 #[tauri::command]
 pub async fn get_cult_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("get_cult_types called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)
@@ -120,11 +119,11 @@ pub async fn get_cult_types(
 
 #[tauri::command]
 pub async fn get_cult_categories(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("get_cult_categories called");
-    
-    let mut conn = db_service.get_connection()
+
+    let mut conn = state.db.get_connection()
         .map_err(|e| {
             error!("Failed to get database connection: {}", e);
             format!("Database connection error: {}", e)

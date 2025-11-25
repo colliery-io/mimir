@@ -1,16 +1,15 @@
 //! Database-backed reward catalog commands
 
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::{Reward, RewardFilters, RewardSummary};
 use mimir_dm_core::services::RewardService;
-use mimir_dm_core::DatabaseService;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error, info};
 
 /// Search rewards using database with filters
 #[tauri::command]
 pub async fn search_rewards(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
     query: Option<String>,
     reward_types: Option<Vec<String>>,
     sources: Option<Vec<String>>,
@@ -27,7 +26,7 @@ pub async fn search_rewards(
         has_prerequisites,
     };
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during reward search: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -47,13 +46,13 @@ pub async fn search_rewards(
 /// Get a specific reward by name and source for modal display
 #[tauri::command]
 pub async fn get_reward_details(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
     name: String,
     source: String,
 ) -> Result<Reward, String> {
     debug!("Getting reward details for '{}' from '{}'", name, source);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting reward: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -71,11 +70,11 @@ pub async fn get_reward_details(
 /// Get all available reward types for filter dropdowns
 #[tauri::command]
 pub async fn get_reward_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting reward types");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting reward types: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -92,11 +91,11 @@ pub async fn get_reward_types(
 /// Get all available sources for filter dropdowns
 #[tauri::command]
 pub async fn get_reward_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting reward sources");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting sources: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -113,11 +112,11 @@ pub async fn get_reward_sources(
 /// Get reward count for statistics
 #[tauri::command]
 pub async fn get_reward_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
     debug!("Getting reward count");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting reward count: {}", e);
         format!("Database connection failed: {}", e)
     })?;

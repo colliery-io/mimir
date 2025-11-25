@@ -1,8 +1,7 @@
-use tauri::State;
-use mimir_dm_core::services::RaceService;
-use mimir_dm_core::DatabaseService;
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::RaceFilters;
-use std::sync::Arc;
+use mimir_dm_core::services::RaceService;
+use tauri::State;
 use tracing::error;
 
 #[tauri::command]
@@ -12,9 +11,9 @@ pub async fn search_races(
     sizes: Option<Vec<String>>,
     has_darkvision: Option<bool>,
     has_flight: Option<bool>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -43,9 +42,9 @@ pub async fn search_races(
 pub async fn get_race_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Option<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -56,9 +55,9 @@ pub async fn get_race_details(
 
 #[tauri::command]
 pub async fn get_race_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -69,9 +68,9 @@ pub async fn get_race_sources(
 
 #[tauri::command]
 pub async fn get_race_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -82,9 +81,9 @@ pub async fn get_race_count(
 
 #[tauri::command]
 pub async fn get_race_sizes(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;

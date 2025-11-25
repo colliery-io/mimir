@@ -1,8 +1,7 @@
-use tauri::State;
-use mimir_dm_core::services::FeatService;
-use mimir_dm_core::DatabaseService;
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::FeatFilters;
-use std::sync::Arc;
+use mimir_dm_core::services::FeatService;
+use tauri::State;
 use tracing::error;
 
 #[tauri::command]
@@ -10,9 +9,9 @@ pub async fn search_feats(
     query: Option<String>,
     sources: Option<Vec<String>>,
     has_prerequisites: Option<bool>,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -39,9 +38,9 @@ pub async fn search_feats(
 pub async fn get_feat_details(
     name: String,
     source: String,
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -58,9 +57,9 @@ pub async fn get_feat_details(
 
 #[tauri::command]
 pub async fn get_feat_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -71,9 +70,9 @@ pub async fn get_feat_sources(
 
 #[tauri::command]
 pub async fn get_feat_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;

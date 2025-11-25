@@ -1,16 +1,15 @@
 //! Database-backed condition catalog commands
 
+use crate::state::AppState;
 use mimir_dm_core::models::catalog::{ConditionOrDisease, ConditionFilters, ConditionSummary};
 use mimir_dm_core::services::ConditionService;
-use mimir_dm_core::DatabaseService;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, error, info};
 
 /// Search conditions and diseases using database with filters
 #[tauri::command]
 pub async fn search_conditions(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
     name: Option<String>,
     search: Option<String>,
     item_types: Option<Vec<String>>,
@@ -26,7 +25,7 @@ pub async fn search_conditions(
         sources,
     };
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error during condition search: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -46,12 +45,12 @@ pub async fn search_conditions(
 /// Get a specific condition or disease by ID for modal display
 #[tauri::command]
 pub async fn get_condition(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
     condition_id: i32,
 ) -> Result<Option<ConditionOrDisease>, String> {
     debug!("Getting condition by ID: {}", condition_id);
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting condition: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -68,11 +67,11 @@ pub async fn get_condition(
 /// Get all available item types for filter dropdowns
 #[tauri::command]
 pub async fn get_condition_item_types(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting condition item types");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting item types: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -89,11 +88,11 @@ pub async fn get_condition_item_types(
 /// Get all available sources for filter dropdowns
 #[tauri::command]
 pub async fn get_condition_sources(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
     debug!("Getting condition sources");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting sources: {}", e);
         format!("Database connection failed: {}", e)
     })?;
@@ -110,11 +109,11 @@ pub async fn get_condition_sources(
 /// Get condition count for statistics
 #[tauri::command]
 pub async fn get_condition_count(
-    db_service: State<'_, Arc<DatabaseService>>,
+    state: State<'_, AppState>,
 ) -> Result<i64, String> {
     debug!("Getting condition count");
 
-    let mut conn = db_service.get_connection().map_err(|e| {
+    let mut conn = state.db.get_connection().map_err(|e| {
         error!("Database connection error getting condition count: {}", e);
         format!("Database connection failed: {}", e)
     })?;
