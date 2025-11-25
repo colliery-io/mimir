@@ -1,0 +1,959 @@
+//! Development database seeder
+//!
+//! Seeds the database with test data for development and testing purposes.
+//! This includes a sample campaign, players, and characters with various
+//! levels and configurations.
+
+use crate::connection::DbConnection;
+use crate::dal::campaign::campaigns::CampaignRepository;
+use crate::error::Result;
+use crate::models::character::CharacterData;
+use crate::models::character::{
+    AbilityScores, ClassLevel, Currency, EquippedItems, InventoryItem, Personality, Proficiencies,
+    SpellData, SpellSlots,
+};
+use crate::services::{
+    CampaignService, CharacterService, ModuleService, PlayerService, SessionService,
+};
+use chrono::Utc;
+use std::collections::HashMap;
+use tracing::info;
+
+/// Name of the test campaign used to check idempotency
+const TEST_CAMPAIGN_NAME: &str = "The Lost Mine of Phandelver";
+
+/// Check if dev seed data already exists
+pub fn is_already_seeded(conn: &mut DbConnection) -> Result<bool> {
+    let mut repo = CampaignRepository::new(conn);
+    let campaigns = repo.list()?;
+    Ok(campaigns.iter().any(|c| c.name == TEST_CAMPAIGN_NAME))
+}
+
+/// Seed development data into the database
+///
+/// Creates a test campaign with modules, sessions, players, and characters.
+/// This function is idempotent - it will not create duplicate data if called
+/// multiple times.
+///
+/// # Arguments
+/// * `conn` - Database connection
+/// * `campaigns_directory` - Base directory for campaign files
+///
+/// # Returns
+/// * `Ok(bool)` - true if seeding was performed, false if data already existed
+pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Result<bool> {
+    // Check idempotency
+    if is_already_seeded(conn)? {
+        info!("Dev seed data already exists, skipping");
+        return Ok(false);
+    }
+
+    info!("Seeding development data...");
+
+    // Create campaign
+    let campaign = seed_campaign(conn, campaigns_directory)?;
+    info!(
+        "Created test campaign: {} (id={})",
+        campaign.name, campaign.id
+    );
+
+    // Create modules
+    let modules = seed_modules(conn, campaign.id)?;
+    info!("Created {} modules", modules.len());
+
+    // Create sessions for the first module
+    if let Some(module) = modules.first() {
+        let sessions = seed_sessions(
+            conn,
+            module.id,
+            campaign.id,
+            &campaign.directory_path,
+            module.module_number,
+        )?;
+        info!(
+            "Created {} sessions for module {}",
+            sessions.len(),
+            module.name
+        );
+    }
+
+    // Create players
+    let players = seed_players(conn)?;
+    info!("Created {} test players", players.len());
+
+    // Create characters
+    let characters = seed_characters(conn, Some(campaign.id), &campaign.directory_path, &players)?;
+    info!("Created {} test characters", characters.len());
+
+    info!("Dev seed data created successfully");
+    Ok(true)
+}
+
+/// Seed the test campaign
+fn seed_campaign(
+    conn: &mut DbConnection,
+    campaigns_directory: &str,
+) -> Result<crate::models::campaign::campaigns::Campaign> {
+    let mut service = CampaignService::new(conn);
+    service.create_campaign(
+        TEST_CAMPAIGN_NAME,
+        Some("A classic D&D adventure for 4-5 characters of levels 1-5".to_string()),
+        campaigns_directory,
+    )
+}
+
+/// Seed test modules
+fn seed_modules(
+    conn: &mut DbConnection,
+    campaign_id: i32,
+) -> Result<Vec<crate::models::campaign::modules::Module>> {
+    let mut modules = Vec::new();
+
+    let module_data = [
+        ("Goblin Ambush", 2, Some("dungeon")),
+        ("Cragmaw Hideout", 3, Some("dungeon")),
+    ];
+
+    for (name, expected_sessions, module_type) in module_data {
+        let mut service = ModuleService::new(conn);
+        let module = service.create_module_with_documents(
+            campaign_id,
+            name.to_string(),
+            expected_sessions,
+            module_type.map(String::from),
+        )?;
+        modules.push(module);
+    }
+
+    Ok(modules)
+}
+
+/// Seed test sessions
+fn seed_sessions(
+    conn: &mut DbConnection,
+    module_id: i32,
+    campaign_id: i32,
+    campaign_directory: &str,
+    module_number: i32,
+) -> Result<Vec<crate::models::campaign::sessions::Session>> {
+    let mut sessions = Vec::new();
+
+    // Create a couple of sessions
+    for _ in 0..2 {
+        let session = SessionService::create_session(
+            conn,
+            module_id,
+            campaign_id,
+            campaign_directory,
+            module_number,
+        )?;
+        sessions.push(session);
+    }
+
+    Ok(sessions)
+}
+
+/// Seed test players
+fn seed_players(conn: &mut DbConnection) -> Result<Vec<crate::models::player::Player>> {
+    let mut players = Vec::new();
+
+    let player_data = [
+        (
+            "Alice",
+            Some("alice@test.com"),
+            Some("Experienced player, loves tactical combat"),
+        ),
+        (
+            "Bob",
+            Some("bob@test.com"),
+            Some("Creative roleplayer, enjoys magic users"),
+        ),
+        (
+            "Charlie",
+            Some("charlie@test.com"),
+            Some("New to D&D, learning the ropes"),
+        ),
+        (
+            "Diana",
+            Some("diana@test.com"),
+            Some("Forever DM trying player side"),
+        ),
+    ];
+
+    for (name, email, notes) in player_data {
+        let mut service = PlayerService::new(conn);
+        let player =
+            service.create_player(name, email.map(String::from), notes.map(String::from))?;
+        players.push(player);
+    }
+
+    Ok(players)
+}
+
+/// Seed test characters
+fn seed_characters(
+    conn: &mut DbConnection,
+    campaign_id: Option<i32>,
+    base_directory: &str,
+    players: &[crate::models::player::Player],
+) -> Result<Vec<crate::models::character::Character>> {
+    let mut characters = Vec::new();
+    let now = Utc::now().to_rfc3339();
+
+    // Map player names to IDs for character assignment
+    let player_map: HashMap<&str, i32> = players.iter().map(|p| (p.name.as_str(), p.id)).collect();
+
+    // Thorin Ironforge - Level 5 Dwarf Fighter (Alice's character)
+    if let Some(&player_id) = player_map.get("Alice") {
+        let character_data = create_thorin(player_id, &now);
+        let mut service = CharacterService::new(conn);
+        let character =
+            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+        characters.push(character);
+    }
+
+    // Elara Moonwhisper - Level 5 Elf Wizard (Bob's character)
+    if let Some(&player_id) = player_map.get("Bob") {
+        let character_data = create_elara(player_id, &now);
+        let mut service = CharacterService::new(conn);
+        let character =
+            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+        characters.push(character);
+    }
+
+    // Finn Lightfoot - Level 1 Halfling Rogue (Charlie's character)
+    if let Some(&player_id) = player_map.get("Charlie") {
+        let character_data = create_finn(player_id, &now);
+        let mut service = CharacterService::new(conn);
+        let character =
+            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+        characters.push(character);
+    }
+
+    // Sister Helena - Level 10 Human Cleric (Diana's character)
+    if let Some(&player_id) = player_map.get("Diana") {
+        let character_data = create_helena(player_id, &now);
+        let mut service = CharacterService::new(conn);
+        let character =
+            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+        characters.push(character);
+    }
+
+    Ok(characters)
+}
+
+/// Create Thorin Ironforge - Level 5 Dwarf Fighter
+fn create_thorin(player_id: i32, created_at: &str) -> CharacterData {
+    CharacterData {
+        character_name: "Thorin Ironforge".to_string(),
+        player_id,
+        level: 5,
+        experience_points: 6500,
+        version: 1,
+        snapshot_reason: Some("Dev seed character".to_string()),
+        created_at: created_at.to_string(),
+        race: "Dwarf".to_string(),
+        subrace: Some("Mountain".to_string()),
+        classes: vec![ClassLevel {
+            class_name: "Fighter".to_string(),
+            level: 5,
+            subclass: Some("Champion".to_string()),
+            hit_dice_type: "d10".to_string(),
+            hit_dice_remaining: 5,
+        }],
+        background: "Soldier".to_string(),
+        alignment: Some("Lawful Good".to_string()),
+        abilities: AbilityScores {
+            strength: 18,
+            dexterity: 12,
+            constitution: 16,
+            intelligence: 10,
+            wisdom: 13,
+            charisma: 8,
+        },
+        max_hp: 49,
+        current_hp: 49,
+        speed: 25,
+        proficiencies: Proficiencies {
+            skills: vec![
+                "Athletics".to_string(),
+                "Intimidation".to_string(),
+                "Perception".to_string(),
+                "Survival".to_string(),
+            ],
+            saves: vec!["Strength".to_string(), "Constitution".to_string()],
+            armor: vec![
+                "Light armor".to_string(),
+                "Medium armor".to_string(),
+                "Heavy armor".to_string(),
+                "Shields".to_string(),
+            ],
+            weapons: vec!["Simple weapons".to_string(), "Martial weapons".to_string()],
+            tools: vec!["Smith's tools".to_string(), "Dice set".to_string()],
+            languages: vec!["Common".to_string(), "Dwarvish".to_string()],
+        },
+        class_features: vec![
+            "Fighting Style (Defense)".to_string(),
+            "Second Wind".to_string(),
+            "Action Surge".to_string(),
+            "Improved Critical".to_string(),
+            "Extra Attack".to_string(),
+        ],
+        feats: vec![],
+        spells: SpellData::default(),
+        inventory: vec![
+            InventoryItem {
+                name: "Chain Mail".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 55.0,
+                value: 75.0,
+                notes: Some("AC 16".to_string()),
+            },
+            InventoryItem {
+                name: "Battleaxe".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 4.0,
+                value: 10.0,
+                notes: Some("1d8 slashing, versatile (1d10)".to_string()),
+            },
+            InventoryItem {
+                name: "Shield".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 6.0,
+                value: 10.0,
+                notes: Some("+2 AC".to_string()),
+            },
+            InventoryItem {
+                name: "Handaxe".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 2,
+                weight: 2.0,
+                value: 5.0,
+                notes: Some("1d6 slashing, light, thrown".to_string()),
+            },
+            InventoryItem {
+                name: "Explorer's Pack".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 59.0,
+                value: 10.0,
+                notes: None,
+            },
+        ],
+        currency: Currency {
+            copper: 0,
+            silver: 15,
+            electrum: 0,
+            gold: 45,
+            platinum: 0,
+        },
+        equipped: EquippedItems {
+            armor: Some("Chain Mail".to_string()),
+            shield: Some("Shield".to_string()),
+            main_hand: Some("Battleaxe".to_string()),
+            off_hand: None,
+        },
+        personality: Personality {
+            traits: Some("I face problems head-on. A simple, direct solution is the best path to success.".to_string()),
+            ideals: Some("Responsibility. I do what I must and obey just authority.".to_string()),
+            bonds: Some("I would still lay down my life for the people I served with.".to_string()),
+            flaws: Some("I made a terrible mistake in battle that cost many lives, and I would do anything to keep that mistake secret.".to_string()),
+        },
+    }
+}
+
+/// Create Elara Moonwhisper - Level 5 Elf Wizard
+fn create_elara(player_id: i32, created_at: &str) -> CharacterData {
+    let mut spell_slots = HashMap::new();
+    spell_slots.insert(1, SpellSlots::new(4));
+    spell_slots.insert(2, SpellSlots::new(3));
+    spell_slots.insert(3, SpellSlots::new(2));
+
+    CharacterData {
+        character_name: "Elara Moonwhisper".to_string(),
+        player_id,
+        level: 5,
+        experience_points: 6500,
+        version: 1,
+        snapshot_reason: Some("Dev seed character".to_string()),
+        created_at: created_at.to_string(),
+        race: "Elf".to_string(),
+        subrace: Some("High".to_string()),
+        classes: vec![ClassLevel {
+            class_name: "Wizard".to_string(),
+            level: 5,
+            subclass: Some("School of Evocation".to_string()),
+            hit_dice_type: "d6".to_string(),
+            hit_dice_remaining: 5,
+        }],
+        background: "Sage".to_string(),
+        alignment: Some("Neutral Good".to_string()),
+        abilities: AbilityScores {
+            strength: 8,
+            dexterity: 14,
+            constitution: 13,
+            intelligence: 18,
+            wisdom: 12,
+            charisma: 10,
+        },
+        max_hp: 27,
+        current_hp: 27,
+        speed: 30,
+        proficiencies: Proficiencies {
+            skills: vec![
+                "Arcana".to_string(),
+                "History".to_string(),
+                "Investigation".to_string(),
+                "Perception".to_string(),
+            ],
+            saves: vec!["Intelligence".to_string(), "Wisdom".to_string()],
+            armor: vec![],
+            weapons: vec![
+                "Daggers".to_string(),
+                "Darts".to_string(),
+                "Slings".to_string(),
+                "Quarterstaffs".to_string(),
+                "Light crossbows".to_string(),
+                "Longsword".to_string(),
+                "Shortsword".to_string(),
+                "Shortbow".to_string(),
+                "Longbow".to_string(),
+            ],
+            tools: vec![],
+            languages: vec![
+                "Common".to_string(),
+                "Elvish".to_string(),
+                "Draconic".to_string(),
+                "Celestial".to_string(),
+            ],
+        },
+        class_features: vec![
+            "Arcane Recovery".to_string(),
+            "Evocation Savant".to_string(),
+            "Sculpt Spells".to_string(),
+        ],
+        feats: vec![],
+        spells: SpellData {
+            cantrips: vec![
+                "Fire Bolt".to_string(),
+                "Light".to_string(),
+                "Mage Hand".to_string(),
+                "Prestidigitation".to_string(),
+            ],
+            known_spells: vec![
+                "Magic Missile".to_string(),
+                "Shield".to_string(),
+                "Mage Armor".to_string(),
+                "Detect Magic".to_string(),
+                "Identify".to_string(),
+                "Misty Step".to_string(),
+                "Scorching Ray".to_string(),
+                "Shatter".to_string(),
+                "Fireball".to_string(),
+                "Counterspell".to_string(),
+            ],
+            prepared_spells: vec![
+                "Magic Missile".to_string(),
+                "Shield".to_string(),
+                "Mage Armor".to_string(),
+                "Misty Step".to_string(),
+                "Fireball".to_string(),
+                "Counterspell".to_string(),
+            ],
+            spell_slots,
+        },
+        inventory: vec![
+            InventoryItem {
+                name: "Quarterstaff".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 4.0,
+                value: 0.2,
+                notes: Some("Arcane focus".to_string()),
+            },
+            InventoryItem {
+                name: "Spellbook".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 3.0,
+                value: 50.0,
+                notes: Some("Contains all known spells".to_string()),
+            },
+            InventoryItem {
+                name: "Component Pouch".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 2.0,
+                value: 25.0,
+                notes: None,
+            },
+            InventoryItem {
+                name: "Scholar's Pack".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 10.0,
+                value: 40.0,
+                notes: None,
+            },
+        ],
+        currency: Currency {
+            copper: 0,
+            silver: 0,
+            electrum: 0,
+            gold: 75,
+            platinum: 0,
+        },
+        equipped: EquippedItems {
+            armor: None,
+            shield: None,
+            main_hand: Some("Quarterstaff".to_string()),
+            off_hand: None,
+        },
+        personality: Personality {
+            traits: Some("I use polysyllabic words that convey the impression of great erudition.".to_string()),
+            ideals: Some("Knowledge. The path to power and self-improvement is through knowledge.".to_string()),
+            bonds: Some("I have an ancient text that holds terrible secrets that must not fall into the wrong hands.".to_string()),
+            flaws: Some("I overlook obvious solutions in favor of complicated ones.".to_string()),
+        },
+    }
+}
+
+/// Create Finn Lightfoot - Level 1 Halfling Rogue
+fn create_finn(player_id: i32, created_at: &str) -> CharacterData {
+    CharacterData {
+        character_name: "Finn Lightfoot".to_string(),
+        player_id,
+        level: 1,
+        experience_points: 0,
+        version: 1,
+        snapshot_reason: Some("Dev seed character".to_string()),
+        created_at: created_at.to_string(),
+        race: "Halfling".to_string(),
+        subrace: Some("Lightfoot".to_string()),
+        classes: vec![ClassLevel {
+            class_name: "Rogue".to_string(),
+            level: 1,
+            subclass: None,
+            hit_dice_type: "d8".to_string(),
+            hit_dice_remaining: 1,
+        }],
+        background: "Criminal".to_string(),
+        alignment: Some("Chaotic Neutral".to_string()),
+        abilities: AbilityScores {
+            strength: 8,
+            dexterity: 17,
+            constitution: 12,
+            intelligence: 13,
+            wisdom: 10,
+            charisma: 14,
+        },
+        max_hp: 9,
+        current_hp: 9,
+        speed: 25,
+        proficiencies: Proficiencies {
+            skills: vec![
+                "Acrobatics".to_string(),
+                "Deception".to_string(),
+                "Sleight of Hand".to_string(),
+                "Stealth".to_string(),
+            ],
+            saves: vec!["Dexterity".to_string(), "Intelligence".to_string()],
+            armor: vec!["Light armor".to_string()],
+            weapons: vec![
+                "Simple weapons".to_string(),
+                "Hand crossbows".to_string(),
+                "Longswords".to_string(),
+                "Rapiers".to_string(),
+                "Shortswords".to_string(),
+            ],
+            tools: vec!["Thieves' tools".to_string(), "Dice set".to_string()],
+            languages: vec![
+                "Common".to_string(),
+                "Halfling".to_string(),
+                "Thieves' Cant".to_string(),
+            ],
+        },
+        class_features: vec![
+            "Expertise (Stealth, Thieves' tools)".to_string(),
+            "Sneak Attack (1d6)".to_string(),
+            "Thieves' Cant".to_string(),
+        ],
+        feats: vec![],
+        spells: SpellData::default(),
+        inventory: vec![
+            InventoryItem {
+                name: "Leather Armor".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 10.0,
+                value: 10.0,
+                notes: Some("AC 11 + Dex".to_string()),
+            },
+            InventoryItem {
+                name: "Shortsword".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 2,
+                weight: 2.0,
+                value: 10.0,
+                notes: Some("1d6 piercing, finesse, light".to_string()),
+            },
+            InventoryItem {
+                name: "Thieves' Tools".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 1.0,
+                value: 25.0,
+                notes: None,
+            },
+            InventoryItem {
+                name: "Burglar's Pack".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 44.0,
+                value: 16.0,
+                notes: None,
+            },
+        ],
+        currency: Currency {
+            copper: 0,
+            silver: 0,
+            electrum: 0,
+            gold: 15,
+            platinum: 0,
+        },
+        equipped: EquippedItems {
+            armor: Some("Leather Armor".to_string()),
+            shield: None,
+            main_hand: Some("Shortsword".to_string()),
+            off_hand: Some("Shortsword".to_string()),
+        },
+        personality: Personality {
+            traits: Some("I always have a plan for what to do when things go wrong.".to_string()),
+            ideals: Some(
+                "Freedom. Chains are meant to be broken, as are those who would forge them."
+                    .to_string(),
+            ),
+            bonds: Some(
+                "I'm trying to pay off an old debt I owe to a generous benefactor.".to_string(),
+            ),
+            flaws: Some(
+                "When I see something valuable, I can't think about anything but how to steal it."
+                    .to_string(),
+            ),
+        },
+    }
+}
+
+/// Create Sister Helena - Level 10 Human Cleric
+fn create_helena(player_id: i32, created_at: &str) -> CharacterData {
+    let mut spell_slots = HashMap::new();
+    spell_slots.insert(1, SpellSlots::new(4));
+    spell_slots.insert(2, SpellSlots::new(3));
+    spell_slots.insert(3, SpellSlots::new(3));
+    spell_slots.insert(4, SpellSlots::new(3));
+    spell_slots.insert(5, SpellSlots::new(2));
+
+    CharacterData {
+        character_name: "Sister Helena".to_string(),
+        player_id,
+        level: 10,
+        experience_points: 64000,
+        version: 1,
+        snapshot_reason: Some("Dev seed character".to_string()),
+        created_at: created_at.to_string(),
+        race: "Human".to_string(),
+        subrace: None,
+        classes: vec![ClassLevel {
+            class_name: "Cleric".to_string(),
+            level: 10,
+            subclass: Some("Life Domain".to_string()),
+            hit_dice_type: "d8".to_string(),
+            hit_dice_remaining: 10,
+        }],
+        background: "Acolyte".to_string(),
+        alignment: Some("Lawful Good".to_string()),
+        abilities: AbilityScores {
+            strength: 14,
+            dexterity: 10,
+            constitution: 14,
+            intelligence: 10,
+            wisdom: 18,
+            charisma: 12,
+        },
+        max_hp: 73,
+        current_hp: 73,
+        speed: 30,
+        proficiencies: Proficiencies {
+            skills: vec![
+                "Insight".to_string(),
+                "Medicine".to_string(),
+                "Persuasion".to_string(),
+                "Religion".to_string(),
+            ],
+            saves: vec!["Wisdom".to_string(), "Charisma".to_string()],
+            armor: vec![
+                "Light armor".to_string(),
+                "Medium armor".to_string(),
+                "Heavy armor".to_string(),
+                "Shields".to_string(),
+            ],
+            weapons: vec!["Simple weapons".to_string()],
+            tools: vec![],
+            languages: vec![
+                "Common".to_string(),
+                "Celestial".to_string(),
+                "Dwarvish".to_string(),
+            ],
+        },
+        class_features: vec![
+            "Disciple of Life".to_string(),
+            "Channel Divinity (2/rest)".to_string(),
+            "Preserve Life".to_string(),
+            "Blessed Healer".to_string(),
+            "Divine Strike".to_string(),
+            "Destroy Undead (CR 1)".to_string(),
+            "Divine Intervention".to_string(),
+        ],
+        feats: vec!["War Caster".to_string()],
+        spells: SpellData {
+            cantrips: vec![
+                "Guidance".to_string(),
+                "Light".to_string(),
+                "Sacred Flame".to_string(),
+                "Spare the Dying".to_string(),
+                "Thaumaturgy".to_string(),
+            ],
+            known_spells: vec![
+                // Domain spells (always prepared)
+                "Bless".to_string(),
+                "Cure Wounds".to_string(),
+                "Lesser Restoration".to_string(),
+                "Spiritual Weapon".to_string(),
+                "Beacon of Hope".to_string(),
+                "Revivify".to_string(),
+                "Death Ward".to_string(),
+                "Guardian of Faith".to_string(),
+                "Mass Cure Wounds".to_string(),
+                "Raise Dead".to_string(),
+                // Other prepared spells
+                "Healing Word".to_string(),
+                "Shield of Faith".to_string(),
+                "Aid".to_string(),
+                "Prayer of Healing".to_string(),
+                "Spirit Guardians".to_string(),
+                "Banishment".to_string(),
+                "Holy Weapon".to_string(),
+            ],
+            prepared_spells: vec![
+                "Bless".to_string(),
+                "Cure Wounds".to_string(),
+                "Healing Word".to_string(),
+                "Shield of Faith".to_string(),
+                "Lesser Restoration".to_string(),
+                "Spiritual Weapon".to_string(),
+                "Aid".to_string(),
+                "Beacon of Hope".to_string(),
+                "Revivify".to_string(),
+                "Spirit Guardians".to_string(),
+                "Death Ward".to_string(),
+                "Banishment".to_string(),
+                "Mass Cure Wounds".to_string(),
+                "Holy Weapon".to_string(),
+            ],
+            spell_slots,
+        },
+        inventory: vec![
+            InventoryItem {
+                name: "Plate Armor".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 65.0,
+                value: 1500.0,
+                notes: Some("AC 18".to_string()),
+            },
+            InventoryItem {
+                name: "Shield".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 6.0,
+                value: 10.0,
+                notes: Some("+2 AC, holy symbol emblazoned".to_string()),
+            },
+            InventoryItem {
+                name: "Mace".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 4.0,
+                value: 5.0,
+                notes: Some("1d6 bludgeoning".to_string()),
+            },
+            InventoryItem {
+                name: "Holy Symbol".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 0.0,
+                value: 5.0,
+                notes: Some("Amulet of Lathander".to_string()),
+            },
+            InventoryItem {
+                name: "Priest's Pack".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 24.0,
+                value: 19.0,
+                notes: None,
+            },
+            InventoryItem {
+                name: "Diamond".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 3,
+                weight: 0.0,
+                value: 300.0,
+                notes: Some("For Revivify spell component".to_string()),
+            },
+        ],
+        currency: Currency {
+            copper: 0,
+            silver: 0,
+            electrum: 0,
+            gold: 250,
+            platinum: 10,
+        },
+        equipped: EquippedItems {
+            armor: Some("Plate Armor".to_string()),
+            shield: Some("Shield".to_string()),
+            main_hand: Some("Mace".to_string()),
+            off_hand: None,
+        },
+        personality: Personality {
+            traits: Some("I see omens in every event and action. The gods try to speak to us, we just need to listen.".to_string()),
+            ideals: Some("Charity. I always try to help those in need, no matter what the personal cost.".to_string()),
+            bonds: Some("I will do anything to protect the temple where I served.".to_string()),
+            flaws: Some("I put too much trust in those who wield power within my temple's hierarchy.".to_string()),
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::establish_connection;
+    use crate::seed::template_seeder::seed_templates;
+
+    #[test]
+    fn test_seed_dev_data_creates_expected_data() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        seed_templates(&mut conn).unwrap();
+
+        // Create temp directory for test campaign files
+        let temp_dir = tempfile::tempdir().unwrap();
+        let campaigns_dir = temp_dir.path().to_str().unwrap();
+
+        // First seed should create data
+        let result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
+        assert!(result, "First seed should return true");
+
+        // Verify campaign created
+        let mut repo = CampaignRepository::new(&mut conn);
+        let campaigns = repo.list().unwrap();
+        assert_eq!(campaigns.len(), 1);
+        assert_eq!(campaigns[0].name, TEST_CAMPAIGN_NAME);
+
+        // Verify players created
+        use crate::dal::player::PlayerRepository;
+        let mut player_repo = PlayerRepository::new(&mut conn);
+        let players = player_repo.list().unwrap();
+        assert_eq!(players.len(), 4);
+        let player_names: Vec<&str> = players.iter().map(|p| p.name.as_str()).collect();
+        assert!(player_names.contains(&"Alice"));
+        assert!(player_names.contains(&"Bob"));
+        assert!(player_names.contains(&"Charlie"));
+        assert!(player_names.contains(&"Diana"));
+
+        // Verify characters created
+        use crate::dal::character::CharacterRepository;
+        let mut char_repo = CharacterRepository::new(&mut conn);
+        let characters = char_repo.list_all().unwrap();
+        assert_eq!(characters.len(), 4);
+        let char_names: Vec<&str> = characters
+            .iter()
+            .map(|c| c.character_name.as_str())
+            .collect();
+        assert!(char_names.contains(&"Thorin Ironforge"));
+        assert!(char_names.contains(&"Elara Moonwhisper"));
+        assert!(char_names.contains(&"Finn Lightfoot"));
+        assert!(char_names.contains(&"Sister Helena"));
+
+        // Verify character levels
+        let thorin = characters
+            .iter()
+            .find(|c| c.character_name == "Thorin Ironforge")
+            .unwrap();
+        assert_eq!(thorin.current_level, 5);
+
+        let finn = characters
+            .iter()
+            .find(|c| c.character_name == "Finn Lightfoot")
+            .unwrap();
+        assert_eq!(finn.current_level, 1);
+
+        let helena = characters
+            .iter()
+            .find(|c| c.character_name == "Sister Helena")
+            .unwrap();
+        assert_eq!(helena.current_level, 10);
+    }
+
+    #[test]
+    fn test_seed_dev_data_is_idempotent() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+        seed_templates(&mut conn).unwrap();
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let campaigns_dir = temp_dir.path().to_str().unwrap();
+
+        // First seed
+        let first_result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
+        assert!(first_result, "First seed should return true");
+
+        // Second seed should be skipped
+        let second_result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
+        assert!(
+            !second_result,
+            "Second seed should return false (idempotent)"
+        );
+
+        // Verify still only one campaign
+        let mut repo = CampaignRepository::new(&mut conn);
+        let campaigns = repo.list().unwrap();
+        assert_eq!(campaigns.len(), 1, "Should still have only one campaign");
+    }
+
+    #[test]
+    fn test_is_already_seeded() {
+        let mut conn = establish_connection(":memory:").unwrap();
+        crate::run_migrations(&mut conn).unwrap();
+
+        // Initially not seeded
+        assert!(!is_already_seeded(&mut conn).unwrap());
+
+        // Manually create a campaign with the test name
+        use crate::dal::campaign::campaigns::CampaignRepository;
+        use crate::models::campaign::campaigns::NewCampaign;
+        let mut repo = CampaignRepository::new(&mut conn);
+        repo.create(NewCampaign {
+            name: TEST_CAMPAIGN_NAME.to_string(),
+            status: "concept".to_string(),
+            directory_path: "/tmp/test".to_string(),
+        })
+        .unwrap();
+
+        // Now should be seeded
+        assert!(is_already_seeded(&mut conn).unwrap());
+    }
+}

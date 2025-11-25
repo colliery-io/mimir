@@ -101,31 +101,57 @@ impl<'a> CharacterService<'a> {
         };
 
         // Create database record for character
-        let mut char_repo = CharacterRepository::new(self.conn);
-        let new_character = NewCharacter {
-            campaign_id,
-            player_id,
-            character_name: character_data.character_name.clone(),
-            is_npc: Some(0), // Default to PC
-            directory_path,
-            class: Some(character_data.primary_class_name().to_string()),
-            race: Some(character_data.race.clone()),
+        let character_id = {
+            let mut char_repo = CharacterRepository::new(self.conn);
+            let new_character = NewCharacter {
+                campaign_id,
+                player_id,
+                character_name: character_data.character_name.clone(),
+                is_npc: Some(0), // Default to PC
+                directory_path,
+                class: Some(character_data.primary_class_name().to_string()),
+                race: Some(character_data.race.clone()),
+            };
+            char_repo.create(new_character)?.id
         };
-
-        let character = char_repo.create(new_character)?;
 
         // Create version record
-        let mut ver_repo = CharacterVersionRepository::new(self.conn);
-        let new_version = NewCharacterVersion {
-            character_id: character.id,
-            version_number,
-            file_path: file_path_str,
-            character_data: yaml_data,
-            snapshot_reason: character_data.snapshot_reason.clone(),
-            level: character_data.level,
-        };
+        {
+            let mut ver_repo = CharacterVersionRepository::new(self.conn);
+            let new_version = NewCharacterVersion {
+                character_id,
+                version_number,
+                file_path: file_path_str,
+                character_data: yaml_data,
+                snapshot_reason: character_data.snapshot_reason.clone(),
+                level: character_data.level,
+            };
+            ver_repo.create(new_version)?;
+        }
 
-        ver_repo.create(new_version)?;
+        // Update character's current_level to match the created version
+        if character_data.level != 1 {
+            let mut char_repo = CharacterRepository::new(self.conn);
+            let update = UpdateCharacter {
+                character_name: None,
+                is_npc: None,
+                current_level: Some(character_data.level),
+                current_version: None,
+                last_updated_at: None,
+                campaign_id: None,
+                directory_path: None,
+            };
+            char_repo.update(character_id, update)?;
+        }
+
+        // Return the character
+        let mut char_repo = CharacterRepository::new(self.conn);
+        let character = char_repo
+            .find_by_id(character_id)?
+            .ok_or_else(|| DbError::NotFound {
+                entity_type: "Character".to_string(),
+                id: character_id.to_string(),
+            })?;
 
         Ok(character)
     }

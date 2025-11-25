@@ -105,6 +105,31 @@ fn main() {
                     warn!("Failed to seed templates: {}", e);
                 }
             }
+
+            // Seed dev data in debug builds
+            #[cfg(debug_assertions)]
+            {
+                use directories::UserDirs;
+                if let Some(user_dirs) = UserDirs::new() {
+                    let campaigns_dir = user_dirs
+                        .document_dir()
+                        .unwrap_or_else(|| user_dirs.home_dir())
+                        .join("Mimir Campaigns");
+
+                    // Ensure campaigns directory exists
+                    if let Err(e) = std::fs::create_dir_all(&campaigns_dir) {
+                        warn!("Failed to create campaigns directory: {}", e);
+                    } else {
+                        let campaigns_path = campaigns_dir.to_string_lossy().to_string();
+                        match mimir_dm_core::seed::seed_dev_data(&mut conn, &campaigns_path) {
+                            Ok(true) => info!("Dev seed data created successfully"),
+                            Ok(false) => info!("Dev seed data already exists, skipped"),
+                            Err(e) => warn!("Failed to seed dev data: {}", e),
+                        }
+                    }
+                }
+            }
+
             drop(conn); // Release connection after seeding
 
             // Build all state components
