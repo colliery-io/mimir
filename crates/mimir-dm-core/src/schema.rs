@@ -473,6 +473,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    catalog_tables (id) {
+        id -> Integer,
+        name -> Text,
+        caption -> Nullable<Text>,
+        category -> Text,
+        source -> Text,
+        page -> Nullable<Integer>,
+        columns_count -> Integer,
+        rows_count -> Integer,
+        full_table_json -> Text,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     catalog_vehicles (id) {
         id -> Integer,
         name -> Text,
@@ -538,6 +553,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     catalog_rewards,
     catalog_spells,
     catalog_sources,
+    catalog_tables,
     catalog_traps,
     catalog_variant_rules,
     catalog_vehicles,

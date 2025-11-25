@@ -458,13 +458,14 @@ impl LoadTester {
     }
 
     /// Test a single catalog import
-    fn test_catalog_import<F>(
+    fn test_catalog_import<F, E>(
         &self,
         results: &mut HashMap<String, ImportResult>,
         catalog_type: &str,
         import_fn: F,
     ) where
-        F: FnOnce() -> Result<usize, String>,
+        F: FnOnce() -> std::result::Result<usize, E>,
+        E: std::fmt::Display,
     {
         debug!("Testing {} import", catalog_type);
 
@@ -483,7 +484,7 @@ impl LoadTester {
                 debug!("Successfully imported {} {}", count, catalog_type);
             }
             Err(e) => {
-                import_result.errors.push(e.clone());
+                import_result.errors.push(e.to_string());
                 warn!("Failed to import {}: {}", catalog_type, e);
             }
         }

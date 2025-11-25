@@ -4,13 +4,13 @@ use tracing::{info, warn};
 use mimir_dm_core::services::{
     ActionService, BackgroundService, ClassService, ConditionService, CultService,
     DeityService, FeatService, ItemService, LanguageService, MonsterService,
-    ObjectService, OptionalFeatureService, RaceService, RewardService,
-    SpellService, TrapService, VariantRuleService, VehicleService,
+    ObjectService, OptionalFeatureService, PsionicService, RaceService, RewardService,
+    SpellService, TableService, TrapService, VariantRuleService, VehicleService,
 };
 
 /// Import all catalog content from a book
 ///
-/// This function imports all 18 catalog types from a book directory:
+/// This function imports all 20 catalog types from a book directory:
 /// - Spells
 /// - Actions
 /// - Conditions
@@ -29,6 +29,8 @@ use mimir_dm_core::services::{
 /// - Deities
 /// - Vehicles
 /// - Classes
+/// - Psionics
+/// - Tables
 ///
 /// Each import is attempted independently. If an import fails, a warning is logged
 /// but the function continues to import the remaining catalog types.
@@ -220,6 +222,26 @@ pub fn import_all_catalogs_from_book(
         }
         Err(e) => {
             warn!("Book uploaded successfully but failed to import classes: {}", e);
+        }
+    }
+
+    // Import psionics
+    match PsionicService::import_psionics_from_book(conn, book_dir, book_id) {
+        Ok(psionic_count) => {
+            info!("Imported {} psionics from book '{}'", psionic_count, book_id);
+        }
+        Err(e) => {
+            warn!("Book uploaded successfully but failed to import psionics: {}", e);
+        }
+    }
+
+    // Import tables
+    match TableService::import_tables_from_book(conn, book_dir, book_id) {
+        Ok(table_count) => {
+            info!("Imported {} tables from book '{}'", table_count, book_id);
+        }
+        Err(e) => {
+            warn!("Book uploaded successfully but failed to import tables: {}", e);
         }
     }
 }

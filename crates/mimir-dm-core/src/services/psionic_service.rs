@@ -1,7 +1,10 @@
 use crate::error::Result;
-use crate::models::catalog::{CatalogPsionic, PsionicFilters, PsionicSummary, Psionic};
+use crate::models::catalog::{CatalogPsionic, NewCatalogPsionic, PsionicFilters, PsionicSummary, Psionic};
 use crate::schema::catalog_psionics;
 use diesel::prelude::*;
+use std::fs;
+use std::path::Path;
+use tracing::{debug, info};
 
 pub struct PsionicService;
 
@@ -132,4 +135,91 @@ impl PsionicService {
 
         Ok(sources)
     }
+
+    /// Import psionics from a book directory
+    pub fn import_psionics_from_book(
+        conn: &mut SqliteConnection,
+        book_dir: &Path,
+        source: &str
+    ) -> Result<usize> {
+        info!("Importing psionics from book directory: {:?} (source: {})", book_dir, source);
+        let mut total_imported = 0;
+
+        let psionics_dir = book_dir.join("psionics");
+        if psionics_dir.exists() {
+            info!("Found psionics directory: {:?}", psionics_dir);
+            let psionic_entries = fs::read_dir(&psionics_dir)?;
+
+            for entry in psionic_entries {
+                let entry = entry?;
+                let path = entry.path();
+
+                if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    debug!("Processing psionic file: {:?}", path.file_name().unwrap_or_default());
+                    let count = Self::import_psionics_from_file(conn, &path, source)?;
+                    info!("Imported {} psionics from {:?}", count, path);
+                    total_imported += count;
+                }
+            }
+        }
+
+        info!("Successfully imported {} total psionics from {}", total_imported, source);
+        Ok(total_imported)
+    }
+
+    fn import_psionics_from_file(
+        conn: &mut SqliteConnection,
+        file_path: &Path,
+        source: &str
+    ) -> Result<usize> {
+        debug!("Reading psionic file: {:?}", file_path);
+
+        let content = fs::read_to_string(file_path)?;
+        let psionic_data: PsionicData = serde_json::from_str(&content)?;
+
+        if let Some(psionics) = psionic_data.psionic {
+            let new_psionics: Vec<NewCatalogPsionic> = psionics.iter().map(|psionic| {
+                let mut new_psionic = NewCatalogPsionic::from(psionic);
+                if new_psionic.source.is_empty() {
+                    new_psionic.source = source.to_string();
+                }
+                new_psionic
+            }).collect();
+
+            debug!("Inserting {} psionics individually (SQLite limitation)", new_psionics.len());
+
+            for psionic in &new_psionics {
+                diesel::insert_into(catalog_psionics::table)
+                    .values(psionic)
+                    .on_conflict((catalog_psionics::name, catalog_psionics::source))
+                    .do_nothing()
+                    .execute(conn)?;
+            }
+
+            info!("Successfully imported {} psionics into database", new_psionics.len());
+            Ok(new_psionics.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Remove all psionics from a specific source
+    pub fn remove_psionics_from_source(
+        conn: &mut SqliteConnection,
+        source: &str
+    ) -> Result<usize> {
+        info!("Removing psionics from source: {}", source);
+
+        let deleted = diesel::delete(catalog_psionics::table.filter(catalog_psionics::source.eq(source)))
+            .execute(conn)?;
+
+        info!("Removed {} psionics from source: {}", deleted, source);
+        Ok(deleted)
+    }
+}
+
+/// Container for JSON parsing
+#[derive(Debug, serde::Deserialize)]
+struct PsionicData {
+    psionic: Option<Vec<Psionic>>,
 }

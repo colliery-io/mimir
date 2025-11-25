@@ -96,7 +96,8 @@ pub fn collect_book_content(book: &Book, repo_path: &Path) -> Result<BookContent
     collect_filtered_generic(&mut content, &data_dir, source, "trapshazards.json", "hazard", "hazards")?;
     collect_filtered_generic(&mut content, &data_dir, source, "variantrules.json", "variantrule", "variantrules")?;
     collect_filtered_generic(&mut content, &data_dir, source, "vehicles.json", "vehicle", "vehicles")?;
-    
+    collect_filtered_generic(&mut content, &data_dir, source, "psionics.json", "psionic", "psionics")?;
+
     // Collect images
     collect_images(&mut content, repo_path, source)?;
     

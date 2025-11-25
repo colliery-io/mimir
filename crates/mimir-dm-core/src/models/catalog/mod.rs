@@ -70,7 +70,7 @@ pub use language::{Language, LanguageData, LanguageSummary, LanguageFluff, Langu
 
 pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData, CatalogReward, NewCatalogReward, RewardFilters};
 
-pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData};
+pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData, CatalogTable, NewCatalogTable, TableFilters};
 
 pub use variant_rule::{VariantRule, VariantRuleData, VariantRuleSummary};
 

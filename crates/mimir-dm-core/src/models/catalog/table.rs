@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use crate::schema::catalog_tables;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
@@ -110,4 +112,72 @@ pub struct TableFluff {
 pub struct TableFluffData {
     #[serde(rename = "tableFluff")]
     pub table_fluff: Option<Vec<TableFluff>>,
+}
+
+// Database models for catalog_tables table
+#[derive(Debug, Queryable, Selectable, Serialize)]
+#[diesel(table_name = catalog_tables)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CatalogTable {
+    pub id: i32,
+    pub name: String,
+    pub caption: Option<String>,
+    pub category: String,
+    pub source: String,
+    pub page: Option<i32>,
+    pub columns_count: i32,
+    pub rows_count: i32,
+    pub full_table_json: String,
+    pub created_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = catalog_tables)]
+pub struct NewCatalogTable {
+    pub name: String,
+    pub caption: Option<String>,
+    pub category: String,
+    pub source: String,
+    pub page: Option<i32>,
+    pub columns_count: i32,
+    pub rows_count: i32,
+    pub full_table_json: String,
+}
+
+#[derive(Debug, Default)]
+pub struct TableFilters {
+    pub name: Option<String>,
+    pub categories: Option<Vec<String>>,
+    pub sources: Option<Vec<String>>,
+}
+
+impl From<&Table> for NewCatalogTable {
+    fn from(table: &Table) -> Self {
+        let columns = table.col_labels.as_ref().map(|c| c.len()).unwrap_or(
+            table.rows.first().map(|r| r.len()).unwrap_or(0)
+        );
+        NewCatalogTable {
+            name: table.name.clone(),
+            caption: table.caption.clone(),
+            category: categorize_table(&table.name),
+            source: table.source.clone(),
+            page: table.page,
+            columns_count: columns as i32,
+            rows_count: table.rows.len() as i32,
+            full_table_json: serde_json::to_string(table).unwrap_or_default(),
+        }
+    }
+}
+
+impl From<&CatalogTable> for TableSummary {
+    fn from(catalog_table: &CatalogTable) -> Self {
+        TableSummary {
+            name: catalog_table.name.clone(),
+            source: catalog_table.source.clone(),
+            caption: catalog_table.caption.clone().unwrap_or_else(|| catalog_table.name.clone()),
+            columns: catalog_table.columns_count as usize,
+            rows: catalog_table.rows_count as usize,
+            category: catalog_table.category.clone(),
+        }
+    }
 }
