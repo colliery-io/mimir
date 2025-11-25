@@ -1,14 +1,33 @@
 //! Character management services
+//!
+//! This module contains services for managing D&D characters, organized by responsibility:
+//!
+//! - [`CharacterService`] - Core CRUD operations and version management
+//! - [`CharacterProgressionService`] - Level up, ASI, multiclassing
+//! - [`CharacterSpellService`] - Spell management, slots, resting
+//! - [`CharacterInventoryService`] - Items, currency, equipment
+//!
+//! Supporting modules:
+//! - [`renderer`] - Markdown rendering for character sheets
+//! - [`level_up`] - Level up types and utilities
+//! - [`creation`] - Character builder
+//! - [`spell_management`] - Spell slot calculations
 
 pub mod renderer;
 pub mod level_up;
 pub mod creation;
 pub mod spell_management;
+pub mod progression;
+pub mod spells;
+pub mod inventory;
 
 pub use renderer::{CharacterRenderer, MarkdownRenderer};
 pub use level_up::{LevelUpOptions, HpGainMethod, AsiOrFeat, ClassInfo, MulticlassPrerequisites};
 pub use creation::{CharacterBuilder, AbilityScoreMethod};
 pub use spell_management::{calculate_spell_slots, calculate_spell_save_dc, calculate_spell_attack_bonus, RestType};
+pub use progression::CharacterProgressionService;
+pub use spells::CharacterSpellService;
+pub use inventory::CharacterInventoryService;
 
 use crate::{
     connection::DbConnection,

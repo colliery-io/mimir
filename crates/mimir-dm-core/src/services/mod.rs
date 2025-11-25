@@ -35,7 +35,9 @@ pub mod table_service;
 // Re-export services
 pub use catalog_trait::CatalogService;
 pub use campaign_service::CampaignService;
-pub use character::CharacterService;
+pub use character::{
+    CharacterService, CharacterProgressionService, CharacterSpellService, CharacterInventoryService
+};
 pub use module_service::ModuleService;
 pub use player_service::PlayerService;
 pub use session_service::SessionService;
