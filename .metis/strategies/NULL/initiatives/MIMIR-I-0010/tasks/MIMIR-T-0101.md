@@ -4,14 +4,14 @@ level: task
 title: "Write ADR for service pattern standardization"
 short_code: "MIMIR-T-0101"
 created_at: 2025-11-25T01:48:45.430737+00:00
-updated_at: 2025-11-25T01:48:45.430737+00:00
+updated_at: 2025-11-25T02:18:27.265911+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -31,12 +31,14 @@ Write an Architectural Decision Record (ADR) that documents the standardized ser
 
 ## Acceptance Criteria
 
-- [ ] ADR created in `.metis/adrs/` following existing ADR format
-- [ ] Documents the current state (mixed patterns)
-- [ ] Analyzes options: stateful vs stateless vs hybrid
-- [ ] Recommends a standard pattern with rationale
-- [ ] Provides migration guidance for existing services
-- [ ] ADR transitioned to "decided" status
+## Acceptance Criteria
+
+- [x] ADR created in `.metis/adrs/` following existing ADR format (MIMIR-A-0005)
+- [x] Documents the current state (mixed patterns)
+- [x] Analyzes options: stateful vs stateless vs hybrid
+- [x] Recommends a standard pattern with rationale
+- [x] Provides migration guidance for existing services
+- [x] ADR transitioned to "decided" status
 
 ## Implementation Notes
 
@@ -85,4 +87,8 @@ None - this is a documentation task that informs other refactoring tasks
 
 ## Status Updates
 
-*To be added during implementation*
+**2025-11-24**: ADR completed
+- Created MIMIR-A-0005: Service Layer Pattern Standardization
+- Decision: Standardize on stateful pattern for all catalog services
+- Includes migration guide for SpellService and ClassService
+- ADR transitioned to decided status
