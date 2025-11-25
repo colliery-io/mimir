@@ -4,14 +4,14 @@ level: task
 title: "Add coverage threshold enforcement to CI"
 short_code: "MIMIR-T-0093"
 created_at: 2025-11-24T20:29:00.568461+00:00
-updated_at: 2025-11-24T20:29:00.568461+00:00
+updated_at: 2025-11-25T01:12:28.565265+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: MIMIR-I-0008
 ## Objective
 
 Configure CI to enforce a minimum code coverage threshold, failing the build if coverage drops below the target.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

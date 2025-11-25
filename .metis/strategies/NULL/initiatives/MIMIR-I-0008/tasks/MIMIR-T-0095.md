@@ -4,14 +4,14 @@ level: task
 title: "Seed missing catalog data"
 short_code: "MIMIR-T-0095"
 created_at: 2025-11-24T20:29:01.031713+00:00
-updated_at: 2025-11-24T20:29:01.031713+00:00
+updated_at: 2025-11-25T01:29:03.590904+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -32,6 +32,10 @@ initiative_id: MIMIR-I-0008
 Seed missing catalog data for cults, psionics, and tables to ensure complete D&D 5e reference data is available.
 
 *Note: This task was migrated from archived initiative MIMIR-I-0006*
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

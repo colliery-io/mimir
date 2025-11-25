@@ -4,14 +4,14 @@ level: task
 title: "Integrate tarpaulin coverage reporting"
 short_code: "MIMIR-T-0091"
 created_at: 2025-11-24T20:29:00.121192+00:00
-updated_at: 2025-11-24T20:29:00.121192+00:00
+updated_at: 2025-11-25T01:11:40.913448+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: MIMIR-I-0008
 ## Objective
 
 Integrate cargo-tarpaulin for code coverage reporting and add coverage generation to the CI pipeline.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

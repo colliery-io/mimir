@@ -4,14 +4,14 @@ level: task
 title: "Standardize errors: Lore and rules services"
 short_code: "MIMIR-T-0081"
 created_at: 2025-11-24T20:28:58.035872+00:00
-updated_at: 2025-11-24T20:28:58.035872+00:00
+updated_at: 2025-11-24T23:44:21.279528+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -39,6 +39,10 @@ Migrate lore and rules catalog services from `Result<T, String>` to `Result<T, D
 - `psionic_service.rs` - Psionics system queries
 - `variant_rule_service.rs` - Variant rule queries
 - `optional_feature_service.rs` - Optional feature queries
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -4,14 +4,14 @@ level: task
 title: "Add integration tests: Combat and encounter services"
 short_code: "MIMIR-T-0085"
 created_at: 2025-11-24T20:28:58.792544+00:00
-updated_at: 2025-11-24T20:28:58.792544+00:00
+updated_at: 2025-11-25T00:01:52.784465+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,10 @@ Add integration tests for combat and encounter catalog services used in DM encou
 - `monster_service.rs` - Monster catalog with CR filtering
 - `action_service.rs` - Combat action lookups
 - `condition_service.rs` - Game condition queries
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

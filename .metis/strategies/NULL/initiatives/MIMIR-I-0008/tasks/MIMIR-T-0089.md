@@ -4,14 +4,14 @@ level: task
 title: "Add integration tests: Lore and rules services"
 short_code: "MIMIR-T-0089"
 created_at: 2025-11-24T20:28:59.690604+00:00
-updated_at: 2025-11-24T20:28:59.690604+00:00
+updated_at: 2025-11-25T00:23:18.160323+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -40,6 +40,10 @@ Add integration tests for lore and rules catalog services used for world-buildin
 - `variant_rule_service.rs` - Variant rule queries
 - `optional_feature_service.rs` - Optional feature queries
 - `document_service.rs` - Document operations
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

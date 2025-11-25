@@ -4,14 +4,14 @@ level: task
 title: "Add integration tests: Equipment and loot services"
 short_code: "MIMIR-T-0087"
 created_at: 2025-11-24T20:28:59.263467+00:00
-updated_at: 2025-11-24T20:28:59.263467+00:00
+updated_at: 2025-11-25T00:09:27.866815+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -38,6 +38,10 @@ Add integration tests for equipment and loot catalog services used in character 
 - `object_service.rs` - Environmental object queries
 - `trap_service.rs` - Trap catalog
 - `reward_service.rs` - Reward/loot table queries
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

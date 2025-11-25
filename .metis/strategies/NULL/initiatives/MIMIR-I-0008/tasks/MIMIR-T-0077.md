@@ -4,14 +4,14 @@ level: task
 title: "Standardize errors: Combat and encounter services"
 short_code: "MIMIR-T-0077"
 created_at: 2025-11-24T20:28:57.321541+00:00
-updated_at: 2025-11-24T22:31:10.080614+00:00
+updated_at: 2025-11-24T22:52:17.032798+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,8 @@ Migrate combat and encounter catalog services from `Result<T, String>` to `Resul
 - `monster_service.rs` - Monster catalog queries and CR filtering
 - `action_service.rs` - Combat action lookups
 - `condition_service.rs` - Game condition queries
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

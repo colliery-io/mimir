@@ -4,14 +4,14 @@ level: task
 title: "Standardize errors: Equipment and loot services"
 short_code: "MIMIR-T-0079"
 created_at: 2025-11-24T20:28:57.643104+00:00
-updated_at: 2025-11-24T20:28:57.643104+00:00
+updated_at: 2025-11-24T23:35:59.272717+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -38,6 +38,10 @@ Migrate equipment and loot catalog services from `Result<T, String>` to `Result<
 - `object_service.rs` - Environmental object queries
 - `trap_service.rs` - Trap catalog queries
 - `reward_service.rs` - Reward/loot table queries
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -4,14 +4,14 @@ level: initiative
 title: "Foundation Hardening"
 short_code: "MIMIR-I-0008"
 created_at: 2025-11-24T20:11:49.278726+00:00
-updated_at: 2025-11-24T21:06:12.556084+00:00
+updated_at: 2025-11-25T01:42:22.623800+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -82,11 +82,11 @@ Replace all `println!`/`eprintln!` calls in services with appropriate `tracing` 
 
 ## Exit Criteria
 
-- [ ] No `expect()` or `unwrap()` calls in `main.rs` initialization path
-- [ ] All 20 catalog services return `Result<T, DbError>`
-- [ ] All 20 catalog services have integration tests
-- [ ] CI reports test coverage on every PR
-- [ ] Coverage threshold of 60% enforced
-- [ ] All catalog data seeded (including cults, psionics, tables)
-- [ ] Backend commands exist for tables catalog
-- [ ] No `println!`/`eprintln!` in service layer code
+- [x] No `expect()` or `unwrap()` calls in `main.rs` initialization path
+- [x] All 20 catalog services return `Result<T, DbError>`
+- [x] All 20 catalog services have integration tests
+- [x] CI reports test coverage on every PR
+- [x] Coverage threshold of 60% enforced
+- [x] All catalog data seeded (including cults, psionics, tables)
+- [x] Backend commands exist for tables catalog
+- [x] No `println!`/`eprintln!` in service layer code

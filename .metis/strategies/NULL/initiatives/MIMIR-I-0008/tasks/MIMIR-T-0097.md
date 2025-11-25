@@ -4,14 +4,14 @@ level: task
 title: "Create backend commands for tables catalog"
 short_code: "MIMIR-T-0097"
 created_at: 2025-11-24T20:29:01.517390+00:00
-updated_at: 2025-11-24T20:29:01.517390+00:00
+updated_at: 2025-11-25T01:42:00.283021+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -32,6 +32,10 @@ initiative_id: MIMIR-I-0008
 Create Tauri backend commands for the tables catalog to expose table data to the frontend.
 
 *Note: This task was migrated from archived initiative MIMIR-I-0006*
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

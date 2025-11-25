@@ -4,14 +4,14 @@ level: task
 title: "Add integration tests: Core catalog services"
 short_code: "MIMIR-T-0083"
 created_at: 2025-11-24T20:28:58.395138+00:00
-updated_at: 2025-11-24T20:28:58.395138+00:00
+updated_at: 2025-11-24T23:56:43.302502+00:00
 parent: MIMIR-I-0008
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -38,6 +38,10 @@ Add integration tests for core catalog services that are critical for character 
 - `race_service.rs` (168 lines) - Race selection for character creation
 - `background_service.rs` - Background selection
 - `feat_service.rs` - Feat selection and filtering
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
