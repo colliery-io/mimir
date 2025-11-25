@@ -24,12 +24,29 @@ pub struct CampaignService<'a> {
 }
 
 impl<'a> CampaignService<'a> {
-    /// Create a new campaign service
+    /// Create a new campaign service.
+    ///
+    /// # Arguments
+    /// * `conn` - Mutable reference to the database connection
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }
-    
-    /// Create a new campaign with directory structure
+
+    /// Create a new campaign with directory structure.
+    ///
+    /// Creates a campaign record in the database, sets up the directory structure
+    /// on disk (including subdirectories for sessions, modules, characters, etc.),
+    /// and generates initial concept stage documents.
+    ///
+    /// # Arguments
+    /// * `name` - Campaign name (cannot be empty or whitespace-only)
+    /// * `_description` - Optional campaign description (currently unused)
+    /// * `directory_location` - Base path where the campaign folder will be created
+    ///
+    /// # Returns
+    /// * `Ok(Campaign)` - The created campaign record with assigned ID
+    /// * `Err(DbError::InvalidData)` - If the name is empty or directory already exists
+    /// * `Err(DbError::Io)` - If directory creation fails
     pub fn create_campaign(
         &mut self,
         name: &str,
@@ -74,7 +91,20 @@ impl<'a> CampaignService<'a> {
         Ok(campaign)
     }
     
-    /// Transition a campaign to a new stage
+    /// Transition a campaign to a new stage.
+    ///
+    /// Validates that the transition is allowed per the campaign board definition,
+    /// updates the campaign status, and creates any required documents for the
+    /// new stage.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign to transition
+    /// * `new_stage` - Target stage name (e.g., "session_zero", "integration")
+    ///
+    /// # Returns
+    /// * `Ok(Campaign)` - The updated campaign with new status
+    /// * `Err(DbError::NotFound)` - If the campaign doesn't exist
+    /// * `Err(DbError::InvalidData)` - If the transition is not allowed
     pub fn transition_campaign_stage(
         &mut self,
         campaign_id: i32,
@@ -113,31 +143,70 @@ impl<'a> CampaignService<'a> {
         Ok(updated_campaign)
     }
     
-    /// List all campaigns
+    /// List all campaigns.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Campaign>)` - All campaigns (active and archived)
     pub fn list_campaigns(&mut self) -> Result<Vec<Campaign>> {
         let mut repo = CampaignRepository::new(self.conn);
         repo.list()
     }
     
-    /// Get a campaign by ID
+    /// Get a campaign by ID.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign
+    ///
+    /// # Returns
+    /// * `Ok(Some(Campaign))` - If found
+    /// * `Ok(None)` - If no campaign exists with that ID
     pub fn get_campaign(&mut self, campaign_id: i32) -> Result<Option<Campaign>> {
         let mut repo = CampaignRepository::new(self.conn);
         repo.find_by_id(campaign_id)
     }
     
-    /// Archive a campaign
+    /// Archive a campaign.
+    ///
+    /// Sets the archived_at timestamp to mark the campaign as archived.
+    /// Archived campaigns are hidden from the active campaigns list.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign to archive
+    ///
+    /// # Returns
+    /// * `Ok(Campaign)` - The updated campaign with archived_at set
     pub fn archive_campaign(&mut self, campaign_id: i32) -> Result<Campaign> {
         let mut repo = CampaignRepository::new(self.conn);
         repo.archive(campaign_id)
     }
     
-    /// Unarchive a campaign
+    /// Unarchive a campaign.
+    ///
+    /// Clears the archived_at timestamp to restore the campaign to active status.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign to unarchive
+    ///
+    /// # Returns
+    /// * `Ok(Campaign)` - The updated campaign with archived_at cleared
     pub fn unarchive_campaign(&mut self, campaign_id: i32) -> Result<Campaign> {
         let mut repo = CampaignRepository::new(self.conn);
         repo.unarchive(campaign_id)
     }
     
-    /// Delete a campaign (hard delete)
+    /// Delete a campaign (hard delete).
+    ///
+    /// Permanently removes the campaign from the database. Optionally deletes
+    /// the campaign directory on disk. Campaign must be archived first.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign to delete
+    /// * `delete_files` - If true, also delete the campaign directory on disk
+    ///
+    /// # Returns
+    /// * `Ok(())` - If deletion succeeds
+    /// * `Err(DbError::NotFound)` - If the campaign doesn't exist
+    /// * `Err(DbError::InvalidData)` - If the campaign is not archived
     pub fn delete_campaign(&mut self, campaign_id: i32, delete_files: bool) -> Result<()> {
         // Get campaign info for directory path
         let mut repo = CampaignRepository::new(self.conn);
@@ -168,19 +237,36 @@ impl<'a> CampaignService<'a> {
         Ok(())
     }
     
-    /// List active campaigns (not archived)
+    /// List active campaigns (not archived).
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Campaign>)` - All campaigns that have not been archived
     pub fn list_active_campaigns(&mut self) -> Result<Vec<Campaign>> {
         let mut repo = CampaignRepository::new(self.conn);
         repo.list_active()
     }
     
-    /// List archived campaigns
+    /// List archived campaigns.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Campaign>)` - All campaigns that have been archived
     pub fn list_archived_campaigns(&mut self) -> Result<Vec<Campaign>> {
         let mut repo = CampaignRepository::new(self.conn);
         repo.list_archived()
     }
 
-    /// Check campaign stage completion status
+    /// Check campaign stage completion status.
+    ///
+    /// Evaluates the current stage's required and optional documents to determine
+    /// if the stage is complete and the campaign can progress to the next stage.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign to check
+    ///
+    /// # Returns
+    /// * `Ok(BoardCompletionStatus)` - Completion metrics including documents
+    ///   completed, missing, and whether progression is allowed
+    /// * `Err(DbError::NotFound)` - If the campaign doesn't exist
     pub fn check_stage_completion(&mut self, campaign_id: i32) -> Result<BoardCompletionStatus> {
         // Get the campaign
         let mut repo = CampaignRepository::new(self.conn);

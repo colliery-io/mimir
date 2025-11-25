@@ -25,7 +25,18 @@ pub type SpellSources = HashMap<String, HashMap<String, SpellSourceEntry>>;
 pub struct SpellService;
 
 impl SpellService {
-    /// Search spells with optional filters
+    /// Search spells with optional filters.
+    ///
+    /// Queries the catalog_spells table with the provided filter criteria.
+    /// Results are returned sorted by name.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `filters` - Search criteria including name, levels, schools, sources, tags
+    ///
+    /// # Returns
+    /// * `Ok(Vec<SpellSummary>)` - List of matching spell summaries
+    /// * `Err(DbError)` - If the database query fails
     pub fn search_spells(
         conn: &mut SqliteConnection,
         filters: SpellFilters,
@@ -90,7 +101,20 @@ impl SpellService {
         Ok(summaries)
     }
     
-    /// Get detailed spell information by name and source
+    /// Get detailed spell information by name and source.
+    ///
+    /// Retrieves the full spell data including description, components,
+    /// casting time, and all other spell properties.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `name` - Exact spell name to look up
+    /// * `source` - Source book code (e.g., "PHB", "XGE")
+    ///
+    /// # Returns
+    /// * `Ok(Some(Spell))` - Full spell data if found
+    /// * `Ok(None)` - If no spell matches name and source
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_spell_details(
         conn: &mut SqliteConnection,
         name: &str,
@@ -117,7 +141,13 @@ impl SpellService {
         }
     }
     
-    /// Get unique spell sources for filter dropdown
+    /// Get unique spell sources for filter dropdown.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - List of unique source codes, sorted alphabetically
     pub fn get_spell_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting unique spell sources");
 
@@ -131,7 +161,13 @@ impl SpellService {
         Ok(sources)
     }
 
-    /// Get unique spell schools for filter dropdown
+    /// Get unique spell schools for filter dropdown.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - List of unique schools (e.g., "Evocation", "Necromancy")
     pub fn get_spell_schools(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting unique spell schools");
 
@@ -145,7 +181,13 @@ impl SpellService {
         Ok(schools)
     }
 
-    /// Get spell count by source for statistics
+    /// Get spell count by source for statistics.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(Vec<(String, i64)>)` - List of (source, count) tuples sorted by source
     pub fn get_spell_count_by_source(conn: &mut SqliteConnection) -> Result<Vec<(String, i64)>> {
         debug!("Getting spell count by source");
 
@@ -161,7 +203,13 @@ impl SpellService {
         Ok(counts)
     }
 
-    /// Get total spell count
+    /// Get total spell count.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(i64)` - Total number of spells in the database
     pub fn get_total_spell_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting total spell count");
 
@@ -175,7 +223,21 @@ impl SpellService {
         Ok(count)
     }
 
-    /// Import all spell data from an uploaded book directory
+    /// Import all spell data from an uploaded book directory.
+    ///
+    /// Scans the book directory for spell JSON files, parses them, and inserts
+    /// the spells into the catalog_spells table. Handles multiple file formats
+    /// including spells-*.json and book-*.json files. Merges class associations
+    /// from sources.json if available.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `book_dir` - Path to the extracted book directory
+    /// * `source` - Source code for the book (e.g., "PHB")
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of spells successfully imported
+    /// * `Err(DbError)` - If file reading or database operations fail
     pub fn import_spells_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
@@ -426,7 +488,16 @@ impl SpellService {
         Ok(inserted)
     }
 
-    /// Remove all spells from a specific source
+    /// Remove all spells from a specific source.
+    ///
+    /// Used when removing a book from the library to clean up its catalog data.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `source` - Source code of the book to remove (e.g., "PHB")
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of spells deleted
     pub fn remove_spells_by_source(
         conn: &mut SqliteConnection,
         source: &str

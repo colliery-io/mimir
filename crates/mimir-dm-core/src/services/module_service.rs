@@ -1,4 +1,8 @@
-//! Module management service
+//! Module management service.
+//!
+//! Provides business logic for managing adventure modules within campaigns.
+//! Modules represent discrete story arcs or adventures with their own workflow
+//! stages, documents, and session tracking.
 
 use crate::connection::DbConnection;
 use crate::dal::campaign::modules::ModuleRepository;
@@ -19,12 +23,27 @@ pub struct ModuleService<'a> {
 }
 
 impl<'a> ModuleService<'a> {
-    /// Create a new module service
+    /// Create a new module service.
+    ///
+    /// # Arguments
+    /// * `conn` - Mutable reference to the database connection
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }
-    
-    /// Create a new module for a campaign
+
+    /// Create a new module for a campaign.
+    ///
+    /// Creates the module record with auto-assigned module number. Does not
+    /// create any documents or directories - use `create_module_with_documents`
+    /// for that.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the parent campaign
+    /// * `name` - Module name/title
+    /// * `expected_sessions` - Estimated number of sessions to complete
+    ///
+    /// # Returns
+    /// * `Ok(Module)` - The created module record
     pub fn create_module(
         &mut self,
         campaign_id: i32,
@@ -47,7 +66,21 @@ impl<'a> ModuleService<'a> {
         repo.create(new_module)
     }
 
-    /// Create a new module with its directory and initial documents
+    /// Create a new module with its directory and initial documents.
+    ///
+    /// Creates the module record, sets up the module directory on disk, and
+    /// generates the initial module overview document from a template. The
+    /// template used depends on the module_type.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the parent campaign
+    /// * `name` - Module name/title
+    /// * `expected_sessions` - Estimated number of sessions to complete
+    /// * `module_type` - Optional type ("mystery", "dungeon", "heist", etc.)
+    ///
+    /// # Returns
+    /// * `Ok(Module)` - The created module record
+    /// * `Err` - If campaign not found or file operations fail
     pub fn create_module_with_documents(
         &mut self,
         campaign_id: i32,
@@ -138,19 +171,39 @@ impl<'a> ModuleService<'a> {
     }
     
     
-    /// Get a module by ID
+    /// Get a module by ID.
+    ///
+    /// # Arguments
+    /// * `id` - Database ID of the module
+    ///
+    /// # Returns
+    /// * `Ok(Some(Module))` - If found
+    /// * `Ok(None)` - If no module exists with that ID
     pub fn get_module(&mut self, id: i32) -> Result<Option<Module>> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.find_by_id(id)
     }
     
-    /// List all modules for a campaign
+    /// List all modules for a campaign.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Module>)` - All modules in the campaign, ordered by module_number
     pub fn list_campaign_modules(&mut self, campaign_id: i32) -> Result<Vec<Module>> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.list_by_campaign(campaign_id)
     }
     
-    /// List modules by status for a campaign
+    /// List modules by status for a campaign.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign
+    /// * `status` - Module status to filter by (e.g., "planning", "active")
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Module>)` - Modules matching the status
     pub fn list_modules_by_status(
         &mut self,
         campaign_id: i32,
@@ -160,13 +213,31 @@ impl<'a> ModuleService<'a> {
         repo.list_by_campaign_and_status(campaign_id, status)
     }
     
-    /// Update module details
+    /// Update module details.
+    ///
+    /// # Arguments
+    /// * `id` - Database ID of the module
+    /// * `update` - Fields to update (None fields are left unchanged)
+    ///
+    /// # Returns
+    /// * `Ok(Module)` - The updated module record
     pub fn update_module(&mut self, id: i32, update: UpdateModule) -> Result<Module> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.update(id, update)
     }
     
-    /// Transition a module to a new stage
+    /// Transition a module to a new stage.
+    ///
+    /// Validates that the transition is allowed per the module board definition
+    /// before updating the status.
+    ///
+    /// # Arguments
+    /// * `id` - Database ID of the module
+    /// * `new_stage` - Target stage (e.g., "preparation", "running", "completed")
+    ///
+    /// # Returns
+    /// * `Ok(Module)` - The updated module with new status
+    /// * `Err` - If transition is not allowed or module not found
     pub fn transition_module_stage(&mut self, id: i32, new_stage: &str) -> Result<Module> {
         let mut repo = ModuleRepository::new(self.conn);
         
@@ -187,7 +258,18 @@ impl<'a> ModuleService<'a> {
         repo.transition_status(id, new_stage)
     }
     
-    /// Initialize documents for a module stage
+    /// Initialize documents for a module stage.
+    ///
+    /// Creates the required documents for the module's current stage from
+    /// templates. Skips documents that already exist.
+    ///
+    /// # Arguments
+    /// * `module_id` - Database ID of the module
+    /// * `campaign_directory` - Path to the campaign's root directory
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - List of created document file names
+    /// * `Err` - If module not found or file operations fail
     pub fn initialize_module_documents(
         &mut self,
         module_id: i32,
@@ -284,12 +366,28 @@ impl<'a> ModuleService<'a> {
         Ok(created_files)
     }
     
-    /// Get module documents
+    /// Get module documents.
+    ///
+    /// # Arguments
+    /// * `module_id` - Database ID of the module
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Document>)` - All documents associated with the module
     pub fn get_module_documents(&mut self, module_id: i32) -> Result<Vec<Document>> {
         DocumentRepository::list_by_module(self.conn, module_id)
     }
     
-    /// Check module completion status
+    /// Check module completion status.
+    ///
+    /// Evaluates the current stage's required and optional documents to determine
+    /// if the stage is complete and the module can progress.
+    ///
+    /// # Arguments
+    /// * `module_id` - Database ID of the module
+    ///
+    /// # Returns
+    /// * `Ok(BoardCompletionStatus)` - Completion metrics
+    /// * `Err` - If module not found
     pub fn check_module_completion(&mut self, module_id: i32) -> Result<BoardCompletionStatus> {
         let mut module_repo = ModuleRepository::new(self.conn);
         let module = module_repo.find_by_id(module_id)?
@@ -352,19 +450,45 @@ impl<'a> ModuleService<'a> {
         })
     }
     
-    /// Check if any modules need next module planning (60% complete)
+    /// Check if any modules need next module planning (60% complete).
+    ///
+    /// Returns modules that are nearing completion so the DM can start
+    /// planning the next adventure.
+    ///
+    /// # Arguments
+    /// * `campaign_id` - Database ID of the campaign
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Module>)` - Modules needing attention
     pub fn find_modules_needing_next(&mut self, campaign_id: i32) -> Result<Vec<Module>> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.find_modules_needing_next(campaign_id)
     }
     
-    /// Increment session count for a module
+    /// Increment session count for a module.
+    ///
+    /// Call after each session to track actual vs expected sessions.
+    ///
+    /// # Arguments
+    /// * `module_id` - Database ID of the module
+    ///
+    /// # Returns
+    /// * `Ok(Module)` - The updated module with incremented actual_sessions
     pub fn increment_module_sessions(&mut self, module_id: i32) -> Result<Module> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.increment_sessions(module_id)
     }
     
-    /// Delete a module
+    /// Delete a module.
+    ///
+    /// Permanently removes the module record. Does not delete associated
+    /// documents or files on disk.
+    ///
+    /// # Arguments
+    /// * `id` - Database ID of the module to delete
+    ///
+    /// # Returns
+    /// * `Ok(())` - If deletion succeeds
     pub fn delete_module(&mut self, id: i32) -> Result<()> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.delete(id)
