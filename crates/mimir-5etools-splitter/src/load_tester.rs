@@ -18,39 +18,57 @@ use tar::Archive;
 use tempfile::TempDir;
 use tracing::{debug, error, info, warn};
 
-/// Result of testing a single archive
+/// Result of testing a single archive.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
+    /// Name of the archive file being tested.
     pub archive_name: String,
+    /// Full path to the archive file.
     pub archive_path: String,
+    /// Whether the archive was successfully extracted.
     pub extraction_ok: bool,
+    /// Whether the metadata.json file was valid.
     pub metadata_valid: bool,
+    /// Parsed metadata content if valid.
     pub metadata: Option<serde_json::Value>,
+    /// Results for each catalog type import.
     pub import_results: HashMap<String, ImportResult>,
+    /// Whether all tests passed.
     pub overall_success: bool,
+    /// List of error messages encountered.
     pub errors: Vec<String>,
 }
 
-/// Result of importing a specific catalog type
+/// Result of importing a specific catalog type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImportResult {
+    /// Type of catalog being imported (e.g., "spells", "monsters").
     pub catalog_type: String,
+    /// Number of items found in the source file.
     pub total_found: i32,
+    /// Number of items successfully imported.
     pub total_imported: usize,
+    /// Whether the import completed without errors.
     pub success: bool,
+    /// List of error messages encountered during import.
     pub errors: Vec<String>,
 }
 
-/// Summary of all test results
+/// Summary of all test results across multiple archives.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestSummary {
+    /// Total number of archives tested.
     pub total_archives: usize,
+    /// Number of archives that passed all tests.
     pub successful_archives: usize,
+    /// Number of archives that failed one or more tests.
     pub failed_archives: usize,
+    /// Individual results for each tested archive.
     pub results: Vec<TestResult>,
 }
 
 impl TestSummary {
+    /// Creates a new empty test summary.
     pub fn new() -> Self {
         Self {
             total_archives: 0,
@@ -60,6 +78,7 @@ impl TestSummary {
         }
     }
 
+    /// Adds a test result to the summary, updating counters.
     pub fn add_result(&mut self, result: TestResult) {
         if result.overall_success {
             self.successful_archives += 1;
@@ -70,6 +89,7 @@ impl TestSummary {
         self.results.push(result);
     }
 
+    /// Prints a formatted summary of all test results to stdout.
     pub fn print_summary(&self, verbose: bool) {
         println!("\n{}", "=== LOAD TEST SUMMARY ===".bright_cyan().bold());
         println!("📦 Total archives tested: {}", self.total_archives);
@@ -120,12 +140,17 @@ impl TestSummary {
     }
 }
 
-/// Load tester for 5etools archives
+/// Load tester for validating 5etools archive files.
+///
+/// Tests that generated tar.gz archive files can be successfully extracted,
+/// have valid metadata, and can be imported into a database.
 pub struct LoadTester {
+    /// Whether to print verbose output during testing.
     verbose: bool,
 }
 
 impl LoadTester {
+    /// Creates a new load tester with the specified verbosity.
     pub fn new(verbose: bool) -> Self {
         Self { verbose }
     }

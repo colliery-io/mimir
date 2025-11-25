@@ -1,11 +1,18 @@
+//! Input source parsing and handling.
+
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
+/// Source for 5etools data - either a local path or GitHub repository.
 #[derive(Debug, Clone)]
 pub enum InputSource {
+    /// Local filesystem path to 5etools data.
     LocalPath(PathBuf),
+    /// GitHub repository URL with optional reference (tag/branch/commit).
     GitHub {
+        /// Repository URL.
         url: String,
+        /// Optional git reference (tag, branch, or commit).
         reference: Option<String>,
     },
 }

@@ -10,25 +10,35 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-/// Container for all collected SRD content
+/// Container for all collected SRD content.
 pub struct SrdContent {
+    /// Map of file paths to file contents.
     pub files: HashMap<String, Vec<u8>>,
+    /// Metadata about the SRD archive.
     pub metadata: SrdMetadata,
 }
 
-/// Metadata for the SRD archive
+/// Metadata for the SRD archive.
 #[derive(Debug)]
 pub struct SrdMetadata {
+    /// Display name of the archive.
     pub name: String,
+    /// Unique identifier.
     pub id: String,
+    /// Source code.
     pub source: String,
+    /// Description of the archive contents.
     pub description: String,
+    /// Version string.
     pub version: String,
+    /// Total number of items in the archive.
     pub total_items: usize,
+    /// Count of items by content type.
     pub content_summary: HashMap<String, usize>,
 }
 
 impl SrdContent {
+    /// Creates a new empty SRD content container.
     pub fn new() -> Self {
         Self {
             files: HashMap::new(),

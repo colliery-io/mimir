@@ -1,56 +1,99 @@
+//! Magic variant expansion for 5e-tools item data.
+//!
+//! This module handles the expansion of magic item variants from base items,
+//! following the 5e-tools data format where base items can be combined with
+//! magic variants to create specific magic items.
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
+/// A magic item variant definition from 5e-tools.
+///
+/// Magic variants define how to transform base items (like "Longsword") into
+/// magic items (like "+1 Longsword"). They specify requirements for which base
+/// items can be transformed, exclusions, and properties to inherit.
 #[derive(Debug, Clone, Deserialize)]
 pub struct MagicVariant {
+    /// The name of the variant (e.g., "+1 Weapon").
     pub name: String,
+    /// The type classification of the variant.
     #[serde(rename = "type")]
     pub variant_type: Option<String>,
+    /// Requirements that base items must meet (OR'd together).
     pub requires: Option<Vec<Value>>,
+    /// Conditions that exclude base items from this variant.
     pub excludes: Option<Value>,
+    /// Properties inherited by the created magic item.
     pub inherits: Option<VariantInherits>,
+    /// Additional entries/description for the magic item.
     pub entries: Option<Vec<Value>>,
+    /// Whether this variant applies to ammunition.
     pub ammo: Option<bool>,
+    /// Whether fluff images are available.
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
 
+/// Properties that a magic item inherits from its variant definition.
+///
+/// These properties define name transformations, stat bonuses, and other
+/// attributes that are applied when creating a magic item from a base item.
 #[derive(Debug, Clone, Deserialize)]
 pub struct VariantInherits {
+    /// Prefix to add to the base item name (e.g., "+1 ").
     #[serde(rename = "namePrefix")]
     pub name_prefix: Option<String>,
+    /// Suffix to add to the base item name.
     #[serde(rename = "nameSuffix")]
     pub name_suffix: Option<String>,
+    /// Text to remove from the base item name.
     #[serde(rename = "nameRemove")]
     pub name_remove: Option<String>,
+    /// Properties to add to the item.
     #[serde(rename = "propertyAdd")]
     pub property_add: Option<Vec<Value>>,
+    /// Properties to remove from the item.
     #[serde(rename = "propertyRemove")]
     pub property_remove: Option<Vec<String>>,
+    /// Source book for the magic item.
     pub source: Option<String>,
+    /// Page number in the source book.
     pub page: Option<u32>,
+    /// Whether the item is in the SRD.
     pub srd: Option<bool>,
+    /// Whether the item is in the basic rules.
     #[serde(rename = "basicRules")]
     pub basic_rules: Option<bool>,
+    /// Magic item tier (minor, major).
     pub tier: Option<String>,
+    /// Magic item rarity.
     pub rarity: Option<String>,
+    /// Weapon attack and damage bonus (e.g., "+1").
     #[serde(rename = "bonusWeapon")]
     pub bonus_weapon: Option<String>,
+    /// Weapon attack bonus only.
     #[serde(rename = "bonusWeaponAttack")]
     pub bonus_weapon_attack: Option<String>,
+    /// Weapon damage bonus only.
     #[serde(rename = "bonusWeaponDamage")]
     pub bonus_weapon_damage: Option<String>,
+    /// Armor class bonus.
     #[serde(rename = "bonusAc")]
     pub bonus_ac: Option<String>,
+    /// Description entries for the magic item.
     pub entries: Option<Vec<Value>>,
+    /// Loot tables where this item can appear.
     #[serde(rename = "lootTables")]
     pub loot_tables: Option<Vec<String>>,
 }
 
+/// Root structure for the magicvariants.json file.
 #[derive(Debug, Clone, Deserialize)]
 pub struct MagicVariantsJson {
+    /// All magic variant definitions.
     pub magicvariant: Vec<MagicVariant>,
+    /// Linked loot table data.
     #[serde(rename = "linkedLootTables")]
     pub linked_loot_tables: Option<Value>,
 }

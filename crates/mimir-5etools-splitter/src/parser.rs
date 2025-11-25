@@ -1,30 +1,44 @@
+//! Parser for 5etools book metadata and JSON files.
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+/// Metadata for a 5etools book or sourcebook.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Book {
+    /// Display name of the book.
     pub name: String,
+    /// Unique identifier for the book.
     pub id: String,
+    /// Source code (e.g., "PHB", "DMG").
     pub source: String,
+    /// Book group/category.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    /// Publication date.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub published: Option<String>,
+    /// Author(s) of the book.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub author: Option<String>,
+    /// Cover image information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cover: Option<Cover>,
+    /// Table of contents entries.
     #[serde(default)]
     pub contents: Vec<serde_json::Value>,
 }
 
+/// Book cover image information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cover {
+    /// Type of cover (e.g., "external").
     #[serde(rename = "type")]
     pub cover_type: String,
+    /// Path to the cover image.
     pub path: String,
 }
 

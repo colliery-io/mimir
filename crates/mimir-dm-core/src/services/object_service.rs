@@ -15,6 +15,7 @@ use std::path::Path;
 pub struct ObjectService;
 
 impl ObjectService {
+    /// Searches objects with the given filters.
     pub fn search_objects(
         conn: &mut SqliteConnection,
         filters: ObjectFilters,
@@ -72,6 +73,7 @@ impl ObjectService {
         Ok(summaries)
     }
 
+    /// Gets object details by name and source.
     pub fn get_object_details(
         conn: &mut SqliteConnection,
         name: &str,

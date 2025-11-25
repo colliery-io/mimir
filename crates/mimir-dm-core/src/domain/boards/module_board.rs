@@ -1,10 +1,12 @@
-//! Module board definition
+//! Module board definition.
 
 use super::{BoardDefinition, StageMetadata};
 
+/// Module workflow board with progression stages.
 pub struct ModuleBoard;
 
 impl ModuleBoard {
+    /// Creates a new module board.
     pub fn new() -> Self {
         Self
     }

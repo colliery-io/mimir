@@ -15,6 +15,7 @@ use std::path::Path;
 pub struct TrapService;
 
 impl TrapService {
+    /// Searches traps and hazards with the given filters.
     pub fn search_traps(&self, conn: &mut SqliteConnection, filters: TrapFilters) -> Result<Vec<TrapSummary>> {
         debug!("Searching traps with filters: {:?}", filters);
         
@@ -65,6 +66,7 @@ impl TrapService {
         Ok(summaries)
     }
     
+    /// Gets trap details by name and source.
     pub fn get_trap_details(&self, conn: &mut SqliteConnection, name: String, source: String) -> Result<Option<CatalogTrap>> {
         debug!("Getting trap details for: {} from {}", name, source);
         
@@ -76,6 +78,7 @@ impl TrapService {
             .map_err(Into::into)
     }
 
+    /// Gets all unique source books containing traps.
     pub fn get_trap_sources(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let sources: Vec<String> = catalog_traps::table
             .select(catalog_traps::source)
@@ -86,6 +89,7 @@ impl TrapService {
         Ok(sources)
     }
 
+    /// Gets the total count of traps in the catalog.
     pub fn get_trap_count(&self, conn: &mut SqliteConnection) -> Result<i64> {
         catalog_traps::table
             .count()
@@ -93,6 +97,7 @@ impl TrapService {
             .map_err(Into::into)
     }
 
+    /// Gets all unique trap types.
     pub fn get_trap_types(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let types: Vec<Option<String>> = catalog_traps::table
             .select(catalog_traps::trap_type)
@@ -107,6 +112,7 @@ impl TrapService {
         Ok(types)
     }
 
+    /// Gets all unique trap categories.
     pub fn get_trap_categories(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let categories: Vec<String> = catalog_traps::table
             .select(catalog_traps::category)

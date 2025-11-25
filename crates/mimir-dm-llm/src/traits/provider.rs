@@ -146,34 +146,45 @@ pub struct Message {
     pub tool_call_id: Option<String>,
 }
 
-/// Error type for LLM operations
+/// Error type for LLM operations.
 #[derive(Debug, thiserror::Error)]
 pub enum LlmError {
+    /// The requested endpoint is not supported by this provider.
     #[error("Unsupported endpoint: {0}")]
     UnsupportedEndpoint(String),
+    /// Rate limit has been exceeded.
     #[error("Rate limit exceeded")]
     RateLimitExceeded,
+    /// An error occurred in the provider.
     #[error("Provider error: {0}")]
     ProviderError(String),
+    /// The requested feature is not implemented.
     #[error("Not implemented: {0}")]
     NotImplemented(String),
+    /// Configuration error.
     #[error("Configuration error: {0}")]
     ConfigError(String),
+    /// The service is not available.
     #[error("Service not available: {0}")]
     ServiceUnavailable(String),
+    /// The specified model was not found.
     #[error("Model not found: {0}")]
     ModelNotFound(String),
+    /// Failed to pull/download a model.
     #[error("Model pull failed: {0}")]
     ModelPullFailed(String),
+    /// Operation is not supported by this provider.
     #[error("Operation not supported")]
     NotSupported,
+    /// The request was cancelled.
     #[error("Request was cancelled")]
     Cancelled,
 }
 
-/// Basic model information
+/// Basic model information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelInfo {
+    /// Name/identifier of the model.
     pub name: String,
 }
 
@@ -188,12 +199,16 @@ pub struct ModelPullProgress {
     pub total: u64,
 }
 
-/// State for rate limiting
+/// State for rate limiting using a token bucket algorithm.
 #[derive(Debug)]
 pub struct RateLimitState {
+    /// Current number of available tokens.
     tokens: AtomicU32,
+    /// Maximum number of tokens (bucket capacity).
     max_tokens: u32,
+    /// How often tokens are refilled.
     refill_rate: Duration,
+    /// When the bucket was last refilled.
     last_refill: Mutex<Instant>,
 }
 
@@ -209,6 +224,7 @@ impl Default for RateLimitState {
 }
 
 impl RateLimitState {
+    /// Creates a new rate limit state from a rate limit configuration.
     pub fn new(limit: &RateLimit) -> Self {
         let max_tokens = limit.calls;
         let refill_rate = match limit.renewal_period {

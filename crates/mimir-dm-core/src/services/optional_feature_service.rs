@@ -18,10 +18,12 @@ pub struct OptionalFeatureService<'a> {
 }
 
 impl<'a> OptionalFeatureService<'a> {
+    /// Creates a new optional feature service with the given database connection.
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }
 
+    /// Searches optional features with the given filters.
     pub fn search_optional_features(&mut self, filters: OptionalFeatureFilters) -> Result<Vec<OptionalFeatureSummary>> {
         use crate::schema::catalog_optional_features::dsl::*;
 
@@ -67,6 +69,7 @@ impl<'a> OptionalFeatureService<'a> {
         Ok(results)
     }
 
+    /// Gets an optional feature by its database ID.
     pub fn get_optional_feature_by_id(&mut self, feature_id: i32) -> Result<Option<OptionalFeature>> {
         use crate::schema::catalog_optional_features::dsl::*;
 
@@ -84,6 +87,7 @@ impl<'a> OptionalFeatureService<'a> {
         }
     }
 
+    /// Gets an optional feature by its name and source book.
     pub fn get_optional_feature_by_name_and_source(&mut self, feature_name: &str, feature_source: &str) -> Result<Option<OptionalFeature>> {
         use crate::schema::catalog_optional_features::dsl::*;
 
@@ -102,6 +106,7 @@ impl<'a> OptionalFeatureService<'a> {
         }
     }
 
+    /// Gets all unique optional feature types.
     pub fn get_optional_feature_types(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_optional_features::dsl::*;
 

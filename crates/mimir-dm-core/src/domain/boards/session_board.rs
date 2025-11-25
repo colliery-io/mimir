@@ -1,10 +1,12 @@
-//! Session board definition
+//! Session board definition.
 
 use super::{BoardDefinition, StageMetadata};
 
+/// Session workflow board with progression stages.
 pub struct SessionBoard;
 
 impl SessionBoard {
+    /// Creates a new session board.
     pub fn new() -> Self {
         Self
     }

@@ -71,6 +71,7 @@ impl<'a> VariantRuleService<'a> {
         Ok(rules.iter().map(VariantRuleSummary::from).collect())
     }
 
+    /// Gets a variant rule by its database ID.
     pub fn get_variant_rule_by_id(&mut self, rule_id: i32) -> Result<Option<VariantRule>> {
         use crate::schema::catalog_variant_rules::dsl::*;
 
@@ -88,6 +89,7 @@ impl<'a> VariantRuleService<'a> {
         }
     }
 
+    /// Gets a variant rule by its name and source book.
     pub fn get_variant_rule_by_name_and_source(&mut self, rule_name: &str, rule_source: &str) -> Result<Option<VariantRule>> {
         use crate::schema::catalog_variant_rules::dsl::*;
 
@@ -106,6 +108,7 @@ impl<'a> VariantRuleService<'a> {
         }
     }
 
+    /// Gets all unique variant rule types.
     pub fn get_variant_rule_types(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_variant_rules::dsl::*;
 

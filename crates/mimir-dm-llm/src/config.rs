@@ -112,10 +112,13 @@ pub struct ModelConfig {
     pub limit: Option<RateLimit>,
 }
 
+/// Errors that can occur when loading configuration.
 #[derive(Error, Debug)]
 pub enum ConfigError {
+    /// IO error when reading config file.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    /// Error parsing YAML configuration.
     #[error("YAML parsing error: {0}")]
     Yaml(#[from] serde_yaml::Error),
 }

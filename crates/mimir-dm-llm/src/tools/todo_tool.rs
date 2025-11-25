@@ -12,13 +12,16 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, info};
 
-/// Represents a single todo item
+/// Represents a single todo item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TodoItem {
+    /// Description of the task.
     pub content: String,
-    pub status: String, // "pending", "in_progress", "completed"
+    /// Current status: "pending", "in_progress", or "completed".
+    pub status: String,
+    /// Present tense form for display during execution.
     #[serde(rename = "activeForm")]
-    pub active_form: String, // Present tense form for display during execution
+    pub active_form: String,
 }
 
 /// Manages todo state with configurable storage backend
@@ -28,6 +31,7 @@ pub struct TodoStateManager {
 }
 
 impl TodoStateManager {
+    /// Creates a new todo state manager.
     pub fn new() -> Self {
         Self {
             storage_path: Arc::new(Mutex::new(None)),

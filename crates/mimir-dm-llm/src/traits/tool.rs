@@ -10,11 +10,14 @@ use std::time::Instant;
 
 use super::provider::{Tool as LlmTool, ToolFunction};
 
-/// Represents a recent tool call for context
+/// Represents a recent tool call for context tracking.
 #[derive(Debug, Clone)]
 pub struct ToolCall {
+    /// Name of the tool that was called.
     pub name: String,
+    /// When the tool was called.
     pub timestamp: Instant,
+    /// File path involved in the call, if any.
     pub file_path: Option<String>,
 }
 
@@ -41,32 +44,42 @@ pub struct ActionDescription {
     pub changes: ChangeDetail,
 }
 
-/// Structured representation of changes for frontend rendering
+/// Structured representation of changes for frontend rendering.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ChangeDetail {
-    /// File editing with line-number based changes
+    /// File editing with line-number based changes.
     FileEdit {
+        /// Path to the file being edited.
         file_path: String,
+        /// List of individual edits to apply.
         edits: Vec<LineEdit>,
+        /// Total number of lines affected by edits.
         total_lines_affected: usize,
+        /// Total number of lines in the file.
         total_lines_in_file: usize,
     },
-    /// File writing with diff preview
+    /// File writing with diff preview.
     FileWrite {
+        /// Path to the file being written.
         file_path: String,
+        /// Length of the content being written.
         content_length: usize,
+        /// Diff preview if available.
         diff_preview: Option<DiffPreview>,
-        /// Content to write (truncated if too long for preview)
+        /// Content to write (truncated if too long for preview).
         content_preview: Option<String>,
     },
-    /// File reading
+    /// File reading operation.
     FileRead {
+        /// Path to the file being read.
         file_path: String,
+        /// Size of the file in bytes.
         file_size: usize,
     },
-    /// Generic changes (fallback)
+    /// Generic changes (fallback for other operation types).
     Generic {
+        /// List of change descriptions.
         items: Vec<String>,
     }
 }
@@ -90,20 +103,26 @@ pub struct LineEdit {
     pub context_after: Vec<String>,
 }
 
-/// Type of edit operation
+/// Type of edit operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EditOperation {
+    /// Replace existing content with new content.
     Replace,
+    /// Insert new content at a position.
     Insert,
+    /// Delete existing content.
     Delete,
 }
 
-/// Diff preview information
+/// Diff preview information showing changes between versions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiffPreview {
+    /// Number of lines added.
     pub added_lines: usize,
+    /// Number of lines removed.
     pub removed_lines: usize,
+    /// Human-readable diff preview text.
     pub preview: String,
 }
 

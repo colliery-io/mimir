@@ -1,10 +1,12 @@
-//! Campaign board definition
+//! Campaign board definition.
 
 use super::{BoardDefinition, StageMetadata};
 
+/// Campaign workflow board with progression stages.
 pub struct CampaignBoard;
 
 impl CampaignBoard {
+    /// Creates a new campaign board.
     pub fn new() -> Self {
         Self
     }

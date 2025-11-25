@@ -11,6 +11,7 @@ use std::fs;
 use std::path::Path;
 use tracing::{debug, error, info, warn};
 
+/// Service for searching and managing actions in the catalog.
 pub struct ActionService;
 
 impl ActionService {

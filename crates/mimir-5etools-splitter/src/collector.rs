@@ -1,3 +1,5 @@
+//! Book content collection for archive creation.
+
 use crate::filter::SourceFilter;
 use crate::magic_variants;
 use crate::parser::{self, Book};
@@ -7,12 +9,16 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
+/// Container for collected book content and associated files.
 pub struct BookContent {
+    /// The book metadata.
     pub book: Book,
+    /// Map of file paths to file contents.
     pub files: HashMap<String, Vec<u8>>,
 }
 
 impl BookContent {
+    /// Creates a new book content container.
     pub fn new(book: Book) -> Self {
         Self {
             book,

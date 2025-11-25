@@ -5,17 +5,29 @@
 
 #![warn(missing_docs)]
 
+/// Archive creation utilities.
 pub mod archive;
+/// Content collection from 5etools data.
 pub mod collector;
+/// Content filtering utilities.
 pub mod filter;
+/// Image processing and extraction.
 pub mod images;
+/// Input source handling (local paths and GitHub URLs).
 pub mod input;
+/// Load testing for archive validation.
 pub mod load_tester;
+/// Magic item variant expansion.
 pub mod magic_variants;
+/// Parallel processing utilities.
 pub mod parallel;
+/// Book metadata parsing.
 pub mod parser;
+/// Repository setup and cloning.
 pub mod repo;
+/// SRD content filtering.
 pub mod srd_filter;
+/// SRD content collection.
 pub mod srd_collector;
 
 use anyhow::Result;
@@ -72,17 +84,26 @@ pub async fn extract_srd(
     })
 }
 
+/// Results from splitting a 5etools repository into book archives.
 #[derive(Debug)]
 pub struct SplitResults {
+    /// Book IDs that were successfully processed.
     pub successful: Vec<String>,
-    pub failed: Vec<(String, String)>, // (book_id, error_message)
+    /// Failed books as (book_id, error_message) tuples.
+    pub failed: Vec<(String, String)>,
+    /// Total number of books processed.
     pub total_processed: usize,
 }
 
+/// Results from extracting SRD content from a repository.
 #[derive(Debug)]
 pub struct SrdResults {
+    /// Path to the generated archive file.
     pub archive_path: String,
+    /// Total number of SRD items extracted.
     pub total_items: usize,
+    /// Count of items by content type.
     pub content_summary: std::collections::HashMap<String, usize>,
+    /// Human-readable summary of the extraction.
     pub summary: String,
 }

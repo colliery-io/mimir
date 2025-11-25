@@ -19,10 +19,12 @@ pub struct TableService<'a> {
 }
 
 impl<'a> TableService<'a> {
+    /// Creates a new table service with the given database connection.
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }
 
+    /// Searches tables with the given filters.
     pub fn search_tables(&mut self, filters: TableFilters) -> Result<Vec<TableSummary>> {
         use crate::schema::catalog_tables::dsl::*;
 
@@ -56,6 +58,7 @@ impl<'a> TableService<'a> {
         Ok(tables.iter().map(TableSummary::from).collect())
     }
 
+    /// Gets a table by its database ID.
     pub fn get_table_by_id(&mut self, table_id: i32) -> Result<Option<Table>> {
         use crate::schema::catalog_tables::dsl::*;
 
@@ -73,6 +76,7 @@ impl<'a> TableService<'a> {
         }
     }
 
+    /// Gets a table by its name and source book.
     pub fn get_table_by_name_and_source(&mut self, table_name: &str, table_source: &str) -> Result<Option<Table>> {
         use crate::schema::catalog_tables::dsl::*;
 
@@ -91,6 +95,7 @@ impl<'a> TableService<'a> {
         }
     }
 
+    /// Gets all unique table categories.
     pub fn get_table_categories(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_tables::dsl::*;
 
@@ -102,6 +107,7 @@ impl<'a> TableService<'a> {
         Ok(categories)
     }
 
+    /// Gets all unique source books containing tables.
     pub fn get_table_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_tables::dsl::*;
 

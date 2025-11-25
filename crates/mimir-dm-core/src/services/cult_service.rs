@@ -15,6 +15,7 @@ use tracing::{debug, info};
 pub struct CultService;
 
 impl CultService {
+    /// Searches cults and boons with the given filters.
     pub fn search_cults(&self, conn: &mut SqliteConnection, filters: CultFilters) -> Result<Vec<CultBoonSummary>> {
         debug!("Searching cults with filters: {:?}", filters);
 
@@ -61,6 +62,7 @@ impl CultService {
         Ok(summaries)
     }
 
+    /// Gets cult details by name and source.
     pub fn get_cult_details(&self, conn: &mut SqliteConnection, name: String, source: String) -> Result<Option<CatalogCult>> {
         debug!("Getting cult details for: {} from {}", name, source);
 
@@ -73,6 +75,7 @@ impl CultService {
             .map_err(Into::into)
     }
 
+    /// Gets all unique source books containing cults.
     pub fn get_cult_sources(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let sources: Vec<String> = catalog_cults::table
             .select(catalog_cults::source)
@@ -83,6 +86,7 @@ impl CultService {
         Ok(sources)
     }
 
+    /// Gets the total count of cults in the catalog.
     pub fn get_cult_count(&self, conn: &mut SqliteConnection) -> Result<i64> {
         catalog_cults::table
             .count()
@@ -90,6 +94,7 @@ impl CultService {
             .map_err(Into::into)
     }
 
+    /// Gets all unique cult types.
     pub fn get_cult_types(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let types: Vec<Option<String>> = catalog_cults::table
             .select(catalog_cults::cult_type)
@@ -104,6 +109,7 @@ impl CultService {
         Ok(types)
     }
 
+    /// Gets all unique cult categories.
     pub fn get_cult_categories(&self, conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let categories: Vec<String> = catalog_cults::table
             .select(catalog_cults::category)

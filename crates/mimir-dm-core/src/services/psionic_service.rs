@@ -15,6 +15,7 @@ use tracing::{debug, info};
 pub struct PsionicService;
 
 impl PsionicService {
+    /// Searches psionics with the given filters.
     pub fn search_psionics(
         conn: &mut SqliteConnection,
         filters: PsionicFilters,
@@ -60,6 +61,7 @@ impl PsionicService {
         Ok(summaries)
     }
 
+    /// Gets a psionic by its name and source book.
     pub fn get_psionic_by_name_and_source(
         conn: &mut SqliteConnection,
         name: &str,
@@ -81,6 +83,7 @@ impl PsionicService {
         }
     }
 
+    /// Gets a psionic by its database ID.
     pub fn get_psionic_by_id(
         conn: &mut SqliteConnection,
         id: i32,
@@ -100,6 +103,7 @@ impl PsionicService {
         }
     }
 
+    /// Gets all unique psionic types.
     pub fn get_all_psionic_types(
         conn: &mut SqliteConnection,
     ) -> Result<Vec<String>> {
@@ -112,6 +116,7 @@ impl PsionicService {
         Ok(types)
     }
 
+    /// Gets all unique psionic orders.
     pub fn get_all_psionic_orders(
         conn: &mut SqliteConnection,
     ) -> Result<Vec<String>> {
