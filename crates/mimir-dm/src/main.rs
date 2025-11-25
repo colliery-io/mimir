@@ -9,15 +9,15 @@ mod state;
 mod types;
 
 use app_init::initialize_app;
-use commands::{logs, *};
-use commands::catalog_action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
-use commands::catalog_condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
-use commands::catalog_language::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
-use commands::catalog_reward::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
-use commands::catalog_background::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
-use commands::catalog_feat::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
-use commands::catalog_psionic::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
-use commands::catalog_vehicle::{search_vehicles, get_vehicle_details, get_vehicle_types, get_vehicle_sizes, get_vehicle_terrains, get_vehicle_statistics};
+use commands::{system::logs, *};
+use commands::catalog::action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
+use commands::catalog::condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
+use commands::catalog::language::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
+use commands::catalog::reward::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
+use commands::catalog::background::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
+use commands::catalog::feat::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
+use commands::catalog::psionic::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
+use commands::catalog::vehicle::{search_vehicles, get_vehicle_details, get_vehicle_types, get_vehicle_sizes, get_vehicle_terrains, get_vehicle_statistics};
 use mimir_dm_core::{DatabaseService, run_migrations};
 use services::context_service::ContextState;
 use services::llm::{self, LlmService, ConfirmationReceivers, CancellationTokens};
@@ -94,7 +94,7 @@ fn main() {
             let app_paths_state = Arc::new(app_paths);
             let context_state = ContextState::new();
 
-            let session_manager = commands::chat_sessions::init_session_manager(&app_paths_state)
+            let session_manager = commands::chat::chat_sessions::init_session_manager(&app_paths_state)
                 .map_err(|e| {
                     error!("Failed to initialize session manager: {}", e);
                     e
@@ -290,11 +290,11 @@ fn main() {
             get_reward_sources,
             get_reward_count,
             // Variant Rule catalog commands
-            commands::catalog_variant_rule::search_variant_rules,
-            commands::catalog_variant_rule::get_variant_rule,
-            commands::catalog_variant_rule::get_variant_rule_details,
-            commands::catalog_variant_rule::get_variant_rule_types,
-            commands::catalog_variant_rule::get_variant_rule_sources,
+            commands::catalog::variant_rule::search_variant_rules,
+            commands::catalog::variant_rule::get_variant_rule,
+            commands::catalog::variant_rule::get_variant_rule_details,
+            commands::catalog::variant_rule::get_variant_rule_types,
+            commands::catalog::variant_rule::get_variant_rule_sources,
             // Psionic catalog commands
             search_psionics,
             get_psionic_details,
@@ -316,19 +316,19 @@ fn main() {
             get_vehicle_terrains,
             get_vehicle_statistics,
             // Class catalog commands
-            commands::catalog_class::search_classes,
-            commands::catalog_class::get_class_details,
-            commands::catalog_class::get_subclass_details,
-            commands::catalog_class::get_class_subclasses,
-            commands::catalog_class::get_class_sources,
-            commands::catalog_class::get_class_primary_abilities,
-            commands::catalog_class::get_class_statistics,
+            commands::catalog::class::search_classes,
+            commands::catalog::class::get_class_details,
+            commands::catalog::class::get_subclass_details,
+            commands::catalog::class::get_class_subclasses,
+            commands::catalog::class::get_class_sources,
+            commands::catalog::class::get_class_primary_abilities,
+            commands::catalog::class::get_class_statistics,
             // Table catalog commands
-            commands::catalog_table::search_tables,
-            commands::catalog_table::get_table,
-            commands::catalog_table::get_table_details,
-            commands::catalog_table::get_table_categories,
-            commands::catalog_table::get_table_sources,
+            commands::catalog::table::search_tables,
+            commands::catalog::table::get_table,
+            commands::catalog::table::get_table_details,
+            commands::catalog::table::get_table_categories,
+            commands::catalog::table::get_table_sources,
             // Context commands
             update_context,
             get_full_context,

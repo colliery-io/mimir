@@ -1,63 +1,24 @@
 //! Tauri command handlers
+//!
+//! Commands are organized into subdirectories by responsibility:
+//! - `campaign/` - Campaign, module, and session management
+//! - `catalog/` - 5e catalog content (spells, monsters, items, etc.)
+//! - `character/` - Character and player management
+//! - `chat/` - LLM chat sessions and todos
+//! - `content/` - Documents, boards, and book imports
+//! - `system/` - App info, logging, and window management
 
-pub mod campaigns;
-pub mod app_info;
-pub mod documents;
-pub mod stage_transitions;
-pub mod boards;
-pub mod modules;
-pub mod sessions;
-pub mod books;
-pub mod dev_tools;
-pub mod logs;
-pub mod catalog_spell;
-pub mod catalog_action;
-pub mod catalog_condition;
-pub mod catalog_race;
-pub mod catalog_optional_feature;
-pub mod catalog_object;
-pub mod catalog_trap;
-pub mod catalog_variant_rule;
-pub mod catalog_cult;
-pub mod catalog_psionic;
-pub mod catalog_language;
-pub mod catalog_reward;
-pub mod catalog_background;
-pub mod catalog_feat;
-pub mod catalog_item;
-pub mod catalog_monster;
-pub mod catalog_deity;
-pub mod catalog_vehicle;
-pub mod catalog_class;
-pub mod catalog_table;
-pub mod context;
-pub mod window_manager;
-pub mod chat_sessions;
-pub mod session_todos;
-pub mod player;
+pub mod campaign;
+pub mod catalog;
 pub mod character;
+pub mod chat;
+pub mod content;
+pub mod system;
 
-pub use campaigns::*;
-pub use app_info::*;
-pub use documents::*;
-pub use stage_transitions::*;
-pub use boards::*;
-pub use modules::*;
-pub use sessions::*;
-pub use books::*;
-pub use dev_tools::*;
-pub use catalog_spell::*;
-pub use catalog_race::*;
-pub use catalog_optional_feature::*;
-pub use catalog_object::*;
-pub use catalog_trap::*;
-pub use catalog_cult::*;
-pub use catalog_item::*;
-pub use catalog_monster::*;
-pub use catalog_deity::*;
-pub use context::*;
-pub use window_manager::*;
-pub use chat_sessions::*;
-pub use session_todos::*;
-pub use player::*;
+// Re-export all commands for backward compatibility
+pub use campaign::*;
+pub use catalog::*;
 pub use character::*;
+pub use chat::*;
+pub use content::*;
+pub use system::*;
