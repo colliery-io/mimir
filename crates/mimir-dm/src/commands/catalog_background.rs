@@ -1,9 +1,29 @@
+//! Database-backed background catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving character background data
+//! from the 5e catalog database. Used for character creation.
+
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::BackgroundFilters;
 use mimir_dm_core::services::BackgroundService;
 use tauri::State;
 use tracing::error;
 
+/// Search the background catalog with optional filters.
+///
+/// Returns a list of background summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `query` - Text to search in background names (case-insensitive)
+/// - `sources` - Filter by source books
+/// - `has_tools` - Filter for backgrounds that grant tool proficiencies
+///
+/// # Returns
+/// List of background objects as JSON values.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_backgrounds(
     query: Option<String>,
@@ -34,6 +54,19 @@ pub async fn search_backgrounds(
     Ok(json_backgrounds)
 }
 
+/// Get complete background details by name and source.
+///
+/// Retrieves the full background data including features, proficiencies, and equipment.
+///
+/// # Parameters
+/// - `name` - Exact background name (case-sensitive)
+/// - `source` - Source book abbreviation (e.g., "PHB")
+///
+/// # Returns
+/// The complete background data as a JSON value.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_background_details(
     name: String,
@@ -55,6 +88,16 @@ pub async fn get_background_details(
     Ok(full_data)
 }
 
+/// Get all unique source books containing backgrounds.
+///
+/// Returns source book abbreviations that contain at least one background.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_background_sources(
     state: State<'_, AppState>,
@@ -68,6 +111,15 @@ pub async fn get_background_sources(
         .map_err(|e| e.to_string())
 }
 
+/// Get total number of backgrounds in the catalog.
+///
+/// Returns the total count of all backgrounds across all source books.
+///
+/// # Returns
+/// Total background count as a 64-bit integer.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_background_count(
     state: State<'_, AppState>,

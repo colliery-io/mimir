@@ -1,4 +1,8 @@
-//! Database-backed action catalog commands
+//! Database-backed action catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving combat action data
+//! from the 5e catalog database. Actions include standard combat options
+//! like Attack, Dash, Dodge, etc.
 
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::{Action, ActionFilters, ActionSummary};
@@ -6,7 +10,22 @@ use mimir_dm_core::services::ActionService;
 use tauri::State;
 use tracing::{debug, error, info};
 
-/// Search actions using database with filters
+/// Search the action catalog with optional filters.
+///
+/// Returns a list of action summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `name` - Text to search in action names (case-insensitive)
+/// - `search` - Text to search in action descriptions
+/// - `time_types` - Filter by action time (e.g., `["Action", "Bonus Action"]`)
+/// - `sources` - Filter by source books
+///
+/// # Returns
+/// List of `ActionSummary` objects containing basic action information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_actions(
     name: Option<String>,
@@ -42,7 +61,18 @@ pub async fn search_actions(
     }
 }
 
-/// Get a specific action by ID for modal display
+/// Get complete action details by database ID.
+///
+/// Retrieves the full action record including description and rules text.
+///
+/// # Parameters
+/// - `action_id` - Database ID of the action
+///
+/// # Returns
+/// The complete `Action` object if found, or `None` if no match exists.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_action(
     action_id: i32,
@@ -64,7 +94,16 @@ pub async fn get_action(
     }
 }
 
-/// Get all available time types for filter dropdowns
+/// Get all unique action time types in the catalog.
+///
+/// Returns time type values present in the action catalog.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of time types (e.g., `["Action", "Bonus Action", "Reaction"]`).
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_action_time_types(
     state: State<'_, AppState>,
@@ -85,7 +124,16 @@ pub async fn get_action_time_types(
     }
 }
 
-/// Get all available sources for filter dropdowns
+/// Get all unique source books containing actions.
+///
+/// Returns source book abbreviations that contain at least one action.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_action_sources(
     state: State<'_, AppState>,
@@ -106,7 +154,15 @@ pub async fn get_action_sources(
     }
 }
 
-/// Get action count for statistics
+/// Get total number of actions in the catalog.
+///
+/// Returns the total count of all actions across all source books.
+///
+/// # Returns
+/// Total action count as a 64-bit integer.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_action_count(
     state: State<'_, AppState>,

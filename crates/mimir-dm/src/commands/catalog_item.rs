@@ -1,9 +1,33 @@
+//! Database-backed item catalog commands.
+//!
+//! Provides Tauri commands for searching, filtering, and retrieving item data
+//! from the 5e catalog database. Items include equipment, magic items, and
+//! other gear.
+
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::item::{Item, ItemFilters, ItemSummary};
 use mimir_dm_core::services::item_service::ItemService;
 use tauri::State;
 use tracing::{debug, error, info};
 
+/// Search the item catalog with optional filters.
+///
+/// Returns a list of item summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `name` - Text to search in item names (case-insensitive)
+/// - `item_types` - Filter by item type (e.g., `["Weapon", "Armor", "Wondrous Item"]`)
+/// - `rarities` - Filter by rarity (e.g., `["Common", "Uncommon", "Rare"]`)
+/// - `sources` - Filter by source books
+/// - `min_value` - Minimum item value in gold pieces
+/// - `max_value` - Maximum item value in gold pieces
+///
+/// # Returns
+/// List of `ItemSummary` objects containing basic item information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_items(
     name: Option<String>,
@@ -39,6 +63,18 @@ pub async fn search_items(
     Ok(results)
 }
 
+/// Get complete item details by database ID.
+///
+/// Retrieves the full item record including properties, description, and value.
+///
+/// # Parameters
+/// - `item_id` - Database ID of the item
+///
+/// # Returns
+/// The complete `Item` object if found, or `None` if no match exists.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_item(
     item_id: i32,
@@ -56,6 +92,19 @@ pub async fn get_item(
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
+/// Get complete item details by name and source.
+///
+/// Retrieves the full item record including properties, description, and value.
+///
+/// # Parameters
+/// - `item_name` - Exact item name (case-sensitive)
+/// - `item_source` - Source book abbreviation (e.g., "PHB", "DMG")
+///
+/// # Returns
+/// The complete `Item` object if found, or `None` if no match exists.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_item_details(
     item_name: String,
@@ -74,6 +123,16 @@ pub async fn get_item_details(
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
+/// Get all unique item types in the catalog.
+///
+/// Returns item type categories present in the item catalog.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of type names (e.g., `["Weapon", "Armor", "Potion", "Wondrous Item"]`).
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_item_types(
     state: State<'_, AppState>,
@@ -93,6 +152,16 @@ pub async fn get_item_types(
     Ok(types)
 }
 
+/// Get all unique item rarities in the catalog.
+///
+/// Returns rarity values present in the item catalog.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of rarity names (e.g., `["Common", "Uncommon", "Rare", "Very Rare", "Legendary"]`).
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_item_rarities(
     state: State<'_, AppState>,
@@ -112,6 +181,16 @@ pub async fn get_item_rarities(
     Ok(rarities)
 }
 
+/// Get all unique source books containing items.
+///
+/// Returns source book abbreviations that contain at least one item.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_item_sources(
     state: State<'_, AppState>,
