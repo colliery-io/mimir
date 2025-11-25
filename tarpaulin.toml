@@ -37,3 +37,7 @@ exclude-files = [
 
 # Exclude test modules from coverage
 ignore-tests = true
+
+# Minimum coverage threshold (conservative global setting)
+# Per-package thresholds are enforced in CI workflow
+fail-under = 50
