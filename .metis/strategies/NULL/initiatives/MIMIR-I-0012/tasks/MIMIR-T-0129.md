@@ -4,14 +4,14 @@ level: task
 title: "Create Tauri command integration test harness"
 short_code: "MIMIR-T-0129"
 created_at: 2025-11-25T17:03:23.410022+00:00
-updated_at: 2025-11-25T17:05:22.127235+00:00
+updated_at: 2025-11-25T18:16:49.558153+00:00
 parent: MIMIR-I-0012
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -34,6 +34,8 @@ Create a test harness that validates Tauri commands work correctly with AppState
 ## Problem
 
 Tauri commands using `State<'_, T>` compile successfully even when `T` is not registered with `.manage()`. This causes runtime errors like "state not managed for field X" that are only discovered during manual testing.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
