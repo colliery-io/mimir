@@ -1,4 +1,8 @@
-//! Book library listing and removal commands
+//! Book library listing and removal commands.
+//!
+//! Provides Tauri commands for managing the uploaded book library. Supports
+//! listing all available books and removing books with full cleanup of
+//! associated catalog data and files.
 
 use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
@@ -22,7 +26,19 @@ pub struct BookInfo {
     pub name: String,         // Display name (e.g., "Player's Handbook")
 }
 
-/// List all books in the library
+/// List all books in the library.
+///
+/// Retrieves all uploaded books from the database and returns their
+/// IDs and display names for the library view.
+///
+/// # Parameters
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `BookInfo` objects.
+///
+/// # Errors
+/// Returns an error response if the database connection or query fails.
 #[tauri::command]
 pub async fn list_library_books(
     state: State<'_, AppState>,
@@ -56,7 +72,23 @@ pub async fn list_library_books(
     }
 }
 
-/// Remove a book from the library
+/// Remove a book from the library.
+///
+/// Performs a complete cleanup: removes the database record, deletes all
+/// associated catalog data (spells, items, monsters, etc.), removes the
+/// extracted book directory, and deletes the original archive file.
+///
+/// # Parameters
+/// - `book_id` - The unique book identifier to remove
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` with success or error status.
+///
+/// # Errors
+/// Returns an error response if:
+/// - The book is not found in the database
+/// - Database operations fail (file cleanup may still partially succeed)
 #[tauri::command]
 pub async fn remove_book_from_library(
     book_id: String,

@@ -45,6 +45,16 @@ pub struct CreateCampaignRequest {
 }
 
 
+/// List all active (non-archived) campaigns.
+///
+/// # Parameters
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `Campaign` objects.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn list_campaigns(
     state: State<'_, AppState>,
@@ -177,6 +187,17 @@ pub async fn list_templates(
 }
 
 
+/// Get a campaign by ID.
+///
+/// # Parameters
+/// - `id` - The database ID of the campaign
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the `Campaign` if found.
+///
+/// # Errors
+/// Returns an error response if the campaign is not found or database operations fail.
 #[tauri::command]
 pub async fn get_campaign(
     id: i32,

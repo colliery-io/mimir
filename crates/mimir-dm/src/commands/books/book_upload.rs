@@ -1,4 +1,8 @@
-//! Book archive upload functionality
+//! Book archive upload functionality.
+//!
+//! Provides Tauri commands for uploading and importing book archives created
+//! by mimir-5esplit. Handles tar.gz extraction, validation, database recording,
+//! and automatic catalog import.
 
 use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
@@ -16,7 +20,27 @@ use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
 use chrono::Utc;
 
-/// Upload and extract a book archive (tar.gz format from mimir-5esplit)
+/// Upload and extract a book archive (tar.gz format from mimir-5esplit).
+///
+/// Extracts the archive to a temporary directory for validation, creates a
+/// database record, then moves files to their final locations. Automatically
+/// imports catalog data (spells, items, monsters, etc.) from the book.
+///
+/// # Parameters
+/// - `archive_path` - Path to the tar.gz archive file to upload
+/// - `state` - Application state containing database connection and paths
+///
+/// # Returns
+/// `ApiResponse` containing `BookInfo` with the book ID and display name.
+///
+/// # Errors
+/// Returns an error response if:
+/// - The archive file does not exist
+/// - The archive cannot be opened or extracted
+/// - No book directory is found in the archive
+/// - A book with the same ID already exists
+/// - Database operations fail
+/// - File operations fail during import
 #[tauri::command]
 pub async fn upload_book_archive(
     archive_path: String,

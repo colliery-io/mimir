@@ -94,7 +94,25 @@ pub struct CurrencyUpdate {
     pub platinum: Option<i32>,
 }
 
-/// Create a minimal character for MVP (placeholder until full wizard is implemented)
+/// Create a minimal character for MVP (placeholder until full wizard is implemented).
+///
+/// Creates a character with default/placeholder ability scores and basic information.
+/// Used for quick character creation before the full wizard is available.
+///
+/// # Parameters
+/// - `player_id` - The ID of the player who owns this character
+/// - `character_name` - The character's display name
+/// - `race` - The character's race (e.g., "Human", "Elf")
+/// - `class` - The character's starting class (e.g., "Fighter", "Wizard")
+/// - `background` - The character's background (e.g., "Soldier", "Sage")
+/// - `campaign_id` - Optional campaign to assign the character to
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The created `Character` record with database ID.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn create_minimal_character(
     player_id: i32,
@@ -166,7 +184,21 @@ pub async fn create_minimal_character(
         .map_err(|e| format!("Failed to create character: {}", e))
 }
 
-/// Create a new character with full builder pattern
+/// Create a new character with full builder pattern.
+///
+/// Creates a fully specified character using the CharacterBuilder pattern.
+/// Supports all character creation options including race, class, background,
+/// ability scores, skills, equipment, and starting spells.
+///
+/// # Parameters
+/// - `request` - Complete character creation request with all options
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The created `CharacterData` with all computed values.
+///
+/// # Errors
+/// Returns an error string if validation fails or database operations fail.
 #[tauri::command]
 pub async fn create_character(
     request: CreateCharacterRequest,
@@ -286,7 +318,23 @@ pub async fn create_character(
     Ok(character_data)
 }
 
-/// Store a created character in the database
+/// Store a created character in the database.
+///
+/// Persists character data to the database with optional campaign assignment.
+/// Creates the initial character version record.
+///
+/// # Parameters
+/// - `campaign_id` - Optional campaign to assign the character to
+/// - `player_id` - The ID of the player who owns this character
+/// - `base_directory` - Optional file directory for character files
+/// - `character_data` - The complete character data to store
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The created `Character` record with database ID.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn store_character(
     campaign_id: Option<i32>,
@@ -308,7 +356,19 @@ pub async fn store_character(
         .map_err(|e| format!("Failed to store character: {}", e))
 }
 
-/// Get character by ID
+/// Get character by ID.
+///
+/// Retrieves a character record and its current data from the database.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// A tuple of (`Character`, `CharacterData`) with the record and current data.
+///
+/// # Errors
+/// Returns an error string if the character is not found or database operations fail.
 #[tauri::command]
 pub async fn get_character(
     character_id: i32,
@@ -324,7 +384,20 @@ pub async fn get_character(
         .map_err(|e| format!("Failed to get character: {}", e))
 }
 
-/// Get spell slots for a character based on class rules
+/// Get spell slots for a character based on class rules.
+///
+/// Calculates available spell slots based on the character's class levels
+/// and spellcasting progression rules.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// A HashMap mapping spell level to `SpellSlots` with max and current slots.
+///
+/// # Errors
+/// Returns an error string if character lookup or calculation fails.
 #[tauri::command]
 pub async fn get_character_spell_slots(
     character_id: i32,
@@ -347,7 +420,18 @@ pub async fn get_character_spell_slots(
         .map_err(|e| format!("Failed to calculate spell slots: {}", e))
 }
 
-/// List all characters (including unassigned)
+/// List all characters (including unassigned).
+///
+/// Retrieves all characters in the database regardless of campaign assignment.
+///
+/// # Parameters
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// A vector of all `Character` records.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn list_all_characters(
     state: State<'_, AppState>,
@@ -362,7 +446,19 @@ pub async fn list_all_characters(
         .map_err(|e| format!("Failed to list characters: {}", e))
 }
 
-/// List all characters for a campaign
+/// List all characters for a campaign.
+///
+/// Retrieves all characters assigned to a specific campaign.
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// A vector of `Character` records assigned to the campaign.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn list_characters_for_campaign(
     campaign_id: i32,
@@ -378,7 +474,20 @@ pub async fn list_characters_for_campaign(
         .map_err(|e| format!("Failed to list characters: {}", e))
 }
 
-/// Get all versions of a character
+/// Get all versions of a character.
+///
+/// Retrieves the version history for a character, showing snapshots
+/// created during level-ups, equipment changes, and other updates.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// A vector of `CharacterVersion` records with version metadata.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn get_character_versions(
     character_id: i32,
@@ -394,7 +503,20 @@ pub async fn get_character_versions(
         .map_err(|e| format!("Failed to get character versions: {}", e))
 }
 
-/// Get a specific character version
+/// Get a specific character version.
+///
+/// Retrieves a specific historical version of character data.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `version` - The version number to retrieve
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The `CharacterData` for the specified version.
+///
+/// # Errors
+/// Returns an error string if the version is not found or database operations fail.
 #[tauri::command]
 pub async fn get_character_version(
     character_id: i32,
@@ -411,7 +533,22 @@ pub async fn get_character_version(
         .map_err(|e| format!("Failed to get character version: {}", e))
 }
 
-/// Update character data directly
+/// Update character data directly.
+///
+/// Replaces the character's data with the provided values, creating a new
+/// version snapshot for history tracking.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `character_data` - The complete updated character data
+/// - `snapshot_reason` - Optional description of why this update was made
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record created by this update.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn update_character(
     character_id: i32,
@@ -429,7 +566,19 @@ pub async fn update_character(
         .map_err(|e| format!("Failed to update character: {}", e))
 }
 
-/// Delete a character
+/// Delete a character.
+///
+/// Permanently removes a character and all its version history from the database.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character to delete
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// Unit `()` on success.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn delete_character(
     character_id: i32,
@@ -445,7 +594,21 @@ pub async fn delete_character(
         .map_err(|e| format!("Failed to delete character: {}", e))
 }
 
-/// Assign a character to a campaign
+/// Assign a character to a campaign.
+///
+/// Links a character to a campaign and sets up the character's file directory
+/// within the campaign's folder structure.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `campaign_id` - The database ID of the campaign to assign to
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The updated `Character` record with campaign assignment.
+///
+/// # Errors
+/// Returns an error string if the campaign is not found or database operations fail.
 #[tauri::command]
 pub async fn assign_character_to_campaign(
     character_id: i32,
@@ -473,7 +636,22 @@ pub async fn assign_character_to_campaign(
         .map_err(|e| format!("Failed to assign character to campaign: {}", e))
 }
 
-/// Level up a character
+/// Level up a character.
+///
+/// Advances a character to the next level in the specified class, handling
+/// HP increases, ability score improvements or feat selection, subclass
+/// choice, and spell updates.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `request` - Level up options including class, HP method, ASI/feat choice
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record created by the level up.
+///
+/// # Errors
+/// Returns an error string if validation fails or database operations fail.
 #[tauri::command]
 pub async fn level_up_character(
     character_id: i32,
@@ -542,7 +720,22 @@ pub async fn level_up_character(
     Ok(result)
 }
 
-/// Add a spell to known spells
+/// Add a spell to known spells.
+///
+/// Adds a spell to the character's known spells or cantrips list.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `spell_name` - Name of the spell to add
+/// - `spell_source` - Source book of the spell (e.g., "PHB")
+/// - `is_cantrip` - Whether this is a cantrip (true) or leveled spell (false)
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record created by this change.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn add_spell_to_known(
     character_id: i32,
@@ -561,7 +754,22 @@ pub async fn add_spell_to_known(
         .map_err(|e| format!("Failed to add spell: {}", e))
 }
 
-/// Prepare spells for the day
+/// Prepare spells for the day.
+///
+/// Sets the character's list of prepared spells for classes that prepare
+/// spells daily (Clerics, Druids, Paladins, Wizards).
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `spell_names` - List of spell names to prepare
+/// - `spellcasting_ability` - The ability used for spellcasting (e.g., "wisdom")
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record created by this change.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn prepare_spells(
     character_id: i32,
@@ -579,7 +787,23 @@ pub async fn prepare_spells(
         .map_err(|e| format!("Failed to prepare spells: {}", e))
 }
 
-/// Cast a spell (expends spell slot)
+/// Cast a spell (expends spell slot).
+///
+/// Records spell casting and expends the appropriate spell slot.
+/// Ritual casting does not expend a slot.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `spell_name` - Name of the spell being cast
+/// - `spell_level` - Level to cast the spell at (for upcasting)
+/// - `is_ritual` - Whether casting as a ritual (no slot expended)
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record with updated spell slots.
+///
+/// # Errors
+/// Returns an error string if no slot is available or database operations fail.
 #[tauri::command]
 pub async fn cast_spell(
     character_id: i32,
@@ -598,7 +822,21 @@ pub async fn cast_spell(
         .map_err(|e| format!("Failed to cast spell: {}", e))
 }
 
-/// Take a rest to recover resources
+/// Take a rest to recover resources.
+///
+/// Processes rest effects: short rests allow hit dice spending, long rests
+/// restore HP, spell slots, and other daily resources.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `rest_type` - Type of rest ("short" or "long")
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record with restored resources.
+///
+/// # Errors
+/// Returns an error string if rest type is invalid or database operations fail.
 #[tauri::command]
 pub async fn take_rest(
     character_id: i32,
@@ -621,7 +859,24 @@ pub async fn take_rest(
         .map_err(|e| format!("Failed to rest: {}", e))
 }
 
-/// Add an item to character inventory
+/// Add an item to character inventory.
+///
+/// Adds an item to the character's inventory with the specified quantity.
+/// If the item already exists, the quantities are combined.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `item_name` - Name of the item to add
+/// - `item_source` - Source book of the item (e.g., "PHB")
+/// - `quantity` - Number of items to add
+/// - `notes` - Optional notes about the item
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record with updated inventory.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn add_item_to_inventory(
     character_id: i32,
@@ -641,7 +896,22 @@ pub async fn add_item_to_inventory(
         .map_err(|e| format!("Failed to add item: {}", e))
 }
 
-/// Remove an item from character inventory
+/// Remove an item from character inventory.
+///
+/// Removes the specified quantity of an item. If quantity exceeds
+/// current amount, the item is removed entirely.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `item_name` - Name of the item to remove
+/// - `quantity` - Number of items to remove
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record with updated inventory.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn remove_item_from_inventory(
     character_id: i32,
@@ -659,7 +929,20 @@ pub async fn remove_item_from_inventory(
         .map_err(|e| format!("Failed to remove item: {}", e))
 }
 
-/// Update character currency
+/// Update character currency.
+///
+/// Sets the character's currency values. Omitted denominations remain unchanged.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `currency` - Currency values to update (copper, silver, electrum, gold, platinum)
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record with updated currency.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn update_character_currency(
     character_id: i32,
@@ -682,7 +965,24 @@ pub async fn update_character_currency(
     ).map_err(|e| format!("Failed to update currency: {}", e))
 }
 
-/// Update character equipped items
+/// Update character equipped items.
+///
+/// Sets the character's currently equipped armor, shield, and weapons.
+/// Omitted slots remain unchanged.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `armor` - Optional armor item name
+/// - `shield` - Optional shield item name
+/// - `main_hand` - Optional main hand weapon name
+/// - `off_hand` - Optional off hand weapon/shield name
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// The new `CharacterVersion` record with updated equipment.
+///
+/// # Errors
+/// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn update_character_equipped(
     character_id: i32,
@@ -702,7 +1002,20 @@ pub async fn update_character_equipped(
         .map_err(|e| format!("Failed to update equipped items: {}", e))
 }
 
-/// Render character sheet as markdown
+/// Render character sheet as markdown.
+///
+/// Generates a complete markdown representation of the character sheet
+/// with full spell and item details fetched from the catalog.
+///
+/// # Parameters
+/// - `character_id` - The database ID of the character
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// A formatted markdown string representing the character sheet.
+///
+/// # Errors
+/// Returns an error string if character lookup fails or database operations fail.
 #[tauri::command]
 pub async fn render_character_sheet(
     character_id: i32,
@@ -772,7 +1085,20 @@ pub async fn render_character_sheet(
     Ok(renderer.render_with_details(&char_data, &spell_details, &item_details))
 }
 
-/// Write text to a file
+/// Write text to a file.
+///
+/// Utility command to write text content to a file on disk.
+/// Used for exporting character sheets and other documents.
+///
+/// # Parameters
+/// - `path` - The file path to write to
+/// - `contents` - The text content to write
+///
+/// # Returns
+/// Unit `()` on success.
+///
+/// # Errors
+/// Returns an error string if the file cannot be written.
 #[tauri::command]
 pub async fn write_text_file(
     path: String,

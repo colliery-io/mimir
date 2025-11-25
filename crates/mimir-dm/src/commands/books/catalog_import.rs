@@ -1,3 +1,8 @@
+//! Catalog import functionality for books.
+//!
+//! Provides functions to import all catalog data types from uploaded book archives.
+//! Handles spells, items, monsters, and 17 other entity types from 5e Tools format.
+
 use diesel::prelude::*;
 use std::path::Path;
 use tracing::{info, warn};

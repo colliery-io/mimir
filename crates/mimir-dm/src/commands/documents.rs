@@ -12,7 +12,17 @@ use tauri::State;
 use crate::types::{ApiError, ApiResponse};
 use serde::Serialize;
 
-/// Get all documents for a campaign
+/// Get all documents for a campaign.
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `Document` objects.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn get_campaign_documents(
     campaign_id: i32,
@@ -27,7 +37,22 @@ pub async fn get_campaign_documents(
     }
 }
 
-/// Get documents by level (campaign, module, session, or handout)
+/// Get documents by level (campaign, module, session, or handout).
+///
+/// Filters documents by their scope within the campaign hierarchy.
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `level` - Document scope level ("campaign", "module", "session", "handout")
+/// - `module_id` - Optional module ID filter for module/session level docs
+/// - `session_id` - Optional session ID filter for session level docs
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `Document` objects.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn get_documents_by_level(
     campaign_id: i32,
@@ -45,7 +70,17 @@ pub async fn get_documents_by_level(
     }
 }
 
-/// Create a new document
+/// Create a new document.
+///
+/// # Parameters
+/// - `new_document` - Document creation data with campaign, template, and file info
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the created `Document`.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn create_document(
     new_document: NewDocument,
@@ -60,7 +95,18 @@ pub async fn create_document(
     }
 }
 
-/// Update a document
+/// Update a document.
+///
+/// # Parameters
+/// - `document_id` - The database ID of the document to update
+/// - `update` - Fields to update on the document
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the updated `Document`.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn update_document(
     document_id: i32,
@@ -76,7 +122,19 @@ pub async fn update_document(
     }
 }
 
-/// Mark a document as completed
+/// Mark a document as completed.
+///
+/// Sets the document's completion status, which affects stage progression.
+///
+/// # Parameters
+/// - `document_id` - The database ID of the document to complete
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the updated `Document`.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn complete_document(
     document_id: i32,
@@ -91,7 +149,19 @@ pub async fn complete_document(
     }
 }
 
-/// Delete a document
+/// Delete a document.
+///
+/// Removes the document record from the database.
+///
+/// # Parameters
+/// - `document_id` - The database ID of the document to delete
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` with success or error status.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn delete_document(
     document_id: i32,
@@ -106,7 +176,19 @@ pub async fn delete_document(
     }
 }
 
-/// Get incomplete documents for a campaign
+/// Get incomplete documents for a campaign.
+///
+/// Returns documents that have not been marked as completed.
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of incomplete `Document` objects.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn get_incomplete_documents(
     campaign_id: i32,
@@ -121,7 +203,19 @@ pub async fn get_incomplete_documents(
     }
 }
 
-/// Get completed documents for a campaign
+/// Get completed documents for a campaign.
+///
+/// Returns documents that have been marked as completed.
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of completed `Document` objects.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn get_completed_documents(
     campaign_id: i32,
@@ -136,7 +230,20 @@ pub async fn get_completed_documents(
     }
 }
 
-/// Create a document from a template
+/// Create a document from a template.
+///
+/// Generates a new document using the specified template's structure and content.
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `template_id` - The ID of the template to use
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the created `Document`.
+///
+/// # Errors
+/// Returns an error response if the template is not found or database operations fail.
 #[tauri::command]
 pub async fn create_document_from_template(
     campaign_id: i32,
@@ -152,7 +259,19 @@ pub async fn create_document_from_template(
     }
 }
 
-/// Read a document file from disk
+/// Read a document file from disk.
+///
+/// Reads the content of a document's markdown file.
+///
+/// # Parameters
+/// - `file_path` - Path to the document file on disk
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the file content as a string.
+///
+/// # Errors
+/// Returns an error response if the file cannot be read.
 #[tauri::command]
 pub async fn read_document_file(
     file_path: String,
@@ -167,7 +286,20 @@ pub async fn read_document_file(
     }
 }
 
-/// Save a document file to disk
+/// Save a document file to disk.
+///
+/// Writes content to a document's markdown file.
+///
+/// # Parameters
+/// - `file_path` - Path to the document file on disk
+/// - `content` - The content to write to the file
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` with success or error status.
+///
+/// # Errors
+/// Returns an error response if the file cannot be written.
 #[tauri::command]
 pub async fn save_document_file(
     file_path: String,

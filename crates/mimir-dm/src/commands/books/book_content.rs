@@ -1,4 +1,7 @@
-//! Book content serving commands
+//! Book content serving commands.
+//!
+//! Provides Tauri commands for retrieving and serving book content from the local
+//! archive structure. Handles JSON content extraction and base64 image encoding.
 
 use crate::app_init::AppPaths;
 use crate::types::{ApiError, ApiResponse};
@@ -9,7 +12,23 @@ use tauri::State;
 use tracing::{error, info};
 use base64::{engine::general_purpose::STANDARD, Engine};
 
-/// Get book content from the archive structure
+/// Get book content from the archive structure.
+///
+/// Retrieves the main book content JSON file from the extracted archive
+/// directory structure. Searches for book-*.json or book.json files.
+///
+/// # Parameters
+/// - `book_id` - The unique book identifier (e.g., "PHB", "DMG")
+/// - `app_paths` - Application paths configuration for locating the data directory
+///
+/// # Returns
+/// `ApiResponse` containing the parsed JSON content of the book.
+///
+/// # Errors
+/// Returns an error response if:
+/// - The book directory does not exist
+/// - No book content file is found in the directory
+/// - The JSON content cannot be parsed
 #[tauri::command]
 pub async fn get_book_content(
     book_id: String,
@@ -68,7 +87,22 @@ pub async fn get_book_content(
     }
 }
 
-/// Serve an image from a book's archive structure as base64
+/// Serve an image from a book's archive structure as base64.
+///
+/// Reads an image file from the book's extracted archive and returns it
+/// as a base64-encoded data URL suitable for embedding in HTML/CSS.
+/// Sanitizes paths to prevent directory traversal attacks.
+///
+/// # Parameters
+/// - `book_id` - The unique book identifier (e.g., "PHB", "DMG")
+/// - `image_path` - Relative path to the image within the book archive
+/// - `app_paths` - Application paths configuration for locating the data directory
+///
+/// # Returns
+/// `ApiResponse` containing a base64 data URL (e.g., "data:image/png;base64,...")
+///
+/// # Errors
+/// Returns an error response if the image file is not found or cannot be read.
 #[tauri::command]
 pub async fn serve_book_image(
     book_id: String,

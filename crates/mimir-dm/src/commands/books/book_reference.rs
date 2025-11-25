@@ -1,4 +1,8 @@
-//! Book reference lookup functionality
+//! Book reference lookup functionality.
+//!
+//! Provides Tauri commands for looking up cross-references within book data.
+//! Supports resolving references to spells, items, creatures, classes, races,
+//! feats, and backgrounds with preview generation for tooltips.
 
 use crate::app_init::AppPaths;
 use crate::types::{ApiError, ApiResponse};
@@ -20,7 +24,24 @@ pub struct ReferenceData {
     pub preview: String,
 }
 
-/// Look up a cross-reference in the book data
+/// Look up a cross-reference in the book data.
+///
+/// Searches for a specific reference by type and name within book archives.
+/// First checks the specified source book, then searches all books if not found.
+/// Generates preview text suitable for tooltips.
+///
+/// # Parameters
+/// - `ref_type` - Type of reference ("spell", "item", "creature", "class", "race", "feat", "background")
+/// - `ref_name` - Name of the referenced entity
+/// - `ref_source` - Optional source book code (defaults to "PHB" if not specified)
+/// - `app_paths` - Application paths configuration for locating book data
+///
+/// # Returns
+/// `ApiResponse` containing `ReferenceData` with the resolved reference, source,
+/// full data, and a formatted preview string.
+///
+/// # Errors
+/// Returns an error response if the reference cannot be found in any available book.
 #[tauri::command]
 pub async fn lookup_reference(
     ref_type: String,

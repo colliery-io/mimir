@@ -46,7 +46,19 @@ pub struct ListModulesRequest {
     pub campaign_id: i32,
 }
 
-/// Create a new module
+/// Create a new module.
+///
+/// Creates a new adventure module with initial documents for the campaign.
+///
+/// # Parameters
+/// - `request` - Module creation request with campaign ID, name, sessions, and type
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the created `Module`.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn create_module(
     request: CreateModuleRequest,
@@ -75,7 +87,17 @@ pub async fn create_module(
     }
 }
 
-/// Get a module by ID
+/// Get a module by ID.
+///
+/// # Parameters
+/// - `id` - The database ID of the module
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the `Module` if found.
+///
+/// # Errors
+/// Returns an error response if the module is not found or database operations fail.
 #[tauri::command]
 pub async fn get_module(
     id: i32,
@@ -102,7 +124,17 @@ pub async fn get_module(
     }
 }
 
-/// List all modules for a campaign
+/// List all modules for a campaign.
+///
+/// # Parameters
+/// - `request` - Request containing the campaign ID
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `Module` objects.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn list_campaign_modules(
     request: ListModulesRequest,
@@ -125,7 +157,18 @@ pub async fn list_campaign_modules(
     }
 }
 
-/// Update a module
+/// Update a module.
+///
+/// # Parameters
+/// - `id` - The database ID of the module to update
+/// - `request` - Fields to update on the module
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the updated `Module`.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn update_module(
     id: i32,
@@ -158,7 +201,19 @@ pub async fn update_module(
     }
 }
 
-/// Transition a module to a new stage
+/// Transition a module to a new stage.
+///
+/// Advances or changes the module's workflow stage.
+///
+/// # Parameters
+/// - `request` - Transition request with module ID and target stage
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the updated `Module`.
+///
+/// # Errors
+/// Returns an error response if the transition is invalid or database operations fail.
 #[tauri::command]
 pub async fn transition_module_stage(
     request: TransitionModuleRequest,
@@ -181,7 +236,19 @@ pub async fn transition_module_stage(
     }
 }
 
-/// Initialize documents for a module stage
+/// Initialize documents for a module stage.
+///
+/// Creates the required documents for the module's current stage.
+///
+/// # Parameters
+/// - `request` - Request with module ID and campaign directory path
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of created document file names.
+///
+/// # Errors
+/// Returns an error response if document creation fails.
 #[tauri::command]
 pub async fn initialize_module_documents(
     request: InitializeDocumentsRequest,
@@ -213,7 +280,19 @@ pub struct GetModuleDocumentsRequest {
     pub module_id: i32,
 }
 
-/// Get module documents
+/// Get module documents.
+///
+/// Retrieves all documents associated with a module.
+///
+/// # Parameters
+/// - `request` - Request containing the module ID
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `Document` objects.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn get_module_documents(
     request: GetModuleDocumentsRequest,
@@ -236,7 +315,19 @@ pub async fn get_module_documents(
     }
 }
 
-/// Check module completion status
+/// Check module completion status.
+///
+/// Returns the completion status of required documents for the module.
+///
+/// # Parameters
+/// - `module_id` - The database ID of the module
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing `BoardCompletionStatus` with completion metrics.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn check_module_completion(
     module_id: i32,
@@ -262,7 +353,19 @@ pub async fn check_module_completion(
     }
 }
 
-/// Find modules needing next module planning
+/// Find modules needing next module planning.
+///
+/// Returns modules that are near completion and need the next adventure planned.
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of `Module` objects needing planning.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn find_modules_needing_next(
     campaign_id: i32,
@@ -285,7 +388,19 @@ pub async fn find_modules_needing_next(
     }
 }
 
-/// Increment module session count
+/// Increment module session count.
+///
+/// Increases the actual session count for a module by one.
+///
+/// # Parameters
+/// - `module_id` - The database ID of the module
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing the updated `Module`.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn increment_module_sessions(
     module_id: i32,
@@ -308,7 +423,19 @@ pub async fn increment_module_sessions(
     }
 }
 
-/// Delete a module
+/// Delete a module.
+///
+/// Permanently removes a module and its associated documents.
+///
+/// # Parameters
+/// - `id` - The database ID of the module to delete
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` with success or error status.
+///
+/// # Errors
+/// Returns an error response if database operations fail.
 #[tauri::command]
 pub async fn delete_module(
     id: i32,

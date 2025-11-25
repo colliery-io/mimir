@@ -135,7 +135,21 @@ fn process_template_content(
     Ok(rendered)
 }
 
-/// Initialize documents for current campaign stage
+/// Initialize documents for current campaign stage.
+///
+/// Creates the required documents for the campaign's current workflow stage.
+/// Documents are created from templates based on the stage (concept, session_zero,
+/// integration, etc.).
+///
+/// # Parameters
+/// - `campaign_id` - The database ID of the campaign
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` containing a vector of created document titles.
+///
+/// # Errors
+/// Returns an error string if the campaign is not found or document creation fails.
 #[tauri::command]
 pub async fn initialize_stage_documents(
     campaign_id: i32,
