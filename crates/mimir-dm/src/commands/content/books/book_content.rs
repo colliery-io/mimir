@@ -163,8 +163,10 @@ pub async fn serve_book_image(
 
 // Helper functions
 
-/// Find the main book content file in the archive structure
-pub(super) fn find_book_content_file(dir: &Path) -> Result<Option<PathBuf>, ApiError> {
+/// Find the main book content file in the archive structure.
+///
+/// Searches for book-*.json files in the book/ subdirectory, or book.json in the root.
+pub fn find_book_content_file(dir: &Path) -> Result<Option<PathBuf>, ApiError> {
     info!("find_book_content_file: searching in {:?}", dir);
 
     // Check for book directory with book-*.json files

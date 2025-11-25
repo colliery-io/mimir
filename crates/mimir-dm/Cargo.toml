@@ -6,6 +6,10 @@ description = "Mimir D&D Campaign Assistant - Desktop Application"
 authors = ["Mimir Team"]
 license = "MIT OR Apache-2.0"
 
+[lib]
+name = "mimir_dm"
+path = "src/lib.rs"
+
 [[bin]]
 name = "mimir"
 path = "src/main.rs"

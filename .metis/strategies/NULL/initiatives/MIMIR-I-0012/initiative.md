@@ -4,14 +4,14 @@ level: initiative
 title: "Quality Assurance and Developer Experience"
 short_code: "MIMIR-I-0012"
 created_at: 2025-11-25T13:13:48.174643+00:00
-updated_at: 2025-11-25T13:13:48.174643+00:00
+updated_at: 2025-11-25T17:05:22.025596+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/design"
 
 
 exit_criteria_met: false
@@ -24,115 +24,138 @@ initiative_id: quality-assurance-and-developer
 
 *This template includes sections for various types of initiatives. Delete sections that don't apply to your specific use case.*
 
-## Context **[REQUIRED]**
+## Context
 
-{Describe the context and background for this initiative}
+The Mimir codebase has grown significantly with multiple layers:
+- **Backend**: Rust Tauri commands, services, DAL, database
+- **Frontend**: Vue 3 components, Pinia stores, TypeScript
+- **Integration**: Tauri state management, LLM tool calling
 
-## Goals & Non-Goals **[REQUIRED]**
+Recent refactoring (consolidating state into AppState) broke multiple features at runtime despite passing type-checking. This highlighted gaps in our testing strategy - we have good unit/integration tests for services but lack:
+1. Tauri command integration tests (state injection validation)
+2. End-to-end GUI tests (user flow validation)
+3. LLM tool calling tests (prompt/behavior validation)
+
+## Goals & Non-Goals
 
 **Goals:**
-- {Primary objective 1}
-- {Primary objective 2}
+- Catch state management regressions before runtime
+- Validate critical user flows automatically
+- Enable safe refactoring with confidence
+- Test LLM tool calling behavior with reproducible scenarios
+- Establish testing patterns for future development
 
 **Non-Goals:**
-- {What this initiative will not address}
+- 100% code coverage (focus on critical paths)
+- Testing every edge case (prioritize high-value tests)
+- Replacing manual exploratory testing entirely
 
-## Requirements **[CONDITIONAL: Requirements-Heavy Initiative]**
+## Testing Pyramid
 
-{Delete if not a requirements-focused initiative}
+```
+         /\
+        /  \  E2E (Playwright)
+       /----\  - Critical user flows
+      /      \  - Visual regression
+     /--------\
+    /          \ Integration Tests
+   /   Tauri    \  - Command + AppState
+  /   Commands   \  - State injection validation
+ /----------------\
+/                  \ Unit Tests (existing)
+/    Services/DAL   \  - Business logic
+/____________________\  - Database operations
+```
 
-### User Requirements
-- **User Characteristics**: {Technical background, experience level, etc.}
-- **System Functionality**: {What users expect the system to do}
-- **User Interfaces**: {How users will interact with the system}
+## Detailed Design
 
-### System Requirements
-- **Functional Requirements**: {What the system should do - use unique identifiers}
-  - REQ-001: {Functional requirement 1}
-  - REQ-002: {Functional requirement 2}
-- **Non-Functional Requirements**: {How the system should behave}
-  - NFR-001: {Performance requirement}
-  - NFR-002: {Security requirement}
+### Layer 1: Tauri Command Integration Tests
 
-## Use Cases **[CONDITIONAL: User-Facing Initiative]**
+**Problem Solved**: State management mismatches (like the recent AppState issue)
 
-{Delete if not user-facing}
+**Approach**:
+- Create test harness that initializes real AppState
+- Call Tauri commands directly (bypassing IPC)
+- Verify commands don't panic and return expected types
 
-### Use Case 1: {Use Case Name}
-- **Actor**: {Who performs this action}
-- **Scenario**: {Step-by-step interaction}
-- **Expected Outcome**: {What should happen}
+**Location**: `crates/mimir-dm/tests/commands/`
 
-### Use Case 2: {Use Case Name}
-- **Actor**: {Who performs this action}
-- **Scenario**: {Step-by-step interaction}
-- **Expected Outcome**: {What should happen}
+**Example Test**:
+```rust
+#[tokio::test]
+async fn test_list_log_files_with_app_state() {
+    let app_state = create_test_app_state().await;
+    let state = tauri::State::new(app_state);
+    
+    let result = list_log_files(state).await;
+    assert!(result.is_ok());
+}
+```
 
-## Architecture **[CONDITIONAL: Technically Complex Initiative]**
+### Layer 2: Playwright E2E Tests
 
-{Delete if not technically complex}
+**Problem Solved**: UI regressions, broken user flows
 
-### Overview
-{High-level architectural approach}
+**Approach**:
+- Test critical paths: chat, settings, campaign management
+- Run against dev build with test database
+- Screenshot comparison for visual regression
 
-### Component Diagrams
-{Describe or link to component diagrams}
+**Location**: `crates/mimir-dm/tests/e2e/`
 
-### Class Diagrams
-{Describe or link to class diagrams - for OOP systems}
+**Critical Flows**:
+1. App launch and campaign selection
+2. Chat session creation and message send
+3. Settings save and provider switch
+4. Log viewer access
 
-### Sequence Diagrams
-{Describe or link to sequence diagrams - for interaction flows}
+### Layer 3: LLM Tool Calling Tests
 
-### Deployment Diagrams
-{Describe or link to deployment diagrams - for infrastructure}
+**Problem Solved**: Prompt changes breaking tool behavior
 
-## Detailed Design **[REQUIRED]**
+**Approach**:
+- Mock LLM responses with recorded fixtures
+- Test tool selection for common scenarios
+- Verify tool arguments are correctly parsed
 
-{Technical approach and implementation details}
+**Location**: `crates/mimir-dm/tests/llm/`
 
-## UI/UX Design **[CONDITIONAL: Frontend Initiative]**
+## Test Data Strategy
 
-{Delete if no UI components}
+### Dev Seed Data
+- Test campaign with modules and sessions
+- Test players with characters at various levels
+- Test chat sessions with message history
 
-### User Interface Mockups
-{Describe or link to UI mockups}
+### Fixtures
+- LLM response recordings for tool calling tests
+- Expected state snapshots for regression tests
 
-### User Flows
-{Describe key user interaction flows}
+## Alternatives Considered
 
-### Design System Integration
-{How this fits with existing design patterns}
+1. **Only Unit Tests**: Rejected - doesn't catch runtime state issues
+2. **Manual Testing Only**: Rejected - not scalable, error-prone
+3. **Full Cypress Suite**: Rejected - Playwright better for Tauri apps
+4. **Snapshot Testing Only**: Rejected - too brittle for UI changes
 
-## Testing Strategy **[CONDITIONAL: Separate Testing Initiative]**
+## Implementation Plan
 
-{Delete if covered by separate testing initiative}
+### Phase 1: Tauri Command Test Harness
+- Create `create_test_app_state()` helper
+- Write tests for critical command groups (chat, logs, settings)
+- Add to CI pipeline
 
-### Unit Testing
-- **Strategy**: {Approach to unit testing}
-- **Coverage Target**: {Expected coverage percentage}
-- **Tools**: {Testing frameworks and tools}
+### Phase 2: Playwright Setup
+- Install and configure Playwright for Tauri
+- Write smoke tests for app launch
+- Add critical flow tests
 
-### Integration Testing
-- **Strategy**: {Approach to integration testing}
-- **Test Environment**: {Where integration tests run}
-- **Data Management**: {Test data strategy}
+### Phase 3: LLM Test Harness
+- Create HTTP mock server for LLM responses
+- Record response fixtures for common scenarios
+- Write tool selection verification tests
 
-### System Testing
-- **Strategy**: {End-to-end testing approach}
-- **User Acceptance**: {How UAT will be conducted}
-- **Performance Testing**: {Load and stress testing}
-
-### Test Selection
-{Criteria for determining what to test}
-
-### Bug Tracking
-{How defects will be managed and prioritized}
-
-## Alternatives Considered **[REQUIRED]**
-
-{Alternative approaches and why they were rejected}
-
-## Implementation Plan **[REQUIRED]**
-
-{Phases and timeline for execution}
+### Phase 4: CI Integration
+- Add all test layers to GitHub Actions
+- Configure test database seeding
+- Add coverage reporting
