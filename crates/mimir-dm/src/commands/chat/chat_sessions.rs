@@ -8,12 +8,12 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tauri::State;
 use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::app_init::AppPaths;
+use crate::state::AppState;
 
 /// Represents a chat message
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -249,9 +249,6 @@ impl SessionManager {
     }
 }
 
-/// Global session manager state
-pub type SessionManagerState<'a> = State<'a, SessionManager>;
-
 /// Initialize session manager
 pub fn init_session_manager(app_paths: &AppPaths) -> Result<SessionManager> {
     SessionManager::new(app_paths)
@@ -268,9 +265,9 @@ pub fn init_session_manager(app_paths: &AppPaths) -> Result<SessionManager> {
 /// Returns error string if session index cannot be read.
 #[tauri::command]
 pub async fn list_chat_sessions(
-    session_manager: SessionManagerState<'_>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<ChatSessionMetadata>, String> {
-    session_manager.list_sessions().map_err(|e| {
+    state.sessions.list_sessions().map_err(|e| {
         error!("Failed to list chat sessions: {}", e);
         format!("Failed to list sessions: {}", e)
     })
@@ -288,10 +285,10 @@ pub async fn list_chat_sessions(
 /// Returns error string if session file cannot be read.
 #[tauri::command]
 pub async fn load_chat_session(
-    session_manager: SessionManagerState<'_>,
+    state: State<'_, AppState>,
     session_id: String,
 ) -> Result<Option<ChatSession>, String> {
-    session_manager.load_session(&session_id).map_err(|e| {
+    state.sessions.load_session(&session_id).map_err(|e| {
         error!("Failed to load chat session {}: {}", session_id, e);
         format!("Failed to load session: {}", e)
     })
@@ -309,10 +306,10 @@ pub async fn load_chat_session(
 /// Returns error string if session cannot be written.
 #[tauri::command]
 pub async fn save_chat_session(
-    session_manager: SessionManagerState<'_>,
+    state: State<'_, AppState>,
     session: ChatSession,
 ) -> Result<(), String> {
-    session_manager.save_session(session).map_err(|e| {
+    state.sessions.save_session(session).map_err(|e| {
         error!("Failed to save chat session: {}", e);
         format!("Failed to save session: {}", e)
     })
@@ -328,20 +325,14 @@ pub async fn save_chat_session(
 /// # Errors
 /// Returns error string if session cannot be created.
 #[tauri::command]
-pub async fn create_chat_session(
-    session_manager: SessionManagerState<'_>,
-    llm_service: tauri::State<
-        '_,
-        Arc<tokio::sync::Mutex<Option<crate::services::llm::LlmService>>>,
-    >,
-) -> Result<ChatSession, String> {
-    let session = session_manager.create_session().map_err(|e| {
+pub async fn create_chat_session(state: State<'_, AppState>) -> Result<ChatSession, String> {
+    let session = state.sessions.create_session().map_err(|e| {
         error!("Failed to create chat session: {}", e);
         format!("Failed to create session: {}", e)
     })?;
 
     // Initialize chat logger for this session
-    if let Some(llm) = llm_service.lock().await.as_ref() {
+    if let Some(llm) = state.llm.lock().await.as_ref() {
         match llm.get_chat_logger(&session.id).await {
             Ok(logger) => {
                 logger.log_session_info(
@@ -386,10 +377,10 @@ pub async fn create_chat_session(
 /// Returns error string if deletion fails.
 #[tauri::command]
 pub async fn delete_chat_session(
-    session_manager: SessionManagerState<'_>,
+    state: State<'_, AppState>,
     session_id: String,
 ) -> Result<bool, String> {
-    session_manager.delete_session(&session_id).map_err(|e| {
+    state.sessions.delete_session(&session_id).map_err(|e| {
         error!("Failed to delete chat session {}: {}", session_id, e);
         format!("Failed to delete session: {}", e)
     })
