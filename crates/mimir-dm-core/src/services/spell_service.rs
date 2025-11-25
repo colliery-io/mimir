@@ -6,6 +6,7 @@
 use crate::error::Result;
 use crate::models::catalog::{CatalogSpell, SpellFilters, SpellSummary, Spell, NewCatalogSpell, SpellData, Classes, ClassReference};
 use crate::schema::catalog_spells;
+use crate::services::CatalogService;
 use diesel::prelude::*;
 use std::collections::HashMap;
 use std::fs;
@@ -448,5 +449,38 @@ impl SpellService {
             }
         }
         filename == pattern
+    }
+}
+
+/// Stateful wrapper around SpellService for implementing CatalogService trait.
+///
+/// SpellService uses static methods for all operations. This wrapper provides
+/// a stateful interface that holds the database connection, enabling trait
+/// implementation while maintaining backward compatibility with existing code.
+pub struct SpellServiceStateful<'a> {
+    pub conn: &'a mut SqliteConnection,
+}
+
+impl<'a> SpellServiceStateful<'a> {
+    pub fn new(conn: &'a mut SqliteConnection) -> Self {
+        Self { conn }
+    }
+}
+
+impl<'a> CatalogService for SpellServiceStateful<'a> {
+    type Filters = SpellFilters;
+    type Summary = SpellSummary;
+    type Full = Spell;
+
+    fn search(&mut self, filters: Self::Filters) -> Result<Vec<Self::Summary>> {
+        SpellService::search_spells(self.conn, filters)
+    }
+
+    fn get_by_name_and_source(&mut self, name: &str, source: &str) -> Result<Option<Self::Full>> {
+        SpellService::get_spell_details(self.conn, name, source)
+    }
+
+    fn get_sources(&mut self) -> Result<Vec<String>> {
+        SpellService::get_spell_sources(self.conn)
     }
 }

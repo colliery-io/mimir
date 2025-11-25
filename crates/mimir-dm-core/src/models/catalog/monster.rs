@@ -328,7 +328,7 @@ pub struct NewCatalogMonster {
     pub fluff_json: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MonsterFilters {
     pub name: Option<String>,
     pub sizes: Option<Vec<String>>,

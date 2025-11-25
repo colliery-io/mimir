@@ -3,6 +3,7 @@
 //! This module contains services that orchestrate business logic,
 //! combining DAL operations with domain rules.
 
+pub mod catalog_trait;
 pub mod campaign_service;
 pub mod character;
 pub mod module_service;
@@ -32,6 +33,7 @@ pub mod class_service;
 pub mod table_service;
 
 // Re-export services
+pub use catalog_trait::CatalogService;
 pub use campaign_service::CampaignService;
 pub use character::CharacterService;
 pub use module_service::ModuleService;
@@ -39,7 +41,7 @@ pub use player_service::PlayerService;
 pub use session_service::SessionService;
 pub use document_service::DocumentService;
 pub use template_service::TemplateService;
-pub use spell_service::SpellService;
+pub use spell_service::{SpellService, SpellServiceStateful};
 pub use action_service::ActionService;
 pub use condition_service::ConditionService;
 pub use language_service::LanguageService;

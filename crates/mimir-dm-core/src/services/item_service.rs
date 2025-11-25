@@ -4,6 +4,7 @@ use crate::models::catalog::item::{
     CatalogItem, ItemSummary, ItemFilters, Item, NewCatalogItem, ItemData
 };
 use crate::schema::catalog_items;
+use crate::services::CatalogService;
 use std::fs;
 use std::path::Path;
 use tracing::{error, info, debug};
@@ -266,5 +267,23 @@ impl<'a> ItemService<'a> {
 
         info!("Removed {} items from source: {}", deleted, source);
         Ok(deleted)
+    }
+}
+
+impl<'a> CatalogService for ItemService<'a> {
+    type Filters = ItemFilters;
+    type Summary = ItemSummary;
+    type Full = Item;
+
+    fn search(&mut self, filters: Self::Filters) -> Result<Vec<Self::Summary>> {
+        self.search_items(filters)
+    }
+
+    fn get_by_name_and_source(&mut self, name: &str, source: &str) -> Result<Option<Self::Full>> {
+        self.get_item_by_name_and_source(name, source)
+    }
+
+    fn get_sources(&mut self) -> Result<Vec<String>> {
+        self.get_item_sources()
     }
 }

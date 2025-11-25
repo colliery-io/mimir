@@ -5,6 +5,7 @@ use crate::models::catalog::monster::{
     NewCatalogMonster, MonsterData, MonsterFluffData
 };
 use crate::schema::catalog_monsters;
+use crate::services::CatalogService;
 use std::fs;
 use std::path::Path;
 use tracing::{error, info, warn, debug};
@@ -199,6 +200,18 @@ impl<'a> MonsterService<'a> {
         Ok(counts)
     }
 
+    /// Get all unique sources for filtering
+    pub fn get_monster_sources(&mut self) -> Result<Vec<String>> {
+        use crate::schema::catalog_monsters::dsl::*;
+
+        let mut sources: Vec<String> = catalog_monsters
+            .select(source)
+            .distinct()
+            .load(self.conn)?;
+        sources.sort();
+        Ok(sources)
+    }
+
     /// Import all monster data from an uploaded book directory
     pub fn import_monsters_from_book(
         conn: &mut SqliteConnection,
@@ -386,5 +399,23 @@ impl<'a> MonsterService<'a> {
 
         info!("Removed {} monsters from source: {}", deleted, source);
         Ok(deleted)
+    }
+}
+
+impl<'a> CatalogService for MonsterService<'a> {
+    type Filters = MonsterFilters;
+    type Summary = MonsterSummary;
+    type Full = Monster;
+
+    fn search(&mut self, filters: Self::Filters) -> Result<Vec<Self::Summary>> {
+        self.search_monsters(filters)
+    }
+
+    fn get_by_name_and_source(&mut self, name: &str, source: &str) -> Result<Option<Self::Full>> {
+        self.get_monster_by_name_and_source(name, source)
+    }
+
+    fn get_sources(&mut self) -> Result<Vec<String>> {
+        self.get_monster_sources()
     }
 }

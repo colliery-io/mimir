@@ -194,7 +194,7 @@ pub struct NewCatalogItem {
     pub full_item_json: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ItemFilters {
     pub name: Option<String>,
     pub item_types: Option<Vec<String>>,

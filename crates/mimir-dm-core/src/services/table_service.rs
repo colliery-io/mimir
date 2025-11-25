@@ -3,6 +3,7 @@ use crate::error::Result;
 use crate::models::catalog::table::{
     CatalogTable, TableSummary, TableFilters, Table, NewCatalogTable, TableData
 };
+use crate::services::CatalogService;
 use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
@@ -213,5 +214,23 @@ impl<'a> TableService<'a> {
 
         info!("Removed {} tables from source: {}", deleted, source);
         Ok(deleted)
+    }
+}
+
+impl<'a> CatalogService for TableService<'a> {
+    type Filters = TableFilters;
+    type Summary = TableSummary;
+    type Full = Table;
+
+    fn search(&mut self, filters: Self::Filters) -> Result<Vec<Self::Summary>> {
+        self.search_tables(filters)
+    }
+
+    fn get_by_name_and_source(&mut self, name: &str, source: &str) -> Result<Option<Self::Full>> {
+        self.get_table_by_name_and_source(name, source)
+    }
+
+    fn get_sources(&mut self) -> Result<Vec<String>> {
+        self.get_table_sources()
     }
 }
