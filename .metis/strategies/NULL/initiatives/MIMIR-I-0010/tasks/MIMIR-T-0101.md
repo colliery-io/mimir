@@ -4,14 +4,14 @@ level: task
 title: "Write ADR for service pattern standardization"
 short_code: "MIMIR-T-0101"
 created_at: 2025-11-25T01:48:45.430737+00:00
-updated_at: 2025-11-25T02:18:27.265911+00:00
+updated_at: 2025-11-25T11:19:46.978214+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,6 +28,8 @@ initiative_id: MIMIR-I-0010
 ## Objective
 
 Write an Architectural Decision Record (ADR) that documents the standardized service pattern for the codebase, addressing the current inconsistency between stateful services (with `&mut self`) and static method services.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

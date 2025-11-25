@@ -4,14 +4,14 @@ level: task
 title: "Create generic CatalogSearchTrait"
 short_code: "MIMIR-T-0099"
 created_at: 2025-11-25T01:48:45.341858+00:00
-updated_at: 2025-11-25T02:16:50.700040+00:00
+updated_at: 2025-11-25T11:32:34.049612+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -33,10 +33,14 @@ Create a generic `CatalogSearchTrait` that unifies the common patterns across al
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [x] Define `CatalogSearchTrait` with common methods: `search`, `get_by_name_and_source`, `get_sources`
 - [x] Define associated types for filters, summaries, and full entities
 - [x] Implement the trait for at least 3 representative services (SpellServiceStateful, MonsterService, ItemService, TableService)
-- [ ] Create generic Tauri command handlers that work with trait objects or generics (deferred - significant architectural change)
+- [x] Create generic Tauri command handlers that work with trait objects or generics (catalog_commands! macro)
 - [x] Document the trait with examples
 - [x] All existing tests continue to pass (351 tests pass)
 

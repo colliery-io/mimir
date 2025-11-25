@@ -4,14 +4,14 @@ level: task
 title: "Unify on OpenAI-compatible endpoints for all LLM providers"
 short_code: "MIMIR-T-0119"
 created_at: 2025-11-25T01:57:08.447417+00:00
-updated_at: 2025-11-25T01:57:08.447417+00:00
+updated_at: 2025-11-25T11:18:04.324339+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -31,14 +31,18 @@ Refactor the LLM provider abstraction to use OpenAI-compatible API endpoints as 
 
 ## Acceptance Criteria
 
-- [ ] Create unified OpenAI-compatible client that works with any provider
-- [ ] Refactor Ollama provider to use OpenAI-compatible endpoint (/v1/chat/completions)
-- [ ] Refactor Groq provider to use same interface
-- [ ] Update LLM trait to align with OpenAI request/response formats
-- [ ] Migrate existing tests to use OpenAI-compatible endpoint format
-- [ ] Remove Ollama-specific endpoint code (/api/generate, /api/chat)
-- [ ] Document provider configuration (base URL, API key, model name)
-- [ ] All existing tests pass with refactored providers
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+- [x] Create unified OpenAI-compatible client that works with any provider
+- [x] Refactor Ollama provider to use OpenAI-compatible endpoint (/v1/chat/completions)
+- [x] Refactor Groq provider to use same interface
+- [x] Update LLM trait to align with OpenAI request/response formats
+- [x] Migrate existing tests to use OpenAI-compatible endpoint format
+- [x] Remove Ollama-specific endpoint code (/api/generate, /api/chat)
+- [x] Document provider configuration (base URL, API key, model name)
+- [x] All existing tests pass with refactored providers
 
 ## Implementation Notes
 

@@ -4,14 +4,14 @@ level: task
 title: "Document all Tauri commands"
 short_code: "MIMIR-T-0107"
 created_at: 2025-11-25T01:48:45.769883+00:00
-updated_at: 2025-11-25T01:48:45.769883+00:00
+updated_at: 2025-11-25T11:18:58.031716+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,6 +28,10 @@ initiative_id: MIMIR-I-0010
 ## Objective
 
 Add comprehensive documentation comments to all Tauri command handlers, describing their purpose, parameters, return types, and error conditions for frontend developers.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

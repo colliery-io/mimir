@@ -4,14 +4,14 @@ level: task
 title: "Reorganize commands directory by responsibility"
 short_code: "MIMIR-T-0115"
 created_at: 2025-11-25T01:48:54.321114+00:00
-updated_at: 2025-11-25T01:48:54.321114+00:00
+updated_at: 2025-11-25T10:57:31.662623+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,6 +28,10 @@ initiative_id: MIMIR-I-0010
 ## Objective
 
 Reorganize the flat commands directory (35+ files) into logical subdirectories grouped by domain responsibility, improving code navigation and maintainability.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
