@@ -15,7 +15,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
-use super::{CancellationTokens, ConfirmationReceivers, OLLAMA_BASE_URL};
+use super::{CancellationTokens, ConfirmationReceivers};
 
 /// Chat message structure for Tauri commands
 #[derive(Clone, Serialize, Deserialize)]
@@ -199,42 +199,37 @@ pub async fn confirm_tool_action(
     Ok(())
 }
 
-/// Tauri command to list available models from Ollama
+/// Tauri command to list available models from the current provider
 #[tauri::command]
-pub async fn list_available_models() -> Result<Vec<serde_json::Value>, String> {
-    // For now, we'll use a simple approach - just try to call Ollama's list endpoint
-    let client = reqwest::Client::new();
-    let url = format!("{}/api/tags", OLLAMA_BASE_URL);
+pub async fn list_available_models(
+    service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
+) -> Result<Vec<serde_json::Value>, String> {
+    use mimir_dm_llm::LlmProvider;
 
-    match client.get(&url).send().await {
-        Ok(response) => {
-            if response.status().is_success() {
-                match response.json::<serde_json::Value>().await {
-                    Ok(data) => {
-                        if let Some(models) = data.get("models").and_then(|m| m.as_array()) {
-                            let model_list: Vec<serde_json::Value> = models
-                                .iter()
-                                .map(|model| {
-                                    serde_json::json!({
-                                        "name": model.get("name").and_then(|n| n.as_str()).unwrap_or("unknown"),
-                                        "size": model.get("size").and_then(|s| s.as_u64()).unwrap_or(0),
-                                        "modified_at": model.get("modified_at").and_then(|m| m.as_str()).unwrap_or("")
-                                    })
-                                })
-                                .collect();
-                            Ok(model_list)
-                        } else {
-                            Ok(vec![])
-                        }
-                    }
-                    Err(e) => Err(format!("Failed to parse Ollama response: {}", e)),
-                }
-            } else {
-                Err(format!("Ollama API returned status: {}", response.status()))
-            }
-        }
-        Err(e) => Err(format!("Failed to connect to Ollama: {}", e)),
-    }
+    let service = service.lock().await;
+
+    let llm = service
+        .as_ref()
+        .ok_or_else(|| "LLM service not initialized".to_string())?;
+
+    // Use the provider's list_models method
+    let models = llm
+        .provider
+        .list_models()
+        .await
+        .map_err(|e| format!("Failed to list models: {}", e))?;
+
+    // Convert ModelInfo to JSON values
+    let model_list: Vec<serde_json::Value> = models
+        .into_iter()
+        .map(|model| {
+            serde_json::json!({
+                "name": model.name
+            })
+        })
+        .collect();
+
+    Ok(model_list)
 }
 
 /// Tauri command to cancel an ongoing chat message

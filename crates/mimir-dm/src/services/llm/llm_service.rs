@@ -172,11 +172,18 @@ impl LlmProvider for Provider {
             }
         }
     }
+
+    async fn list_models(&self) -> Result<Vec<mimir_dm_llm::ModelInfo>, mimir_dm_llm::LlmError> {
+        match self {
+            Provider::Ollama(p) => p.list_models().await,
+            Provider::Groq(p) => p.list_models().await,
+        }
+    }
 }
 
-/// Model names for different providers
-pub const OLLAMA_MODEL: &str = "gpt-oss:20b";
-pub const GROQ_MODEL: &str = "openai/gpt-oss-20b";
+/// Default model names for different providers (used when no model is configured)
+pub const DEFAULT_OLLAMA_MODEL: &str = "llama3.2";
+pub const DEFAULT_GROQ_MODEL: &str = "llama-3.3-70b-versatile";
 pub const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -304,17 +311,23 @@ impl LlmService {
                     .as_ref()
                     .context("Missing Ollama configuration")?;
 
-                let config = Self::create_ollama_config(&ollama_config.base_url);
+                // Use configured model or fall back to default
+                let model_name = ollama_config
+                    .model
+                    .clone()
+                    .unwrap_or_else(|| DEFAULT_OLLAMA_MODEL.to_string());
+
+                let config = Self::create_ollama_config(&ollama_config.base_url, &model_name);
                 let provider =
                     OllamaProvider::new(config).context("Failed to create Ollama provider")?;
 
                 info!(
-                    "Created Ollama provider with base URL: {}",
-                    ollama_config.base_url
+                    "Created Ollama provider with base URL: {}, model: {}",
+                    ollama_config.base_url, model_name
                 );
                 Ok((
                     Provider::Ollama(Arc::new(provider)),
-                    OLLAMA_MODEL.to_string(),
+                    model_name,
                     ProviderType::Ollama,
                 ))
             }
@@ -324,14 +337,20 @@ impl LlmService {
                     .as_ref()
                     .context("Missing Groq configuration")?;
 
-                let config = Self::create_groq_config(&groq_config.api_key);
+                // Use configured model or fall back to default
+                let model_name = groq_config
+                    .model
+                    .clone()
+                    .unwrap_or_else(|| DEFAULT_GROQ_MODEL.to_string());
+
+                let config = Self::create_groq_config(&groq_config.api_key, &model_name);
                 let provider =
                     GroqProvider::new(config).context("Failed to create Groq provider")?;
 
-                info!("Created Groq provider");
+                info!("Created Groq provider with model: {}", model_name);
                 Ok((
                     Provider::Groq(Arc::new(provider)),
-                    GROQ_MODEL.to_string(),
+                    model_name,
                     ProviderType::Groq,
                 ))
             }
@@ -339,34 +358,34 @@ impl LlmService {
     }
 
     /// Create Ollama model configuration
-    fn create_ollama_config(base_url: &str) -> ModelConfig {
+    fn create_ollama_config(base_url: &str, model: &str) -> ModelConfig {
         let mut config_map = HashMap::new();
         config_map.insert("base_url".to_string(), base_url.to_string());
 
         ModelConfig {
-            name: format!("{}-dm", OLLAMA_MODEL),
+            name: format!("{}-dm", model),
             supported_endpoints: vec![
                 EndpointType::Chat,
                 EndpointType::Completion,
                 EndpointType::Embedding,
             ],
             provider: "ollama".to_string(),
-            model: OLLAMA_MODEL.to_string(),
+            model: model.to_string(),
             config: Some(config_map),
             limit: None,
         }
     }
 
     /// Create Groq model configuration
-    fn create_groq_config(api_key: &str) -> ModelConfig {
+    fn create_groq_config(api_key: &str, model: &str) -> ModelConfig {
         let mut config_map = HashMap::new();
         config_map.insert("api_key".to_string(), api_key.to_string());
 
         ModelConfig {
-            name: format!("{}-dm", GROQ_MODEL),
+            name: format!("{}-dm", model),
             supported_endpoints: vec![EndpointType::Chat, EndpointType::Completion],
             provider: "groq".to_string(),
-            model: GROQ_MODEL.to_string(),
+            model: model.to_string(),
             config: Some(config_map),
             limit: None,
         }

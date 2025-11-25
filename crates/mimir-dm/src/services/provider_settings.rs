@@ -20,12 +20,16 @@ pub enum ProviderType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaConfig {
     pub base_url: String,
+    /// Selected model name (e.g., "llama3.2", "mistral")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 impl Default for OllamaConfig {
     fn default() -> Self {
         Self {
             base_url: "http://localhost:11434".to_string(),
+            model: None,
         }
     }
 }
@@ -34,6 +38,9 @@ impl Default for OllamaConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqConfig {
     pub api_key: String,
+    /// Selected model name (e.g., "llama-3.3-70b-versatile", "mixtral-8x7b-32768")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 /// Provider settings structure
@@ -168,6 +175,7 @@ mod tests {
             ollama_config: None,
             groq_config: Some(GroqConfig {
                 api_key: "test-key".to_string(),
+                model: None,
             }),
             tool_confirmation_timeout_secs: 60,
         };
@@ -181,6 +189,7 @@ mod tests {
             ollama_config: None,
             groq_config: Some(GroqConfig {
                 api_key: "".to_string(),
+                model: None,
             }),
             tool_confirmation_timeout_secs: 60,
         };
@@ -197,6 +206,7 @@ mod tests {
             ollama_config: None,
             groq_config: Some(GroqConfig {
                 api_key: "test-api-key".to_string(),
+                model: Some("llama-3.3-70b-versatile".to_string()),
             }),
             tool_confirmation_timeout_secs: 90,
         };
@@ -208,7 +218,12 @@ mod tests {
         let loaded = ProviderSettings::load(&config_dir).unwrap();
         assert_eq!(loaded.provider_type, ProviderType::Groq);
         assert!(loaded.groq_config.is_some());
-        assert_eq!(loaded.groq_config.unwrap().api_key, "test-api-key");
+        let groq_config = loaded.groq_config.unwrap();
+        assert_eq!(groq_config.api_key, "test-api-key");
+        assert_eq!(
+            groq_config.model,
+            Some("llama-3.3-70b-versatile".to_string())
+        );
     }
 
     #[test]

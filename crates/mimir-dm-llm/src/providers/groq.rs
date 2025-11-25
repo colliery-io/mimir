@@ -50,7 +50,7 @@ use crate::config::{EndpointType, ModelConfig};
 use crate::providers::openai_compat::{OpenAiChatRequest, OpenAiCompatClient, OpenAiMessage};
 use crate::traits::{
     ChatResponse, CompletionResponse, EmbeddingResponse, LlmError, LlmProvider, Message,
-    RateLimitState, Tool,
+    ModelInfo, RateLimitState, Tool,
 };
 
 // Note: Groq now uses the shared OpenAI-compatible client (OpenAiCompatClient).
@@ -197,6 +197,39 @@ impl LlmProvider for GroqProvider {
     ) -> Result<EmbeddingResponse, LlmError> {
         // Groq doesn't currently support embeddings via their API
         Err(LlmError::NotSupported)
+    }
+
+    /// List available Groq models (static list)
+    ///
+    /// Returns a curated list of commonly available Groq models.
+    /// See <https://console.groq.com/docs/models> for the current list.
+    async fn list_models(&self) -> Result<Vec<ModelInfo>, LlmError> {
+        // Static list of known Groq models
+        // These are the commonly available models as of early 2025
+        let models = vec![
+            ModelInfo {
+                name: "llama-3.3-70b-versatile".to_string(),
+            },
+            ModelInfo {
+                name: "llama-3.1-70b-versatile".to_string(),
+            },
+            ModelInfo {
+                name: "llama-3.1-8b-instant".to_string(),
+            },
+            ModelInfo {
+                name: "llama-3.2-90b-vision-preview".to_string(),
+            },
+            ModelInfo {
+                name: "llama-3.2-11b-vision-preview".to_string(),
+            },
+            ModelInfo {
+                name: "mixtral-8x7b-32768".to_string(),
+            },
+            ModelInfo {
+                name: "gemma2-9b-it".to_string(),
+            },
+        ];
+        Ok(models)
     }
 }
 
