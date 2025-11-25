@@ -6,6 +6,10 @@
 //! - `player`: Player management and campaign associations
 //! - `character`: Character data and version tracking
 
+// Data models have many fields - documenting each would be verbose and redundant.
+// Field names are chosen to be self-documenting.
+#![allow(missing_docs)]
+
 pub mod campaign;
 pub mod catalog;
 pub mod character;

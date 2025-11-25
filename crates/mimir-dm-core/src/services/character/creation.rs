@@ -2,6 +2,9 @@
 //!
 //! Implements step-by-step character creation with data from uploaded rule books.
 
+// Builder patterns have many fields - documentation would be verbose
+#![allow(missing_docs)]
+
 use crate::connection::DbConnection;
 use crate::error::{DbError, Result};
 use crate::models::catalog::{Background, Race};

@@ -1,3 +1,10 @@
+//! 5etools Repository Splitter
+//!
+//! This crate processes 5etools repositories and splits them into individual
+//! book archives for import into Mimir.
+
+#![warn(missing_docs)]
+
 pub mod archive;
 pub mod collector;
 pub mod filter;

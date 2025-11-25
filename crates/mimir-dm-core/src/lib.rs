@@ -1,8 +1,10 @@
 //! Mimir Core Business Logic
-//! 
+//!
 //! This crate provides the core domain models, business logic, and data persistence
 //! for the Mimir D&D Campaign Assistant. It includes both the rules reference system
 //! (D&D 5e data) and the campaign management system (modules, sessions, documents).
+
+#![warn(missing_docs)]
 
 pub mod connection;
 pub mod dal;

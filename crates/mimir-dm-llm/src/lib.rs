@@ -52,6 +52,8 @@
 //! # }
 //! ```
 
+#![warn(missing_docs)]
+
 pub mod config;
 pub mod traits;
 pub mod providers;

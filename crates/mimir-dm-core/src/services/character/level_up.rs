@@ -2,6 +2,9 @@
 //!
 //! Handles level advancement including HP calculation, ASI, feats, and multiclassing.
 
+// Level up types have documented variants but many internal fields
+#![allow(missing_docs)]
+
 use crate::connection::DbConnection;
 use crate::error::{DbError, Result};
 use crate::models::character::data::AbilityScores;

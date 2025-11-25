@@ -18,16 +18,20 @@ pub enum DbError {
     
     /// Entity not found
     #[error("Entity not found: {entity_type} with id '{id}'")]
-    NotFound { 
-        entity_type: String, 
-        id: String 
+    NotFound {
+        /// Type of entity that was not found.
+        entity_type: String,
+        /// Identifier that was searched for.
+        id: String,
     },
-    
+
     /// Constraint violation
     #[error("Constraint violation: {field} - {message}")]
-    ConstraintViolation { 
+    ConstraintViolation {
+        /// Field that violated the constraint.
         field: String,
-        message: String 
+        /// Description of the violation.
+        message: String,
     },
     
     /// JSON serialization/deserialization error

@@ -1,5 +1,8 @@
 // @generated automatically by Diesel CLI.
 
+// Schema is auto-generated - documentation would be overwritten
+#![allow(missing_docs)]
+
 diesel::table! {
     catalog_cults (id) {
         id -> Integer,

@@ -14,14 +14,17 @@ use tracing::{debug, info};
 
 /// Service for searching and managing variant rules in the catalog.
 pub struct VariantRuleService<'a> {
+    /// Database connection.
     pub conn: &'a mut SqliteConnection,
 }
 
 impl<'a> VariantRuleService<'a> {
+    /// Creates a new variant rule service.
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }
 
+    /// Searches variant rules by filters.
     pub fn search_variant_rules(&mut self, filters: VariantRuleFilters) -> Result<Vec<VariantRuleSummary>> {
         use crate::schema::catalog_variant_rules::dsl::*;
 

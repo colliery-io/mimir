@@ -40,37 +40,57 @@ pub trait BoardDefinition {
     }
 }
 
+/// Metadata describing a workflow stage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StageMetadata {
+    /// Human-readable name for the stage.
     pub display_name: String,
+    /// Description of what this stage represents.
     pub description: String,
+    /// Message shown when stage is completed.
     pub completion_message: Option<String>,
+    /// Prompt shown when transitioning from this stage.
     pub transition_prompt: Option<String>,
+    /// Help text for users in this stage.
     pub help_text: Option<String>,
+    /// Additional content or instructions.
     pub content: Option<String>,
 }
 
+/// Status of a board's completion progress.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BoardCompletionStatus {
+    /// Type of board (campaign, module, session).
     pub board_type: String,
+    /// Current stage identifier.
     pub current_stage: String,
+    /// Total number of required documents for current stage.
     pub total_required_documents: usize,
+    /// Number of required documents that are completed.
     pub completed_required_documents: usize,
+    /// Total number of optional documents for current stage.
     pub total_optional_documents: usize,
+    /// Number of optional documents that are completed.
     pub completed_optional_documents: usize,
+    /// List of required document types that are missing.
     pub missing_required_documents: Vec<String>,
+    /// Whether all requirements for current stage are met.
     pub is_stage_complete: bool,
+    /// Whether the board can progress to the next stage.
     pub can_progress: bool,
+    /// The next stage if progression is possible.
     pub next_stage: Option<String>,
+    /// Metadata for the current stage.
     pub stage_metadata: StageMetadata,
 }
 
-/// Registry of all board definitions
+/// Registry of all board definitions.
 pub struct BoardRegistry {
     boards: HashMap<String, Box<dyn BoardDefinition + Send + Sync>>,
 }
 
 impl BoardRegistry {
+    /// Creates a new registry with all standard board types registered.
     pub fn new() -> Self {
         let mut boards = HashMap::new();
         
@@ -90,7 +110,8 @@ impl BoardRegistry {
         
         Self { boards }
     }
-    
+
+    /// Gets a board definition by type name.
     pub fn get(&self, board_type: &str) -> Option<&Box<dyn BoardDefinition + Send + Sync>> {
         self.boards.get(board_type)
     }

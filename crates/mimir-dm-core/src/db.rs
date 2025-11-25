@@ -5,7 +5,9 @@ use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use tracing::{info, warn};
 
+/// Connection pool type for SQLite connections.
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
+/// Pooled SQLite connection type.
 pub type DbConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
 
 /// Database service that owns the connection pool
