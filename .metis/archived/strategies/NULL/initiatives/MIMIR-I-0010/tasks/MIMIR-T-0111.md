@@ -67,6 +67,8 @@ initiative_id: MIMIR-I-0010
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] {Specific, testable requirement 1}
