@@ -121,15 +121,10 @@ def coverage(core: bool = False, ui: bool = False, all: bool = False, open: bool
             print("cargo-tarpaulin not found. Installing...")
             subprocess.run(["cargo", "install", "cargo-tarpaulin"], cwd=PROJECT_ROOT)
 
-        # Run tarpaulin with HTML output, excluding UI crate
+        # Run tarpaulin using the config file
         cmd = [
             "cargo", "tarpaulin",
-            "--workspace",
-            "--exclude", "mimir-dm",
-            "--out", "Html",
-            "--output-dir", "target/coverage",
-            "--exclude-files", "*/tests/*", "*/examples/*", "*/build.rs",
-            "--timeout", "120"
+            "--config", "tarpaulin.toml"
         ]
 
         result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=False)
