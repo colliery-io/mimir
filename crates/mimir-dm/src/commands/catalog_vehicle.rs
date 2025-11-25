@@ -1,10 +1,27 @@
+//! Database-backed vehicle catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving vehicle data
+//! from the 5e catalog database. Includes ships, war machines, and other conveyances.
+
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::vehicle::{Vehicle, VehicleFilters, VehicleSummary};
 use mimir_dm_core::services::VehicleService;
 use tauri::State;
 use tracing::{debug, error};
 
-/// Search vehicles from database with filters
+/// Search the vehicle catalog with optional filters.
+///
+/// Returns a list of vehicle summaries matching the provided criteria.
+/// All filter parameters within the `VehicleFilters` struct are optional.
+///
+/// # Parameters
+/// - `filters` - Filter criteria including type, size, terrain, and text search
+///
+/// # Returns
+/// List of `VehicleSummary` objects containing basic vehicle information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_vehicles(
     filters: VehicleFilters,
@@ -22,7 +39,19 @@ pub async fn search_vehicles(
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get vehicle details by name and source
+/// Get complete vehicle details by name and source.
+///
+/// Retrieves the full vehicle record including stats, crew requirements, and actions.
+///
+/// # Parameters
+/// - `vehicle_name` - Exact vehicle name (case-sensitive)
+/// - `vehicle_source` - Source book abbreviation (e.g., "GoS", "DMG")
+///
+/// # Returns
+/// The complete `Vehicle` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_vehicle_details(
     vehicle_name: String,
@@ -41,7 +70,16 @@ pub async fn get_vehicle_details(
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get all vehicle types for filter dropdowns
+/// Get all unique vehicle types in the catalog.
+///
+/// Returns vehicle type categories for populating filter dropdowns.
+/// Examples include Ship, Infernal War Machine, Spelljammer, etc.
+///
+/// # Returns
+/// List of vehicle type names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_vehicle_types(
     state: State<'_, AppState>,
@@ -58,7 +96,16 @@ pub async fn get_vehicle_types(
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get all vehicle sizes for filter dropdowns
+/// Get all unique vehicle sizes in the catalog.
+///
+/// Returns size categories for populating filter dropdowns.
+/// Uses standard D&D sizes (Large, Huge, Gargantuan, etc.).
+///
+/// # Returns
+/// List of size names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_vehicle_sizes(
     state: State<'_, AppState>,
@@ -75,7 +122,16 @@ pub async fn get_vehicle_sizes(
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get all vehicle terrains for filter dropdowns
+/// Get all unique vehicle terrains in the catalog.
+///
+/// Returns terrain types for populating filter dropdowns.
+/// Examples include Water, Land, Air, Space, etc.
+///
+/// # Returns
+/// List of terrain names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_vehicle_terrains(
     state: State<'_, AppState>,
@@ -92,7 +148,16 @@ pub async fn get_vehicle_terrains(
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
-/// Get vehicle count by source for statistics
+/// Get vehicle count statistics grouped by source book.
+///
+/// Returns a breakdown of how many vehicles are in each source book.
+/// Used for displaying catalog statistics in the UI.
+///
+/// # Returns
+/// List of tuples containing (source abbreviation, count).
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_vehicle_statistics(
     state: State<'_, AppState>,

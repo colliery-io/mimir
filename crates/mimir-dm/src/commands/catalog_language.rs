@@ -1,4 +1,7 @@
-//! Database-backed language catalog commands
+//! Database-backed language catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving language data
+//! from the 5e catalog database. Used for character creation and world-building.
 
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::{Language, LanguageFilters, LanguageSummary};
@@ -6,7 +9,22 @@ use mimir_dm_core::services::LanguageService;
 use tauri::State;
 use tracing::{debug, error, info};
 
-/// Search languages using database with filters
+/// Search the language catalog with optional filters.
+///
+/// Returns a list of language summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `query` - Text to search in language names (case-insensitive)
+/// - `language_types` - Filter by type (e.g., `["Standard", "Exotic"]`)
+/// - `scripts` - Filter by script used (e.g., `["Common", "Elvish"]`)
+/// - `sources` - Filter by source books
+///
+/// # Returns
+/// List of `LanguageSummary` objects containing basic language information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_languages(
     state: State<'_, AppState>,
@@ -43,7 +61,19 @@ pub async fn search_languages(
     }
 }
 
-/// Get a specific language by name and source for modal display
+/// Get complete language details by name and source.
+///
+/// Retrieves the full language record including typical speakers and script.
+///
+/// # Parameters
+/// - `name` - Exact language name (case-sensitive)
+/// - `source` - Source book abbreviation
+///
+/// # Returns
+/// The complete `Language` object.
+///
+/// # Errors
+/// Returns an error string if the language is not found or database fails.
 #[tauri::command]
 pub async fn get_language_details(
     state: State<'_, AppState>,
@@ -67,7 +97,16 @@ pub async fn get_language_details(
     }
 }
 
-/// Get all available language types for filter dropdowns
+/// Get all unique language types in the catalog.
+///
+/// Returns type categories present in the language catalog.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of type names (e.g., `["Standard", "Exotic"]`).
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_language_types(
     state: State<'_, AppState>,
@@ -88,7 +127,16 @@ pub async fn get_language_types(
     }
 }
 
-/// Get all available scripts for filter dropdowns
+/// Get all unique scripts in the language catalog.
+///
+/// Returns script names used by languages in the catalog.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of script names (e.g., `["Common", "Elvish", "Dwarvish"]`).
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_language_scripts(
     state: State<'_, AppState>,
@@ -109,7 +157,16 @@ pub async fn get_language_scripts(
     }
 }
 
-/// Get all available sources for filter dropdowns
+/// Get all unique source books containing languages.
+///
+/// Returns source book abbreviations that contain at least one language.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_language_sources(
     state: State<'_, AppState>,
@@ -130,7 +187,15 @@ pub async fn get_language_sources(
     }
 }
 
-/// Get language count for statistics
+/// Get total number of languages in the catalog.
+///
+/// Returns the total count of all languages.
+///
+/// # Returns
+/// Total language count as a 64-bit integer.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_language_count(
     state: State<'_, AppState>,

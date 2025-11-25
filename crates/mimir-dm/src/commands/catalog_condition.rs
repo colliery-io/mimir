@@ -1,4 +1,7 @@
-//! Database-backed condition catalog commands
+//! Database-backed condition catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving condition and disease data
+//! from the 5e catalog database. Includes exhaustion, blinded, poisoned, etc.
 
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::{ConditionOrDisease, ConditionFilters, ConditionSummary};
@@ -6,7 +9,22 @@ use mimir_dm_core::services::ConditionService;
 use tauri::State;
 use tracing::{debug, error, info};
 
-/// Search conditions and diseases using database with filters
+/// Search the condition/disease catalog with optional filters.
+///
+/// Returns a list of condition summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `name` - Filter by exact condition name
+/// - `search` - Text to search in condition names/descriptions (case-insensitive)
+/// - `item_types` - Filter by type (e.g., `["condition", "disease"]`)
+/// - `sources` - Filter by source books
+///
+/// # Returns
+/// List of `ConditionSummary` objects containing basic condition information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_conditions(
     state: State<'_, AppState>,
@@ -42,7 +60,18 @@ pub async fn search_conditions(
     }
 }
 
-/// Get a specific condition or disease by ID for modal display
+/// Get complete condition/disease details by database ID.
+///
+/// Retrieves the full condition record including effects and duration.
+///
+/// # Parameters
+/// - `condition_id` - Database ID of the condition
+///
+/// # Returns
+/// The complete `ConditionOrDisease` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_condition(
     state: State<'_, AppState>,
@@ -64,7 +93,16 @@ pub async fn get_condition(
     }
 }
 
-/// Get all available item types for filter dropdowns
+/// Get all unique condition types in the catalog.
+///
+/// Returns type categories (condition vs disease) present in the catalog.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of type names (e.g., `["condition", "disease"]`).
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_condition_item_types(
     state: State<'_, AppState>,
@@ -85,7 +123,16 @@ pub async fn get_condition_item_types(
     }
 }
 
-/// Get all available sources for filter dropdowns
+/// Get all unique source books containing conditions.
+///
+/// Returns source book abbreviations that contain at least one condition.
+/// Used to populate filter dropdowns in the UI.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_condition_sources(
     state: State<'_, AppState>,
@@ -106,7 +153,15 @@ pub async fn get_condition_sources(
     }
 }
 
-/// Get condition count for statistics
+/// Get total number of conditions in the catalog.
+///
+/// Returns the total count of all conditions and diseases.
+///
+/// # Returns
+/// Total condition count as a 64-bit integer.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_condition_count(
     state: State<'_, AppState>,

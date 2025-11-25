@@ -1,4 +1,7 @@
-//! Database-backed table catalog commands
+//! Database-backed table catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving random table data
+//! from the 5e catalog database. Used for random generation and DM tools.
 
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::table::{Table, TableFilters, TableSummary};
@@ -6,7 +9,21 @@ use mimir_dm_core::services::TableService;
 use tauri::State;
 use tracing::{debug, info};
 
-/// Search tables using database with filters
+/// Search the table catalog with optional filters.
+///
+/// Returns a list of table summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `query` - Text to search in table names (case-insensitive)
+/// - `categories` - Filter by table category (e.g., "Treasure", "Encounters")
+/// - `sources` - Filter by source books
+///
+/// # Returns
+/// List of `TableSummary` objects containing basic table information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_tables(
     query: Option<String>,
@@ -35,7 +52,18 @@ pub async fn search_tables(
     Ok(tables)
 }
 
-/// Get table by ID
+/// Get table by database ID.
+///
+/// Retrieves a table record by its internal database identifier.
+///
+/// # Parameters
+/// - `id` - Database ID of the table
+///
+/// # Returns
+/// The complete `Table` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_table(
     id: i32,
@@ -52,7 +80,19 @@ pub async fn get_table(
         .map_err(|e| format!("Failed to get table: {}", e))
 }
 
-/// Get detailed table information by name and source
+/// Get complete table details by name and source.
+///
+/// Retrieves the full table record including rows and dice expressions.
+///
+/// # Parameters
+/// - `name` - Exact table name (case-sensitive)
+/// - `source` - Source book abbreviation (e.g., "DMG", "XGE")
+///
+/// # Returns
+/// The complete `Table` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_table_details(
     name: String,
@@ -70,7 +110,16 @@ pub async fn get_table_details(
         .map_err(|e| format!("Failed to get table details: {}", e))
 }
 
-/// Get available table categories for filter dropdown
+/// Get all unique table categories in the catalog.
+///
+/// Returns category names for populating filter dropdowns.
+/// Examples include Treasure, Encounters, Wild Magic, etc.
+///
+/// # Returns
+/// List of category names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_table_categories(
     state: State<'_, AppState>,
@@ -89,7 +138,15 @@ pub async fn get_table_categories(
     Ok(categories)
 }
 
-/// Get available table sources for filter dropdown
+/// Get all unique source books containing tables.
+///
+/// Returns source book abbreviations for populating filter dropdowns.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_table_sources(
     state: State<'_, AppState>,

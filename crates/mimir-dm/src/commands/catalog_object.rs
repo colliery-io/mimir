@@ -1,9 +1,30 @@
+//! Database-backed object catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving object data
+//! from the 5e catalog database. Includes mundane and hazardous objects.
+
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::ObjectFilters;
 use mimir_dm_core::services::ObjectService;
 use tauri::State;
 use tracing::error;
 
+/// Search the object catalog with optional filters.
+///
+/// Returns a list of object summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `search` - Text to search in object names (case-insensitive)
+/// - `sources` - Filter by source books
+/// - `object_types` - Filter by object type
+/// - `sizes` - Filter by size category
+///
+/// # Returns
+/// List of object summaries as JSON values.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_objects(
     search: Option<String>,
@@ -36,6 +57,19 @@ pub async fn search_objects(
     Ok(json_results)
 }
 
+/// Get complete object details by name and source.
+///
+/// Retrieves the full object data as stored JSON.
+///
+/// # Parameters
+/// - `name` - Exact object name (case-sensitive)
+/// - `source` - Source book abbreviation
+///
+/// # Returns
+/// The complete object JSON string if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_object_details(
     name: String,
@@ -51,6 +85,15 @@ pub async fn get_object_details(
         .map_err(|e| format!("Failed to get object details: {}", e))
 }
 
+/// Get all unique source books containing objects.
+///
+/// Returns source book abbreviations for populating filter dropdowns.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_object_sources(
     state: State<'_, AppState>,
@@ -64,6 +107,15 @@ pub async fn get_object_sources(
         .map_err(|e| format!("Failed to get object sources: {}", e))
 }
 
+/// Get total number of objects in the catalog.
+///
+/// Returns the total count of all objects across all source books.
+///
+/// # Returns
+/// Total object count as a 64-bit integer.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_object_count(
     state: State<'_, AppState>,
@@ -77,6 +129,15 @@ pub async fn get_object_count(
         .map_err(|e| format!("Failed to get object count: {}", e))
 }
 
+/// Get all unique object types in the catalog.
+///
+/// Returns type names for populating filter dropdowns.
+///
+/// # Returns
+/// List of type names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_object_types(
     state: State<'_, AppState>,
@@ -90,6 +151,16 @@ pub async fn get_object_types(
         .map_err(|e| format!("Failed to get object types: {}", e))
 }
 
+/// Get all unique object sizes in the catalog.
+///
+/// Returns size categories for populating filter dropdowns.
+/// Uses standard D&D sizes (Tiny, Small, Medium, Large, etc.).
+///
+/// # Returns
+/// List of size names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_object_sizes(
     state: State<'_, AppState>,

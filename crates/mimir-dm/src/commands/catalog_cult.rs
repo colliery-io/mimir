@@ -1,9 +1,30 @@
+//! Database-backed cult and boon catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving cult and demonic boon data
+//! from the 5e catalog database. Used for villain creation and campaign planning.
+
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::cult::{CatalogCult, CultBoonSummary, CultFilters};
 use mimir_dm_core::services::CultService;
 use tauri::State;
 use tracing::{debug, error};
 
+/// Search the cult catalog with optional filters.
+///
+/// Returns a list of cult and boon summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `name` - Filter by exact cult/boon name
+/// - `sources` - Filter by source books
+/// - `categories` - Filter by category
+/// - `cult_types` - Filter by cult type
+///
+/// # Returns
+/// List of `CultBoonSummary` objects containing basic cult information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_cults(
     name: Option<String>,
@@ -35,6 +56,19 @@ pub async fn search_cults(
         })
 }
 
+/// Get complete cult details by name and source.
+///
+/// Retrieves the full cult record including goals, traits, and boons.
+///
+/// # Parameters
+/// - `name` - Exact cult name (case-sensitive)
+/// - `source` - Source book abbreviation
+///
+/// # Returns
+/// The complete `CatalogCult` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_cult_details(
     name: String,
@@ -57,6 +91,15 @@ pub async fn get_cult_details(
         })
 }
 
+/// Get all unique source books containing cults.
+///
+/// Returns source book abbreviations for populating filter dropdowns.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_cult_sources(
     state: State<'_, AppState>,
@@ -77,6 +120,15 @@ pub async fn get_cult_sources(
         })
 }
 
+/// Get total number of cults and boons in the catalog.
+///
+/// Returns the total count of all cult-related entries.
+///
+/// # Returns
+/// Total cult count as a 64-bit integer.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_cult_count(
     state: State<'_, AppState>,
@@ -97,6 +149,15 @@ pub async fn get_cult_count(
         })
 }
 
+/// Get all unique cult types in the catalog.
+///
+/// Returns cult type categories for populating filter dropdowns.
+///
+/// # Returns
+/// List of type names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_cult_types(
     state: State<'_, AppState>,
@@ -117,6 +178,15 @@ pub async fn get_cult_types(
         })
 }
 
+/// Get all unique cult categories in the catalog.
+///
+/// Returns category names for populating filter dropdowns.
+///
+/// # Returns
+/// List of category names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_cult_categories(
     state: State<'_, AppState>,

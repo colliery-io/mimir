@@ -1,9 +1,30 @@
+//! Database-backed trap catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving trap and hazard data
+//! from the 5e catalog database. Used for dungeon design and encounter building.
+
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::{CatalogTrap, TrapFilters, TrapSummary};
 use mimir_dm_core::services::TrapService;
 use tauri::State;
 use tracing::{debug, error};
 
+/// Search the trap catalog with optional filters.
+///
+/// Returns a list of trap summaries matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `search` - Text to search in trap names (case-insensitive)
+/// - `sources` - Filter by source books
+/// - `categories` - Filter by trap category
+/// - `trap_types` - Filter by trap type (mechanical, magical, etc.)
+///
+/// # Returns
+/// List of `TrapSummary` objects containing basic trap information.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_traps(
     search: Option<String>,
@@ -35,6 +56,19 @@ pub async fn search_traps(
         })
 }
 
+/// Get complete trap details by name and source.
+///
+/// Retrieves the full trap record including trigger, effect, and countermeasures.
+///
+/// # Parameters
+/// - `name` - Exact trap name (case-sensitive)
+/// - `source` - Source book abbreviation (e.g., "DMG", "XGE")
+///
+/// # Returns
+/// The complete `CatalogTrap` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_trap_details(
     name: String,
@@ -57,6 +91,15 @@ pub async fn get_trap_details(
         })
 }
 
+/// Get all unique source books containing traps.
+///
+/// Returns source book abbreviations for populating filter dropdowns.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_trap_sources(
     state: State<'_, AppState>,
@@ -77,6 +120,15 @@ pub async fn get_trap_sources(
         })
 }
 
+/// Get total number of traps in the catalog.
+///
+/// Returns the total count of all traps and hazards.
+///
+/// # Returns
+/// Total trap count as a 64-bit integer.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_trap_count(
     state: State<'_, AppState>,
@@ -97,6 +149,16 @@ pub async fn get_trap_count(
         })
 }
 
+/// Get all unique trap types in the catalog.
+///
+/// Returns trap type categories for populating filter dropdowns.
+/// Examples include mechanical, magical, etc.
+///
+/// # Returns
+/// List of type names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_trap_types(
     state: State<'_, AppState>,
@@ -117,6 +179,15 @@ pub async fn get_trap_types(
         })
 }
 
+/// Get all unique trap categories in the catalog.
+///
+/// Returns category names for populating filter dropdowns.
+///
+/// # Returns
+/// List of category names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_trap_categories(
     state: State<'_, AppState>,

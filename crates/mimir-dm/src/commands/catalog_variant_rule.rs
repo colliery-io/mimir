@@ -1,8 +1,28 @@
+//! Database-backed variant rule catalog commands.
+//!
+//! Provides Tauri commands for searching and retrieving variant and optional rules
+//! from the 5e catalog database. Includes house rules, optional mechanics, etc.
+
 use crate::state::AppState;
 use mimir_dm_core::models::catalog::variant_rule::{VariantRule, VariantRuleFilters};
 use mimir_dm_core::services::VariantRuleService;
 use tauri::State;
 
+/// Search the variant rule catalog with optional filters.
+///
+/// Returns a list of variant rules matching the provided criteria.
+/// All filter parameters are optional and can be combined.
+///
+/// # Parameters
+/// - `query` - Text to search in rule names (case-insensitive)
+/// - `rule_types` - Filter by rule type
+/// - `sources` - Filter by source books
+///
+/// # Returns
+/// List of variant rules as JSON values.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn search_variant_rules(
     query: Option<String>,
@@ -33,6 +53,18 @@ pub async fn search_variant_rules(
     Ok(json_results)
 }
 
+/// Get variant rule by database ID.
+///
+/// Retrieves a rule record by its internal database identifier.
+///
+/// # Parameters
+/// - `id` - Database ID of the variant rule
+///
+/// # Returns
+/// The complete `VariantRule` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_variant_rule(
     id: i32,
@@ -47,6 +79,19 @@ pub async fn get_variant_rule(
         .map_err(|e| format!("Failed to get variant rule: {}", e))
 }
 
+/// Get complete variant rule details by name and source.
+///
+/// Retrieves the full rule record including description and mechanics.
+///
+/// # Parameters
+/// - `name` - Exact rule name (case-sensitive)
+/// - `source` - Source book abbreviation (e.g., "DMG", "PHB")
+///
+/// # Returns
+/// The complete `VariantRule` object if found, or `None` if no match.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_variant_rule_details(
     name: String,
@@ -62,6 +107,15 @@ pub async fn get_variant_rule_details(
         .map_err(|e| format!("Failed to get variant rule details: {}", e))
 }
 
+/// Get all unique rule types in the variant rule catalog.
+///
+/// Returns rule type categories for populating filter dropdowns.
+///
+/// # Returns
+/// List of rule type names.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_variant_rule_types(
     state: State<'_, AppState>,
@@ -75,6 +129,15 @@ pub async fn get_variant_rule_types(
         .map_err(|e| format!("Failed to get variant rule types: {}", e))
 }
 
+/// Get all unique source books containing variant rules.
+///
+/// Returns source book abbreviations for populating filter dropdowns.
+///
+/// # Returns
+/// List of source abbreviations.
+///
+/// # Errors
+/// Returns an error string if the database connection or query fails.
 #[tauri::command]
 pub async fn get_variant_rule_sources(
     state: State<'_, AppState>,
