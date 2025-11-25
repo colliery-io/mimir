@@ -1,4 +1,7 @@
-//! Module management commands
+//! Module management commands.
+//!
+//! Provides Tauri commands for creating and managing adventure modules within campaigns.
+//! Modules represent discrete adventures or story arcs with their own workflow stages.
 
 use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};

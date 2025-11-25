@@ -1,3 +1,8 @@
+//! Stage transition and document initialization commands.
+//!
+//! Provides Tauri commands for initializing stage-specific documents and
+//! managing campaign workflow transitions.
+
 use crate::state::AppState;
 use tauri::State;
 use tracing::warn;

@@ -1,4 +1,7 @@
-//! Session-related Tauri commands
+//! Game session management commands.
+//!
+//! Provides Tauri commands for creating and managing game sessions within modules.
+//! Sessions represent individual play sessions and track their workflow status.
 
 use crate::state::AppState;
 use crate::types::ApiResponse;
@@ -20,7 +23,18 @@ pub struct SessionResponse {
     pub data: mimir_dm_core::models::campaign::sessions::Session,
 }
 
-/// Create a new session for a module
+/// Create a new game session for a module.
+///
+/// Creates a session directory and database record.
+///
+/// # Parameters
+/// - `request` - Session creation details including module and campaign IDs
+///
+/// # Returns
+/// `SessionResponse` containing the created session.
+///
+/// # Errors
+/// Returns error string if creation fails.
 #[tauri::command]
 pub async fn create_session(
     request: CreateSessionRequest,
@@ -50,7 +64,16 @@ pub struct SessionListResponse {
     pub data: Vec<mimir_dm_core::models::campaign::sessions::Session>,
 }
 
-/// List all sessions for a module
+/// List all sessions for a specific module.
+///
+/// # Parameters
+/// - `request` - Contains the module ID to query
+///
+/// # Returns
+/// `SessionListResponse` containing all sessions for the module.
+///
+/// # Errors
+/// Returns error string if query fails.
 #[tauri::command]
 pub async fn list_module_sessions(
     request: ListSessionsRequest,
@@ -73,7 +96,16 @@ pub struct TransitionSessionRequest {
     pub new_status: String,
 }
 
-/// Transition a session to a new status
+/// Transition a session to a new workflow status.
+///
+/// # Parameters
+/// - `request` - Contains session ID and target status
+///
+/// # Returns
+/// `SessionResponse` with the updated session.
+///
+/// # Errors
+/// Returns error string if transition is not allowed or fails.
 #[tauri::command]
 pub async fn transition_session_status(
     request: TransitionSessionRequest,
@@ -90,7 +122,16 @@ pub async fn transition_session_status(
     Ok(SessionResponse { data: session })
 }
 
-/// Get session board configuration
+/// Get session board configuration.
+///
+/// Returns the workflow board configuration for sessions including
+/// all stages and valid transitions.
+///
+/// # Returns
+/// `ApiResponse` containing `SessionBoardConfig` with stage info.
+///
+/// # Errors
+/// Returns error string if board configuration not found.
 #[tauri::command]
 pub async fn get_session_board_config() -> Result<ApiResponse<SessionBoardConfig>, String> {
     let board_registry = BoardRegistry::new();

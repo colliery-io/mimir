@@ -1,4 +1,8 @@
-//! Campaign management commands
+//! Campaign management commands.
+//!
+//! Provides Tauri commands for creating, managing, and archiving campaigns.
+//! Campaigns are the top-level organizational unit containing modules, sessions,
+//! characters, and documents.
 
 use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
@@ -68,6 +72,15 @@ pub async fn list_campaigns(
     }
 }
 
+/// Create a new campaign.
+///
+/// Creates the campaign record and directory structure.
+///
+/// # Parameters
+/// - `request` - Campaign name, description, and base directory location
+///
+/// # Returns
+/// `ApiResponse` containing the created `Campaign`.
 #[tauri::command]
 pub async fn create_campaign(
     request: CreateCampaignRequest,

@@ -1,4 +1,8 @@
-//! Character management commands
+//! Character management commands.
+//!
+//! Provides Tauri commands for creating, updating, and managing player characters.
+//! Includes support for character creation wizards, leveling up, spell management,
+//! inventory tracking, and character sheet rendering.
 
 use tauri::State;
 use mimir_dm_core::models::character::{Character, CharacterData, CharacterVersion};

@@ -1,4 +1,7 @@
-//! Document management commands
+//! Document management commands.
+//!
+//! Provides Tauri commands for creating, updating, and managing campaign documents.
+//! Documents include session notes, module plans, campaign materials, and player handouts.
 
 use crate::state::AppState;
 use mimir_dm_core::{
