@@ -213,7 +213,8 @@ async fn test_ollama_invalid_endpoint() {
         .await;
 
     assert!(response.is_err());
-    assert!(response.unwrap_err().to_string().contains("HTTP request failed"));
+    // OpenAI-compat client returns "Request failed" instead of "HTTP request failed"
+    assert!(response.unwrap_err().to_string().contains("Request failed"));
 }
 
 #[tokio::test]

@@ -1,6 +1,8 @@
 //! # Ollama Provider
 //!
 //! This module provides an implementation of the [`LlmProvider`] trait for the Ollama API.
+//! Uses OpenAI-compatible endpoints for chat and completion, with Ollama-specific endpoints
+//! for model management (list, pull, check).
 //!
 //! ## Configuration
 //!
@@ -23,107 +25,25 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error};
+use tracing::debug;
 use url::Url;
 
 use crate::config::{ModelConfig, EndpointType};
+use crate::providers::openai_compat::{OpenAiCompatClient, OpenAiChatRequest, OpenAiMessage};
 use crate::traits::{
-    LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse, 
-    Message, RateLimitState, Usage, Timing, ModelInfo, ModelPullProgress,
-    Tool, ToolCall
+    LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse,
+    Message, RateLimitState, Usage, ModelInfo, ModelPullProgress,
+    Tool,
 };
 
-/// Ollama chat message for API requests
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct OllamaChatMessage {
-    role: String,
-    /// Content may be missing when tool_calls are present
-    #[serde(default)]
-    content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tool_calls: Option<Vec<ToolCall>>,
-}
+// Note: Chat and completion now use OpenAI-compatible endpoint via OpenAiCompatClient.
+// The following types are only used for Ollama-specific endpoints (embeddings, model management).
 
-/// Ollama chat request
-#[derive(Debug, Serialize)]
-struct OllamaChatRequest {
-    model: String,
-    messages: Vec<OllamaChatMessage>,
-    stream: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    options: Option<OllamaOptions>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tools: Option<Vec<Tool>>,
-}
-
-/// Ollama completion request  
-#[derive(Debug, Serialize)]
-struct OllamaCompletionRequest {
-    model: String,
-    prompt: String,
-    stream: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    options: Option<OllamaOptions>,
-}
-
-/// Ollama embedding request
+/// Ollama embedding request (Ollama-specific /api/embeddings endpoint)
 #[derive(Debug, Serialize)]
 struct OllamaEmbeddingRequest {
     model: String,
     prompt: String,
-}
-
-/// Ollama model options
-#[derive(Debug, Serialize)]
-struct OllamaOptions {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    temperature: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    num_predict: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    stop: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    think: Option<bool>,
-}
-
-/// Ollama chat response
-#[derive(Debug, Deserialize)]
-struct OllamaChatResponse {
-    message: OllamaChatMessage,
-    #[allow(dead_code)]
-    done: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    total_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    load_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prompt_eval_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    eval_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prompt_eval_count: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    eval_count: Option<u32>,
-}
-
-/// Ollama completion response
-#[derive(Debug, Deserialize)]
-struct OllamaCompletionResponse {
-    response: String,
-    #[allow(dead_code)]
-    done: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    total_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    load_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prompt_eval_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    eval_duration: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prompt_eval_count: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    eval_count: Option<u32>,
 }
 
 /// Ollama embedding response
@@ -171,10 +91,17 @@ struct OllamaPullStreamResponse {
 }
 
 /// Ollama provider implementation
+///
+/// Uses OpenAI-compatible endpoints for chat and completion (/v1/chat/completions),
+/// with Ollama-specific endpoints for model management (/api/tags, /api/pull).
 pub struct OllamaProvider {
     config: ModelConfig,
     rate_limit_state: RateLimitState,
+    /// OpenAI-compatible client for chat/completion
+    openai_client: OpenAiCompatClient,
+    /// HTTP client for Ollama-specific endpoints (model management, embeddings)
     client: reqwest::Client,
+    /// Base URL for Ollama API (e.g., "http://localhost:11434")
     base_url: String,
 }
 
@@ -199,6 +126,12 @@ impl OllamaProvider {
             |limit| RateLimitState::new(limit)
         );
 
+        // Create OpenAI-compatible client for chat/completion
+        // Ollama's OpenAI-compatible endpoint is at /v1
+        let openai_base_url = format!("{}/v1", base_url);
+        let openai_client = OpenAiCompatClient::new(openai_base_url, None, 300)?;
+
+        // Create standard HTTP client for Ollama-specific endpoints
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(300))
             .build()
@@ -207,23 +140,9 @@ impl OllamaProvider {
         Ok(Self {
             config,
             rate_limit_state,
+            openai_client,
             client,
             base_url,
-        })
-    }
-
-    /// Convert timing information from nanoseconds to milliseconds
-    fn convert_timing(
-        total_duration: Option<u64>,
-        load_duration: Option<u64>,
-        prompt_eval_duration: Option<u64>,
-        eval_duration: Option<u64>,
-    ) -> Option<Timing> {
-        Some(Timing {
-            total_duration_ms: total_duration.unwrap_or(0) / 1_000_000,
-            load_duration_ms: load_duration.unwrap_or(0) / 1_000_000,
-            prompt_eval_duration_ms: prompt_eval_duration.unwrap_or(0) / 1_000_000,
-            completion_duration_ms: eval_duration.unwrap_or(0) / 1_000_000,
         })
     }
 }
@@ -255,148 +174,27 @@ impl LlmProvider for OllamaProvider {
 
         self.check_rate_limit().await?;
 
-        let ollama_messages: Vec<OllamaChatMessage> = messages
+        // Convert messages to OpenAI format
+        let openai_messages: Vec<OpenAiMessage> = messages
             .into_iter()
-            .map(|msg| OllamaChatMessage {
-                role: msg.role,
-                content: Some(msg.content),
-                tool_calls: None,
-            })
+            .map(OpenAiMessage::from)
             .collect();
 
-        let options = Some(OllamaOptions {
+        let request = OpenAiChatRequest {
+            model: self.config.model.clone(),
+            messages: openai_messages,
             temperature,
-            num_predict: max_tokens.map(|t| t as i32),
+            max_tokens,
             stop,
-            think: Some(true),
-        });
-
-        let request = OllamaChatRequest {
-            model: self.config.model.clone(),
-            messages: ollama_messages,
-            stream: false,
-            options,
             tools,
+            stream: false,
         };
 
-        debug!("Ollama API request: model={} messages={} tools={} think={}", 
-            request.model, 
-            request.messages.len(), 
-            request.tools.as_ref().map_or(0, |t| t.len()),
-            request.options.as_ref().and_then(|o| o.think).unwrap_or(false)
-        );
+        debug!("Ollama chat request via OpenAI-compat: model={} messages={}",
+            request.model, request.messages.len());
 
-        // Create the HTTP request future
-        let request_future = self
-            .client
-            .post(&format!("{}/api/chat", self.base_url))
-            .json(&request)
-            .send();
-
-        // Race between request and cancellation
-        let response = if let Some(ref token) = cancellation_token {
-            tokio::select! {
-                result = request_future => {
-                    result.map_err(|e| LlmError::ProviderError(format!("HTTP request failed: {}", e)))?
-                }
-                _ = token.cancelled() => {
-                    debug!("Chat request cancelled");
-                    return Err(LlmError::Cancelled);
-                }
-            }
-        } else {
-            request_future.await
-                .map_err(|e| LlmError::ProviderError(format!("HTTP request failed: {}", e)))?
-        };
-
-        if !response.status().is_success() {
-            return Err(LlmError::ProviderError(format!(
-                "Ollama API error: {}",
-                response.status()
-            )));
-        }
-
-        // Get the response text to log its size before parsing
-        // Also check for cancellation during response reading
-        let response_text = if let Some(token) = &cancellation_token {
-            tokio::select! {
-                result = response.text() => {
-                    result.map_err(|e| LlmError::ProviderError(format!("Failed to read response text: {}", e)))?
-                }
-                _ = token.cancelled() => {
-                    debug!("Chat response reading cancelled");
-                    return Err(LlmError::Cancelled);
-                }
-            }
-        } else {
-            response.text().await
-                .map_err(|e| LlmError::ProviderError(format!("Failed to read response text: {}", e)))?
-        };
-        
-        debug!("Raw response size: {} bytes", response_text.len());
-
-        let ollama_response: OllamaChatResponse = serde_json::from_str(&response_text)
-            .map_err(|e| {
-                error!("JSON parsing failed for response of {} bytes: {}", response_text.len(), e);
-                if response_text.len() > 1000 {
-                    error!("Response preview (first 500 chars): {}", &response_text[..500]);
-                    error!("Response preview (last 500 chars): {}", &response_text[response_text.len()-500..]);
-                } else {
-                    error!("Full response: {}", response_text);
-                }
-                LlmError::ProviderError(format!("JSON parsing failed: {}", e))
-            })?;
-
-        // Calculate thinking block size
-        let content = ollama_response.message.content.clone().unwrap_or_default();
-        let thinking_block_size = if content.contains("<thinking>") {
-            let thinking_start = content.find("<thinking>").unwrap_or(0);
-            let thinking_end = content.rfind("</thinking>").unwrap_or(content.len());
-            if thinking_end > thinking_start {
-                thinking_end - thinking_start + "</thinking>".len()
-            } else {
-                0
-            }
-        } else {
-            0
-        };
-
-        debug!("Ollama API response: content_length={} thinking_block_size={} tool_calls={}",
-            content.len(),
-            thinking_block_size,
-            ollama_response.message.tool_calls.is_some()
-        );
-        
-        if let Some(ref tool_calls) = ollama_response.message.tool_calls {
-            debug!("  Tool calls returned: {}", tool_calls.len());
-            for tool_call in tool_calls {
-                debug!("    Tool: {}", tool_call.function.name);
-            }
-        } else {
-            debug!("  No tool calls in response");
-        }
-
-        let usage = Some(Usage {
-            prompt_tokens: ollama_response.prompt_eval_count.unwrap_or(0),
-            completion_tokens: ollama_response.eval_count.unwrap_or(0),
-            total_tokens: ollama_response.prompt_eval_count.unwrap_or(0) 
-                + ollama_response.eval_count.unwrap_or(0),
-        });
-
-        let timing = Self::convert_timing(
-            ollama_response.total_duration,
-            ollama_response.load_duration,
-            ollama_response.prompt_eval_duration,
-            ollama_response.eval_duration,
-        );
-
-        Ok(ChatResponse {
-            content,
-            usage,
-            timing,
-            model: self.config.model.clone(),
-            tool_calls: ollama_response.message.tool_calls,
-        })
+        // Use the OpenAI-compatible client
+        self.openai_client.chat(request, cancellation_token).await
     }
 
     async fn complete(
@@ -414,64 +212,16 @@ impl LlmProvider for OllamaProvider {
 
         self.check_rate_limit().await?;
 
-        let options = if temperature.is_some() || max_tokens.is_some() || stop.is_some() {
-            Some(OllamaOptions {
-                temperature,
-                num_predict: max_tokens.map(|t| t as i32),
-                stop,
-                think: None, // Not used for completion endpoint
-            })
-        } else {
-            None
-        };
+        debug!("Ollama complete request via OpenAI-compat: model={}", self.config.model);
 
-        let request = OllamaCompletionRequest {
-            model: self.config.model.clone(),
+        // Use the OpenAI-compatible client (converts to chat format internally)
+        self.openai_client.complete(
+            self.config.model.clone(),
             prompt,
-            stream: false,
-            options,
-        };
-
-        let response = self
-            .client
-            .post(&format!("{}/api/generate", self.base_url))
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| LlmError::ProviderError(format!("HTTP request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(LlmError::ProviderError(format!(
-                "Ollama API error: {}",
-                response.status()
-            )));
-        }
-
-        let ollama_response: OllamaCompletionResponse = response
-            .json()
-            .await
-            .map_err(|e| LlmError::ProviderError(format!("JSON parsing failed: {}", e)))?;
-
-        let usage = Some(Usage {
-            prompt_tokens: ollama_response.prompt_eval_count.unwrap_or(0),
-            completion_tokens: ollama_response.eval_count.unwrap_or(0),
-            total_tokens: ollama_response.prompt_eval_count.unwrap_or(0) 
-                + ollama_response.eval_count.unwrap_or(0),
-        });
-
-        let timing = Self::convert_timing(
-            ollama_response.total_duration,
-            ollama_response.load_duration,
-            ollama_response.prompt_eval_duration,
-            ollama_response.eval_duration,
-        );
-
-        Ok(CompletionResponse {
-            text: ollama_response.response,
-            usage,
-            timing,
-            model: self.config.model.clone(),
-        })
+            temperature,
+            max_tokens,
+            stop,
+        ).await
     }
 
     async fn embed(
