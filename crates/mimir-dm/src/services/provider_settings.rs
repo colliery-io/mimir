@@ -44,6 +44,14 @@ pub struct ProviderSettings {
     pub ollama_config: Option<OllamaConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub groq_config: Option<GroqConfig>,
+    /// Timeout in seconds for tool confirmation prompts (default: 60)
+    #[serde(default = "default_tool_confirmation_timeout")]
+    pub tool_confirmation_timeout_secs: u64,
+}
+
+/// Default tool confirmation timeout in seconds
+fn default_tool_confirmation_timeout() -> u64 {
+    60
 }
 
 impl Default for ProviderSettings {
@@ -52,6 +60,7 @@ impl Default for ProviderSettings {
             provider_type: ProviderType::Ollama,
             ollama_config: Some(OllamaConfig::default()),
             groq_config: None,
+            tool_confirmation_timeout_secs: default_tool_confirmation_timeout(),
         }
     }
 }
@@ -127,6 +136,7 @@ mod tests {
         assert_eq!(settings.provider_type, ProviderType::Ollama);
         assert!(settings.ollama_config.is_some());
         assert!(settings.groq_config.is_none());
+        assert_eq!(settings.tool_confirmation_timeout_secs, 60);
     }
 
     #[test]
@@ -135,6 +145,7 @@ mod tests {
             provider_type: ProviderType::Ollama,
             ollama_config: Some(OllamaConfig::default()),
             groq_config: None,
+            tool_confirmation_timeout_secs: 60,
         };
         assert!(settings.validate().is_ok());
     }
@@ -145,6 +156,7 @@ mod tests {
             provider_type: ProviderType::Ollama,
             ollama_config: None,
             groq_config: None,
+            tool_confirmation_timeout_secs: 60,
         };
         assert!(settings.validate().is_err());
     }
@@ -157,6 +169,7 @@ mod tests {
             groq_config: Some(GroqConfig {
                 api_key: "test-key".to_string(),
             }),
+            tool_confirmation_timeout_secs: 60,
         };
         assert!(settings.validate().is_ok());
     }
@@ -169,6 +182,7 @@ mod tests {
             groq_config: Some(GroqConfig {
                 api_key: "".to_string(),
             }),
+            tool_confirmation_timeout_secs: 60,
         };
         assert!(settings.validate().is_err());
     }
@@ -184,6 +198,7 @@ mod tests {
             groq_config: Some(GroqConfig {
                 api_key: "test-api-key".to_string(),
             }),
+            tool_confirmation_timeout_secs: 90,
         };
 
         // Save

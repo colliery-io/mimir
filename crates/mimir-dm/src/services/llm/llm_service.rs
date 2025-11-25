@@ -19,8 +19,10 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, Mutex};
+use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -179,6 +181,8 @@ pub struct LlmService {
     chat_loggers: Arc<Mutex<HashMap<String, Arc<ChatLogger>>>>,
     /// Application paths for file operations
     app_paths: Arc<AppPaths>,
+    /// Timeout for tool confirmation prompts
+    tool_confirmation_timeout: Duration,
 }
 
 impl LlmService {
@@ -195,6 +199,10 @@ impl LlmService {
 
         // Create provider based on settings
         let (provider, model_name, provider_type) = Self::create_provider_from_settings(&settings)?;
+
+        // Get tool confirmation timeout from settings
+        let tool_confirmation_timeout = Duration::from_secs(settings.tool_confirmation_timeout_secs);
+        info!("Tool confirmation timeout set to {} seconds", settings.tool_confirmation_timeout_secs);
 
         // Create todo state manager
         let todo_state_manager = TodoStateManager::new();
@@ -240,6 +248,7 @@ impl LlmService {
             todo_state_manager,
             chat_loggers: Arc::new(Mutex::new(HashMap::new())),
             app_paths,
+            tool_confirmation_timeout,
         })
     }
 
@@ -481,6 +490,10 @@ impl LlmService {
     }
 
     /// Request confirmation from the user for a tool action
+    ///
+    /// Waits for user response with a configurable timeout. If the user doesn't
+    /// respond within the timeout period, the confirmation is automatically rejected
+    /// and the user is notified.
     pub(super) async fn request_confirmation(
         &self,
         action: ActionDescription,
@@ -512,19 +525,56 @@ impl LlmService {
             "tool-confirmation-request",
             ToolConfirmationRequest {
                 id: confirmation_id.to_string(),
-                tool_name,
+                tool_name: tool_name.clone(),
                 action,
             },
         )?;
         info!("Emitted confirmation request to frontend");
 
-        // Wait for response indefinitely
-        match rx.await {
-            Ok(confirmed) => {
+        // Wait for response with timeout
+        let timeout_duration = self.tool_confirmation_timeout;
+        match timeout(timeout_duration, rx).await {
+            Ok(Ok(confirmed)) => {
                 info!("Received confirmation response: {}", confirmed);
                 Ok(confirmed)
             }
-            Err(_) => Err(anyhow!("Confirmation channel closed")),
+            Ok(Err(_)) => {
+                // Channel was closed (sender dropped)
+                warn!("Confirmation channel closed unexpectedly for {}", tool_name);
+                Err(anyhow!("Confirmation channel closed"))
+            }
+            Err(_) => {
+                // Timeout occurred - clean up the receiver and notify user
+                warn!(
+                    "Tool confirmation timed out after {:?} for {}",
+                    timeout_duration, tool_name
+                );
+
+                // Remove the receiver to prevent memory leaks
+                {
+                    let mut receivers = self.confirmation_receivers.lock().await;
+                    receivers.remove(&confirmation_id);
+                    info!(
+                        "Cleaned up timed-out confirmation receiver, remaining: {}",
+                        receivers.len()
+                    );
+                }
+
+                // Emit timeout event to frontend
+                if let Err(e) = app.emit(
+                    "tool-confirmation-timeout",
+                    serde_json::json!({
+                        "id": confirmation_id.to_string(),
+                        "tool_name": tool_name,
+                        "timeout_seconds": timeout_duration.as_secs()
+                    }),
+                ) {
+                    error!("Failed to emit timeout event: {}", e);
+                }
+
+                // Return false to reject the tool action on timeout
+                Ok(false)
+            }
         }
     }
 }

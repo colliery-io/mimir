@@ -4,14 +4,14 @@ level: task
 title: "Document all public service methods"
 short_code: "MIMIR-T-0109"
 created_at: 2025-11-25T01:48:54.008811+00:00
-updated_at: 2025-11-25T01:48:54.008811+00:00
+updated_at: 2025-11-25T10:41:43.215756+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -31,11 +31,15 @@ Add comprehensive documentation comments to all public methods in the mimir-dm-c
 
 ## Acceptance Criteria
 
-- [ ] All public service methods have `///` doc comments
-- [ ] Doc comments include: purpose, parameters, return type, error conditions
-- [ ] Module-level documentation (`//!`) added to each service file
-- [ ] `cargo doc --package mimir-dm-core` generates clean documentation
-- [ ] Documentation follows Rust API guidelines
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+- [x] All public service methods have `///` doc comments
+- [x] Doc comments include: purpose, parameters, return type, error conditions
+- [x] Module-level documentation (`//!`) added to each service file
+- [x] `cargo doc --package mimir-dm-core` generates clean documentation
+- [x] Documentation follows Rust API guidelines
 
 ## Implementation Notes
 
@@ -89,4 +93,30 @@ pub fn search_spells(&mut self, filters: SpellFilters) -> Result<Vec<SpellSummar
 
 ## Status Updates
 
-*To be added during implementation*
+### 2025-11-24: Service Documentation Complete
+
+Added comprehensive documentation to all mimir-dm-core service files:
+
+**Core Services (4 files):**
+- campaign_service.rs: 10 methods documented
+- module_service.rs: 14 methods documented
+- document_service.rs: 11 methods documented
+- spell_service.rs: 8 methods documented
+
+**Catalog Services (17 files):**
+- monster_service.rs, item_service.rs, background_service.rs
+- class_service.rs, feat_service.rs, race_service.rs
+- deity_service.rs, language_service.rs, reward_service.rs
+- vehicle_service.rs, cult_service.rs, object_service.rs
+- trap_service.rs, optional_feature_service.rs
+- variant_rule_service.rs, psionic_service.rs, table_service.rs
+
+**Other Services:**
+- action_service.rs (already had partial docs)
+- session_service.rs (already had partial docs)
+- player_service.rs (already had good module docs)
+
+All services now have:
+- Module-level `//!` documentation
+- Struct-level `///` documentation
+- Public method documentation with Arguments, Returns, and Errors sections
