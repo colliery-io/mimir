@@ -31,14 +31,14 @@ Automatically populate development builds with realistic test data including a s
 
 ## Acceptance Criteria
 
-- [ ] Dev builds automatically seed a "Test Campaign" on first launch
-- [ ] Campaign includes at least 2 modules with sessions
-- [ ] At least 3 test players are created with realistic names
-- [ ] At least 4 characters created spanning different classes and levels
-- [ ] Characters have equipment, spells (where applicable), and backstory
-- [ ] Seed data only runs in debug builds or when MIMIR_DEV env var is set
-- [ ] Seeding is idempotent (doesn't duplicate on subsequent launches)
-- [ ] Include characters at various levels (1, 5, 10) to test level-dependent features
+- [x] Dev builds automatically seed a "Test Campaign" on first launch
+- [x] Campaign includes at least 2 modules with sessions
+- [x] At least 3 test players are created with realistic names
+- [x] At least 4 characters created spanning different classes and levels
+- [x] Characters have equipment, spells (where applicable), and backstory
+- [x] Seed data only runs in debug builds or when MIMIR_DEV env var is set
+- [x] Seeding is idempotent (doesn't duplicate on subsequent launches)
+- [x] Include characters at various levels (1, 5, 10) to test level-dependent features
 
 ## Test Data to Include
 
@@ -110,4 +110,18 @@ struct SeedCharacter {
 
 ## Status Updates
 
-*To be added during implementation*
+### 2025-11-25: Implementation Complete
+
+Created `dev_seeder.rs` module in `mimir-dm-core/src/seed/` with:
+- Full campaign seeding ("The Lost Mine of Phandelver")
+- 2 modules with sessions (Goblin Ambush, Cragmaw Hideout)
+- 4 players (Alice, Bob, Charlie, Diana)
+- 4 characters at levels 1, 5, 5, and 10:
+  - Thorin Ironforge (Fighter 5)
+  - Elara Moonwhisper (Wizard 5 with full spell loadout)
+  - Finn Lightfoot (Rogue 1 - new character)
+  - Sister Helena (Cleric 10 with extensive spell list)
+
+Also fixed a bug where `create_character` wasn't setting `current_level` properly for characters above level 1.
+
+Commit: cb8380d
