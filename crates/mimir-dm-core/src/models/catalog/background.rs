@@ -235,7 +235,7 @@ impl From<&CatalogBackground> for BackgroundSummary {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
 pub struct BackgroundFilters {
     pub search_pattern: Option<String>,
     pub sources: Option<Vec<String>>,

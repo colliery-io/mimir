@@ -171,8 +171,10 @@ impl<'a> CharacterBuilder<'a> {
     /// Set background by name and source (looks up from database)
     pub fn set_background(mut self, background_name: &str, source: &str) -> Result<Self> {
         // Verify background exists in database
-        let catalog_bg = BackgroundService::get_background_by_name_and_source(self.conn, background_name, source)
-            .map_err(|e| DbError::InvalidData(format!("Background '{}' from '{}' not found in database. Please import the appropriate rulebook first. Error: {}", background_name, source, e)))?;
+        let mut bg_service = BackgroundService::new(self.conn);
+        let catalog_bg = bg_service.get_background_by_name_and_source(background_name, source)
+            .map_err(|e| DbError::InvalidData(format!("Background '{}' from '{}' not found in database. Please import the appropriate rulebook first. Error: {}", background_name, source, e)))?
+            .ok_or_else(|| DbError::InvalidData(format!("Background '{}' from '{}' not found in database. Please import the appropriate rulebook first.", background_name, source)))?;
 
         // Parse to get proficiencies
         let background: Background = serde_json::from_str(&catalog_bg.full_background_json)

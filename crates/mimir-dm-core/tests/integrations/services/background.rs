@@ -51,12 +51,9 @@ fn seed_test_background_data(conn: &mut SqliteConnection) {
 fn test_search_backgrounds_no_filters() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let filters = BackgroundFilters {
-        search_pattern: None,
-        sources: None,
-        has_tools: None,
-    };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let filters = BackgroundFilters::default();
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     assert_eq!(results.len(), 10, "Should return all 10 seeded backgrounds");
@@ -71,7 +68,8 @@ fn test_search_backgrounds_by_name() {
         sources: None,
         has_tools: None,
     };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     assert_eq!(results.len(), 1, "Should return 1 background matching 'Sage'");
@@ -87,7 +85,8 @@ fn test_search_backgrounds_by_skill() {
         sources: None,
         has_tools: None,
     };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     assert_eq!(results.len(), 2, "Should return 2 backgrounds with Stealth");
@@ -102,7 +101,8 @@ fn test_search_backgrounds_by_source() {
         sources: Some(vec!["PHB".to_string()]),
         has_tools: None,
     };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     assert_eq!(results.len(), 8, "Should return 8 PHB backgrounds");
@@ -118,7 +118,8 @@ fn test_search_backgrounds_with_tools() {
         sources: None,
         has_tools: Some(true),
     };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     // Backgrounds with tools: Criminal, Folk Hero, Noble, Soldier, Urchin, Far Traveler, Outlander
@@ -134,7 +135,8 @@ fn test_search_backgrounds_without_tools() {
         sources: None,
         has_tools: Some(false),
     };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     // Backgrounds without tools: Acolyte, Sage, Haunted One
@@ -150,7 +152,8 @@ fn test_search_backgrounds_combined_filters() {
         sources: Some(vec!["PHB".to_string()]),
         has_tools: Some(true),
     };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     // PHB backgrounds with tools
@@ -167,7 +170,8 @@ fn test_search_backgrounds_empty_results() {
         sources: None,
         has_tools: None,
     };
-    let results = BackgroundService::search_backgrounds(&mut conn, filters)
+    let mut service = BackgroundService::new(&mut conn);
+    let results = service.search_backgrounds(filters)
         .expect("Search should succeed");
 
     assert!(results.is_empty(), "Should return empty results");
@@ -177,8 +181,10 @@ fn test_search_backgrounds_empty_results() {
 fn test_get_background_by_name_and_source() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let background = BackgroundService::get_background_by_name_and_source(&mut conn, "Sage", "PHB")
-        .expect("Should get background");
+    let mut service = BackgroundService::new(&mut conn);
+    let background = service.get_background_by_name_and_source("Sage", "PHB")
+        .expect("Should get background")
+        .expect("Background should exist");
 
     assert_eq!(background.name, "Sage");
     assert_eq!(background.source, "PHB");
@@ -188,16 +194,19 @@ fn test_get_background_by_name_and_source() {
 fn test_get_background_by_name_and_source_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let result = BackgroundService::get_background_by_name_and_source(&mut conn, "Nonexistent", "PHB");
+    let mut service = BackgroundService::new(&mut conn);
+    let result = service.get_background_by_name_and_source("Nonexistent", "PHB")
+        .expect("Query should succeed");
 
-    assert!(result.is_err(), "Should error for nonexistent background");
+    assert!(result.is_none(), "Should return None for nonexistent background");
 }
 
 #[test]
 fn test_get_background_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sources = BackgroundService::get_background_sources(&mut conn)
+    let mut service = BackgroundService::new(&mut conn);
+    let sources = service.get_background_sources()
         .expect("Should get sources");
 
     assert!(sources.len() >= 3, "Should have multiple sources");
@@ -208,7 +217,8 @@ fn test_get_background_sources() {
 fn test_get_background_count() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let count = BackgroundService::get_background_count(&mut conn)
+    let mut service = BackgroundService::new(&mut conn);
+    let count = service.get_background_count()
         .expect("Should get count");
 
     assert_eq!(count, 10, "Should have 10 backgrounds");

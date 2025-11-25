@@ -122,7 +122,7 @@ mod tests {
 
         let mut char_service = CharacterService::new(&mut conn);
         let character = char_service
-            .create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data)
+            .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
             .unwrap();
 
         character.id
@@ -182,7 +182,7 @@ mod tests {
                 .build().unwrap();
 
             let mut char_service = CharacterService::new(&mut conn);
-            char_service.create_character(campaign_id, player_id, temp_dir.path().to_str().unwrap(), char_data).unwrap();
+            char_service.create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data).unwrap();
         }
 
         let tool = ListCampaignCharactersTool::new(Arc::clone(&db_service));

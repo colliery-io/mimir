@@ -47,6 +47,7 @@ async-trait.workspace = true
 uuid = { workspace = true }
 similar = { workspace = true }
 reqwest = { workspace = true }
+paste = { workspace = true }
 
 [features]
 default = ["custom-protocol"]

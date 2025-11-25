@@ -70,6 +70,9 @@ base64 = "0.22.1"
 # Parallel processing
 rayon = "1.10"
 
+# Macros
+paste = "1.0"
+
 # Testing
 tempfile = "3.10"
 

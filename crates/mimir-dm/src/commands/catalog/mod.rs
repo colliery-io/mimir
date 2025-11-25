@@ -2,6 +2,14 @@
 //!
 //! This module contains Tauri commands for searching and retrieving
 //! catalog data including spells, monsters, items, and other 5e content.
+//!
+//! ## Generic Command Macro
+//!
+//! The `catalog_commands!` macro can be used to generate standard command handlers
+//! for services that implement the `CatalogService` trait. See the `generic` module.
+
+#[macro_use]
+pub mod generic;
 
 pub mod action;
 pub mod background;
