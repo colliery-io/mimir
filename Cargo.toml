@@ -1,9 +1,10 @@
 [workspace]
 members = [
     "crates/mimir-dm",
-    "crates/mimir-dm-core", 
+    "crates/mimir-dm-core",
     "crates/mimir-dm-llm",
-    "crates/mimir-5etools-splitter"
+    "crates/mimir-5etools-splitter",
+    "crates/mimir-llm-eval"
 ]
 resolver = "2"
 
