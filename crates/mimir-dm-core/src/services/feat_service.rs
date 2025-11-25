@@ -1,3 +1,8 @@
+//! Feat catalog service.
+//!
+//! Provides database-backed feat search, retrieval, and import functionality.
+//! Supports filtering by name, prerequisites, and source.
+
 use diesel::prelude::*;
 use tracing::{debug, info};
 use crate::error::Result;
@@ -6,9 +11,19 @@ use crate::schema::catalog_feats;
 use std::fs;
 use std::path::Path;
 
+/// Service for searching and managing feats in the catalog.
 pub struct FeatService;
 
 impl FeatService {
+    /// Search feats with optional filters.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `filters` - Search criteria including name pattern, sources, and prerequisites
+    ///
+    /// # Returns
+    /// * `Ok(Vec<FeatSummary>)` - List of matching feat summaries
+    /// * `Err(DbError)` - If the database query fails
     pub fn search_feats(
         conn: &mut SqliteConnection,
         filters: FeatFilters,
@@ -53,6 +68,16 @@ impl FeatService {
         Ok(feats.iter().map(FeatSummary::from).collect())
     }
 
+    /// Get a specific feat by name and source.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `name` - Exact name of the feat
+    /// * `source` - Source book code (e.g., "PHB", "XGE")
+    ///
+    /// # Returns
+    /// * `Ok(CatalogFeat)` - The full feat data
+    /// * `Err(DbError)` - If not found or database query fails
     pub fn get_feat_by_name_and_source(
         conn: &mut SqliteConnection,
         name: &str,
@@ -68,6 +93,14 @@ impl FeatService {
             .map_err(Into::into)
     }
 
+    /// Get all distinct source books that contain feats.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of source book codes
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_feat_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         catalog_feats::table
             .select(catalog_feats::source)
@@ -77,6 +110,14 @@ impl FeatService {
             .map_err(Into::into)
     }
 
+    /// Get total count of feats in the catalog.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(i64)` - Total number of feats
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_feat_count(conn: &mut SqliteConnection) -> Result<i64> {
         catalog_feats::table
             .count()
@@ -84,7 +125,18 @@ impl FeatService {
             .map_err(Into::into)
     }
 
-    /// Import all feat data from an uploaded book directory
+    /// Import all feat data from an uploaded book directory.
+    ///
+    /// Scans the `feats/` subdirectory for JSON files and imports each feat.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `book_dir` - Path to the book directory containing feat data
+    /// * `source` - Source book code to assign to imported feats
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of feats imported
+    /// * `Err(DbError)` - If reading files or database operations fail
     pub fn import_feats_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
@@ -141,7 +193,17 @@ impl FeatService {
         Ok(imported_count)
     }
 
-    /// Remove all feats from a specific source
+    /// Remove all feats from a specific source.
+    ///
+    /// Used when removing a book from the library to clean up its catalog data.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `source` - Source book code to remove feats from
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of feats deleted
+    /// * `Err(DbError)` - If the database operation fails
     pub fn remove_feats_by_source(
         conn: &mut SqliteConnection,
         source: &str

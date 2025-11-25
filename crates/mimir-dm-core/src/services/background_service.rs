@@ -1,3 +1,8 @@
+//! Background catalog service.
+//!
+//! Provides database-backed background search, retrieval, and import functionality.
+//! Supports filtering by name, skills, tools, features, and source.
+
 use diesel::prelude::*;
 use tracing::{debug, info};
 use crate::error::Result;
@@ -6,9 +11,19 @@ use crate::schema::catalog_backgrounds;
 use std::fs;
 use std::path::Path;
 
+/// Service for searching and managing character backgrounds in the catalog.
 pub struct BackgroundService;
 
 impl BackgroundService {
+    /// Search backgrounds with optional filters.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `filters` - Search criteria including name pattern, sources, and tool requirements
+    ///
+    /// # Returns
+    /// * `Ok(Vec<BackgroundSummary>)` - List of matching background summaries
+    /// * `Err(DbError)` - If the database query fails
     pub fn search_backgrounds(
         conn: &mut SqliteConnection,
         filters: BackgroundFilters,
@@ -53,6 +68,16 @@ impl BackgroundService {
         Ok(backgrounds.iter().map(BackgroundSummary::from).collect())
     }
 
+    /// Get a specific background by name and source.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `name` - Exact name of the background
+    /// * `source` - Source book code (e.g., "PHB", "SCAG")
+    ///
+    /// # Returns
+    /// * `Ok(CatalogBackground)` - The full background data
+    /// * `Err(DbError)` - If not found or database query fails
     pub fn get_background_by_name_and_source(
         conn: &mut SqliteConnection,
         name: &str,
@@ -69,6 +94,14 @@ impl BackgroundService {
             .map_err(Into::into)
     }
 
+    /// Get all distinct source books that contain backgrounds.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of source book codes
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_background_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         catalog_backgrounds::table
             .select(catalog_backgrounds::source)
@@ -78,6 +111,14 @@ impl BackgroundService {
             .map_err(Into::into)
     }
 
+    /// Get total count of backgrounds in the catalog.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(i64)` - Total number of backgrounds
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_background_count(conn: &mut SqliteConnection) -> Result<i64> {
         catalog_backgrounds::table
             .count()
@@ -85,7 +126,18 @@ impl BackgroundService {
             .map_err(Into::into)
     }
 
-    /// Import all background data from an uploaded book directory
+    /// Import all background data from an uploaded book directory.
+    ///
+    /// Scans the `backgrounds/` subdirectory for JSON files and imports each background.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `book_dir` - Path to the book directory containing background data
+    /// * `source` - Source book code to assign to imported backgrounds
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of backgrounds imported
+    /// * `Err(DbError)` - If reading files or database operations fail
     pub fn import_backgrounds_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
@@ -142,7 +194,17 @@ impl BackgroundService {
         Ok(imported_count)
     }
 
-    /// Remove all backgrounds from a specific source
+    /// Remove all backgrounds from a specific source.
+    ///
+    /// Used when removing a book from the library to clean up its catalog data.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `source` - Source book code to remove backgrounds from
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of backgrounds deleted
+    /// * `Err(DbError)` - If the database operation fails
     pub fn remove_backgrounds_by_source(
         conn: &mut SqliteConnection,
         source: &str

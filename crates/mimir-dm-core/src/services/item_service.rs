@@ -1,3 +1,8 @@
+//! Item catalog service.
+//!
+//! Provides database-backed item search, retrieval, and import functionality.
+//! Supports filtering by name, type, rarity, value range, and source.
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::item::{
@@ -9,15 +14,28 @@ use std::fs;
 use std::path::Path;
 use tracing::{error, info, debug};
 
+/// Service for searching and managing items in the catalog.
 pub struct ItemService<'a> {
     pub conn: &'a mut SqliteConnection,
 }
 
 impl<'a> ItemService<'a> {
+    /// Create a new item service.
+    ///
+    /// # Arguments
+    /// * `conn` - Mutable reference to the SQLite connection
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }
 
+    /// Search items with optional filters.
+    ///
+    /// # Arguments
+    /// * `filters` - Search criteria including name, sources, item types, rarities, and value range
+    ///
+    /// # Returns
+    /// * `Ok(Vec<ItemSummary>)` - List of matching item summaries sorted by name
+    /// * `Err(DbError)` - If the database query fails
     pub fn search_items(&mut self, filters: ItemFilters) -> Result<Vec<ItemSummary>> {
         use crate::schema::catalog_items::dsl::*;
         
@@ -66,6 +84,15 @@ impl<'a> ItemService<'a> {
         Ok(items.iter().map(ItemSummary::from).collect())
     }
 
+    /// Get a specific item by its database ID.
+    ///
+    /// # Arguments
+    /// * `item_id` - Database ID of the item
+    ///
+    /// # Returns
+    /// * `Ok(Some(Item))` - The full item data if found
+    /// * `Ok(None)` - If no item exists with the given ID
+    /// * `Err(DbError)` - If the database query or JSON parsing fails
     pub fn get_item_by_id(&mut self, item_id: i32) -> Result<Option<Item>> {
         use crate::schema::catalog_items::dsl::*;
         
@@ -83,6 +110,16 @@ impl<'a> ItemService<'a> {
         }
     }
 
+    /// Get a specific item by name and source.
+    ///
+    /// # Arguments
+    /// * `item_name` - Exact name of the item
+    /// * `item_source` - Source book code (e.g., "PHB", "DMG")
+    ///
+    /// # Returns
+    /// * `Ok(Some(Item))` - The full item data if found
+    /// * `Ok(None)` - If no matching item exists
+    /// * `Err(DbError)` - If the database query or JSON parsing fails
     pub fn get_item_by_name_and_source(&mut self, item_name: &str, item_source: &str) -> Result<Option<Item>> {
         use crate::schema::catalog_items::dsl::*;
 
@@ -101,6 +138,13 @@ impl<'a> ItemService<'a> {
         }
     }
 
+    /// Get all distinct item types in the catalog.
+    ///
+    /// Used to populate filter dropdowns in the UI.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of item types
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_item_types(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_items::dsl::*;
         
@@ -115,6 +159,13 @@ impl<'a> ItemService<'a> {
         Ok(result)
     }
 
+    /// Get all distinct item rarities in the catalog.
+    ///
+    /// Used to populate filter dropdowns in the UI.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of rarities (e.g., "common", "uncommon", "rare")
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_item_rarities(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_items::dsl::*;
         
@@ -129,6 +180,13 @@ impl<'a> ItemService<'a> {
         Ok(result)
     }
 
+    /// Get all distinct source books that contain items.
+    ///
+    /// Used to populate filter dropdowns in the UI.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of source book codes
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_item_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_items::dsl::*;
 
@@ -140,7 +198,19 @@ impl<'a> ItemService<'a> {
         Ok(sources)
     }
 
-    /// Import all item data from an uploaded book directory
+    /// Import all item data from an uploaded book directory.
+    ///
+    /// Scans the `items/` subdirectory for JSON files and imports each item,
+    /// skipping fluff files, index files, and foundry files.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `book_dir` - Path to the book directory containing item data
+    /// * `source` - Source book code to assign to imported items
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of items imported
+    /// * `Err(DbError)` - If reading files or database operations fail
     pub fn import_items_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
@@ -255,7 +325,17 @@ impl<'a> ItemService<'a> {
         }
     }
 
-    /// Remove all items from a specific source
+    /// Remove all items from a specific source.
+    ///
+    /// Used when removing a book from the library to clean up its catalog data.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `source` - Source book code to remove items from
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of items deleted
+    /// * `Err(DbError)` - If the database operation fails
     pub fn remove_items_from_source(
         conn: &mut SqliteConnection,
         source: &str

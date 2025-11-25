@@ -1,3 +1,8 @@
+//! Class and subclass catalog service.
+//!
+//! Provides database-backed class and subclass search, retrieval, and import functionality.
+//! Handles the complex class hierarchy including base classes, subclasses, and class features.
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::class::{
@@ -10,16 +15,31 @@ use std::fs;
 use std::path::Path;
 use tracing::{info, warn, debug};
 
+/// Service for searching and managing character classes and subclasses.
 pub struct ClassService<'a> {
     pub conn: &'a mut SqliteConnection,
 }
 
 impl<'a> ClassService<'a> {
+    /// Create a new class service.
+    ///
+    /// # Arguments
+    /// * `conn` - Mutable reference to the SQLite connection
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }
 
-    /// Search classes and subclasses with filters, returning unified rows
+    /// Search classes and subclasses with filters.
+    ///
+    /// Returns both base classes and subclasses in a unified format,
+    /// sorted by class name then subclass name.
+    ///
+    /// # Arguments
+    /// * `filters` - Search criteria including name, sources, spellcasting, and abilities
+    ///
+    /// # Returns
+    /// * `Ok(Vec<ClassSummary>)` - List of matching class/subclass summaries
+    /// * `Err(DbError)` - If the database query fails
     pub fn search_classes(&mut self, filters: ClassFilters) -> Result<Vec<ClassSummary>> {
         let mut results = Vec::new();
 
@@ -161,7 +181,18 @@ impl<'a> ClassService<'a> {
         Ok(subclass_summaries)
     }
 
-    /// Get class by name and source
+    /// Get a specific class by name and source.
+    ///
+    /// Includes fluff data (images, descriptions) if available.
+    ///
+    /// # Arguments
+    /// * `class_name` - Exact name of the class
+    /// * `class_source` - Source book code (e.g., "PHB", "XGE")
+    ///
+    /// # Returns
+    /// * `Ok(Some(Class))` - The full class data with fluff if found
+    /// * `Ok(None)` - If no matching class exists
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_class_by_name_and_source(&mut self, class_name: &str, class_source: &str) -> Result<Option<Class>> {
         use crate::schema::catalog_classes::dsl::*;
 
@@ -189,7 +220,19 @@ impl<'a> ClassService<'a> {
         }
     }
 
-    /// Get subclass by subclass name, class name and source
+    /// Get a specific subclass by name, class name, and source.
+    ///
+    /// Includes fluff data and introductory description if available.
+    ///
+    /// # Arguments
+    /// * `subclass_name` - Exact name of the subclass
+    /// * `_class_name` - Name of the parent class (used in filter)
+    /// * `_class_source` - Source of the parent class (used in filter)
+    ///
+    /// # Returns
+    /// * `Ok(Some(Subclass))` - The full subclass data if found
+    /// * `Ok(None)` - If no matching subclass exists
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_subclass_by_name(&mut self, subclass_name: &str, _class_name: &str, _class_source: &str) -> Result<Option<Subclass>> {
         use crate::schema::catalog_subclasses::dsl::*;
 
@@ -242,7 +285,15 @@ impl<'a> ClassService<'a> {
         }
     }
 
-    /// Get all subclasses for a class
+    /// Get all subclasses for a specific class.
+    ///
+    /// # Arguments
+    /// * `_class_name` - Name of the parent class
+    /// * `_class_source` - Source of the parent class
+    ///
+    /// # Returns
+    /// * `Ok(Vec<Subclass>)` - List of subclasses for the class
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_subclasses_for_class(&mut self, _class_name: &str, _class_source: &str) -> Result<Vec<Subclass>> {
         use crate::schema::catalog_subclasses::dsl::*;
         
@@ -261,7 +312,11 @@ impl<'a> ClassService<'a> {
         Ok(result)
     }
 
-    /// Get unique sources for classes
+    /// Get all distinct source books that contain classes.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of source book codes
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_class_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_classes::dsl::*;
 
@@ -274,7 +329,11 @@ impl<'a> ClassService<'a> {
         Ok(sources)
     }
 
-    /// Get unique primary abilities
+    /// Get all distinct primary abilities used by classes.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of ability names (e.g., "Strength", "Dexterity")
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_primary_abilities(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_classes::dsl::*;
 
@@ -291,7 +350,11 @@ impl<'a> ClassService<'a> {
         Ok(abilities)
     }
 
-    /// Get class count by source for statistics
+    /// Get class count grouped by source for statistics.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<(String, i64)>)` - List of (source, count) pairs
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_class_count_by_source(&mut self) -> Result<Vec<(String, i64)>> {
         use crate::schema::catalog_classes::dsl::*;
 
@@ -436,7 +499,19 @@ impl<'a> ClassService<'a> {
         None
     }
 
-    /// Import classes from a book directory
+    /// Import classes and related data from a book directory.
+    ///
+    /// Imports classes, subclasses, class features, and subclass features
+    /// from JSON files in the book directory. Also loads fluff data if available.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `book_dir` - Path to the book directory
+    /// * `source` - Source book code to assign to imported data
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of class-related items imported
+    /// * `Err(DbError)` - If reading files or database operations fail
     pub fn import_classes_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
@@ -731,7 +806,18 @@ impl<'a> ClassService<'a> {
         Ok(total_imported)
     }
 
-    /// Remove all classes and related data from a specific source
+    /// Remove all classes and related data from a specific source.
+    ///
+    /// Deletes subclass features, class features, subclasses, and classes
+    /// in the correct dependency order.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `source` - Source book code to remove data from
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Total number of items deleted
+    /// * `Err(DbError)` - If the database operations fail
     pub fn remove_classes_from_source(
         conn: &mut SqliteConnection,
         source: &str

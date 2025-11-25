@@ -1,3 +1,8 @@
+//! Race catalog service.
+//!
+//! Provides database-backed race search, retrieval, and import functionality.
+//! Supports filtering by name, size, darkvision, flight, and source.
+
 use diesel::prelude::*;
 use tracing::{debug, error, info};
 use crate::error::Result;
@@ -6,9 +11,19 @@ use crate::schema::catalog_races;
 use std::fs;
 use std::path::Path;
 
+/// Service for searching and managing races and subraces in the catalog.
 pub struct RaceService;
 
 impl RaceService {
+    /// Search races with optional filters.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `filters` - Search criteria including name, size, darkvision, flight, and sources
+    ///
+    /// # Returns
+    /// * `Ok(Vec<RaceSummary>)` - List of matching race summaries
+    /// * `Err(DbError)` - If the database query fails
     pub fn search_races(
         conn: &mut SqliteConnection,
         filters: RaceFilters,
@@ -76,6 +91,17 @@ impl RaceService {
         Ok(summaries)
     }
 
+    /// Get full race details as JSON by name and source.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `name` - Exact name of the race
+    /// * `source` - Source book code (e.g., "PHB", "VGM")
+    ///
+    /// # Returns
+    /// * `Ok(Some(String))` - The full race JSON if found
+    /// * `Ok(None)` - If no matching race exists
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_race_details(
         conn: &mut SqliteConnection,
         name: &str,
@@ -93,6 +119,14 @@ impl RaceService {
         Ok(result)
     }
 
+    /// Get all distinct source books that contain races.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of source book codes
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_race_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct race sources");
 
@@ -106,6 +140,14 @@ impl RaceService {
         Ok(sources)
     }
 
+    /// Get total count of races in the catalog.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(i64)` - Total number of races
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_race_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting total race count");
 
@@ -117,6 +159,14 @@ impl RaceService {
         Ok(count)
     }
 
+    /// Get all distinct race sizes in the catalog.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of sizes (e.g., "Small", "Medium", "Large")
+    /// * `Err(DbError)` - If the database query fails
     pub fn get_race_sizes(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting distinct race sizes");
 
@@ -134,7 +184,19 @@ impl RaceService {
         Ok(sizes)
     }
 
-    /// Import all race data from an uploaded book directory
+    /// Import all race data from an uploaded book directory.
+    ///
+    /// Scans the `races/` subdirectory for JSON files and imports races and subraces.
+    /// Skips fluff files, processing only race data files.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `book_dir` - Path to the book directory containing race data
+    /// * `source` - Source book code to assign to imported races
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of races and subraces imported
+    /// * `Err(DbError)` - If reading files or database operations fail
     pub fn import_races_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
@@ -243,7 +305,17 @@ impl RaceService {
         Ok(imported_count)
     }
 
-    /// Remove all races from a specific source
+    /// Remove all races from a specific source.
+    ///
+    /// Used when removing a book from the library to clean up its catalog data.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `source` - Source book code to remove races from
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of races deleted
+    /// * `Err(DbError)` - If the database operation fails
     pub fn remove_races_by_source(
         conn: &mut SqliteConnection,
         source: &str

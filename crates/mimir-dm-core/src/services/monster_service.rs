@@ -1,3 +1,9 @@
+//! Monster catalog service.
+//!
+//! Provides database-backed monster search, retrieval, and import functionality.
+//! Supports filtering by CR, size, type, alignment, and source. Handles importing
+//! bestiary data from 5e Tools format including monster fluff (lore/images).
+
 use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::monster::{
@@ -15,11 +21,25 @@ pub struct MonsterService<'a> {
 }
 
 impl<'a> MonsterService<'a> {
+    /// Create a new monster service.
+    ///
+    /// # Arguments
+    /// * `conn` - Mutable reference to the database connection
     pub fn new(conn: &'a mut SqliteConnection) -> Self {
         Self { conn }
     }
 
-    /// Search monsters with filters
+    /// Search monsters with filters.
+    ///
+    /// Queries the catalog_monsters table with the provided filter criteria.
+    /// Results are limited to 1000 to prevent memory issues.
+    ///
+    /// # Arguments
+    /// * `filters` - Search criteria including name, size, type, CR, HP, etc.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<MonsterSummary>)` - List of matching monster summaries
+    /// * `Err(DbError)` - If the database query fails
     pub fn search_monsters(&mut self, filters: MonsterFilters) -> Result<Vec<MonsterSummary>> {
         use crate::schema::catalog_monsters::dsl::*;
         
@@ -83,7 +103,17 @@ impl<'a> MonsterService<'a> {
         Ok(monsters.iter().map(MonsterSummary::from).collect())
     }
 
-    /// Get monster by name and source
+    /// Get monster by name and source.
+    ///
+    /// Retrieves full monster stat block data from the database.
+    ///
+    /// # Arguments
+    /// * `monster_name` - Exact monster name to look up
+    /// * `monster_source` - Source book code (e.g., "MM", "VGM")
+    ///
+    /// # Returns
+    /// * `Ok(Some(Monster))` - Full monster data if found
+    /// * `Ok(None)` - If no monster matches name and source
     pub fn get_monster_by_name_and_source(&mut self, monster_name: &str, monster_source: &str) -> Result<Option<Monster>> {
         use crate::schema::catalog_monsters::dsl::*;
         
@@ -114,7 +144,10 @@ impl<'a> MonsterService<'a> {
         }
     }
 
-    /// Get all unique sizes for filtering
+    /// Get all unique sizes for filtering.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of unique sizes (e.g., "Tiny", "Medium")
     pub fn get_all_sizes(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_monsters::dsl::*;
         
@@ -133,7 +166,10 @@ impl<'a> MonsterService<'a> {
         Ok(unique_sizes)
     }
 
-    /// Get all unique creature types for filtering
+    /// Get all unique creature types for filtering.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of creature types (e.g., "Beast", "Dragon")
     pub fn get_all_creature_types(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_monsters::dsl::*;
         
@@ -152,7 +188,10 @@ impl<'a> MonsterService<'a> {
         Ok(unique_types)
     }
 
-    /// Get all unique alignments for filtering
+    /// Get all unique alignments for filtering.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of alignments (e.g., "Lawful Evil")
     pub fn get_all_alignments(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_monsters::dsl::*;
         
@@ -171,7 +210,11 @@ impl<'a> MonsterService<'a> {
         Ok(unique_alignments)
     }
 
-    /// Get CR range (min and max) for filtering
+    /// Get CR range (min and max) for filtering.
+    ///
+    /// # Returns
+    /// * `Ok((min, max))` - Tuple of minimum and maximum CR values
+    ///   Returns (0.0, 30.0) if no data exists
     pub fn get_cr_range(&mut self) -> Result<(f64, f64)> {
         use crate::schema::catalog_monsters::dsl::*;
         use diesel::dsl::{min, max};
@@ -187,7 +230,10 @@ impl<'a> MonsterService<'a> {
         }
     }
 
-    /// Get monster count by source for statistics
+    /// Get monster count by source for statistics.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<(String, i64)>)` - List of (source, count) tuples
     pub fn get_monster_count_by_source(&mut self) -> Result<Vec<(String, i64)>> {
         use crate::schema::catalog_monsters::dsl::*;
         use diesel::dsl::count;
@@ -200,7 +246,10 @@ impl<'a> MonsterService<'a> {
         Ok(counts)
     }
 
-    /// Get all unique sources for filtering
+    /// Get all unique sources for filtering.
+    ///
+    /// # Returns
+    /// * `Ok(Vec<String>)` - Sorted list of source codes (e.g., "MM", "VGM")
     pub fn get_monster_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_monsters::dsl::*;
 
@@ -212,7 +261,19 @@ impl<'a> MonsterService<'a> {
         Ok(sources)
     }
 
-    /// Import all monster data from an uploaded book directory
+    /// Import all monster data from an uploaded book directory.
+    ///
+    /// Scans the bestiary/ subdirectory for monster JSON files, parses them,
+    /// and inserts into the database. Also loads fluff data (lore, images)
+    /// from corresponding fluff-bestiary-*.json files.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `book_dir` - Path to the extracted book directory
+    /// * `source` - Source code to assign to imported monsters
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of monsters successfully imported
     pub fn import_monsters_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
@@ -387,7 +448,16 @@ impl<'a> MonsterService<'a> {
         }
     }
 
-    /// Remove all monsters from a specific source
+    /// Remove all monsters from a specific source.
+    ///
+    /// Used when removing a book from the library to clean up its catalog data.
+    ///
+    /// # Arguments
+    /// * `conn` - Database connection
+    /// * `source` - Source code of the book to remove
+    ///
+    /// # Returns
+    /// * `Ok(usize)` - Number of monsters deleted
     pub fn remove_monsters_from_source(
         conn: &mut SqliteConnection,
         source: &str
