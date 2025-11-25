@@ -5,7 +5,7 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use tracing::{debug, info};
 
 /// Provider type enum
@@ -88,7 +88,7 @@ impl ProviderSettings {
     }
 
     /// Load provider settings from file
-    pub fn load(config_dir: &PathBuf) -> Result<Self> {
+    pub fn load(config_dir: &Path) -> Result<Self> {
         let config_path = config_dir.join("provider_settings.json");
 
         if !config_path.exists() {
@@ -109,13 +109,13 @@ impl ProviderSettings {
     }
 
     /// Save provider settings to file
-    pub fn save(&self, config_dir: &PathBuf) -> Result<()> {
+    pub fn save(&self, config_dir: &Path) -> Result<()> {
         self.validate()?;
 
         let config_path = config_dir.join("provider_settings.json");
 
-        let json = serde_json::to_string_pretty(self)
-            .context("Failed to serialize provider settings")?;
+        let json =
+            serde_json::to_string_pretty(self).context("Failed to serialize provider settings")?;
 
         fs::write(&config_path, json)
             .with_context(|| format!("Failed to write provider settings to {:?}", config_path))?;

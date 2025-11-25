@@ -95,9 +95,7 @@ pub async fn get_object_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_object_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_object_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
@@ -117,9 +115,7 @@ pub async fn get_object_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_object_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_object_count(state: State<'_, AppState>) -> Result<i64, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
@@ -139,9 +135,7 @@ pub async fn get_object_count(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_object_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_object_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
@@ -162,9 +156,7 @@ pub async fn get_object_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_object_sizes(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_object_sizes(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)

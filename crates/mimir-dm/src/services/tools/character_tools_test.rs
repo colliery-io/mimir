@@ -6,9 +6,9 @@
 mod tests {
     use crate::services::tools::character_tools::*;
     use crate::services::tools::character_write_tools::*;
-    use mimir_dm_core::{DatabaseService, run_migrations};
+    use mimir_dm_core::services::character::creation::{AbilityScoreMethod, CharacterBuilder};
     use mimir_dm_core::services::{CharacterService, PlayerService};
-    use mimir_dm_core::services::character::creation::{CharacterBuilder, AbilityScoreMethod};
+    use mimir_dm_core::{run_migrations, DatabaseService};
     use mimir_dm_llm::ToolTrait;
     use serde_json::json;
     use std::sync::Arc;
@@ -22,7 +22,7 @@ mod tests {
 
         // Run migrations
         let mut conn = db_service.get_connection().unwrap();
-        run_migrations(&mut *conn).unwrap();
+        run_migrations(&mut conn).unwrap();
 
         // Seed test data
         seed_test_catalog_data(&mut conn);
@@ -97,14 +97,22 @@ mod tests {
         player.id
     }
 
-    fn create_test_character(db_service: &Arc<DatabaseService>, campaign_id: i32, player_id: i32, temp_dir: &TempDir) -> i32 {
+    fn create_test_character(
+        db_service: &Arc<DatabaseService>,
+        campaign_id: i32,
+        player_id: i32,
+        temp_dir: &TempDir,
+    ) -> i32 {
         let mut conn = db_service.get_connection().unwrap();
 
         let mut char_data = CharacterBuilder::new(&mut conn)
             .set_identity("Gandalf".to_string(), player_id)
-            .set_race("Human", "PHB", None).unwrap()
-            .set_class("Wizard", "PHB", None).unwrap()
-            .set_background("Sage", "PHB").unwrap()
+            .set_race("Human", "PHB", None)
+            .unwrap()
+            .set_class("Wizard", "PHB", None)
+            .unwrap()
+            .set_background("Sage", "PHB")
+            .unwrap()
             .set_ability_scores(AbilityScoreMethod::Manual {
                 strength: 10,
                 dexterity: 12,
@@ -112,8 +120,10 @@ mod tests {
                 intelligence: 16,
                 wisdom: 13,
                 charisma: 8,
-            }).unwrap()
-            .build().unwrap();
+            })
+            .unwrap()
+            .build()
+            .unwrap();
 
         // Calculate and set spell slots for the Wizard
         use mimir_dm_core::services::character::calculate_spell_slots;
@@ -122,7 +132,12 @@ mod tests {
 
         let mut char_service = CharacterService::new(&mut conn);
         let character = char_service
-            .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
+            .create_character(
+                Some(campaign_id),
+                player_id,
+                temp_dir.path().to_str().unwrap(),
+                char_data,
+            )
             .unwrap();
 
         character.id
@@ -172,17 +187,33 @@ mod tests {
             let mut conn = db_service.get_connection().unwrap();
             let char_data = CharacterBuilder::new(&mut conn)
                 .set_identity(name.to_string(), player_id)
-                .set_race("Human", "PHB", None).unwrap()
-                .set_class("Wizard", "PHB", None).unwrap()
-                .set_background("Sage", "PHB").unwrap()
+                .set_race("Human", "PHB", None)
+                .unwrap()
+                .set_class("Wizard", "PHB", None)
+                .unwrap()
+                .set_background("Sage", "PHB")
+                .unwrap()
                 .set_ability_scores(AbilityScoreMethod::Manual {
-                    strength: 10, dexterity: 12, constitution: 14,
-                    intelligence: 10, wisdom: 12, charisma: 10,
-                }).unwrap()
-                .build().unwrap();
+                    strength: 10,
+                    dexterity: 12,
+                    constitution: 14,
+                    intelligence: 10,
+                    wisdom: 12,
+                    charisma: 10,
+                })
+                .unwrap()
+                .build()
+                .unwrap();
 
             let mut char_service = CharacterService::new(&mut conn);
-            char_service.create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data).unwrap();
+            char_service
+                .create_character(
+                    Some(campaign_id),
+                    player_id,
+                    temp_dir.path().to_str().unwrap(),
+                    char_data,
+                )
+                .unwrap();
         }
 
         let tool = ListCampaignCharactersTool::new(Arc::clone(&db_service));
@@ -387,7 +418,9 @@ mod tests {
         let mut char_service = CharacterService::new(&mut conn);
         let (_, mut char_data) = char_service.get_character(character_id).unwrap();
         char_data.spells.spell_slots.get_mut(&1).unwrap().current = 0;
-        char_service.update_character(character_id, char_data, Some("Used all slots".to_string())).unwrap();
+        char_service
+            .update_character(character_id, char_data, Some("Used all slots".to_string()))
+            .unwrap();
 
         let tool = CastSpellTool::new(Arc::clone(&db_service));
 
@@ -399,6 +432,9 @@ mod tests {
 
         let result = tool.execute(spell_args).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No level 1 spell slots remaining"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No level 1 spell slots remaining"));
     }
 }

@@ -8,74 +8,103 @@ pub mod background;
 pub mod book;
 pub mod class;
 pub mod condition;
+pub mod cult;
 pub mod deity;
 pub mod feat;
 pub mod item;
+pub mod language;
 pub mod monster;
 pub mod object;
 pub mod optionalfeature;
+pub mod psionic;
 pub mod race;
-pub mod spell;
-pub mod trap;
-pub mod language;
 pub mod reward;
+pub mod spell;
 pub mod table;
+pub mod trap;
 pub mod variant_rule;
 pub mod vehicle;
-pub mod cult;
-pub mod psionic;
 
 // Re-export commonly used types
 pub use class::{
-    Class, ClassData, ClassFeature, ClassFeatureData, ClassFluff, ClassFluffData,
-    ClassSummary, HitDice, Multiclassing, MulticlassingProficiencies, StartingEquipment,
-    StartingProficiencies, Subclass, SubclassFeature, SubclassFluff,
+    Class, ClassData, ClassFeature, ClassFeatureData, ClassFluff, ClassFluffData, ClassSummary,
+    HitDice, Multiclassing, MulticlassingProficiencies, StartingEquipment, StartingProficiencies,
+    Subclass, SubclassFeature, SubclassFluff,
 };
 
 pub use item::{Item, ItemData, ItemSummary};
 
 pub use monster::{
-    ArmorClass, CreatureType, HitPoints, Monster, MonsterData, MonsterFluff,
-    MonsterFluffData, MonsterSummary, Saves, Skills, Speed,
+    ArmorClass, CreatureType, HitPoints, Monster, MonsterData, MonsterFluff, MonsterFluffData,
+    MonsterSummary, Saves, Skills, Speed,
 };
 
 pub use spell::{
-    CastingTime, ClassReference, Classes, Components, Distance, Duration,
-    DurationValue, MaterialComponent, ScalingLevelDice, Spell, SpellData, SpellMeta,
-    SpellRange, SpellSchool, SpellSummary, SubclassReference, SubclassReference2,
-    CatalogSpell, NewCatalogSpell, SpellFilters,
+    CastingTime, CatalogSpell, ClassReference, Classes, Components, Distance, Duration,
+    DurationValue, MaterialComponent, NewCatalogSpell, ScalingLevelDice, Spell, SpellData,
+    SpellFilters, SpellMeta, SpellRange, SpellSchool, SpellSummary, SubclassReference,
+    SubclassReference2,
 };
 
-pub use feat::{Feat, FeatData, FeatSummary, CatalogFeat, NewCatalogFeat, FeatFilters};
+pub use feat::{CatalogFeat, Feat, FeatData, FeatFilters, FeatSummary, NewCatalogFeat};
 
-pub use race::{Race, RaceData, RaceSummary, Subrace, RaceFluff, RaceFluffData, CatalogRace, NewCatalogRace, RaceFilters};
+pub use race::{
+    CatalogRace, NewCatalogRace, Race, RaceData, RaceFilters, RaceFluff, RaceFluffData,
+    RaceSummary, Subrace,
+};
 
-pub use background::{Background, BackgroundData, BackgroundSummary, BackgroundFluff, BackgroundFluffData, BackgroundWithDetails, CatalogBackground, NewCatalogBackground, BackgroundFilters};
+pub use background::{
+    Background, BackgroundData, BackgroundFilters, BackgroundFluff, BackgroundFluffData,
+    BackgroundSummary, BackgroundWithDetails, CatalogBackground, NewCatalogBackground,
+};
 
-pub use book::{UploadedBook, NewUploadedBook};
+pub use book::{NewUploadedBook, UploadedBook};
 
-pub use action::{Action, ActionTime, CatalogAction, NewCatalogAction, ActionFilters, ActionSummary};
+pub use action::{
+    Action, ActionFilters, ActionSummary, ActionTime, CatalogAction, NewCatalogAction,
+};
 
-pub use condition::{Condition, ConditionData, Disease, DiseaseData, ConditionSummary, ConditionOrDisease, ConditionWithDetails, ConditionFluff, ConditionFluffData, CatalogCondition, NewCatalogCondition, ConditionFilters};
+pub use condition::{
+    CatalogCondition, Condition, ConditionData, ConditionFilters, ConditionFluff,
+    ConditionFluffData, ConditionOrDisease, ConditionSummary, ConditionWithDetails, Disease,
+    DiseaseData, NewCatalogCondition,
+};
 
 pub use optionalfeature::{OptionalFeature, OptionalFeatureData, OptionalFeatureSummary};
 
 pub use deity::{Deity, DeityData, DeitySummary};
 
-pub use object::{DndObject, ObjectData, ObjectSummary, CatalogObject, NewCatalogObject, ObjectFilters};
+pub use object::{
+    CatalogObject, DndObject, NewCatalogObject, ObjectData, ObjectFilters, ObjectSummary,
+};
 
-pub use trap::{Trap, TrapData, Hazard, HazardData, TrapOrHazard, TrapSummary, CatalogTrap, NewCatalogTrap, TrapFilters};
+pub use trap::{
+    CatalogTrap, Hazard, HazardData, NewCatalogTrap, Trap, TrapData, TrapFilters, TrapOrHazard,
+    TrapSummary,
+};
 
-pub use language::{Language, LanguageData, LanguageSummary, LanguageFluff, LanguageFluffData, CatalogLanguage, NewCatalogLanguage, LanguageFilters};
+pub use language::{
+    CatalogLanguage, Language, LanguageData, LanguageFilters, LanguageFluff, LanguageFluffData,
+    LanguageSummary, NewCatalogLanguage,
+};
 
-pub use reward::{Reward, RewardData, RewardSummary, RewardFluff, RewardFluffData, CatalogReward, NewCatalogReward, RewardFilters};
+pub use reward::{
+    CatalogReward, NewCatalogReward, Reward, RewardData, RewardFilters, RewardFluff,
+    RewardFluffData, RewardSummary,
+};
 
-pub use table::{Table, TableData, TableSummary, TableFluff, TableFluffData, CatalogTable, NewCatalogTable, TableFilters};
+pub use table::{
+    CatalogTable, NewCatalogTable, Table, TableData, TableFilters, TableFluff, TableFluffData,
+    TableSummary,
+};
 
 pub use variant_rule::{VariantRule, VariantRuleData, VariantRuleSummary};
 
-pub use vehicle::{Vehicle, VehicleData, VehicleSummary, VehicleWeapon, Speed as VehicleSpeed};
+pub use vehicle::{Speed as VehicleSpeed, Vehicle, VehicleData, VehicleSummary, VehicleWeapon};
 
-pub use cult::{Cult, CultData, Boon, BoonData, CultBoonSummary};
+pub use cult::{Boon, BoonData, Cult, CultBoonSummary, CultData};
 
-pub use psionic::{Psionic, PsionicSummary, PsionicMode, PsionicCost, ConcentrationDuration, CatalogPsionic, NewCatalogPsionic, PsionicFilters};
+pub use psionic::{
+    CatalogPsionic, ConcentrationDuration, NewCatalogPsionic, Psionic, PsionicCost, PsionicFilters,
+    PsionicMode, PsionicSummary,
+};

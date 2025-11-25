@@ -8,24 +8,24 @@ use serde_json::Value as JsonValue;
 pub struct TemplateFrontmatter {
     /// Unique identifier for this template
     pub id: String,
-    
+
     /// Human-readable title
     pub title: String,
-    
+
     /// Template type (campaign_pitch, module_overview, etc.)
     #[serde(rename = "type")]
     pub template_type: String,
-    
+
     /// Document level (campaign, module, session, handout)
     pub level: String,
-    
+
     /// Brief description of the template's purpose
     pub purpose: String,
-    
+
     /// List of template variables used in this document
     #[serde(default)]
     pub variables: Vec<TemplateVariable>,
-    
+
     /// Author of the template
     #[serde(default = "default_author")]
     pub author: String,
@@ -40,17 +40,17 @@ fn default_author() -> String {
 pub struct TemplateVariable {
     /// Variable name (without delimiters)
     pub name: String,
-    
+
     /// Data type (string, number, boolean, list, object, etc.)
     #[serde(rename = "type")]
     pub var_type: String,
-    
+
     /// Description of what this variable represents
     pub description: String,
-    
+
     /// Default value for this variable (required)
     pub default: JsonValue,
-    
+
     /// Whether this variable is required
     #[serde(default = "default_true")]
     pub required: bool,
@@ -91,7 +91,6 @@ fn default_true() -> bool {
 ///     required: true
 /// ---
 /// ```
-
 impl TemplateFrontmatter {
     /// Parse frontmatter from a markdown document using gray_matter
     pub fn parse_from_markdown(content: &str) -> Option<Self> {
@@ -99,17 +98,15 @@ impl TemplateFrontmatter {
         // We parse directly into serde_yaml::Value
         let matter = gray_matter::Matter::<gray_matter::engine::YAML>::new();
         let parsed = matter.parse::<serde_yaml::Value>(content).ok()?;
-        
+
         // If there's no frontmatter data, return None
-        if parsed.data.is_none() {
-            return None;
-        }
-        
+        parsed.data.as_ref()?;
+
         // Convert the parsed YAML Value to our TemplateFrontmatter struct
         let yaml_value = parsed.data?;
         serde_yaml::from_value(yaml_value).ok()
     }
-    
+
     /// Extract the content after frontmatter using gray_matter
     pub fn extract_content(markdown: &str) -> String {
         // Parse the markdown with gray_matter
@@ -120,17 +117,17 @@ impl TemplateFrontmatter {
             Err(_) => markdown.to_string(), // If parsing fails, return original content
         }
     }
-    
+
     /// Convert to JSON for database storage
     pub fn to_json(&self) -> serde_json::Result<String> {
         serde_json::to_string(self)
     }
-    
+
     /// Create variables schema JSON
     pub fn variables_schema(&self) -> serde_json::Result<String> {
         serde_json::to_string(&self.variables)
     }
-    
+
     /// Extract defaults as a map from variables
     pub fn defaults_map(&self) -> serde_json::Map<String, JsonValue> {
         let mut defaults = serde_json::Map::new();

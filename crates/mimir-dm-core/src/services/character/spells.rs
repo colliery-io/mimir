@@ -1,11 +1,11 @@
 //! Character spell management service
 
+use super::{spell_management, CharacterService, RestType};
 use crate::{
     connection::DbConnection,
     error::{DbError, Result},
     models::character::CharacterVersion,
 };
-use super::{CharacterService, spell_management, RestType};
 
 /// Service for character spell operations
 pub struct CharacterSpellService<'a> {
@@ -39,7 +39,11 @@ impl<'a> CharacterSpellService<'a> {
             )))?;
 
         // Validate spell is available for any of character's classes
-        let class_names: Vec<String> = char_data.classes.iter().map(|c| c.class_name.clone()).collect();
+        let class_names: Vec<String> = char_data
+            .classes
+            .iter()
+            .map(|c| c.class_name.clone())
+            .collect();
         let mut valid_for_any_class = false;
         for class_name in &class_names {
             if spell_management::validate_spell_for_class(self.conn, &spell, class_name)? {
@@ -50,7 +54,8 @@ impl<'a> CharacterSpellService<'a> {
         if !valid_for_any_class {
             return Err(DbError::InvalidData(format!(
                 "Spell '{}' is not available for any of character's classes: {}",
-                spell_name, char_data.class_string()
+                spell_name,
+                char_data.class_string()
             )));
         }
 
@@ -85,12 +90,14 @@ impl<'a> CharacterSpellService<'a> {
 
         // Calculate maximum prepared spells
         // Formula: spellcasting ability modifier + character level
-        let ability_mod = spell_management::calculate_spell_attack_bonus(&char_data, spellcasting_ability)
-            - char_data.proficiency_bonus();
+        let ability_mod =
+            spell_management::calculate_spell_attack_bonus(&char_data, spellcasting_ability)
+                - char_data.proficiency_bonus();
         let max_prepared = (ability_mod + char_data.level).max(1);
 
         // Validate spell count (not including cantrips)
-        let non_cantrip_count = spell_keys.iter()
+        let non_cantrip_count = spell_keys
+            .iter()
             .filter(|key| !char_data.spells.cantrips.contains(key))
             .count();
 
@@ -104,7 +111,8 @@ impl<'a> CharacterSpellService<'a> {
         // Validate all spells are known
         for spell_key in &spell_keys {
             if !char_data.spells.cantrips.contains(spell_key)
-                && !char_data.spells.known_spells.contains(spell_key) {
+                && !char_data.spells.known_spells.contains(spell_key)
+            {
                 return Err(DbError::InvalidData(format!(
                     "Spell '{}' is not known by this character",
                     spell_key
@@ -161,11 +169,7 @@ impl<'a> CharacterSpellService<'a> {
     }
 
     /// Rest and restore spell slots
-    pub fn rest(
-        &mut self,
-        character_id: i32,
-        rest_type: RestType,
-    ) -> Result<CharacterVersion> {
+    pub fn rest(&mut self, character_id: i32, rest_type: RestType) -> Result<CharacterVersion> {
         let mut char_service = CharacterService::new(self.conn);
         let (_character, mut char_data) = char_service.get_character(character_id)?;
 

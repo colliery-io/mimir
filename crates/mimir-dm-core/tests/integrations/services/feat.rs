@@ -1,9 +1,9 @@
 //! Integration tests for FeatService
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::FeatService;
-use mimir_dm_core::models::catalog::FeatFilters;
 use diesel::prelude::*;
+use mimir_dm_core::models::catalog::FeatFilters;
+use mimir_dm_core::services::FeatService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -17,24 +17,132 @@ fn setup_test_db() -> (SqliteConnection, TempDir) {
 
 fn seed_test_feat_data(conn: &mut SqliteConnection) {
     let feats = vec![
-        ("Alert", "PHB", None::<&str>, "Always on the lookout for danger", r#"{"name":"Alert","source":"PHB","entries":["Always on the lookout for danger, you gain the following benefits:"]}"#),
-        ("Athlete", "PHB", None, "You have undergone extensive physical training", r#"{"name":"Athlete","source":"PHB","entries":["You have undergone extensive physical training"]}"#),
-        ("Actor", "PHB", None, "Skilled at mimicry and dramatics", r#"{"name":"Actor","source":"PHB","entries":["Skilled at mimicry and dramatics"]}"#),
-        ("Charger", "PHB", None, "When you use your action to Dash", r#"{"name":"Charger","source":"PHB","entries":["When you use your action to Dash"]}"#),
-        ("Crossbow Expert", "PHB", None, "You have mastered crossbows", r#"{"name":"Crossbow Expert","source":"PHB","entries":["You have mastered crossbows"]}"#),
-        ("Defensive Duelist", "PHB", Some("Dexterity 13 or higher"), "When wielding a finesse weapon", r#"{"name":"Defensive Duelist","source":"PHB","prerequisite":[{"ability":[{"dex":13}]}],"entries":["When wielding a finesse weapon"]}"#),
-        ("Dual Wielder", "PHB", None, "You master fighting with two weapons", r#"{"name":"Dual Wielder","source":"PHB","entries":["You master fighting with two weapons"]}"#),
-        ("Dungeon Delver", "PHB", None, "You have honed your senses in the dark", r#"{"name":"Dungeon Delver","source":"PHB","entries":["You have honed your senses in the dark"]}"#),
-        ("Durable", "PHB", None, "Hardy and resilient", r#"{"name":"Durable","source":"PHB","entries":["Hardy and resilient"]}"#),
-        ("Elemental Adept", "PHB", Some("Spellcasting or Pact Magic feature"), "You have mastery over elements", r#"{"name":"Elemental Adept","source":"PHB","prerequisite":[{"spellcasting":true}],"entries":["You have mastery over elements"]}"#),
-        ("Grappler", "PHB", Some("Strength 13 or higher"), "You are an expert at grappling", r#"{"name":"Grappler","source":"PHB","prerequisite":[{"ability":[{"str":13}]}],"entries":["You are an expert at grappling"]}"#),
-        ("Great Weapon Master", "PHB", None, "You have learned to maximize your heavy weapons", r#"{"name":"Great Weapon Master","source":"PHB","entries":["You have learned to maximize your heavy weapons"]}"#),
-        ("Healer", "PHB", None, "You are an able physician", r#"{"name":"Healer","source":"PHB","entries":["You are an able physician"]}"#),
-        ("Heavy Armor Master", "PHB", Some("Proficiency with heavy armor"), "You can use heavy armor", r#"{"name":"Heavy Armor Master","source":"PHB","prerequisite":[{"proficiency":[{"armor":"heavy"}]}],"entries":["You can use heavy armor"]}"#),
-        ("Lucky", "PHB", None, "You have inexplicable luck", r#"{"name":"Lucky","source":"PHB","entries":["You have inexplicable luck"]}"#),
-        ("Fey Touched", "TCE", None, "Your exposure to the Feywild's magic", r#"{"name":"Fey Touched","source":"TCE","entries":["Your exposure to the Feywild's magic"]}"#),
-        ("Shadow Touched", "TCE", None, "Your exposure to the Shadowfell's magic", r#"{"name":"Shadow Touched","source":"TCE","entries":["Your exposure to the Shadowfell's magic"]}"#),
-        ("Telekinetic", "TCE", None, "You learn to move things with your mind", r#"{"name":"Telekinetic","source":"TCE","entries":["You learn to move things with your mind"]}"#),
+        (
+            "Alert",
+            "PHB",
+            None::<&str>,
+            "Always on the lookout for danger",
+            r#"{"name":"Alert","source":"PHB","entries":["Always on the lookout for danger, you gain the following benefits:"]}"#,
+        ),
+        (
+            "Athlete",
+            "PHB",
+            None,
+            "You have undergone extensive physical training",
+            r#"{"name":"Athlete","source":"PHB","entries":["You have undergone extensive physical training"]}"#,
+        ),
+        (
+            "Actor",
+            "PHB",
+            None,
+            "Skilled at mimicry and dramatics",
+            r#"{"name":"Actor","source":"PHB","entries":["Skilled at mimicry and dramatics"]}"#,
+        ),
+        (
+            "Charger",
+            "PHB",
+            None,
+            "When you use your action to Dash",
+            r#"{"name":"Charger","source":"PHB","entries":["When you use your action to Dash"]}"#,
+        ),
+        (
+            "Crossbow Expert",
+            "PHB",
+            None,
+            "You have mastered crossbows",
+            r#"{"name":"Crossbow Expert","source":"PHB","entries":["You have mastered crossbows"]}"#,
+        ),
+        (
+            "Defensive Duelist",
+            "PHB",
+            Some("Dexterity 13 or higher"),
+            "When wielding a finesse weapon",
+            r#"{"name":"Defensive Duelist","source":"PHB","prerequisite":[{"ability":[{"dex":13}]}],"entries":["When wielding a finesse weapon"]}"#,
+        ),
+        (
+            "Dual Wielder",
+            "PHB",
+            None,
+            "You master fighting with two weapons",
+            r#"{"name":"Dual Wielder","source":"PHB","entries":["You master fighting with two weapons"]}"#,
+        ),
+        (
+            "Dungeon Delver",
+            "PHB",
+            None,
+            "You have honed your senses in the dark",
+            r#"{"name":"Dungeon Delver","source":"PHB","entries":["You have honed your senses in the dark"]}"#,
+        ),
+        (
+            "Durable",
+            "PHB",
+            None,
+            "Hardy and resilient",
+            r#"{"name":"Durable","source":"PHB","entries":["Hardy and resilient"]}"#,
+        ),
+        (
+            "Elemental Adept",
+            "PHB",
+            Some("Spellcasting or Pact Magic feature"),
+            "You have mastery over elements",
+            r#"{"name":"Elemental Adept","source":"PHB","prerequisite":[{"spellcasting":true}],"entries":["You have mastery over elements"]}"#,
+        ),
+        (
+            "Grappler",
+            "PHB",
+            Some("Strength 13 or higher"),
+            "You are an expert at grappling",
+            r#"{"name":"Grappler","source":"PHB","prerequisite":[{"ability":[{"str":13}]}],"entries":["You are an expert at grappling"]}"#,
+        ),
+        (
+            "Great Weapon Master",
+            "PHB",
+            None,
+            "You have learned to maximize your heavy weapons",
+            r#"{"name":"Great Weapon Master","source":"PHB","entries":["You have learned to maximize your heavy weapons"]}"#,
+        ),
+        (
+            "Healer",
+            "PHB",
+            None,
+            "You are an able physician",
+            r#"{"name":"Healer","source":"PHB","entries":["You are an able physician"]}"#,
+        ),
+        (
+            "Heavy Armor Master",
+            "PHB",
+            Some("Proficiency with heavy armor"),
+            "You can use heavy armor",
+            r#"{"name":"Heavy Armor Master","source":"PHB","prerequisite":[{"proficiency":[{"armor":"heavy"}]}],"entries":["You can use heavy armor"]}"#,
+        ),
+        (
+            "Lucky",
+            "PHB",
+            None,
+            "You have inexplicable luck",
+            r#"{"name":"Lucky","source":"PHB","entries":["You have inexplicable luck"]}"#,
+        ),
+        (
+            "Fey Touched",
+            "TCE",
+            None,
+            "Your exposure to the Feywild's magic",
+            r#"{"name":"Fey Touched","source":"TCE","entries":["Your exposure to the Feywild's magic"]}"#,
+        ),
+        (
+            "Shadow Touched",
+            "TCE",
+            None,
+            "Your exposure to the Shadowfell's magic",
+            r#"{"name":"Shadow Touched","source":"TCE","entries":["Your exposure to the Shadowfell's magic"]}"#,
+        ),
+        (
+            "Telekinetic",
+            "TCE",
+            None,
+            "You learn to move things with your mind",
+            r#"{"name":"Telekinetic","source":"TCE","entries":["You learn to move things with your mind"]}"#,
+        ),
     ];
 
     for (name, source, prerequisites, brief, json) in feats {
@@ -60,8 +168,7 @@ fn test_search_feats_no_filters() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 18, "Should return all 18 seeded feats");
 }
@@ -75,8 +182,7 @@ fn test_search_feats_by_name() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 1, "Should return 1 feat matching 'Lucky'");
     assert_eq!(results[0].name, "Lucky");
@@ -91,10 +197,13 @@ fn test_search_feats_by_brief_description() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
-    assert_eq!(results.len(), 1, "Should return 1 feat with 'crossbow' in description");
+    assert_eq!(
+        results.len(),
+        1,
+        "Should return 1 feat with 'crossbow' in description"
+    );
     assert_eq!(results[0].name, "Crossbow Expert");
 }
 
@@ -107,8 +216,7 @@ fn test_search_feats_by_source() {
         sources: Some(vec!["PHB".to_string()]),
         has_prerequisites: None,
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 15, "Should return 15 PHB feats");
     assert!(results.iter().all(|f| f.source == "PHB"));
@@ -123,8 +231,7 @@ fn test_search_feats_by_multiple_sources() {
         sources: Some(vec!["TCE".to_string()]),
         has_prerequisites: None,
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 3, "Should return 3 TCE feats");
 }
@@ -138,8 +245,7 @@ fn test_search_feats_with_prerequisites() {
         sources: None,
         has_prerequisites: Some(true),
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
     // Feats with prerequisites: Defensive Duelist, Elemental Adept, Grappler, Heavy Armor Master
     assert_eq!(results.len(), 4, "Should return 4 feats with prerequisites");
@@ -155,10 +261,13 @@ fn test_search_feats_without_prerequisites() {
         sources: None,
         has_prerequisites: Some(false),
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
-    assert_eq!(results.len(), 14, "Should return 14 feats without prerequisites");
+    assert_eq!(
+        results.len(),
+        14,
+        "Should return 14 feats without prerequisites"
+    );
     assert!(results.iter().all(|f| f.prerequisites.is_none()));
 }
 
@@ -171,12 +280,17 @@ fn test_search_feats_combined_filters() {
         sources: Some(vec!["PHB".to_string()]),
         has_prerequisites: Some(true),
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
     // PHB feats with prerequisites
-    assert_eq!(results.len(), 4, "Should return PHB feats with prerequisites");
-    assert!(results.iter().all(|f| f.source == "PHB" && f.prerequisites.is_some()));
+    assert_eq!(
+        results.len(),
+        4,
+        "Should return PHB feats with prerequisites"
+    );
+    assert!(results
+        .iter()
+        .all(|f| f.source == "PHB" && f.prerequisites.is_some()));
 }
 
 #[test]
@@ -188,8 +302,7 @@ fn test_search_feats_empty_results() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = FeatService::search_feats(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = FeatService::search_feats(&mut conn, filters).expect("Search should succeed");
 
     assert!(results.is_empty(), "Should return empty results");
 }
@@ -218,8 +331,7 @@ fn test_get_feat_by_name_and_source_not_found() {
 fn test_get_feat_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sources = FeatService::get_feat_sources(&mut conn)
-        .expect("Should get sources");
+    let sources = FeatService::get_feat_sources(&mut conn).expect("Should get sources");
 
     assert_eq!(sources.len(), 2, "Should have 2 sources");
     assert!(sources.contains(&"PHB".to_string()));
@@ -230,8 +342,7 @@ fn test_get_feat_sources() {
 fn test_get_feat_count() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let count = FeatService::get_feat_count(&mut conn)
-        .expect("Should get count");
+    let count = FeatService::get_feat_count(&mut conn).expect("Should get count");
 
     assert_eq!(count, 18, "Should have 18 feats");
 }

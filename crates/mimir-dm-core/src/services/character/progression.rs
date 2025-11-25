@@ -1,11 +1,13 @@
 //! Character progression service for level up operations
 
+use super::{
+    AsiOrFeat, CharacterService, ClassInfo, HpGainMethod, LevelUpOptions, MulticlassPrerequisites,
+};
 use crate::{
     connection::DbConnection,
     error::{DbError, Result},
     models::character::CharacterVersion,
 };
-use super::{CharacterService, LevelUpOptions, HpGainMethod, AsiOrFeat, ClassInfo, MulticlassPrerequisites};
 
 /// Service for character progression operations (level up, ASI, multiclassing)
 pub struct CharacterProgressionService<'a> {
@@ -36,7 +38,9 @@ impl<'a> CharacterProgressionService<'a> {
 
         // Validate multiclass prerequisites
         if is_multiclass {
-            if let Some(prereqs) = MulticlassPrerequisites::get(self.conn, &options.class_name, &options.class_source)? {
+            if let Some(prereqs) =
+                MulticlassPrerequisites::get(self.conn, &options.class_name, &options.class_source)?
+            {
                 prereqs.check(&char_data.abilities)?;
             }
         }
@@ -90,10 +94,18 @@ impl<'a> CharacterProgressionService<'a> {
                         increase2,
                     } => {
                         // Apply ability score increases (cap at 20)
-                        Self::apply_ability_increase(&mut char_data.abilities, ability1, *increase1)?;
+                        Self::apply_ability_increase(
+                            &mut char_data.abilities,
+                            ability1,
+                            *increase1,
+                        )?;
 
                         if let (Some(ability), Some(increase)) = (ability2, increase2) {
-                            Self::apply_ability_increase(&mut char_data.abilities, ability, *increase)?;
+                            Self::apply_ability_increase(
+                                &mut char_data.abilities,
+                                ability,
+                                *increase,
+                            )?;
                         }
                     }
                     AsiOrFeat::Feat(feat_name) => {
@@ -114,9 +126,9 @@ impl<'a> CharacterProgressionService<'a> {
         }
 
         // Update snapshot reason
-        let snapshot_reason = options.snapshot_reason.or_else(|| {
-            Some(format!("Leveled up to {}", char_data.level))
-        });
+        let snapshot_reason = options
+            .snapshot_reason
+            .or_else(|| Some(format!("Leveled up to {}", char_data.level)));
 
         // Create new version
         let mut char_service = CharacterService::new(self.conn);

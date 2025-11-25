@@ -35,7 +35,8 @@ pub async fn search_monsters(
     })?;
 
     let mut service = MonsterService::new(&mut conn);
-    service.search_monsters(filters)
+    service
+        .search_monsters(filters)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -59,7 +60,10 @@ pub async fn get_monster_details(
     monster_source: String,
     state: State<'_, AppState>,
 ) -> Result<Option<Monster>, String> {
-    debug!("Getting monster details for name: {}, source: {}", monster_name, monster_source);
+    debug!(
+        "Getting monster details for name: {}, source: {}",
+        monster_name, monster_source
+    );
 
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
@@ -67,7 +71,8 @@ pub async fn get_monster_details(
     })?;
 
     let mut service = MonsterService::new(&mut conn);
-    service.get_monster_by_name_and_source(&monster_name, &monster_source)
+    service
+        .get_monster_by_name_and_source(&monster_name, &monster_source)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -82,9 +87,7 @@ pub async fn get_monster_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_monster_sizes(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_monster_sizes(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all monster sizes");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -93,7 +96,8 @@ pub async fn get_monster_sizes(
     })?;
 
     let mut service = MonsterService::new(&mut conn);
-    service.get_all_sizes()
+    service
+        .get_all_sizes()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -108,9 +112,7 @@ pub async fn get_monster_sizes(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_monster_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_monster_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all monster creature types");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -119,7 +121,8 @@ pub async fn get_monster_types(
     })?;
 
     let mut service = MonsterService::new(&mut conn);
-    service.get_all_creature_types()
+    service
+        .get_all_creature_types()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -134,9 +137,7 @@ pub async fn get_monster_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_monster_alignments(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_monster_alignments(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all monster alignments");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -145,7 +146,8 @@ pub async fn get_monster_alignments(
     })?;
 
     let mut service = MonsterService::new(&mut conn);
-    service.get_all_alignments()
+    service
+        .get_all_alignments()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -159,9 +161,7 @@ pub async fn get_monster_alignments(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_monster_cr_range(
-    state: State<'_, AppState>,
-) -> Result<(f64, f64), String> {
+pub async fn get_monster_cr_range(state: State<'_, AppState>) -> Result<(f64, f64), String> {
     debug!("Getting monster CR range");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -170,7 +170,8 @@ pub async fn get_monster_cr_range(
     })?;
 
     let mut service = MonsterService::new(&mut conn);
-    service.get_cr_range()
+    service
+        .get_cr_range()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -196,6 +197,7 @@ pub async fn get_monster_statistics(
     })?;
 
     let mut service = MonsterService::new(&mut conn);
-    service.get_monster_count_by_source()
+    service
+        .get_monster_count_by_source()
         .map_err(|e| format!("Database query failed: {}", e))
 }

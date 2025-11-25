@@ -1,9 +1,9 @@
 //! Integration tests for PsionicService
 
 use diesel::prelude::*;
-use mimir_dm_core::{establish_connection, run_migrations};
 use mimir_dm_core::models::catalog::PsionicFilters;
 use mimir_dm_core::services::psionic_service::PsionicService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -86,8 +86,8 @@ fn test_search_psionics_no_filters() {
         orders: None,
         sources: None,
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     assert_eq!(results.len(), 16);
 }
@@ -102,8 +102,8 @@ fn test_search_psionics_by_name() {
         orders: None,
         sources: None,
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     assert_eq!(results.len(), 2); // Crown of Disgust, Crown of Rage
 }
@@ -118,8 +118,8 @@ fn test_search_psionics_by_type_discipline() {
         orders: None,
         sources: None,
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     assert_eq!(results.len(), 8);
     assert!(results.iter().all(|p| p.psionic_type == "D"));
@@ -135,8 +135,8 @@ fn test_search_psionics_by_type_talent() {
         orders: None,
         sources: None,
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     assert_eq!(results.len(), 8);
     assert!(results.iter().all(|p| p.psionic_type == "T"));
@@ -152,8 +152,8 @@ fn test_search_psionics_by_order() {
         orders: Some(vec!["Avatar".to_string()]),
         sources: None,
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     assert_eq!(results.len(), 3); // Brute Force, Crown of Disgust, Crown of Rage
 }
@@ -168,8 +168,8 @@ fn test_search_psionics_by_source() {
         orders: None,
         sources: Some(vec!["UAMystic".to_string()]),
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     assert_eq!(results.len(), 16);
 }
@@ -184,8 +184,8 @@ fn test_search_psionics_combined_filters() {
         orders: Some(vec!["Immortal".to_string()]),
         sources: None,
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     // Adaptive Body, Bestial Form, Celerity, Corrosive Metabolism
     assert_eq!(results.len(), 4);
@@ -201,8 +201,8 @@ fn test_search_psionics_empty_results() {
         orders: None,
         sources: None,
     };
-    let results = PsionicService::search_psionics(&mut conn, filters)
-        .expect("Should search psionics");
+    let results =
+        PsionicService::search_psionics(&mut conn, filters).expect("Should search psionics");
 
     assert!(results.is_empty());
 }
@@ -211,8 +211,9 @@ fn test_search_psionics_empty_results() {
 fn test_get_psionic_by_name_and_source() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let result = PsionicService::get_psionic_by_name_and_source(&mut conn, "Aura Sight", "UAMystic")
-        .expect("Should get psionic");
+    let result =
+        PsionicService::get_psionic_by_name_and_source(&mut conn, "Aura Sight", "UAMystic")
+            .expect("Should get psionic");
 
     assert!(result.is_some());
     let psionic = result.unwrap();
@@ -223,8 +224,9 @@ fn test_get_psionic_by_name_and_source() {
 fn test_get_psionic_by_name_and_source_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let result = PsionicService::get_psionic_by_name_and_source(&mut conn, "Nonexistent", "UAMystic")
-        .expect("Should handle not found");
+    let result =
+        PsionicService::get_psionic_by_name_and_source(&mut conn, "Nonexistent", "UAMystic")
+            .expect("Should handle not found");
 
     assert!(result.is_none());
 }
@@ -233,8 +235,7 @@ fn test_get_psionic_by_name_and_source_not_found() {
 fn test_get_psionic_by_id() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let result = PsionicService::get_psionic_by_id(&mut conn, 1)
-        .expect("Should get psionic");
+    let result = PsionicService::get_psionic_by_id(&mut conn, 1).expect("Should get psionic");
 
     assert!(result.is_some());
 }
@@ -243,8 +244,8 @@ fn test_get_psionic_by_id() {
 fn test_get_psionic_by_id_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let result = PsionicService::get_psionic_by_id(&mut conn, 9999)
-        .expect("Should handle not found");
+    let result =
+        PsionicService::get_psionic_by_id(&mut conn, 9999).expect("Should handle not found");
 
     assert!(result.is_none());
 }
@@ -253,8 +254,7 @@ fn test_get_psionic_by_id_not_found() {
 fn test_get_all_psionic_types() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let types = PsionicService::get_all_psionic_types(&mut conn)
-        .expect("Should get types");
+    let types = PsionicService::get_all_psionic_types(&mut conn).expect("Should get types");
 
     assert!(types.contains(&"D".to_string()));
     assert!(types.contains(&"T".to_string()));
@@ -264,8 +264,7 @@ fn test_get_all_psionic_types() {
 fn test_get_all_psionic_orders() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let orders = PsionicService::get_all_psionic_orders(&mut conn)
-        .expect("Should get orders");
+    let orders = PsionicService::get_all_psionic_orders(&mut conn).expect("Should get orders");
 
     assert!(orders.contains(&"Avatar".to_string()));
     assert!(orders.contains(&"Awakened".to_string()));
@@ -276,8 +275,7 @@ fn test_get_all_psionic_orders() {
 fn test_get_all_psionic_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sources = PsionicService::get_all_psionic_sources(&mut conn)
-        .expect("Should get sources");
+    let sources = PsionicService::get_all_psionic_sources(&mut conn).expect("Should get sources");
 
     assert!(sources.contains(&"UAMystic".to_string()));
 }

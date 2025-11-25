@@ -40,17 +40,20 @@ pub async fn create_session(
     request: CreateSessionRequest,
     state: State<'_, AppState>,
 ) -> Result<SessionResponse, String> {
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let session = SessionService::create_session(
         &mut conn,
         request.module_id,
         request.campaign_id,
         &request.campaign_directory,
         request.module_number,
-    ).map_err(|e| format!("Failed to create session: {}", e))?;
-    
+    )
+    .map_err(|e| format!("Failed to create session: {}", e))?;
+
     Ok(SessionResponse { data: session })
 }
 
@@ -81,12 +84,15 @@ pub async fn list_module_sessions(
 ) -> Result<SessionListResponse, String> {
     use mimir_dm_core::dal::campaign::sessions::SessionRepository;
 
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     let mut repo = SessionRepository::new(&mut conn);
-    let sessions = repo.list_by_module(request.module_id)
+    let sessions = repo
+        .list_by_module(request.module_id)
         .map_err(|e| format!("Failed to list sessions: {}", e))?;
-    
+
     Ok(SessionListResponse { data: sessions })
 }
 
@@ -113,12 +119,15 @@ pub async fn transition_session_status(
 ) -> Result<SessionResponse, String> {
     use mimir_dm_core::dal::campaign::sessions::SessionRepository;
 
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
     let mut repo = SessionRepository::new(&mut conn);
-    let session = repo.transition_status(request.session_id, &request.new_status)
+    let session = repo
+        .transition_status(request.session_id, &request.new_status)
         .map_err(|e| format!("Failed to transition session: {}", e))?;
-    
+
     Ok(SessionResponse { data: session })
 }
 
@@ -135,20 +144,23 @@ pub async fn transition_session_status(
 #[tauri::command]
 pub async fn get_session_board_config() -> Result<ApiResponse<SessionBoardConfig>, String> {
     let board_registry = BoardRegistry::new();
-    let session_board = board_registry.get("session")
+    let session_board = board_registry
+        .get("session")
         .ok_or_else(|| "Session board not found".to_string())?;
-    
-    let stages: Vec<SessionStageInfo> = session_board.stages()
+
+    let stages: Vec<SessionStageInfo> = session_board
+        .stages()
         .into_iter()
         .map(|stage| {
             let metadata = session_board.stage_metadata(stage);
             let next_stage = session_board.next_stage(stage);
-            
+
             SessionStageInfo {
                 key: stage.to_string(),
                 display_name: metadata.display_name,
                 next_stage: next_stage.map(|s| s.to_string()),
-                can_transition_to: session_board.stages()
+                can_transition_to: session_board
+                    .stages()
                     .into_iter()
                     .filter(|&to| session_board.can_transition(stage, to))
                     .map(|s| s.to_string())
@@ -156,7 +168,7 @@ pub async fn get_session_board_config() -> Result<ApiResponse<SessionBoardConfig
             }
         })
         .collect();
-    
+
     Ok(ApiResponse::success(SessionBoardConfig {
         board_type: "session".to_string(),
         stages,

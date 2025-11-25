@@ -4,21 +4,21 @@
 //! by mimir-5esplit. Handles tar.gz extraction, validation, database recording,
 //! and automatic catalog import.
 
+use super::book_content::find_book_content_file;
+use super::book_library::BookInfo;
+use super::catalog_import::import_all_catalogs_from_book;
 use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
-use super::catalog_import::import_all_catalogs_from_book;
-use super::book_library::BookInfo;
-use super::book_content::find_book_content_file;
-use std::fs;
-use std::path::Path;
-use tauri::State;
-use tracing::{error, info, warn};
-use tar::Archive;
-use flate2::read::GzDecoder;
+use chrono::Utc;
 use diesel::prelude::*;
+use flate2::read::GzDecoder;
 use mimir_dm_core::models::catalog::{NewUploadedBook, UploadedBook};
 use mimir_dm_core::schema::uploaded_books;
-use chrono::Utc;
+use std::fs;
+use std::path::Path;
+use tar::Archive;
+use tauri::State;
+use tracing::{error, info, warn};
 
 /// Upload and extract a book archive (tar.gz format from mimir-5esplit).
 ///
@@ -51,12 +51,15 @@ pub async fn upload_book_archive(
     // Verify archive exists
     let archive_file = Path::new(&archive_path);
     if !archive_file.exists() {
-        return Ok(ApiResponse::error(format!("Archive not found: {}", archive_path)));
+        return Ok(ApiResponse::error(format!(
+            "Archive not found: {}",
+            archive_path
+        )));
     }
 
     // Open the archive
-    let tar_gz = fs::File::open(archive_file)
-        .map_err(|e| format!("Failed to open archive: {}", e))?;
+    let tar_gz =
+        fs::File::open(archive_file).map_err(|e| format!("Failed to open archive: {}", e))?;
     let tar = GzDecoder::new(tar_gz);
     let mut archive = Archive::new(tar);
 
@@ -69,10 +72,11 @@ pub async fn upload_book_archive(
     }
 
     // Extract to a temporary directory first to validate structure
-    let temp_dir = tempfile::TempDir::new()
-        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    let temp_dir =
+        tempfile::TempDir::new().map_err(|e| format!("Failed to create temp directory: {}", e))?;
 
-    archive.unpack(temp_dir.path())
+    archive
+        .unpack(temp_dir.path())
         .map_err(|e| format!("Failed to extract archive: {}", e))?;
 
     // Find the book directory (should be the only top-level directory)
@@ -81,8 +85,8 @@ pub async fn upload_book_archive(
     let mut book_data = None;
 
     for entry in fs::read_dir(temp_dir.path())
-        .map_err(|e| format!("Failed to read temp directory: {}", e))? {
-
+        .map_err(|e| format!("Failed to read temp directory: {}", e))?
+    {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
         let path = entry.path();
 
@@ -110,8 +114,7 @@ pub async fn upload_book_archive(
         }
     }
 
-    let book_id = book_id
-        .ok_or_else(|| "No book directory found in archive".to_string())?;
+    let book_id = book_id.ok_or_else(|| "No book directory found in archive".to_string())?;
 
     // Check database for collision before doing any work
     match state.db.get_connection() {
@@ -121,12 +124,17 @@ pub async fn upload_book_archive(
                 .first(&mut conn);
 
             if existing.is_ok() {
-                return Ok(ApiResponse::error(format!("Book '{}' is already uploaded. Please remove it first.", book_id)));
+                return Ok(ApiResponse::error(format!(
+                    "Book '{}' is already uploaded. Please remove it first.",
+                    book_id
+                )));
             }
         }
         Err(e) => {
             error!("Database connection error during collision check: {}", e);
-            return Ok(ApiResponse::error("Database error - please try again".to_string()));
+            return Ok(ApiResponse::error(
+                "Database error - please try again".to_string(),
+            ));
         }
     }
 
@@ -136,7 +144,8 @@ pub async fn upload_book_archive(
         .and_then(|m| m.get("name"))
         .and_then(|n| n.as_str())
         .or_else(|| {
-            book_data.as_ref()
+            book_data
+                .as_ref()
                 .and_then(|d| d.get("data"))
                 .and_then(|d| d.get(0))
                 .and_then(|d| d.get("name"))
@@ -148,7 +157,10 @@ pub async fn upload_book_archive(
     // Check if book already exists
     let final_book_dir = books_dir.join(&book_id);
     if final_book_dir.exists() {
-        return Ok(ApiResponse::error(format!("Book '{}' already exists", book_name)));
+        return Ok(ApiResponse::error(format!(
+            "Book '{}' already exists",
+            book_name
+        )));
     }
 
     // Create archives directory if it doesn't exist
@@ -184,13 +196,17 @@ pub async fn upload_book_archive(
                 }
                 Err(e) => {
                     error!("Failed to insert book into database: {}", e);
-                    return Ok(ApiResponse::error("Failed to record book in database".to_string()));
+                    return Ok(ApiResponse::error(
+                        "Failed to record book in database".to_string(),
+                    ));
                 }
             }
         }
         Err(e) => {
             error!("Database connection error during insert: {}", e);
-            return Ok(ApiResponse::error("Database error - upload failed".to_string()));
+            return Ok(ApiResponse::error(
+                "Database error - upload failed".to_string(),
+            ));
         }
     }
 
@@ -198,14 +214,16 @@ pub async fn upload_book_archive(
     // If this fails, we have the database record so user can retry or we can implement repair
 
     // Copy archive to archives directory
-    if let Err(e) = fs::copy(&archive_file, &archive_destination) {
+    if let Err(e) = fs::copy(archive_file, &archive_destination) {
         error!("Failed to copy archive after database insert: {}", e);
         // Clean up database record
         if let Ok(mut conn) = state.db.get_connection() {
             let _ = diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
                 .execute(&mut conn);
         }
-        return Ok(ApiResponse::error("Failed to copy archive file".to_string()));
+        return Ok(ApiResponse::error(
+            "Failed to copy archive file".to_string(),
+        ));
     }
 
     // Move the entire extracted book directory to its final location
@@ -220,7 +238,9 @@ pub async fn upload_book_archive(
             let _ = diesel::delete(uploaded_books::table.filter(uploaded_books::id.eq(&book_id)))
                 .execute(&mut conn);
         }
-        return Ok(ApiResponse::error("Failed to move book directory".to_string()));
+        return Ok(ApiResponse::error(
+            "Failed to move book directory".to_string(),
+        ));
     }
 
     info!("Successfully imported book '{}'", book_name);

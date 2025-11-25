@@ -1,9 +1,9 @@
 //! Integration tests for OptionalFeatureService
 
 use diesel::prelude::*;
-use mimir_dm_core::{establish_connection, run_migrations};
 use mimir_dm_core::models::catalog::optionalfeature::OptionalFeatureFilters;
 use mimir_dm_core::services::optional_feature_service::OptionalFeatureService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -18,23 +18,114 @@ fn setup_test_db() -> (SqliteConnection, TempDir) {
 fn seed_test_optional_feature_data(conn: &mut SqliteConnection) {
     let features = vec![
         // Eldritch Invocations
-        ("Agonizing Blast", "[\"EI\"]", "Eldritch Invocation", Some("eldritch blast cantrip"), false, "PHB"),
-        ("Armor of Shadows", "[\"EI\"]", "Eldritch Invocation", None, false, "PHB"),
-        ("Beast Speech", "[\"EI\"]", "Eldritch Invocation", None, true, "PHB"),
-        ("Devil's Sight", "[\"EI\"]", "Eldritch Invocation", None, false, "PHB"),
-        ("Eldritch Sight", "[\"EI\"]", "Eldritch Invocation", None, true, "PHB"),
+        (
+            "Agonizing Blast",
+            "[\"EI\"]",
+            "Eldritch Invocation",
+            Some("eldritch blast cantrip"),
+            false,
+            "PHB",
+        ),
+        (
+            "Armor of Shadows",
+            "[\"EI\"]",
+            "Eldritch Invocation",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Beast Speech",
+            "[\"EI\"]",
+            "Eldritch Invocation",
+            None,
+            true,
+            "PHB",
+        ),
+        (
+            "Devil's Sight",
+            "[\"EI\"]",
+            "Eldritch Invocation",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Eldritch Sight",
+            "[\"EI\"]",
+            "Eldritch Invocation",
+            None,
+            true,
+            "PHB",
+        ),
         // Fighting Styles
-        ("Archery", "[\"FS:F\",\"FS:R\"]", "Fighting Style", None, false, "PHB"),
-        ("Defense", "[\"FS:F\",\"FS:P\",\"FS:R\"]", "Fighting Style", None, false, "PHB"),
-        ("Dueling", "[\"FS:F\",\"FS:P\",\"FS:R\"]", "Fighting Style", None, false, "PHB"),
-        ("Great Weapon Fighting", "[\"FS:F\",\"FS:P\"]", "Fighting Style", None, false, "PHB"),
-        ("Protection", "[\"FS:F\",\"FS:P\"]", "Fighting Style", None, false, "PHB"),
+        (
+            "Archery",
+            "[\"FS:F\",\"FS:R\"]",
+            "Fighting Style",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Defense",
+            "[\"FS:F\",\"FS:P\",\"FS:R\"]",
+            "Fighting Style",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Dueling",
+            "[\"FS:F\",\"FS:P\",\"FS:R\"]",
+            "Fighting Style",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Great Weapon Fighting",
+            "[\"FS:F\",\"FS:P\"]",
+            "Fighting Style",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Protection",
+            "[\"FS:F\",\"FS:P\"]",
+            "Fighting Style",
+            None,
+            false,
+            "PHB",
+        ),
         // Metamagic
         ("Careful Spell", "[\"MM\"]", "Metamagic", None, false, "PHB"),
         ("Distant Spell", "[\"MM\"]", "Metamagic", None, false, "PHB"),
-        ("Empowered Spell", "[\"MM\"]", "Metamagic", None, false, "PHB"),
-        ("Extended Spell", "[\"MM\"]", "Metamagic", None, false, "PHB"),
-        ("Quickened Spell", "[\"MM\"]", "Metamagic", None, false, "PHB"),
+        (
+            "Empowered Spell",
+            "[\"MM\"]",
+            "Metamagic",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Extended Spell",
+            "[\"MM\"]",
+            "Metamagic",
+            None,
+            false,
+            "PHB",
+        ),
+        (
+            "Quickened Spell",
+            "[\"MM\"]",
+            "Metamagic",
+            None,
+            false,
+            "PHB",
+        ),
         ("Subtle Spell", "[\"MM\"]", "Metamagic", None, false, "PHB"),
     ];
 
@@ -87,7 +178,9 @@ fn test_search_optional_features_no_filters() {
         sources: None,
         grants_spells: None,
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert_eq!(results.len(), 16);
 }
@@ -103,7 +196,9 @@ fn test_search_optional_features_by_name() {
         sources: None,
         grants_spells: None,
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, "Agonizing Blast");
@@ -120,7 +215,9 @@ fn test_search_optional_features_by_type_eldritch_invocation() {
         sources: None,
         grants_spells: None,
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert_eq!(results.len(), 5);
 }
@@ -136,7 +233,9 @@ fn test_search_optional_features_by_type_fighting_style() {
         sources: None,
         grants_spells: None,
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert_eq!(results.len(), 5); // All fighting styles have FS:F
 }
@@ -152,7 +251,9 @@ fn test_search_optional_features_by_type_metamagic() {
         sources: None,
         grants_spells: None,
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert_eq!(results.len(), 6);
 }
@@ -168,7 +269,9 @@ fn test_search_optional_features_by_source() {
         sources: Some(vec!["PHB".to_string()]),
         grants_spells: None,
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert_eq!(results.len(), 16);
 }
@@ -184,7 +287,9 @@ fn test_search_optional_features_grants_spells_true() {
         sources: None,
         grants_spells: Some(true),
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     // Beast Speech and Eldritch Sight grant spells
     assert_eq!(results.len(), 2);
@@ -201,7 +306,9 @@ fn test_search_optional_features_grants_spells_false() {
         sources: None,
         grants_spells: Some(false),
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert_eq!(results.len(), 14);
 }
@@ -217,7 +324,9 @@ fn test_search_optional_features_combined_filters() {
         sources: None,
         grants_spells: Some(true),
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     // Beast Speech and Eldritch Sight
     assert_eq!(results.len(), 2);
@@ -234,7 +343,9 @@ fn test_search_optional_features_empty_results() {
         sources: None,
         grants_spells: None,
     };
-    let results = service.search_optional_features(filters).expect("Should search features");
+    let results = service
+        .search_optional_features(filters)
+        .expect("Should search features");
 
     assert!(results.is_empty());
 }
@@ -244,7 +355,9 @@ fn test_get_optional_feature_by_id() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = OptionalFeatureService::new(&mut conn);
 
-    let result = service.get_optional_feature_by_id(1).expect("Should get feature");
+    let result = service
+        .get_optional_feature_by_id(1)
+        .expect("Should get feature");
 
     assert!(result.is_some());
 }
@@ -254,7 +367,9 @@ fn test_get_optional_feature_by_id_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = OptionalFeatureService::new(&mut conn);
 
-    let result = service.get_optional_feature_by_id(9999).expect("Should handle not found");
+    let result = service
+        .get_optional_feature_by_id(9999)
+        .expect("Should handle not found");
 
     assert!(result.is_none());
 }
@@ -264,7 +379,8 @@ fn test_get_optional_feature_by_name_and_source() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = OptionalFeatureService::new(&mut conn);
 
-    let result = service.get_optional_feature_by_name_and_source("Agonizing Blast", "PHB")
+    let result = service
+        .get_optional_feature_by_name_and_source("Agonizing Blast", "PHB")
         .expect("Should get feature");
 
     assert!(result.is_some());
@@ -277,7 +393,8 @@ fn test_get_optional_feature_by_name_and_source_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = OptionalFeatureService::new(&mut conn);
 
-    let result = service.get_optional_feature_by_name_and_source("Nonexistent", "PHB")
+    let result = service
+        .get_optional_feature_by_name_and_source("Nonexistent", "PHB")
         .expect("Should handle not found");
 
     assert!(result.is_none());
@@ -288,7 +405,9 @@ fn test_get_optional_feature_types() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = OptionalFeatureService::new(&mut conn);
 
-    let types = service.get_optional_feature_types().expect("Should get types");
+    let types = service
+        .get_optional_feature_types()
+        .expect("Should get types");
 
     assert!(types.contains(&"EI".to_string()));
     assert!(types.contains(&"MM".to_string()));
@@ -301,7 +420,9 @@ fn test_get_optional_feature_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = OptionalFeatureService::new(&mut conn);
 
-    let sources = service.get_optional_feature_sources().expect("Should get sources");
+    let sources = service
+        .get_optional_feature_sources()
+        .expect("Should get sources");
 
     assert!(sources.contains(&"PHB".to_string()));
 }

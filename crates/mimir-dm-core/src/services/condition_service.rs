@@ -1,7 +1,10 @@
 //! Database-backed condition service
 
 use crate::error::Result;
-use crate::models::catalog::{CatalogCondition, ConditionFilters, ConditionSummary, Condition, Disease, ConditionOrDisease, NewCatalogCondition, ConditionData, DiseaseData};
+use crate::models::catalog::{
+    CatalogCondition, Condition, ConditionData, ConditionFilters, ConditionOrDisease,
+    ConditionSummary, Disease, DiseaseData, NewCatalogCondition,
+};
 use crate::schema::catalog_conditions;
 use diesel::prelude::*;
 use std::fs;
@@ -15,12 +18,12 @@ impl ConditionService {
     /// Search conditions and diseases using database with filters
     pub fn search_conditions(
         conn: &mut SqliteConnection,
-        filters: ConditionFilters
+        filters: ConditionFilters,
     ) -> Result<Vec<ConditionSummary>> {
         debug!("Searching conditions with filters: {:?}", filters);
-        
+
         let mut query = catalog_conditions::table.into_boxed();
-        
+
         // Apply name filter
         if let Some(name) = &filters.name {
             if !name.is_empty() {
@@ -28,63 +31,61 @@ impl ConditionService {
                 query = query.filter(catalog_conditions::name.like(search_term));
             }
         }
-        
+
         // Apply general search filter (searches name and description)
         if let Some(search) = &filters.search {
             if !search.is_empty() {
                 let search_term = format!("%{}%", search.to_lowercase());
                 query = query.filter(
-                    catalog_conditions::name.like(search_term.clone())
-                    .or(catalog_conditions::description.like(search_term))
+                    catalog_conditions::name
+                        .like(search_term.clone())
+                        .or(catalog_conditions::description.like(search_term)),
                 );
             }
         }
-        
+
         // Apply item type filter (Condition, Disease)
         if let Some(item_types) = &filters.item_types {
             if !item_types.is_empty() {
                 query = query.filter(catalog_conditions::item_type.eq_any(item_types));
             }
         }
-        
+
         // Apply source filter
         if let Some(sources) = &filters.sources {
             if !sources.is_empty() {
                 query = query.filter(catalog_conditions::source.eq_any(sources));
             }
         }
-        
-        let results: Vec<CatalogCondition> = query
-            .order(catalog_conditions::name)
-            .load(conn)?;
-        
-        let summaries: Vec<ConditionSummary> = results
-            .into_iter()
-            .map(ConditionSummary::from)
-            .collect();
-        
+
+        let results: Vec<CatalogCondition> = query.order(catalog_conditions::name).load(conn)?;
+
+        let summaries: Vec<ConditionSummary> =
+            results.into_iter().map(ConditionSummary::from).collect();
+
         info!("Found {} conditions matching filters", summaries.len());
         Ok(summaries)
     }
-    
+
     /// Get a specific condition or disease by ID for modal display
     pub fn get_condition_by_id(
         conn: &mut SqliteConnection,
-        condition_id: i32
+        condition_id: i32,
     ) -> Result<Option<ConditionOrDisease>> {
         debug!("Getting condition by ID: {}", condition_id);
-        
+
         let catalog_condition: Option<CatalogCondition> = catalog_conditions::table
             .find(condition_id)
             .first(conn)
             .optional()?;
-        
+
         match catalog_condition {
             Some(condition) => {
                 // Parse the full JSON back to the original type
                 match condition.item_type.as_str() {
                     "Condition" => {
-                        let parsed: Condition = serde_json::from_str(&condition.full_condition_json)?;
+                        let parsed: Condition =
+                            serde_json::from_str(&condition.full_condition_json)?;
                         Ok(Some(ConditionOrDisease::Condition(parsed)))
                     }
                     "Disease" => {
@@ -97,10 +98,10 @@ impl ConditionService {
                     }
                 }
             }
-            None => Ok(None)
+            None => Ok(None),
         }
     }
-    
+
     /// Get all available item types for filter dropdowns
     pub fn get_item_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting condition item types");
@@ -114,7 +115,7 @@ impl ConditionService {
         debug!("Found {} condition item types", types.len());
         Ok(types)
     }
-    
+
     /// Get all available sources for filter dropdowns
     pub fn get_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting condition sources");
@@ -128,14 +129,12 @@ impl ConditionService {
         debug!("Found {} condition sources", sources.len());
         Ok(sources)
     }
-    
+
     /// Get condition count for statistics
     pub fn get_condition_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting condition count");
 
-        let count = catalog_conditions::table
-            .count()
-            .get_result(conn)?;
+        let count = catalog_conditions::table.count().get_result(conn)?;
 
         debug!("Found {} conditions in database", count);
         Ok(count)
@@ -145,23 +144,33 @@ impl ConditionService {
     pub fn import_conditions_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing conditions/diseases from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing conditions/diseases from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let mut total_imported = 0;
 
         // Import conditions from conditions/ subdirectory
-        if let Ok(count) = Self::import_conditions_from_subdirectory(conn, book_dir, "conditions", source) {
+        if let Ok(count) =
+            Self::import_conditions_from_subdirectory(conn, book_dir, "conditions", source)
+        {
             total_imported += count;
         }
 
         // Import diseases from diseases/ subdirectory
-        if let Ok(count) = Self::import_diseases_from_subdirectory(conn, book_dir, "diseases", source) {
+        if let Ok(count) =
+            Self::import_diseases_from_subdirectory(conn, book_dir, "diseases", source)
+        {
             total_imported += count;
         }
 
-        info!("Successfully imported {} total conditions/diseases from {}", total_imported, source);
+        info!(
+            "Successfully imported {} total conditions/diseases from {}",
+            total_imported, source
+        );
         Ok(total_imported)
     }
 
@@ -170,7 +179,7 @@ impl ConditionService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         subdir: &str,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         let conditions_dir = book_dir.join(subdir);
         if !conditions_dir.exists() || !conditions_dir.is_dir() {
@@ -191,7 +200,8 @@ impl ConditionService {
                     continue;
                 }
 
-                let filename = condition_file.file_name()
+                let filename = condition_file
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("unknown");
 
@@ -206,7 +216,10 @@ impl ConditionService {
                         total_imported += count;
                     }
                     Err(e) => {
-                        error!("Failed to import conditions from {:?}: {}", condition_file, e);
+                        error!(
+                            "Failed to import conditions from {:?}: {}",
+                            condition_file, e
+                        );
                     }
                 }
             }
@@ -220,7 +233,7 @@ impl ConditionService {
         conn: &mut SqliteConnection,
         book_dir: &Path,
         subdir: &str,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         let diseases_dir = book_dir.join(subdir);
         if !diseases_dir.exists() || !diseases_dir.is_dir() {
@@ -260,7 +273,7 @@ impl ConditionService {
     fn import_conditions_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading condition file: {:?}", file_path);
 
@@ -272,7 +285,11 @@ impl ConditionService {
 
         if let Some(conditions) = condition_data.condition {
             if !conditions.is_empty() {
-                debug!("Found {} conditions in file {:?}", conditions.len(), file_path);
+                debug!(
+                    "Found {} conditions in file {:?}",
+                    conditions.len(),
+                    file_path
+                );
                 for mut condition in conditions {
                     // Ensure the source is set correctly
                     condition.source = source.to_string();
@@ -300,7 +317,7 @@ impl ConditionService {
     fn import_diseases_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading disease file: {:?}", file_path);
 
@@ -343,7 +360,10 @@ impl ConditionService {
     ) -> Result<usize> {
         let mut total_inserted = 0;
 
-        debug!("Inserting {} conditions individually (SQLite limitation)", conditions.len());
+        debug!(
+            "Inserting {} conditions individually (SQLite limitation)",
+            conditions.len()
+        );
 
         for condition in conditions {
             let inserted = diesel::insert_into(catalog_conditions::table)
@@ -360,19 +380,20 @@ impl ConditionService {
             total_inserted += inserted;
         }
 
-        info!("Successfully imported {} conditions into database", total_inserted);
+        info!(
+            "Successfully imported {} conditions into database",
+            total_inserted
+        );
         Ok(total_inserted)
     }
 
     /// Remove all conditions from a specific source (for book removal)
-    pub fn remove_conditions_by_source(
-        conn: &mut SqliteConnection,
-        source: &str,
-    ) -> Result<usize> {
+    pub fn remove_conditions_by_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing conditions from source: {}", source);
 
-        let deleted = diesel::delete(catalog_conditions::table.filter(catalog_conditions::source.eq(source)))
-            .execute(conn)?;
+        let deleted =
+            diesel::delete(catalog_conditions::table.filter(catalog_conditions::source.eq(source)))
+                .execute(conn)?;
 
         info!("Removed {} conditions from source: {}", deleted, source);
         Ok(deleted)

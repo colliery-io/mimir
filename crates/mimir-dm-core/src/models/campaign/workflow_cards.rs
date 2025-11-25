@@ -1,6 +1,6 @@
 //! Workflow card database models and operations
 
-use crate::schema::{workflow_cards, workflow_card_tags};
+use crate::schema::{workflow_card_tags, workflow_cards};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -40,7 +40,7 @@ pub struct NewWorkflowCard {
 }
 
 /// Workflow card update structure
-#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = workflow_cards)]
 pub struct UpdateWorkflowCard {
     pub title: Option<String>,

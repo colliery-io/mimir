@@ -4,13 +4,13 @@
 //! Documents include session notes, module plans, campaign materials, and player handouts.
 
 use crate::state::AppState;
-use mimir_dm_core::{
-    services::DocumentService,
-    models::campaign::documents::{Document, NewDocument, UpdateDocument},
-};
-use tauri::State;
 use crate::types::{ApiError, ApiResponse};
+use mimir_dm_core::{
+    models::campaign::documents::{Document, NewDocument, UpdateDocument},
+    services::DocumentService,
+};
 use serde::Serialize;
+use tauri::State;
 
 /// Get all documents for a campaign.
 ///
@@ -29,11 +29,14 @@ pub async fn get_campaign_documents(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Vec<Document>>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.get_campaign_documents(campaign_id) {
         Ok(documents) => Ok(ApiResponse::success(documents)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to load documents: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to load documents: {}",
+            e
+        ))),
     }
 }
 
@@ -62,11 +65,14 @@ pub async fn get_documents_by_level(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Vec<Document>>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.get_documents_by_level(campaign_id, &level, module_id, session_id) {
         Ok(docs) => Ok(ApiResponse::success(docs)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to load documents: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to load documents: {}",
+            e
+        ))),
     }
 }
 
@@ -87,11 +93,14 @@ pub async fn create_document(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Document>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.create_document(new_document) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to create document: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to create document: {}",
+            e
+        ))),
     }
 }
 
@@ -114,11 +123,14 @@ pub async fn update_document(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Document>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.update_document(document_id, update) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to update document: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to update document: {}",
+            e
+        ))),
     }
 }
 
@@ -141,11 +153,14 @@ pub async fn complete_document(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Document>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.complete_document(document_id) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to complete document: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to complete document: {}",
+            e
+        ))),
     }
 }
 
@@ -168,11 +183,14 @@ pub async fn delete_document(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<()>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.delete_document(document_id) {
         Ok(_) => Ok(ApiResponse::success(())),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to delete document: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to delete document: {}",
+            e
+        ))),
     }
 }
 
@@ -195,11 +213,14 @@ pub async fn get_incomplete_documents(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Vec<Document>>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.get_incomplete_documents(campaign_id) {
         Ok(documents) => Ok(ApiResponse::success(documents)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to load incomplete documents: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to load incomplete documents: {}",
+            e
+        ))),
     }
 }
 
@@ -222,11 +243,14 @@ pub async fn get_completed_documents(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Vec<Document>>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.get_completed_documents(campaign_id) {
         Ok(documents) => Ok(ApiResponse::success(documents)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to load completed documents: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to load completed documents: {}",
+            e
+        ))),
     }
 }
 
@@ -251,11 +275,14 @@ pub async fn create_document_from_template(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Document>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let mut service = DocumentService::new(&mut *conn);
+    let mut service = DocumentService::new(&mut conn);
 
     match service.create_document_from_template(campaign_id, &template_id) {
         Ok(document) => Ok(ApiResponse::success(document)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to create document from template: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to create document from template: {}",
+            e
+        ))),
     }
 }
 
@@ -278,11 +305,14 @@ pub async fn read_document_file(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<String>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let service = DocumentService::new(&mut *conn);
+    let service = DocumentService::new(&mut conn);
 
     match service.read_document_file(&file_path) {
         Ok(content) => Ok(ApiResponse::success(content)),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to read document: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to read document: {}",
+            e
+        ))),
     }
 }
 
@@ -307,11 +337,14 @@ pub async fn save_document_file(
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<()>, ApiError> {
     let mut conn = state.db.get_connection()?;
-    let service = DocumentService::new(&mut *conn);
+    let service = DocumentService::new(&mut conn);
 
     match service.save_document_file(&file_path, &content) {
         Ok(_) => Ok(ApiResponse::success(())),
-        Err(e) => Ok(ApiResponse::error(format!("Failed to save document: {}", e))),
+        Err(e) => Ok(ApiResponse::error(format!(
+            "Failed to save document: {}",
+            e
+        ))),
     }
 }
 
@@ -326,4 +359,3 @@ pub struct StageCompletionStatus {
     pub next_stage: Option<String>,
     pub missing_documents: Vec<String>,
 }
-

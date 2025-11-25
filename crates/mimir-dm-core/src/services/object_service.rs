@@ -3,13 +3,15 @@
 //! Provides database-backed object search, retrieval, and import functionality.
 //! Supports filtering by name, object type, size, and source.
 
-use diesel::prelude::*;
-use tracing::{debug, error, info};
 use crate::error::Result;
-use crate::models::catalog::{ObjectFilters, ObjectSummary, CatalogObject, NewCatalogObject, ObjectData};
+use crate::models::catalog::{
+    CatalogObject, NewCatalogObject, ObjectData, ObjectFilters, ObjectSummary,
+};
 use crate::schema::catalog_objects;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
+use tracing::{debug, error, info};
 
 /// Service for searching and managing objects in the catalog.
 pub struct ObjectService;
@@ -29,9 +31,10 @@ impl ObjectService {
             if !search_pattern.is_empty() {
                 let pattern = format!("%{}%", search_pattern.to_lowercase());
                 query = query.filter(
-                    catalog_objects::name.like(pattern.clone())
+                    catalog_objects::name
+                        .like(pattern.clone())
                         .or(catalog_objects::object_type.like(pattern.clone()))
-                        .or(catalog_objects::size.like(pattern))
+                        .or(catalog_objects::size.like(pattern)),
                 );
             }
         }
@@ -57,7 +60,6 @@ impl ObjectService {
             }
         }
 
-
         let objects = query
             .order_by(catalog_objects::name.asc())
             .select(CatalogObject::as_select())
@@ -65,10 +67,7 @@ impl ObjectService {
 
         debug!("Found {} objects", objects.len());
 
-        let summaries: Vec<ObjectSummary> = objects
-            .iter()
-            .map(|o| ObjectSummary::from(o))
-            .collect();
+        let summaries: Vec<ObjectSummary> = objects.iter().map(ObjectSummary::from).collect();
 
         Ok(summaries)
     }
@@ -109,9 +108,7 @@ impl ObjectService {
     pub fn get_object_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting total object count");
 
-        let count = catalog_objects::table
-            .count()
-            .get_result(conn)?;
+        let count = catalog_objects::table.count().get_result(conn)?;
 
         debug!("Total objects: {}", count);
         Ok(count)
@@ -128,7 +125,7 @@ impl ObjectService {
             .order_by(catalog_objects::object_type.asc())
             .load::<Option<String>>(conn)?
             .into_iter()
-            .filter_map(|t| t)
+            .flatten()
             .collect();
 
         debug!("Found {} distinct object types", types.len());
@@ -146,7 +143,7 @@ impl ObjectService {
             .order_by(catalog_objects::size.asc())
             .load::<Option<String>>(conn)?
             .into_iter()
-            .filter_map(|s| s)
+            .flatten()
             .collect();
 
         debug!("Found {} distinct object sizes", sizes.len());
@@ -157,9 +154,12 @@ impl ObjectService {
     pub fn import_objects_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing objects from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing objects from book directory: {:?} (source: {})",
+            book_dir, source
+        );
         let mut imported_count = 0;
 
         let objects_dir = book_dir.join("objects");
@@ -181,7 +181,8 @@ impl ObjectService {
                 continue;
             }
 
-            let filename = path.file_name()
+            let filename = path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("unknown");
 
@@ -207,7 +208,8 @@ impl ObjectService {
                             catalog_objects::hp.eq(&new_object.hp),
                             catalog_objects::full_object_json.eq(&new_object.full_object_json),
                         ))
-                        .execute(conn) {
+                        .execute(conn)
+                    {
                         Ok(_) => {
                             imported_count += 1;
                             debug!("Imported object: {} ({})", obj.name, source);
@@ -220,15 +222,15 @@ impl ObjectService {
             }
         }
 
-        info!("Successfully imported {} objects from source: {}", imported_count, source);
+        info!(
+            "Successfully imported {} objects from source: {}",
+            imported_count, source
+        );
         Ok(imported_count)
     }
 
     /// Remove all objects from a specific source
-    pub fn remove_objects_by_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_objects_by_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing objects from source: {}", source);
 
         let deleted = diesel::delete(catalog_objects::table)

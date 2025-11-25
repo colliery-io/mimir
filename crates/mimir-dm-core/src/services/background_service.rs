@@ -3,14 +3,16 @@
 //! Provides database-backed background search, retrieval, and import functionality.
 //! Supports filtering by name, skills, tools, features, and source.
 
-use diesel::prelude::*;
-use tracing::{debug, info};
 use crate::error::Result;
-use crate::models::catalog::{BackgroundFilters, BackgroundSummary, CatalogBackground, NewCatalogBackground, BackgroundData};
+use crate::models::catalog::{
+    BackgroundData, BackgroundFilters, BackgroundSummary, CatalogBackground, NewCatalogBackground,
+};
 use crate::schema::catalog_backgrounds;
 use crate::services::CatalogService;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
+use tracing::{debug, info};
 
 /// Service for searching and managing character backgrounds in the catalog.
 ///
@@ -59,10 +61,11 @@ impl<'a> BackgroundService<'a> {
             if !search_pattern.is_empty() {
                 let pattern = format!("%{}%", search_pattern.to_lowercase());
                 query = query.filter(
-                    catalog_backgrounds::name.like(pattern.clone())
+                    catalog_backgrounds::name
+                        .like(pattern.clone())
                         .or(catalog_backgrounds::skills.like(pattern.clone()))
                         .or(catalog_backgrounds::tools.like(pattern.clone()))
-                        .or(catalog_backgrounds::feature.like(pattern))
+                        .or(catalog_backgrounds::feature.like(pattern)),
                 );
             }
         }
@@ -107,8 +110,9 @@ impl<'a> BackgroundService<'a> {
     ) -> Result<Option<CatalogBackground>> {
         catalog_backgrounds::table
             .filter(
-                catalog_backgrounds::name.eq(name)
-                    .and(catalog_backgrounds::source.eq(source))
+                catalog_backgrounds::name
+                    .eq(name)
+                    .and(catalog_backgrounds::source.eq(source)),
             )
             .select(CatalogBackground::as_select())
             .first::<CatalogBackground>(self.conn)
@@ -157,9 +161,12 @@ impl<'a> BackgroundService<'a> {
     pub fn import_backgrounds_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing backgrounds from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing backgrounds from book directory: {:?} (source: {})",
+            book_dir, source
+        );
         let mut imported_count = 0;
 
         let backgrounds_dir = book_dir.join("backgrounds");
@@ -206,7 +213,10 @@ impl<'a> BackgroundService<'a> {
             }
         }
 
-        info!("Successfully imported {} backgrounds from source: {}", imported_count, source);
+        info!(
+            "Successfully imported {} backgrounds from source: {}",
+            imported_count, source
+        );
         Ok(imported_count)
     }
 
@@ -223,12 +233,14 @@ impl<'a> BackgroundService<'a> {
     /// * `Err(DbError)` - If the database operation fails
     pub fn remove_backgrounds_by_source(
         conn: &mut SqliteConnection,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         info!("Removing backgrounds from source: {}", source);
 
-        let deleted = diesel::delete(catalog_backgrounds::table.filter(catalog_backgrounds::source.eq(source)))
-            .execute(conn)?;
+        let deleted = diesel::delete(
+            catalog_backgrounds::table.filter(catalog_backgrounds::source.eq(source)),
+        )
+        .execute(conn)?;
 
         info!("Removed {} backgrounds from source: {}", deleted, source);
         Ok(deleted)

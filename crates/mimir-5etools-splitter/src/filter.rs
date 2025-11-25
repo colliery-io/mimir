@@ -10,16 +10,36 @@ pub trait SourceFilter {
 impl SourceFilter for Value {
     fn filter_by_source(&self, source: &str) -> Vec<Value> {
         let mut results = Vec::new();
-        
+
         // Try common keys where arrays of items might be
         let keys = [
-            "spell", "item", "race", "class", "subclass", "background", 
-            "feat", "optionalfeature", "reward", "object", "trap", 
-            "hazard", "action", "condition", "disease", "status",
-            "creature", "monster", "npc", "vehicle", "object",
-            "deity", "language", "table", "variantrule"
+            "spell",
+            "item",
+            "race",
+            "class",
+            "subclass",
+            "background",
+            "feat",
+            "optionalfeature",
+            "reward",
+            "object",
+            "trap",
+            "hazard",
+            "action",
+            "condition",
+            "disease",
+            "status",
+            "creature",
+            "monster",
+            "npc",
+            "vehicle",
+            "object",
+            "deity",
+            "language",
+            "table",
+            "variantrule",
         ];
-        
+
         for key in &keys {
             if let Some(array) = self.get(key).and_then(|v| v.as_array()) {
                 for item in array {
@@ -29,7 +49,7 @@ impl SourceFilter for Value {
                 }
             }
         }
-        
+
         results
     }
 }
@@ -42,7 +62,7 @@ fn matches_source(item: &Value, source: &str) -> bool {
             return true;
         }
     }
-    
+
     // Check inheritsFrom for classes/subclasses
     if let Some(inherits) = item.get("inheritsFrom").and_then(|v| v.as_array()) {
         for inherit in inherits {
@@ -53,7 +73,7 @@ fn matches_source(item: &Value, source: &str) -> bool {
             }
         }
     }
-    
+
     // Check sources array (some items have multiple sources)
     if let Some(sources) = item.get("sources").and_then(|v| v.as_array()) {
         for src in sources {
@@ -66,7 +86,7 @@ fn matches_source(item: &Value, source: &str) -> bool {
             }
         }
     }
-    
+
     false
 }
 

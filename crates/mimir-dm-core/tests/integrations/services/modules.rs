@@ -1,10 +1,10 @@
 //! Integration tests for module service
 
-use mimir_dm_core::services::ModuleService;
-use mimir_dm_core::services::CampaignService;
-use mimir_dm_core::models::campaign::modules::UpdateModule;
 use mimir_dm_core::establish_connection;
+use mimir_dm_core::models::campaign::modules::UpdateModule;
 use mimir_dm_core::run_migrations;
+use mimir_dm_core::services::CampaignService;
+use mimir_dm_core::services::ModuleService;
 use tempfile::TempDir;
 
 fn setup_test_db() -> mimir_dm_core::connection::DbConnection {
@@ -22,11 +22,13 @@ fn create_test_campaign(conn: &mut mimir_dm_core::connection::DbConnection) -> (
     let dir_path = temp_dir.path().to_string_lossy().to_string();
 
     let mut campaign_service = CampaignService::new(conn);
-    let campaign = campaign_service.create_campaign(
-        "Test Campaign",
-        Some("Test campaign for module tests".to_string()),
-        &dir_path,
-    ).unwrap();
+    let campaign = campaign_service
+        .create_campaign(
+            "Test Campaign",
+            Some("Test campaign for module tests".to_string()),
+            &dir_path,
+        )
+        .unwrap();
 
     // Keep temp_dir alive by leaking it - in tests this is okay
     std::mem::forget(temp_dir);
@@ -41,11 +43,9 @@ fn test_create_module() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     assert_eq!(module.name, "Test Module");
     assert_eq!(module.campaign_id, campaign_id);
@@ -62,27 +62,21 @@ fn test_module_numbering() {
     let mut service = ModuleService::new(&mut conn);
 
     // Create first module
-    let module1 = service.create_module(
-        campaign_id,
-        "Module 1".to_string(),
-        3,
-    ).unwrap();
+    let module1 = service
+        .create_module(campaign_id, "Module 1".to_string(), 3)
+        .unwrap();
     assert_eq!(module1.module_number, 1);
 
     // Create second module
-    let module2 = service.create_module(
-        campaign_id,
-        "Module 2".to_string(),
-        4,
-    ).unwrap();
+    let module2 = service
+        .create_module(campaign_id, "Module 2".to_string(), 4)
+        .unwrap();
     assert_eq!(module2.module_number, 2);
 
     // Create third module
-    let module3 = service.create_module(
-        campaign_id,
-        "Module 3".to_string(),
-        5,
-    ).unwrap();
+    let module3 = service
+        .create_module(campaign_id, "Module 3".to_string(), 5)
+        .unwrap();
     assert_eq!(module3.module_number, 3);
 }
 
@@ -93,11 +87,9 @@ fn test_get_module() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let created = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let created = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     let fetched = service.get_module(created.id).unwrap().unwrap();
     assert_eq!(fetched.id, created.id);
@@ -112,9 +104,15 @@ fn test_list_campaign_modules() {
     let mut service = ModuleService::new(&mut conn);
 
     // Create multiple modules
-    service.create_module(campaign_id, "Module 1".to_string(), 3).unwrap();
-    service.create_module(campaign_id, "Module 2".to_string(), 4).unwrap();
-    service.create_module(campaign_id, "Module 3".to_string(), 5).unwrap();
+    service
+        .create_module(campaign_id, "Module 1".to_string(), 3)
+        .unwrap();
+    service
+        .create_module(campaign_id, "Module 2".to_string(), 4)
+        .unwrap();
+    service
+        .create_module(campaign_id, "Module 3".to_string(), 5)
+        .unwrap();
 
     let modules = service.list_campaign_modules(campaign_id).unwrap();
     assert_eq!(modules.len(), 3);
@@ -132,14 +130,14 @@ fn test_transition_module_stage() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     // Valid transition: planning -> development
-    let updated = service.transition_module_stage(module.id, "development").unwrap();
+    let updated = service
+        .transition_module_stage(module.id, "development")
+        .unwrap();
     assert_eq!(updated.status, "development");
 
     // Valid transition: development -> ready
@@ -147,12 +145,16 @@ fn test_transition_module_stage() {
     assert_eq!(updated.status, "ready");
 
     // Valid transition: ready -> active
-    let updated = service.transition_module_stage(module.id, "active").unwrap();
+    let updated = service
+        .transition_module_stage(module.id, "active")
+        .unwrap();
     assert_eq!(updated.status, "active");
     assert!(updated.started_at.is_some());
 
     // Valid transition: active -> completed
-    let updated = service.transition_module_stage(module.id, "completed").unwrap();
+    let updated = service
+        .transition_module_stage(module.id, "completed")
+        .unwrap();
     assert_eq!(updated.status, "completed");
     assert!(updated.completed_at.is_some());
 }
@@ -164,11 +166,9 @@ fn test_invalid_transition() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     // Invalid transition: planning -> ready (skipping stages)
     let result = service.transition_module_stage(module.id, "ready");
@@ -182,17 +182,19 @@ fn test_backward_transitions() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     // Move to development
-    service.transition_module_stage(module.id, "development").unwrap();
+    service
+        .transition_module_stage(module.id, "development")
+        .unwrap();
 
     // Can move back to planning
-    let updated = service.transition_module_stage(module.id, "planning").unwrap();
+    let updated = service
+        .transition_module_stage(module.id, "planning")
+        .unwrap();
     assert_eq!(updated.status, "planning");
 }
 
@@ -203,11 +205,9 @@ fn test_update_module() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Original Name".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Original Name".to_string(), 4)
+        .unwrap();
 
     let update = UpdateModule {
         name: Some("Updated Name".to_string()),
@@ -227,19 +227,16 @@ fn test_initialize_module_documents() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     // Module starts in planning, so already has required documents
 
     // Initialize documents
-    let created_files = service.initialize_module_documents(
-        module.id,
-        &dir_path,
-    ).unwrap();
+    let created_files = service
+        .initialize_module_documents(module.id, &dir_path)
+        .unwrap();
 
     // Should create module_overview for planning stage
     assert!(created_files.contains(&"module-overview.md".to_string()));
@@ -263,11 +260,9 @@ fn test_check_module_completion() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     // Module starts in planning state by default
 
@@ -280,7 +275,9 @@ fn test_check_module_completion() {
     assert!(!status.can_progress);
 
     // Initialize documents
-    service.initialize_module_documents(module.id, &dir_path).unwrap();
+    service
+        .initialize_module_documents(module.id, &dir_path)
+        .unwrap();
 
     // Mark document as complete
     let documents = service.get_module_documents(module.id).unwrap();
@@ -296,8 +293,9 @@ fn test_check_module_completion() {
             title: None,
             updated_at: None,
             completed_at: Some(chrono::Utc::now().to_rfc3339()),
-        }
-    ).unwrap();
+        },
+    )
+    .unwrap();
 
     // Recreate service to check completion
     let mut service = ModuleService::new(&mut conn);
@@ -315,11 +313,9 @@ fn test_increment_module_sessions() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "Test Module".to_string(),
-        4,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "Test Module".to_string(), 4)
+        .unwrap();
 
     assert_eq!(module.actual_sessions, 0);
 
@@ -341,16 +337,22 @@ fn test_find_modules_needing_next() {
     let mut service = ModuleService::new(&mut conn);
 
     // Create an active module
-    let module = service.create_module(
-        campaign_id,
-        "Active Module".to_string(),
-        5, // Expected 5 sessions
-    ).unwrap();
+    let module = service
+        .create_module(
+            campaign_id,
+            "Active Module".to_string(),
+            5, // Expected 5 sessions
+        )
+        .unwrap();
 
     // Module starts in planning state, transition to active
-    service.transition_module_stage(module.id, "development").unwrap();
+    service
+        .transition_module_stage(module.id, "development")
+        .unwrap();
     service.transition_module_stage(module.id, "ready").unwrap();
-    service.transition_module_stage(module.id, "active").unwrap();
+    service
+        .transition_module_stage(module.id, "active")
+        .unwrap();
 
     // Initially no modules need next
     let needing_next = service.find_modules_needing_next(campaign_id).unwrap();
@@ -374,11 +376,9 @@ fn test_delete_module() {
 
     let mut service = ModuleService::new(&mut conn);
 
-    let module = service.create_module(
-        campaign_id,
-        "To Delete".to_string(),
-        3,
-    ).unwrap();
+    let module = service
+        .create_module(campaign_id, "To Delete".to_string(), 3)
+        .unwrap();
 
     // Verify it exists
     assert!(service.get_module(module.id).unwrap().is_some());

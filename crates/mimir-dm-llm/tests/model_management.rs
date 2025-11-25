@@ -11,10 +11,10 @@ use std::sync::{Arc, Mutex};
 async fn test_check_service() {
     let config = create_ollama_config("llama3.1", vec![EndpointType::Chat]);
     let provider = OllamaProvider::new(config).expect("Failed to create provider");
-    
+
     // This test will pass if Ollama is running, fail if not
     let result = provider.check_service().await;
-    
+
     // We can't assert a specific value since it depends on whether Ollama is running
     // But we can assert that the method doesn't panic
     match result {
@@ -28,7 +28,7 @@ async fn test_check_service() {
 async fn test_list_models() {
     let config = create_ollama_config("llama3.1", vec![EndpointType::Chat]);
     let provider = OllamaProvider::new(config).expect("Failed to create provider");
-    
+
     match provider.list_models().await {
         Ok(models) => {
             println!("Found {} models", models.len());
@@ -49,7 +49,7 @@ async fn test_list_models() {
 async fn test_model_exists() {
     let config = create_ollama_config("llama3.1", vec![EndpointType::Chat]);
     let provider = OllamaProvider::new(config).expect("Failed to create provider");
-    
+
     // Test with a model that likely exists if Ollama is running
     match provider.model_exists("llama3.1").await {
         Ok(exists) => {
@@ -59,9 +59,12 @@ async fn test_model_exists() {
             println!("Could not check model existence: {}", e);
         }
     }
-    
+
     // Test with a model that definitely doesn't exist
-    match provider.model_exists("definitely-not-a-real-model-xyz123").await {
+    match provider
+        .model_exists("definitely-not-a-real-model-xyz123")
+        .await
+    {
         Ok(exists) => {
             assert!(!exists, "Non-existent model should not exist");
         }
@@ -76,7 +79,7 @@ async fn test_model_exists() {
 async fn test_ensure_model() {
     let config = create_ollama_config("llama3.1", vec![EndpointType::Chat]);
     let provider = OllamaProvider::new(config).expect("Failed to create provider");
-    
+
     // First check if service is available
     match provider.check_service().await {
         Ok(true) => {
@@ -99,30 +102,31 @@ async fn test_ensure_model() {
 
 #[tokio::test]
 async fn test_pull_model_with_progress() {
-    let config = create_ollama_config("tinyllama", vec![EndpointType::Chat]);  // Using a small model for testing
+    let config = create_ollama_config("tinyllama", vec![EndpointType::Chat]); // Using a small model for testing
     let provider = OllamaProvider::new(config).expect("Failed to create provider");
-    
+
     // Check if service is available first
     match provider.check_service().await {
         Ok(true) => {
             // Track progress updates
             let progress_updates = Arc::new(Mutex::new(Vec::new()));
             let progress_clone = progress_updates.clone();
-            
-            let result = provider.pull_model_with_progress(
-                "tinyllama",
-                move |progress: ModelPullProgress| {
-                    println!("Progress: {} - {}/{} bytes", 
-                        progress.status, progress.downloaded, progress.total);
+
+            let result = provider
+                .pull_model_with_progress("tinyllama", move |progress: ModelPullProgress| {
+                    println!(
+                        "Progress: {} - {}/{} bytes",
+                        progress.status, progress.downloaded, progress.total
+                    );
                     progress_clone.lock().unwrap().push(progress);
-                }
-            ).await;
-            
+                })
+                .await;
+
             match result {
                 Ok(()) => {
                     let updates = progress_updates.lock().unwrap();
                     println!("Received {} progress updates", updates.len());
-                    
+
                     // If model was pulled, we should have received at least one update
                     if !updates.is_empty() {
                         // Check that we got meaningful progress updates
@@ -145,7 +149,7 @@ async fn test_pull_model_with_progress() {
 async fn test_model_management_with_invalid_service() {
     let mut config_map = HashMap::new();
     config_map.insert("base_url".to_string(), "http://localhost:65000".to_string()); // Likely unused port
-    
+
     let config = ModelConfig {
         name: "test".to_string(),
         supported_endpoints: vec![EndpointType::Chat],
@@ -154,11 +158,11 @@ async fn test_model_management_with_invalid_service() {
         config: Some(config_map),
         limit: None,
     };
-    
+
     let provider = OllamaProvider::new(config).expect("Failed to create provider");
-    
+
     // All operations should fail gracefully with invalid service
-    assert_eq!(provider.check_service().await.unwrap_or(true), false);
+    assert!(!provider.check_service().await.unwrap_or(true));
     assert!(provider.list_models().await.is_err());
     assert!(provider.model_exists("any").await.is_err());
     assert!(provider.pull_model("any").await.is_err());
@@ -169,7 +173,7 @@ async fn test_model_management_with_invalid_service() {
 async fn test_model_name_matching() {
     let config = create_ollama_config("llama3.1", vec![EndpointType::Chat]);
     let provider = OllamaProvider::new(config).expect("Failed to create provider");
-    
+
     // The implementation should handle partial model names
     // e.g., "llama3.1" should match "llama3.1:latest" or "llama3.1-instruct"
     match provider.check_service().await {
@@ -179,7 +183,7 @@ async fn test_model_name_matching() {
                 ("llama3.1", "Should handle base model name"),
                 ("llama3.1:latest", "Should handle tagged versions"),
             ];
-            
+
             for (model_name, description) in test_cases {
                 match provider.model_exists(model_name).await {
                     Ok(exists) => {

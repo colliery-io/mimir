@@ -1,8 +1,8 @@
 //! Action catalog models
 
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_actions;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// A D&D 5e action from the catalog
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -13,7 +13,7 @@ pub struct Action {
     #[serde(default)]
     pub page: Option<u32>,
     pub time: Vec<ActionTime>,
-    pub entries: Vec<serde_json::Value>,  // Can be strings or objects
+    pub entries: Vec<serde_json::Value>, // Can be strings or objects
     #[serde(default, rename = "seeAlsoAction")]
     pub see_also: Option<Vec<String>>,
 }
@@ -37,8 +37,8 @@ pub enum ActionTime {
 pub struct CatalogAction {
     pub id: i32,
     pub name: String,
-    pub time_type: String,    // Simplified time display string
-    pub description: String,  // First entry as description
+    pub time_type: String,        // Simplified time display string
+    pub description: String,      // First entry as description
     pub see_also: Option<String>, // JSON string of see_also array
     pub source: String,
     pub full_action_json: String, // Complete action JSON for modal display
@@ -74,7 +74,7 @@ pub struct ActionFilters {
 pub struct ActionSummary {
     pub id: i32,
     pub name: String,
-    pub time: String,        // Formatted time display
+    pub time: String, // Formatted time display
     pub description: String,
     pub see_also: Vec<String>, // Parsed from JSON
     pub source: String,
@@ -104,26 +104,28 @@ impl From<Action> for NewCatalogAction {
         let time_display = if action.time.is_empty() {
             "Unknown".to_string()
         } else {
-            action.time.iter()
-                .map(|t| {
-                    match t {
-                        ActionTime::Structured { number: _, unit, condition } => {
-                            match unit.as_str() {
-                                "action" => "Action".to_string(),
-                                "bonus" => "Bonus Action".to_string(),
-                                "reaction" => {
-                                    if let Some(condition) = condition {
-                                        format!("Reaction ({})", condition)
-                                    } else {
-                                        "Reaction".to_string()
-                                    }
-                                }
-                                "free" => "Free".to_string(),
-                                other => other.to_string(),
+            action
+                .time
+                .iter()
+                .map(|t| match t {
+                    ActionTime::Structured {
+                        number: _,
+                        unit,
+                        condition,
+                    } => match unit.as_str() {
+                        "action" => "Action".to_string(),
+                        "bonus" => "Bonus Action".to_string(),
+                        "reaction" => {
+                            if let Some(condition) = condition {
+                                format!("Reaction ({})", condition)
+                            } else {
+                                "Reaction".to_string()
                             }
                         }
-                        ActionTime::Simple(s) => s.clone()
-                    }
+                        "free" => "Free".to_string(),
+                        other => other.to_string(),
+                    },
+                    ActionTime::Simple(s) => s.clone(),
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -137,14 +139,19 @@ impl From<Action> for NewCatalogAction {
                 serde_json::Value::String(s) => s.clone(),
                 serde_json::Value::Object(obj) => {
                     // Handle complex entry objects if needed
-                    obj.get("entries").and_then(|v| v.as_str()).unwrap_or("Complex entry").to_string()
+                    obj.get("entries")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Complex entry")
+                        .to_string()
                 }
                 _ => "Complex entry".to_string(),
             }
         };
 
         // Convert see_also to JSON string
-        let see_also_json = action.see_also.as_ref()
+        let see_also_json = action
+            .see_also
+            .as_ref()
             .map(|sa| serde_json::to_string(sa).unwrap_or_default());
 
         Self {

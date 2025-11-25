@@ -1,11 +1,11 @@
 //! Character inventory management service
 
+use super::CharacterService;
 use crate::{
     connection::DbConnection,
     error::{DbError, Result},
     models::character::CharacterVersion,
 };
-use super::CharacterService;
 
 /// Service for character inventory operations
 pub struct CharacterInventoryService<'a> {
@@ -49,24 +49,23 @@ impl<'a> CharacterInventoryService<'a> {
         let value = item.value.unwrap_or(0.0);
 
         // Check if item already exists in inventory
-        let existing_item = char_data
-            .inventory
-            .iter_mut()
-            .find(|i| i.name == item_name);
+        let existing_item = char_data.inventory.iter_mut().find(|i| i.name == item_name);
 
         if let Some(existing) = existing_item {
             // Item exists - add to quantity
             existing.quantity += quantity;
         } else {
             // New item - add to inventory
-            char_data.inventory.push(crate::models::character::data::InventoryItem {
-                name: item_name.to_string(),
-                source: Some(item_source.to_string()),
-                quantity,
-                weight,
-                value,
-                notes,
-            });
+            char_data
+                .inventory
+                .push(crate::models::character::data::InventoryItem {
+                    name: item_name.to_string(),
+                    source: Some(item_source.to_string()),
+                    quantity,
+                    weight,
+                    value,
+                    notes,
+                });
         }
 
         // Create new version
@@ -105,7 +104,10 @@ impl<'a> CharacterInventoryService<'a> {
         }
 
         // Create new version
-        let snapshot_reason = Some(format!("Removed {} x{} from inventory", item_name, quantity));
+        let snapshot_reason = Some(format!(
+            "Removed {} x{} from inventory",
+            item_name, quantity
+        ));
         let mut char_service = CharacterService::new(self.conn);
         char_service.update_character(character_id, char_data, snapshot_reason)
     }

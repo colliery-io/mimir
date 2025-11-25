@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_conditions;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Condition {
@@ -74,7 +74,7 @@ impl From<&Condition> for ConditionSummary {
     fn from(condition: &Condition) -> Self {
         // Extract first entry as description
         let description = extract_description(&condition.entries);
-        
+
         Self {
             name: condition.name.clone(),
             source: condition.source.clone(),
@@ -88,7 +88,7 @@ impl From<&Disease> for ConditionSummary {
     fn from(disease: &Disease) -> Self {
         // Extract first entry as description
         let description = extract_description(&disease.entries);
-        
+
         Self {
             name: disease.name.clone(),
             source: disease.source.clone(),
@@ -99,7 +99,8 @@ impl From<&Disease> for ConditionSummary {
 }
 
 fn extract_description(entries: &[serde_json::Value]) -> String {
-    entries.first()
+    entries
+        .first()
         .and_then(|entry| {
             if let Some(s) = entry.as_str() {
                 Some(s.to_string())
@@ -129,8 +130,8 @@ pub struct ConditionWithDetails {
 pub struct CatalogCondition {
     pub id: i32,
     pub name: String,
-    pub item_type: String,    // "Condition" or "Disease"
-    pub description: String,  // First entry as description
+    pub item_type: String,   // "Condition" or "Disease"
+    pub description: String, // First entry as description
     pub source: String,
     pub full_condition_json: String, // Complete condition/disease JSON
 }
@@ -173,7 +174,7 @@ impl From<CatalogCondition> for ConditionSummary {
 impl From<Condition> for NewCatalogCondition {
     fn from(condition: Condition) -> Self {
         let description = extract_description(&condition.entries);
-        
+
         Self {
             name: condition.name.clone(),
             item_type: "Condition".to_string(),
@@ -187,7 +188,7 @@ impl From<Condition> for NewCatalogCondition {
 impl From<Disease> for NewCatalogCondition {
     fn from(disease: Disease) -> Self {
         let description = extract_description(&disease.entries);
-        
+
         Self {
             name: disease.name.clone(),
             item_type: "Disease".to_string(),

@@ -27,8 +27,8 @@ impl DatabaseService {
             // to prevent the database from being destroyed
             info!("Configuring connection pool for in-memory database");
             pool_builder = pool_builder
-                .min_idle(Some(1))  // Always keep at least 1 connection
-                .max_size(1);       // Use only 1 connection for in-memory DB
+                .min_idle(Some(1)) // Always keep at least 1 connection
+                .max_size(1); // Use only 1 connection for in-memory DB
         }
 
         let pool = pool_builder

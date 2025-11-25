@@ -34,8 +34,10 @@ pub async fn search_actions(
     sources: Option<Vec<String>>,
     state: State<'_, AppState>,
 ) -> Result<Vec<ActionSummary>, String> {
-    debug!("Database action search - name: {:?}, search: {:?}, time_types: {:?}, sources: {:?}",
-           name, search, time_types, sources);
+    debug!(
+        "Database action search - name: {:?}, search: {:?}, time_types: {:?}, sources: {:?}",
+        name, search, time_types, sources
+    );
 
     let filters = ActionFilters {
         name,
@@ -105,9 +107,7 @@ pub async fn get_action(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_action_time_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_action_time_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting action time types");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -135,9 +135,7 @@ pub async fn get_action_time_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_action_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_action_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting action sources");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -164,9 +162,7 @@ pub async fn get_action_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_action_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_action_count(state: State<'_, AppState>) -> Result<i64, String> {
     debug!("Getting action count");
 
     let mut conn = state.db.get_connection().map_err(|e| {

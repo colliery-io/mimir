@@ -3,12 +3,12 @@
 //! Provides database-backed table search, retrieval, and import functionality.
 //! Supports filtering by name, category, and source.
 
-use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::table::{
-    CatalogTable, TableSummary, TableFilters, Table, NewCatalogTable, TableData
+    CatalogTable, NewCatalogTable, Table, TableData, TableFilters, TableSummary,
 };
 use crate::services::CatalogService;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
@@ -52,9 +52,7 @@ impl<'a> TableService<'a> {
             }
         }
 
-        let tables = query
-            .order(name.asc())
-            .load::<CatalogTable>(self.conn)?;
+        let tables = query.order(name.asc()).load::<CatalogTable>(self.conn)?;
 
         Ok(tables.iter().map(TableSummary::from).collect())
     }
@@ -78,7 +76,11 @@ impl<'a> TableService<'a> {
     }
 
     /// Gets a table by its name and source book.
-    pub fn get_table_by_name_and_source(&mut self, table_name: &str, table_source: &str) -> Result<Option<Table>> {
+    pub fn get_table_by_name_and_source(
+        &mut self,
+        table_name: &str,
+        table_source: &str,
+    ) -> Result<Option<Table>> {
         use crate::schema::catalog_tables::dsl::*;
 
         let catalog_table = catalog_tables
@@ -100,10 +102,8 @@ impl<'a> TableService<'a> {
     pub fn get_table_categories(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_tables::dsl::*;
 
-        let mut categories: Vec<String> = catalog_tables
-            .select(category)
-            .distinct()
-            .load(self.conn)?;
+        let mut categories: Vec<String> =
+            catalog_tables.select(category).distinct().load(self.conn)?;
         categories.sort();
         Ok(categories)
     }
@@ -112,10 +112,7 @@ impl<'a> TableService<'a> {
     pub fn get_table_sources(&mut self) -> Result<Vec<String>> {
         use crate::schema::catalog_tables::dsl::*;
 
-        let mut sources: Vec<String> = catalog_tables
-            .select(source)
-            .distinct()
-            .load(self.conn)?;
+        let mut sources: Vec<String> = catalog_tables.select(source).distinct().load(self.conn)?;
         sources.sort();
         Ok(sources)
     }
@@ -124,9 +121,12 @@ impl<'a> TableService<'a> {
     pub fn import_tables_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing tables from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing tables from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let mut total_imported = 0;
         let table_files = Self::find_table_files(book_dir)?;
@@ -153,7 +153,10 @@ impl<'a> TableService<'a> {
             }
         }
 
-        info!("Successfully imported {} total tables from {}", total_imported, source);
+        info!(
+            "Successfully imported {} total tables from {}",
+            total_imported, source
+        );
         Ok(total_imported)
     }
 
@@ -181,7 +184,7 @@ impl<'a> TableService<'a> {
     fn import_tables_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading table file: {:?}", file_path);
 
@@ -189,14 +192,20 @@ impl<'a> TableService<'a> {
         let table_data: TableData = serde_json::from_str(&content)?;
 
         if let Some(tables) = table_data.table {
-            let new_tables: Vec<NewCatalogTable> = tables.iter().map(|table| {
-                let mut new_table = NewCatalogTable::from(table);
-                // Always override the source with the book source to ensure consistency
-                new_table.source = source.to_string();
-                new_table
-            }).collect();
+            let new_tables: Vec<NewCatalogTable> = tables
+                .iter()
+                .map(|table| {
+                    let mut new_table = NewCatalogTable::from(table);
+                    // Always override the source with the book source to ensure consistency
+                    new_table.source = source.to_string();
+                    new_table
+                })
+                .collect();
 
-            debug!("Inserting {} tables individually (SQLite limitation)", new_tables.len());
+            debug!(
+                "Inserting {} tables individually (SQLite limitation)",
+                new_tables.len()
+            );
 
             use crate::schema::catalog_tables;
             for table in &new_tables {
@@ -207,7 +216,10 @@ impl<'a> TableService<'a> {
                     .execute(conn)?;
             }
 
-            info!("Successfully imported {} tables into database", new_tables.len());
+            info!(
+                "Successfully imported {} tables into database",
+                new_tables.len()
+            );
             Ok(new_tables.len())
         } else {
             Ok(0)
@@ -215,15 +227,13 @@ impl<'a> TableService<'a> {
     }
 
     /// Remove all tables from a specific source
-    pub fn remove_tables_from_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_tables_from_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         use crate::schema::catalog_tables;
         info!("Removing tables from source: {}", source);
 
-        let deleted = diesel::delete(catalog_tables::table.filter(catalog_tables::source.eq(source)))
-            .execute(conn)?;
+        let deleted =
+            diesel::delete(catalog_tables::table.filter(catalog_tables::source.eq(source)))
+                .execute(conn)?;
 
         info!("Removed {} tables from source: {}", deleted, source);
         Ok(deleted)

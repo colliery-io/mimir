@@ -29,7 +29,7 @@ pub struct NewCampaign {
 }
 
 /// Campaign update structure
-#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = campaigns)]
 pub struct UpdateCampaign {
     pub name: Option<String>,

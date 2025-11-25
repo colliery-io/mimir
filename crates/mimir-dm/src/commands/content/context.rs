@@ -25,7 +25,10 @@ pub async fn update_context(
     data: String,
     state: State<'_, ContextState>,
 ) -> Result<(), String> {
-    debug!("Updating context for window {}: type={}", window_id, context_type);
+    debug!(
+        "Updating context for window {}: type={}",
+        window_id, context_type
+    );
     state.0.update_context(&context_type, &data)
 }
 
@@ -39,9 +42,7 @@ pub async fn update_context(
 /// # Errors
 /// Returns an error string if context retrieval fails.
 #[tauri::command]
-pub async fn get_full_context(
-    state: State<'_, ContextState>,
-) -> Result<String, String> {
+pub async fn get_full_context(state: State<'_, ContextState>) -> Result<String, String> {
     debug!("Getting full context");
     state.0.get_full_context()
 }
@@ -93,9 +94,7 @@ pub async fn unregister_window(
 /// # Errors
 /// Returns an error string if clearing fails.
 #[tauri::command]
-pub async fn clear_shared_context(
-    state: State<'_, ContextState>,
-) -> Result<(), String> {
+pub async fn clear_shared_context(state: State<'_, ContextState>) -> Result<(), String> {
     debug!("Clearing shared context");
     state.0.clear_context()
 }
@@ -111,9 +110,7 @@ pub async fn clear_shared_context(
 /// # Errors
 /// Returns an error string if context retrieval fails.
 #[tauri::command]
-pub async fn get_context_for_llm(
-    state: State<'_, ContextState>,
-) -> Result<String, String> {
+pub async fn get_context_for_llm(state: State<'_, ContextState>) -> Result<String, String> {
     debug!("Getting context for LLM");
     state.0.get_context_for_llm()
 }

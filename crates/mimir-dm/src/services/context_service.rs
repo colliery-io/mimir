@@ -113,14 +113,10 @@ impl ContextService {
             })),
         }
     }
-    
-    pub fn update_context(
-        &self,
-        context_type: &str,
-        data: &str,
-    ) -> Result<(), String> {
+
+    pub fn update_context(&self, context_type: &str, data: &str) -> Result<(), String> {
         let mut context = self.context.lock().map_err(|e| e.to_string())?;
-        
+
         match context_type {
             "campaign" => {
                 let campaign_data: CampaignContext = serde_json::from_str(data)
@@ -165,16 +161,15 @@ impl ContextService {
                 return Err(format!("Unknown context type: {}", context_type));
             }
         }
-        
+
         Ok(())
     }
-    
+
     pub fn get_full_context(&self) -> Result<String, String> {
         let context = self.context.lock().map_err(|e| e.to_string())?;
-        serde_json::to_string(&*context)
-            .map_err(|e| format!("Failed to serialize context: {}", e))
+        serde_json::to_string(&*context).map_err(|e| format!("Failed to serialize context: {}", e))
     }
-    
+
     pub fn register_window(
         &self,
         window_id: &str,
@@ -182,7 +177,7 @@ impl ContextService {
         title: &str,
     ) -> Result<(), String> {
         let mut context = self.context.lock().map_err(|e| e.to_string())?;
-        
+
         let window_state = WindowState {
             id: window_id.to_string(),
             window_type: window_type.to_string(),
@@ -190,20 +185,20 @@ impl ContextService {
             focused: false,
             route: None,
         };
-        
+
         context.windows.insert(window_id.to_string(), window_state);
         info!("Registered window: {} ({})", window_id, window_type);
-        
+
         Ok(())
     }
-    
+
     pub fn unregister_window(&self, window_id: &str) -> Result<(), String> {
         let mut context = self.context.lock().map_err(|e| e.to_string())?;
         context.windows.remove(window_id);
         info!("Unregistered window: {}", window_id);
         Ok(())
     }
-    
+
     pub fn clear_context(&self) -> Result<(), String> {
         let mut context = self.context.lock().map_err(|e| e.to_string())?;
         *context = SharedContext {
@@ -218,35 +213,35 @@ impl ContextService {
         info!("Cleared shared context");
         Ok(())
     }
-    
+
     pub fn update_context_usage(&self, usage: usize) -> Result<(), String> {
         let mut context = self.context.lock().map_err(|e| e.to_string())?;
         context.context_usage = Some(usage);
         Ok(())
     }
-    
+
     pub fn get_context_for_llm(&self) -> Result<String, String> {
         let context = self.context.lock().map_err(|e| e.to_string())?;
-        
+
         // Build a structured context string optimized for LLM consumption
         let mut llm_context = Vec::new();
-        
+
         if let Some(ref campaign) = context.campaign {
             llm_context.push(format!(
                 "Current Campaign: {} (ID: {})",
                 campaign.name.as_ref().unwrap_or(&"Unknown".to_string()),
                 campaign.id.as_ref().unwrap_or(&"None".to_string())
             ));
-            
+
             if let Some(ref stage) = campaign.current_stage {
                 llm_context.push(format!("Campaign Stage: {}", stage));
             }
-            
+
             if let Some(ref doc) = campaign.current_document {
                 llm_context.push(format!("Current Document: {}", doc));
             }
         }
-        
+
         if let Some(ref module) = context.module {
             llm_context.push(format!(
                 "Active Module: {} (ID: {})",
@@ -254,7 +249,7 @@ impl ContextService {
                 module.id.as_ref().unwrap_or(&"None".to_string())
             ));
         }
-        
+
         if let Some(ref session) = context.session {
             llm_context.push(format!(
                 "Current Session: {} (Status: {})",
@@ -262,12 +257,12 @@ impl ContextService {
                 session.status.as_ref().unwrap_or(&"Unknown".to_string())
             ));
         }
-        
+
         if let Some(ref reference) = context.reference {
             if let Some(ref active_tab) = reference.active_tab {
                 llm_context.push(format!("Reference Mode: {}", active_tab));
             }
-            
+
             if let Some(ref reading) = reference.reading {
                 if let Some(ref book) = reading.current_book {
                     llm_context.push(format!("Reading Book: {}", book));
@@ -276,7 +271,7 @@ impl ContextService {
                     llm_context.push(format!("Current Section: {}", section));
                 }
             }
-            
+
             if let Some(ref catalog) = reference.catalog {
                 if let Some(ref category) = catalog.selected_category {
                     llm_context.push(format!("Catalog Category: {}", category));
@@ -298,14 +293,14 @@ impl ContextService {
                 }
             }
         }
-        
+
         if !context.recent_actions.is_empty() {
             llm_context.push("Recent Actions:".to_string());
             for action in context.recent_actions.iter().take(5) {
                 llm_context.push(format!("  - {}", action.description));
             }
         }
-        
+
         Ok(llm_context.join("\n"))
     }
 }

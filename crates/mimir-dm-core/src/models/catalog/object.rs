@@ -1,14 +1,12 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_objects;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DamageType {
     Simple(String),
-    Special {
-        special: String,
-    }
+    Special { special: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,7 +20,7 @@ pub enum ArmorClass {
         special: Option<String>,
         #[serde(default)]
         from: Option<Vec<String>>,
-    }
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,20 +32,20 @@ pub enum HitPoints {
         hp: Option<i32>,
         #[serde(default)]
         special: Option<String>,
-    }
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttackEntry {
     #[serde(rename = "attackType")]
     pub attack_type: Option<String>, // MW (Melee Weapon), RW (Ranged Weapon), etc.
-    
+
     #[serde(rename = "attackEntries")]
     pub attack_entries: Option<Vec<String>>,
-    
+
     #[serde(rename = "hitEntries")]
     pub hit_entries: Option<Vec<String>>,
-    
+
     #[serde(rename = "type")]
     pub entry_type: Option<String>,
 }
@@ -55,10 +53,10 @@ pub struct AttackEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionEntry {
     pub name: String,
-    
+
     #[serde(rename = "type")]
     pub action_type: Option<String>,
-    
+
     pub entries: Option<Vec<serde_json::Value>>,
 }
 
@@ -67,34 +65,33 @@ pub struct DndObject {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     #[serde(rename = "objectType")]
     pub object_type: Option<String>, // SW (Siege Weapon), etc.
-    
+
     pub size: Option<Vec<String>>,
-    
+
     pub ac: Option<ArmorClass>,
     pub hp: Option<HitPoints>,
-    
+
     pub immune: Option<Vec<DamageType>>,
     pub resist: Option<Vec<DamageType>>,
     pub vulnerable: Option<Vec<DamageType>>,
-    
+
     #[serde(rename = "actionEntries")]
     pub action_entries: Option<Vec<ActionEntry>>,
-    
+
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     #[serde(rename = "hasToken")]
     pub has_token: Option<bool>,
-    
+
     #[serde(rename = "tokenCredit")]
     pub token_credit: Option<String>,
-    
-    
+
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
@@ -134,8 +131,9 @@ fn format_object_type(object_type: &Option<String>) -> String {
 
 fn format_size(size: &Option<Vec<String>>) -> String {
     if let Some(sizes) = size {
-        sizes.iter().map(|s| {
-            match s.as_str() {
+        sizes
+            .iter()
+            .map(|s| match s.as_str() {
                 "T" => "Tiny",
                 "S" => "Small",
                 "M" => "Medium",
@@ -143,8 +141,9 @@ fn format_size(size: &Option<Vec<String>>) -> String {
                 "H" => "Huge",
                 "G" => "Gargantuan",
                 _ => s.as_str(),
-            }
-        }).collect::<Vec<_>>().join("/")
+            })
+            .collect::<Vec<_>>()
+            .join("/")
     } else {
         "—".to_string()
     }
@@ -154,7 +153,9 @@ fn format_ac(ac: &Option<ArmorClass>) -> String {
     match ac {
         Some(ArmorClass::Number(n)) => n.to_string(),
         Some(ArmorClass::Object { ac: Some(n), .. }) => n.to_string(),
-        Some(ArmorClass::Object { special: Some(s), .. }) => s.clone(),
+        Some(ArmorClass::Object {
+            special: Some(s), ..
+        }) => s.clone(),
         _ => "—".to_string(),
     }
 }
@@ -163,7 +164,9 @@ fn format_hp(hp: &Option<HitPoints>) -> String {
     match hp {
         Some(HitPoints::Number(n)) => n.to_string(),
         Some(HitPoints::Object { hp: Some(n), .. }) => n.to_string(),
-        Some(HitPoints::Object { special: Some(s), .. }) => s.clone(),
+        Some(HitPoints::Object {
+            special: Some(s), ..
+        }) => s.clone(),
         _ => "—".to_string(),
     }
 }
@@ -217,7 +220,10 @@ impl From<&CatalogObject> for ObjectSummary {
         ObjectSummary {
             name: obj.name.clone(),
             source: obj.source.clone(),
-            object_type: obj.object_type.clone().unwrap_or_else(|| "Object".to_string()),
+            object_type: obj
+                .object_type
+                .clone()
+                .unwrap_or_else(|| "Object".to_string()),
             size: obj.size.clone().unwrap_or_else(|| "—".to_string()),
             ac: obj.ac.clone().unwrap_or_else(|| "—".to_string()),
             hp: obj.hp.clone().unwrap_or_else(|| "—".to_string()),
@@ -228,7 +234,7 @@ impl From<&CatalogObject> for ObjectSummary {
 impl From<&DndObject> for NewCatalogObject {
     fn from(obj: &DndObject) -> Self {
         let object_summary = ObjectSummary::from(obj);
-        
+
         NewCatalogObject {
             name: obj.name.clone(),
             object_type: Some(object_summary.object_type),

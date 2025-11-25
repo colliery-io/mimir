@@ -10,9 +10,9 @@ use diesel::prelude::*;
 use mimir_dm_core::models::catalog::UploadedBook;
 use mimir_dm_core::schema::uploaded_books;
 use mimir_dm_core::services::{
-    SpellService, ActionService, ConditionService, LanguageService, RewardService,
-    BackgroundService, FeatService, RaceService, ObjectService, TrapService,
-    ItemService, MonsterService, DeityService, VehicleService, ClassService,
+    ActionService, BackgroundService, ClassService, ConditionService, DeityService, FeatService,
+    ItemService, LanguageService, MonsterService, ObjectService, RaceService, RewardService,
+    SpellService, TrapService, VehicleService,
 };
 use std::fs;
 use std::path::Path;
@@ -22,8 +22,8 @@ use tracing::{error, info, warn};
 /// Book information for library listing
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BookInfo {
-    pub id: String,           // Book ID (e.g., "phb", "dmg")
-    pub name: String,         // Display name (e.g., "Player's Handbook")
+    pub id: String,   // Book ID (e.g., "phb", "dmg")
+    pub name: String, // Display name (e.g., "Player's Handbook")
 }
 
 /// List all books in the library.
@@ -46,25 +46,26 @@ pub async fn list_library_books(
     info!("Listing library books from database");
 
     match state.db.get_connection() {
-        Ok(mut conn) => {
-            match uploaded_books::table.load::<UploadedBook>(&mut conn) {
-                Ok(books) => {
-                    let book_list: Vec<BookInfo> = books.into_iter()
-                        .map(|book| BookInfo {
-                            id: book.id,
-                            name: book.name,
-                        })
-                        .collect();
+        Ok(mut conn) => match uploaded_books::table.load::<UploadedBook>(&mut conn) {
+            Ok(books) => {
+                let book_list: Vec<BookInfo> = books
+                    .into_iter()
+                    .map(|book| BookInfo {
+                        id: book.id,
+                        name: book.name,
+                    })
+                    .collect();
 
-                    info!("Found {} books in library", book_list.len());
-                    Ok(ApiResponse::success(book_list))
-                }
-                Err(e) => {
-                    error!("Failed to query books from database: {}", e);
-                    Ok(ApiResponse::error("Failed to load books from database".to_string()))
-                }
+                info!("Found {} books in library", book_list.len());
+                Ok(ApiResponse::success(book_list))
             }
-        }
+            Err(e) => {
+                error!("Failed to query books from database: {}", e);
+                Ok(ApiResponse::error(
+                    "Failed to load books from database".to_string(),
+                ))
+            }
+        },
         Err(e) => {
             error!("Database connection error when listing books: {}", e);
             Ok(ApiResponse::error("Database connection error".to_string()))
@@ -105,11 +106,16 @@ pub async fn remove_book_from_library(
             {
                 Ok(book) => Some(book),
                 Err(diesel::NotFound) => {
-                    return Ok(ApiResponse::error(format!("Book '{}' not found in database", book_id)));
+                    return Ok(ApiResponse::error(format!(
+                        "Book '{}' not found in database",
+                        book_id
+                    )));
                 }
                 Err(e) => {
                     error!("Database error when looking up book: {}", e);
-                    return Ok(ApiResponse::error("Database error during lookup".to_string()));
+                    return Ok(ApiResponse::error(
+                        "Database error during lookup".to_string(),
+                    ));
                 }
             }
         }
@@ -159,7 +165,7 @@ pub async fn remove_book_from_library(
                         // Remove extracted directory
                         let book_dir = Path::new(&book.location);
                         if book_dir.exists() {
-                            if let Err(e) = fs::remove_dir_all(&book_dir) {
+                            if let Err(e) = fs::remove_dir_all(book_dir) {
                                 error!("Failed to remove book directory: {}", e);
                                 cleanup_errors.push(format!("directory: {}", e));
                             }
@@ -168,7 +174,7 @@ pub async fn remove_book_from_library(
                         // Remove archive file
                         let archive_path = Path::new(&book.archive_path);
                         if archive_path.exists() {
-                            if let Err(e) = fs::remove_file(&archive_path) {
+                            if let Err(e) = fs::remove_file(archive_path) {
                                 error!("Failed to remove archive file: {}", e);
                                 cleanup_errors.push(format!("archive: {}", e));
                             }
@@ -185,7 +191,9 @@ pub async fn remove_book_from_library(
                     }
                     Err(e) => {
                         error!("Failed to remove book from database: {}", e);
-                        Ok(ApiResponse::error("Failed to remove book from database".to_string()))
+                        Ok(ApiResponse::error(
+                            "Failed to remove book from database".to_string(),
+                        ))
                     }
                 }
             }

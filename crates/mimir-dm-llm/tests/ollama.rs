@@ -37,11 +37,17 @@ async fn test_ollama_completion() {
     };
 
     println!("Creating provider with config: {:?}", config);
-    let provider = OllamaProvider::new(config)
-        .expect("Failed to create Ollama provider");
+    let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
     println!("Sending completion request");
     let response = provider
-        .complete("What is the capital of France?".to_string(), Some(1), None, None, None, None)
+        .complete(
+            "What is the capital of France?".to_string(),
+            Some(1),
+            None,
+            None,
+            None,
+            None,
+        )
         .await;
     println!("Got response: {:?}", response);
     let response = response.unwrap();
@@ -72,8 +78,7 @@ async fn test_ollama_chat() {
     };
 
     println!("Creating provider with config: {:?}", config);
-    let provider = OllamaProvider::new(config)
-        .expect("Failed to create Ollama provider");
+    let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
     let messages = vec![
         Message {
             role: "system".to_string(),
@@ -132,7 +137,6 @@ async fn test_ollama_embeddings() {
 
 #[tokio::test]
 async fn test_ollama_unsupported_embeddings() {
-    
     let config = ModelConfig {
         name: "phi".to_string(),
         supported_endpoints: vec![EndpointType::Chat],
@@ -148,14 +152,16 @@ async fn test_ollama_unsupported_embeddings() {
 
     let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
     let response = provider.embed(vec!["test".to_string()], None).await;
-    
+
     assert!(response.is_err());
-    assert!(response.unwrap_err().to_string().contains("Unsupported endpoint"));
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("Unsupported endpoint"));
 }
 
 #[tokio::test]
 async fn test_ollama_unsupported_endpoint() {
-    
     let config = ModelConfig {
         name: "llama3.1-local".to_string(),
         model: "llama3.1".to_string(),
@@ -169,22 +175,25 @@ async fn test_ollama_unsupported_endpoint() {
         },
     };
 
-    let provider = OllamaProvider::new(config)
-        .expect("Failed to create Ollama provider");
+    let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
     let messages = vec![Message {
         role: "user".to_string(),
         content: "What is the capital of France?".to_string(),
         tool_call_id: None,
     }];
 
-    let response = provider.chat(messages, None, None, None, None, None, None, None).await;
+    let response = provider
+        .chat(messages, None, None, None, None, None, None, None)
+        .await;
     assert!(response.is_err());
-    assert!(response.unwrap_err().to_string().contains("Unsupported endpoint"));
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("Unsupported endpoint"));
 }
 
 #[tokio::test]
 async fn test_ollama_invalid_endpoint() {
-    
     let config = ModelConfig {
         name: "llama3.1-local".to_string(),
         model: "llama3.1".to_string(),
@@ -193,13 +202,15 @@ async fn test_ollama_invalid_endpoint() {
         limit: None,
         config: {
             let mut map = HashMap::new();
-            map.insert("base_url".to_string(), "http://invalid-host:1234".to_string());
+            map.insert(
+                "base_url".to_string(),
+                "http://invalid-host:1234".to_string(),
+            );
             Some(map)
         },
     };
 
-    let provider = OllamaProvider::new(config)
-        .expect("Failed to create Ollama provider");
+    let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
 
     let response = provider
         .complete(
@@ -237,8 +248,7 @@ async fn test_ollama_missing_model() {
         },
     };
 
-    let provider = OllamaProvider::new(config)
-        .expect("Failed to create Ollama provider");
+    let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
 
     let response = provider
         .complete(
@@ -280,8 +290,7 @@ async fn test_ollama_rate_limiting() {
         },
     };
 
-    let provider = OllamaProvider::new(config)
-        .expect("Failed to create Ollama provider");
+    let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
 
     // First request should succeed
     let response = provider
@@ -307,11 +316,14 @@ async fn test_ollama_rate_limiting() {
             None,
         )
         .await;
-    
+
     // The second request should either fail due to rate limiting or succeed if enough time passed
     // Since this is integration testing with real timing, we'll be more flexible
     if response.is_err() {
-        assert!(response.unwrap_err().to_string().contains("Rate limit exceeded"));
+        assert!(response
+            .unwrap_err()
+            .to_string()
+            .contains("Rate limit exceeded"));
     } else {
         // If it succeeded, that's also acceptable as timing can vary
         println!("Rate limit test: Second request succeeded (timing variation)");
@@ -339,26 +351,36 @@ async fn test_ollama_embedding_dimensions() {
     };
 
     let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
-    
+
     // Test with different input texts
     let test_texts = vec![
         "Hello world".to_string(),
         "This is a longer text to test embedding generation with more content".to_string(),
         "Short".to_string(),
     ];
-    
+
     for text in test_texts {
         let response = provider
             .embed(vec![text.clone()], None)
             .await
-            .expect(&format!("Failed to get embeddings for: {}", text));
+            .unwrap_or_else(|_| panic!("Failed to get embeddings for: {}", text));
 
         // Verify embedding dimensions match expected (768 for nomic-embed-text)
-        assert_eq!(response.embedding.len(), 768, "Embedding dimension mismatch for text: {}", text);
-        
+        assert_eq!(
+            response.embedding.len(),
+            768,
+            "Embedding dimension mismatch for text: {}",
+            text
+        );
+
         // Verify embedding contains valid floats
         for (i, &value) in response.embedding.iter().enumerate() {
-            assert!(value.is_finite(), "Invalid embedding value at index {} for text: {}", i, text);
+            assert!(
+                value.is_finite(),
+                "Invalid embedding value at index {} for text: {}",
+                i,
+                text
+            );
         }
     }
 }
@@ -384,7 +406,7 @@ async fn test_ollama_multiple_messages_chat() {
     };
 
     let provider = OllamaProvider::new(config).expect("Failed to create Ollama provider");
-    
+
     // Test with conversation history
     let messages = vec![
         Message {

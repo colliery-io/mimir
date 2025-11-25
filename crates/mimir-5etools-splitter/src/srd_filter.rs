@@ -31,16 +31,38 @@ pub struct SrdItem {
 impl SrdFilter for Value {
     fn filter_srd_content(&self) -> Vec<SrdItem> {
         let mut results = Vec::new();
-        
+
         // Common keys where arrays of items might be found
         let keys = [
-            "spell", "item", "race", "class", "subclass", "background", 
-            "feat", "optionalfeature", "reward", "object", "trap", 
-            "hazard", "action", "condition", "disease", "status",
-            "creature", "monster", "npc", "vehicle", "object",
-            "deity", "language", "table", "variantrule", "cult", "boon"
+            "spell",
+            "item",
+            "race",
+            "class",
+            "subclass",
+            "background",
+            "feat",
+            "optionalfeature",
+            "reward",
+            "object",
+            "trap",
+            "hazard",
+            "action",
+            "condition",
+            "disease",
+            "status",
+            "creature",
+            "monster",
+            "npc",
+            "vehicle",
+            "object",
+            "deity",
+            "language",
+            "table",
+            "variantrule",
+            "cult",
+            "boon",
         ];
-        
+
         for key in &keys {
             if let Some(array) = self.get(key).and_then(|v| v.as_array()) {
                 for item in array {
@@ -50,7 +72,7 @@ impl SrdFilter for Value {
                 }
             }
         }
-        
+
         results
     }
 }
@@ -59,13 +81,16 @@ impl SrdFilter for Value {
 fn process_srd_item(item: &Value) -> Option<SrdItem> {
     // Check for SRD field
     let srd_status = check_srd_status(item);
-    
+
     match srd_status {
         SrdStatus::Include => {
             // Include as-is
             Some(SrdItem {
                 data: transform_item_for_srd(item, None),
-                original_name: item.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                original_name: item
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string()),
                 srd_name: None,
                 was_renamed: false,
             })
@@ -74,7 +99,10 @@ fn process_srd_item(item: &Value) -> Option<SrdItem> {
             // Include with renamed title
             Some(SrdItem {
                 data: transform_item_for_srd(item, Some(&new_name)),
-                original_name: item.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                original_name: item
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string()),
                 srd_name: Some(new_name.clone()),
                 was_renamed: true,
             })
@@ -96,12 +124,12 @@ fn check_srd_status(item: &Value) -> SrdStatus {
             _ => {} // Continue to check other fields
         }
     }
-    
+
     // Check basicRules field
     if let Some(Value::Bool(true)) = item.get("basicRules") {
         return SrdStatus::Include;
     }
-    
+
     // Default to exclude
     SrdStatus::Exclude
 }
@@ -109,7 +137,7 @@ fn check_srd_status(item: &Value) -> SrdStatus {
 /// Transform an item for SRD inclusion
 fn transform_item_for_srd(item: &Value, new_name: Option<&str>) -> Value {
     let mut transformed = item.clone();
-    
+
     // If renaming, update the name field
     if let Some(srd_name) = new_name {
         if let Some(original_name) = item.get("name") {
@@ -118,18 +146,18 @@ fn transform_item_for_srd(item: &Value, new_name: Option<&str>) -> Value {
             transformed["name"] = json!(srd_name);
         }
     }
-    
+
     // Always set source to SRD for the compiled book
     transformed["source"] = json!("SRD");
-    
+
     // Mark as SRD content
     transformed["srd"] = json!(true);
-    
+
     // Remove any non-SRD specific fields that shouldn't be in the open content
-    transformed.as_object_mut().map(|obj| {
-        obj.remove("basicRules"); // This is now redundant
-    });
-    
+    if let Some(obj) = transformed.as_object_mut() {
+        obj.remove("basicRules");
+    }
+
     transformed
 }
 
@@ -144,11 +172,11 @@ enum SrdStatus {
 /// Get all SRD content from a complete 5etools dataset
 pub fn extract_all_srd_content(data: &Value) -> HashMap<String, Vec<SrdItem>> {
     let mut content_by_type = HashMap::new();
-    
+
     // Content type mappings
     let content_types = [
         ("spell", "spells"),
-        ("item", "items"), 
+        ("item", "items"),
         ("race", "races"),
         ("class", "classes"),
         ("subclass", "subclasses"),
@@ -174,20 +202,17 @@ pub fn extract_all_srd_content(data: &Value) -> HashMap<String, Vec<SrdItem>> {
         ("cult", "cults"),
         ("boon", "boons"),
     ];
-    
+
     for (json_key, output_key) in content_types.iter() {
         if let Some(array) = data.get(json_key).and_then(|v| v.as_array()) {
-            let srd_items: Vec<SrdItem> = array
-                .iter()
-                .filter_map(process_srd_item)
-                .collect();
-            
+            let srd_items: Vec<SrdItem> = array.iter().filter_map(process_srd_item).collect();
+
             if !srd_items.is_empty() {
                 content_by_type.insert(output_key.to_string(), srd_items);
             }
         }
     }
-    
+
     content_by_type
 }
 
@@ -195,7 +220,7 @@ pub fn extract_all_srd_content(data: &Value) -> HashMap<String, Vec<SrdItem>> {
 mod tests {
     use super::*;
     use serde_json::json;
-    
+
     #[test]
     fn test_srd_true() {
         let item = json!({
@@ -203,16 +228,16 @@ mod tests {
             "srd": true,
             "source": "PHB"
         });
-        
+
         let result = process_srd_item(&item);
         assert!(result.is_some());
-        
+
         let srd_item = result.unwrap();
         assert!(!srd_item.was_renamed);
         assert_eq!(srd_item.data["source"], "SRD");
         assert_eq!(srd_item.data["name"], "Fireball");
     }
-    
+
     #[test]
     fn test_srd_renamed() {
         let item = json!({
@@ -220,10 +245,10 @@ mod tests {
             "srd": "Orb",
             "source": "DMG"
         });
-        
+
         let result = process_srd_item(&item);
         assert!(result.is_some());
-        
+
         let srd_item = result.unwrap();
         assert!(srd_item.was_renamed);
         assert_eq!(srd_item.original_name, Some("Crystal Ball".to_string()));
@@ -233,7 +258,7 @@ mod tests {
         assert_eq!(srd_item.data["srdName"], "Orb");
         assert_eq!(srd_item.data["source"], "SRD");
     }
-    
+
     #[test]
     fn test_basic_rules() {
         let item = json!({
@@ -241,15 +266,15 @@ mod tests {
             "basicRules": true,
             "source": "PHB"
         });
-        
+
         let result = process_srd_item(&item);
         assert!(result.is_some());
-        
+
         let srd_item = result.unwrap();
         assert!(!srd_item.was_renamed);
         assert_eq!(srd_item.data["source"], "SRD");
     }
-    
+
     #[test]
     fn test_exclude() {
         let item = json!({
@@ -257,7 +282,7 @@ mod tests {
             "srd": false,
             "source": "PHB"
         });
-        
+
         let result = process_srd_item(&item);
         assert!(result.is_none());
     }

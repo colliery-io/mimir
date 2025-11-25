@@ -42,18 +42,16 @@ pub async fn search_cults(
         cult_type: cult_types,
     };
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = CultService;
-    service.search_cults(&mut conn, filters)
-        .map_err(|e| {
-            error!("Failed to search cults: {}", e);
-            format!("Search error: {}", e)
-        })
+    service.search_cults(&mut conn, filters).map_err(|e| {
+        error!("Failed to search cults: {}", e);
+        format!("Search error: {}", e)
+    })
 }
 
 /// Get complete cult details by name and source.
@@ -77,14 +75,14 @@ pub async fn get_cult_details(
 ) -> Result<Option<CatalogCult>, String> {
     debug!("get_cult_details called for: {} from {}", name, source);
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = CultService;
-    service.get_cult_details(&mut conn, name, source)
+    service
+        .get_cult_details(&mut conn, name, source)
         .map_err(|e| {
             error!("Failed to get cult details: {}", e);
             format!("Database error: {}", e)
@@ -101,23 +99,19 @@ pub async fn get_cult_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_cult_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_cult_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("get_cult_sources called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = CultService;
-    service.get_cult_sources(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get cult sources: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_cult_sources(&mut conn).map_err(|e| {
+        error!("Failed to get cult sources: {}", e);
+        format!("Database error: {}", e)
+    })
 }
 
 /// Get total number of cults and boons in the catalog.
@@ -130,23 +124,19 @@ pub async fn get_cult_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_cult_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_cult_count(state: State<'_, AppState>) -> Result<i64, String> {
     debug!("get_cult_count called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = CultService;
-    service.get_cult_count(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get cult count: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_cult_count(&mut conn).map_err(|e| {
+        error!("Failed to get cult count: {}", e);
+        format!("Database error: {}", e)
+    })
 }
 
 /// Get all unique cult types in the catalog.
@@ -159,23 +149,19 @@ pub async fn get_cult_count(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_cult_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_cult_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("get_cult_types called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = CultService;
-    service.get_cult_types(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get cult types: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_cult_types(&mut conn).map_err(|e| {
+        error!("Failed to get cult types: {}", e);
+        format!("Database error: {}", e)
+    })
 }
 
 /// Get all unique cult categories in the catalog.
@@ -188,21 +174,17 @@ pub async fn get_cult_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_cult_categories(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_cult_categories(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("get_cult_categories called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = CultService;
-    service.get_cult_categories(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get cult categories: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_cult_categories(&mut conn).map_err(|e| {
+        error!("Failed to get cult categories: {}", e);
+        format!("Database error: {}", e)
+    })
 }

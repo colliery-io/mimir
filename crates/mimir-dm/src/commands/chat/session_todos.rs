@@ -3,10 +3,7 @@
 //! Provides Tauri commands for retrieving and configuring session-based
 //! todo items managed by the LLM service.
 
-use crate::{
-    services::llm::LlmService,
-    types::ApiResponse,
-};
+use crate::{services::llm::LlmService, types::ApiResponse};
 use mimir_dm_llm::TodoItem;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -32,9 +29,9 @@ pub async fn get_session_todos(
     session_id: String,
 ) -> Result<ApiResponse<Vec<TodoItem>>, String> {
     info!("Getting todos for session: {}", session_id);
-    
+
     let service = llm_service.lock().await;
-    
+
     if let Some(llm) = service.as_ref() {
         let todos = llm.get_session_todos(&session_id);
         debug!("Found {} todos for session {}", todos.len(), session_id);
@@ -64,9 +61,9 @@ pub async fn configure_todo_storage(
     storage_path: String,
 ) -> Result<ApiResponse<()>, String> {
     info!("Configuring todo storage path: {}", storage_path);
-    
+
     let service = llm_service.lock().await;
-    
+
     if let Some(llm) = service.as_ref() {
         let path = PathBuf::from(storage_path);
         match llm.configure_todo_storage(path.clone()) {
@@ -76,11 +73,16 @@ pub async fn configure_todo_storage(
             }
             Err(e) => {
                 warn!("Failed to configure todo storage: {}", e);
-                Ok(ApiResponse::error(format!("Failed to configure todo storage: {}", e)))
+                Ok(ApiResponse::error(format!(
+                    "Failed to configure todo storage: {}",
+                    e
+                )))
             }
         }
     } else {
         warn!("LLM service not initialized, cannot configure todo storage");
-        Ok(ApiResponse::error("LLM service not initialized".to_string()))
+        Ok(ApiResponse::error(
+            "LLM service not initialized".to_string(),
+        ))
     }
 }

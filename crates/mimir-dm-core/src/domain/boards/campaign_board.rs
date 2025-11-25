@@ -5,6 +5,12 @@ use super::{BoardDefinition, StageMetadata};
 /// Campaign workflow board with progression stages.
 pub struct CampaignBoard;
 
+impl Default for CampaignBoard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CampaignBoard {
     /// Creates a new campaign board.
     pub fn new() -> Self {
@@ -16,11 +22,18 @@ impl BoardDefinition for CampaignBoard {
     fn board_type(&self) -> &str {
         "campaign"
     }
-    
+
     fn stages(&self) -> Vec<&str> {
-        vec!["concept", "session_zero", "integration", "active", "concluding", "completed"]
+        vec![
+            "concept",
+            "session_zero",
+            "integration",
+            "active",
+            "concluding",
+            "completed",
+        ]
     }
-    
+
     fn can_transition(&self, from: &str, to: &str) -> bool {
         match (from, to) {
             // Forward progression
@@ -29,11 +42,11 @@ impl BoardDefinition for CampaignBoard {
             ("integration", "active") => true,
             ("active", "concluding") => true,
             ("concluding", "completed") => true,
-                        
+
             _ => false,
         }
     }
-    
+
     fn required_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
             "concept" => vec!["campaign_pitch"],
@@ -44,27 +57,24 @@ impl BoardDefinition for CampaignBoard {
                 "table_expectations",
                 "character_integration",
             ],
-            "integration" => vec![
-                "campaign_bible",
-                "major_npc_tracker",
-            ],
+            "integration" => vec!["campaign_bible", "major_npc_tracker"],
             "active" => vec![], // No required documents
             "concluding" => vec![],
             "completed" => vec![],
             _ => vec![],
         }
     }
-    
+
     fn optional_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
-            "concept" => vec![],  // No optional documents - notes and inspiration are working tools, not artifacts
+            "concept" => vec![], // No optional documents - notes and inspiration are working tools, not artifacts
             "session_zero" => vec!["safety_tools", "house_rules"],
             "integration" => vec!["player_secrets", "faction_overview"],
-            "active" => vec![],  // No documents in active stage - managed through session boards
+            "active" => vec![], // No documents in active stage - managed through session boards
             _ => vec![],
         }
     }
-    
+
     fn next_stage(&self, current: &str) -> Option<&str> {
         match current {
             "concept" => Some("session_zero"),
@@ -75,7 +85,7 @@ impl BoardDefinition for CampaignBoard {
             _ => None,
         }
     }
-    
+
     fn stage_metadata(&self, stage: &str) -> StageMetadata {
         match stage {
             "concept" => StageMetadata {
@@ -504,7 +514,7 @@ mod tests {
     fn test_stages_order() {
         let board = CampaignBoard::new();
         let stages = board.stages();
-        
+
         assert_eq!(stages.len(), 6);
         assert_eq!(stages[0], "concept");
         assert_eq!(stages[1], "session_zero");
@@ -517,7 +527,7 @@ mod tests {
     #[test]
     fn test_valid_forward_transitions() {
         let board = CampaignBoard::new();
-        
+
         // Test all valid forward transitions
         assert!(board.can_transition("concept", "session_zero"));
         assert!(board.can_transition("session_zero", "integration"));
@@ -529,25 +539,25 @@ mod tests {
     #[test]
     fn test_invalid_transitions() {
         let board = CampaignBoard::new();
-        
+
         // Test backward transitions (not allowed)
         assert!(!board.can_transition("session_zero", "concept"));
         assert!(!board.can_transition("integration", "session_zero"));
         assert!(!board.can_transition("active", "integration"));
-        
+
         // Test skip transitions (not allowed)
         assert!(!board.can_transition("concept", "integration"));
         assert!(!board.can_transition("concept", "active"));
         assert!(!board.can_transition("session_zero", "active"));
-        
+
         // Test self-transitions (not allowed)
         assert!(!board.can_transition("concept", "concept"));
         assert!(!board.can_transition("active", "active"));
-        
+
         // Test from completed (no transitions allowed)
         assert!(!board.can_transition("completed", "concept"));
         assert!(!board.can_transition("completed", "active"));
-        
+
         // Test invalid stage names
         assert!(!board.can_transition("invalid", "concept"));
         assert!(!board.can_transition("concept", "invalid"));
@@ -556,12 +566,12 @@ mod tests {
     #[test]
     fn test_required_documents_per_stage() {
         let board = CampaignBoard::new();
-        
+
         // Concept stage
         let concept_docs = board.required_documents("concept");
         assert_eq!(concept_docs.len(), 1);
         assert_eq!(concept_docs[0], "campaign_pitch");
-        
+
         // Session Zero stage
         let session_zero_docs = board.required_documents("session_zero");
         assert_eq!(session_zero_docs.len(), 5);
@@ -570,18 +580,18 @@ mod tests {
         assert!(session_zero_docs.contains(&"character_guidelines"));
         assert!(session_zero_docs.contains(&"table_expectations"));
         assert!(session_zero_docs.contains(&"character_integration"));
-        
+
         // Integration stage
         let integration_docs = board.required_documents("integration");
         assert_eq!(integration_docs.len(), 2);
         assert!(integration_docs.contains(&"campaign_bible"));
         assert!(integration_docs.contains(&"major_npc_tracker"));
-        
+
         // Active stage (no required documents)
         assert_eq!(board.required_documents("active").len(), 0);
         assert_eq!(board.required_documents("concluding").len(), 0);
         assert_eq!(board.required_documents("completed").len(), 0);
-        
+
         // Invalid stage
         assert_eq!(board.required_documents("invalid").len(), 0);
     }
@@ -589,27 +599,27 @@ mod tests {
     #[test]
     fn test_optional_documents_per_stage() {
         let board = CampaignBoard::new();
-        
+
         // Concept stage - no optional documents (notes and inspiration are tools, not artifacts)
         let concept_optional = board.optional_documents("concept");
         assert_eq!(concept_optional.len(), 0);
-        
+
         // Session Zero stage
         let session_zero_optional = board.optional_documents("session_zero");
         assert_eq!(session_zero_optional.len(), 2);
         assert!(session_zero_optional.contains(&"safety_tools"));
         assert!(session_zero_optional.contains(&"house_rules"));
-        
+
         // Integration stage
         let integration_optional = board.optional_documents("integration");
         assert_eq!(integration_optional.len(), 2);
         assert!(integration_optional.contains(&"player_secrets"));
         assert!(integration_optional.contains(&"faction_overview"));
-        
+
         // Active stage - no documents (managed through session boards)
         let active_optional = board.optional_documents("active");
         assert_eq!(active_optional.len(), 0);
-        
+
         // Stages with no optional documents
         assert_eq!(board.optional_documents("concluding").len(), 0);
         assert_eq!(board.optional_documents("completed").len(), 0);
@@ -619,7 +629,7 @@ mod tests {
     #[test]
     fn test_next_stage_progression() {
         let board = CampaignBoard::new();
-        
+
         assert_eq!(board.next_stage("concept"), Some("session_zero"));
         assert_eq!(board.next_stage("session_zero"), Some("integration"));
         assert_eq!(board.next_stage("integration"), Some("active"));
@@ -632,14 +642,14 @@ mod tests {
     #[test]
     fn test_stage_metadata_completeness() {
         let board = CampaignBoard::new();
-        
+
         // Test that all stages have metadata
         for stage in board.stages() {
             let metadata = board.stage_metadata(stage);
             assert!(!metadata.display_name.is_empty());
             assert!(!metadata.description.is_empty());
         }
-        
+
         // Test specific metadata for concept stage
         let concept_meta = board.stage_metadata("concept");
         assert_eq!(concept_meta.display_name, "Concept");
@@ -663,7 +673,7 @@ mod tests {
         assert!(integration_meta.completion_message.is_some());
         assert!(integration_meta.transition_prompt.is_some());
         assert!(integration_meta.content.is_some()); // Check for content field instead of help_text
-        
+
         // Test specific metadata for active stage
         let active_meta = board.stage_metadata("active");
         assert_eq!(active_meta.display_name, "Active");
@@ -671,7 +681,7 @@ mod tests {
         assert!(active_meta.completion_message.is_some());
         assert!(active_meta.transition_prompt.is_some());
         assert!(active_meta.content.is_some());
-        
+
         // Test fallback metadata for unknown stage
         let unknown_meta = board.stage_metadata("unknown");
         assert_eq!(unknown_meta.display_name, "unknown");
@@ -685,14 +695,14 @@ mod tests {
     fn test_stage_progression_completeness() {
         let board = CampaignBoard::new();
         let stages = board.stages();
-        
+
         // Verify that each stage (except the last) has a next stage
         for i in 0..stages.len() - 1 {
             let current = stages[i];
             let expected_next = stages[i + 1];
             assert_eq!(board.next_stage(current), Some(expected_next));
         }
-        
+
         // Verify the last stage has no next stage
         assert_eq!(board.next_stage(stages[stages.len() - 1]), None);
     }
@@ -700,7 +710,7 @@ mod tests {
     #[test]
     fn test_transition_consistency_with_next_stage() {
         let board = CampaignBoard::new();
-        
+
         // For each stage that has a next stage, verify can_transition agrees
         for stage in board.stages() {
             if let Some(next) = board.next_stage(stage) {
@@ -718,7 +728,7 @@ mod tests {
     fn test_no_orphaned_transitions() {
         let board = CampaignBoard::new();
         let valid_stages: Vec<&str> = board.stages();
-        
+
         // Test that can_transition only returns true for valid stage pairs
         for from in &valid_stages {
             for to in &valid_stages {

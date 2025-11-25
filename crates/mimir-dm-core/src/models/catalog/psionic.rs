@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_psionics;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PsionicSummary {
@@ -21,7 +21,7 @@ pub struct Psionic {
     pub order: Option<String>,
     pub page: Option<i32>,
     pub entries: Option<Vec<serde_json::Value>>,
-    pub focus: Option<String>, // Focus benefit for disciplines
+    pub focus: Option<String>,           // Focus benefit for disciplines
     pub modes: Option<Vec<PsionicMode>>, // Modes for disciplines
 }
 
@@ -75,7 +75,7 @@ pub struct NewCatalogPsionic {
 pub struct PsionicFilters {
     pub name: Option<String>,
     pub psionic_types: Option<Vec<String>>, // "D", "T"
-    pub orders: Option<Vec<String>>, // Avatar, Awakened, etc.
+    pub orders: Option<Vec<String>>,        // Avatar, Awakened, etc.
     pub sources: Option<Vec<String>>,
 }
 

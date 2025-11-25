@@ -5,17 +5,17 @@
 //! stages, documents, and session tracking.
 
 use crate::connection::DbConnection;
-use crate::dal::campaign::modules::ModuleRepository;
 use crate::dal::campaign::documents::DocumentRepository;
-use crate::domain::{BoardRegistry, BoardCompletionStatus};
+use crate::dal::campaign::modules::ModuleRepository;
+use crate::domain::{BoardCompletionStatus, BoardRegistry};
 use crate::error::Result;
 use crate::models::campaign::{
-    modules::{Module, NewModule, UpdateModule},
     documents::{Document, NewDocument},
+    modules::{Module, NewModule, UpdateModule},
 };
-use std::path::PathBuf;
-use std::fs;
 use serde_json::json;
+use std::fs;
+use std::path::PathBuf;
 
 /// Service for managing modules
 pub struct ModuleService<'a> {
@@ -91,7 +91,8 @@ impl<'a> ModuleService<'a> {
         // Get the campaign to find directory path
         use crate::dal::campaign::campaigns::CampaignRepository;
         let mut campaign_repo = CampaignRepository::new(self.conn);
-        let campaign = campaign_repo.find_by_id(campaign_id)?
+        let campaign = campaign_repo
+            .find_by_id(campaign_id)?
             .ok_or_else(|| diesel::result::Error::NotFound)?;
 
         // Create the module record
@@ -142,14 +143,17 @@ impl<'a> ModuleService<'a> {
         // Render the template
         let mut tera = tera::Tera::default();
         tera.add_raw_template(&template.document_id, &template.document_content)
-            .map_err(|e| diesel::result::Error::QueryBuilderError(
-                format!("Failed to add template: {}", e).into()
-            ))?;
+            .map_err(|e| {
+                diesel::result::Error::QueryBuilderError(
+                    format!("Failed to add template: {}", e).into(),
+                )
+            })?;
 
-        let content = tera.render(&template.document_id, &context)
-            .map_err(|e| diesel::result::Error::QueryBuilderError(
-                format!("Failed to render template: {}", e).into()
-            ))?;
+        let content = tera.render(&template.document_id, &context).map_err(|e| {
+            diesel::result::Error::QueryBuilderError(
+                format!("Failed to render template: {}", e).into(),
+            )
+        })?;
 
         // Write the file
         fs::write(&overview_file_path, content)?;
@@ -159,7 +163,7 @@ impl<'a> ModuleService<'a> {
             campaign_id,
             module_id: Some(module.id),
             session_id: None,
-            template_id: "module_overview".to_string(),  // Always use module_overview as the template_id
+            template_id: "module_overview".to_string(), // Always use module_overview as the template_id
             document_type: "module_overview".to_string(),
             title: "Module Overview".to_string(),
             file_path: overview_file_path.to_string_lossy().to_string(),
@@ -169,8 +173,7 @@ impl<'a> ModuleService<'a> {
 
         Ok(module)
     }
-    
-    
+
     /// Get a module by ID.
     ///
     /// # Arguments
@@ -183,7 +186,7 @@ impl<'a> ModuleService<'a> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.find_by_id(id)
     }
-    
+
     /// List all modules for a campaign.
     ///
     /// # Arguments
@@ -195,7 +198,7 @@ impl<'a> ModuleService<'a> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.list_by_campaign(campaign_id)
     }
-    
+
     /// List modules by status for a campaign.
     ///
     /// # Arguments
@@ -212,7 +215,7 @@ impl<'a> ModuleService<'a> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.list_by_campaign_and_status(campaign_id, status)
     }
-    
+
     /// Update module details.
     ///
     /// # Arguments
@@ -225,7 +228,7 @@ impl<'a> ModuleService<'a> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.update(id, update)
     }
-    
+
     /// Transition a module to a new stage.
     ///
     /// Validates that the transition is allowed per the module board definition
@@ -240,24 +243,27 @@ impl<'a> ModuleService<'a> {
     /// * `Err` - If transition is not allowed or module not found
     pub fn transition_module_stage(&mut self, id: i32, new_stage: &str) -> Result<Module> {
         let mut repo = ModuleRepository::new(self.conn);
-        
+
         // Validate transition with board definition
         let board_registry = BoardRegistry::new();
-        let board = board_registry.get("module")
+        let board = board_registry
+            .get("module")
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-        
-        let module = repo.find_by_id(id)?
+
+        let module = repo
+            .find_by_id(id)?
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-            
+
         if !board.can_transition(&module.status, new_stage) {
             return Err(diesel::result::Error::QueryBuilderError(
-                format!("Cannot transition from {} to {}", module.status, new_stage).into()
-            ).into());
+                format!("Cannot transition from {} to {}", module.status, new_stage).into(),
+            )
+            .into());
         }
-        
+
         repo.transition_status(id, new_stage)
     }
-    
+
     /// Initialize documents for a module stage.
     ///
     /// Creates the required documents for the module's current stage from
@@ -276,67 +282,72 @@ impl<'a> ModuleService<'a> {
         campaign_directory: &str,
     ) -> Result<Vec<String>> {
         let mut module_repo = ModuleRepository::new(self.conn);
-        let module = module_repo.find_by_id(module_id)?
+        let module = module_repo
+            .find_by_id(module_id)?
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-        
+
         // Get board configuration
         let board_registry = BoardRegistry::new();
-        let board = board_registry.get("module")
+        let board = board_registry
+            .get("module")
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-        
+
         // Get required documents for current stage
         let required_docs = board.required_documents(&module.status);
-        
+
         // Create module directory in modules folder if it doesn't exist
         let module_dir = PathBuf::from(campaign_directory)
             .join("modules")
             .join(format!("module_{:02}", module.module_number));
-        
+
         if !module_dir.exists() {
             fs::create_dir_all(&module_dir)?;
         }
-        
+
         let mut created_files = Vec::new();
-        
+
         // Initialize required documents using templates
         for doc_template_id in required_docs {
             let file_name = format!("{}.md", doc_template_id.replace('_', "-"));
             let file_path = module_dir.join(&file_name);
-            
+
             // Check if document already exists in database
             let existing = DocumentRepository::find_by_module_and_template(
                 self.conn,
                 module_id,
                 doc_template_id,
             )?;
-            
+
             if existing.is_none() && !file_path.exists() {
                 // Get the template and use its create_context method for defaults
                 use crate::dal::campaign::template_documents::TemplateRepository;
                 let template = TemplateRepository::get_latest(self.conn, doc_template_id)?;
-                
+
                 // Create context with template defaults
                 let mut context = template.create_context();
-                
+
                 // Add module-specific variables
                 context.insert("module_name", &json!(module.name));
                 context.insert("module_number", &json!(module.module_number));
-                
+
                 // Render the template
                 let mut tera = tera::Tera::default();
                 tera.add_raw_template(&template.document_id, &template.document_content)
-                    .map_err(|e| diesel::result::Error::QueryBuilderError(
-                        format!("Failed to add template: {}", e).into()
-                    ))?;
-                
-                let content = tera.render(&template.document_id, &context)
-                    .map_err(|e| diesel::result::Error::QueryBuilderError(
-                        format!("Failed to render template: {}", e).into()
-                    ))?;
-                
+                    .map_err(|e| {
+                        diesel::result::Error::QueryBuilderError(
+                            format!("Failed to add template: {}", e).into(),
+                        )
+                    })?;
+
+                let content = tera.render(&template.document_id, &context).map_err(|e| {
+                    diesel::result::Error::QueryBuilderError(
+                        format!("Failed to render template: {}", e).into(),
+                    )
+                })?;
+
                 // Write the file
                 fs::write(&file_path, content)?;
-                
+
                 // Create database record
                 let new_doc = NewDocument {
                     campaign_id: module.campaign_id,
@@ -344,28 +355,31 @@ impl<'a> ModuleService<'a> {
                     session_id: None,
                     template_id: doc_template_id.to_string(),
                     document_type: doc_template_id.to_string(),
-                    title: doc_template_id.replace('_', " ")
+                    title: doc_template_id
+                        .replace('_', " ")
                         .split_whitespace()
                         .map(|w| {
                             let mut chars = w.chars();
                             match chars.next() {
                                 None => String::new(),
-                                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                                Some(first) => {
+                                    first.to_uppercase().collect::<String>() + chars.as_str()
+                                }
                             }
                         })
                         .collect::<Vec<_>>()
                         .join(" "),
                     file_path: file_path.to_string_lossy().to_string(),
                 };
-                
+
                 DocumentRepository::create(self.conn, new_doc)?;
                 created_files.push(file_name);
             }
         }
-        
+
         Ok(created_files)
     }
-    
+
     /// Get module documents.
     ///
     /// # Arguments
@@ -376,7 +390,7 @@ impl<'a> ModuleService<'a> {
     pub fn get_module_documents(&mut self, module_id: i32) -> Result<Vec<Document>> {
         DocumentRepository::list_by_module(self.conn, module_id)
     }
-    
+
     /// Check module completion status.
     ///
     /// Evaluates the current stage's required and optional documents to determine
@@ -390,35 +404,43 @@ impl<'a> ModuleService<'a> {
     /// * `Err` - If module not found
     pub fn check_module_completion(&mut self, module_id: i32) -> Result<BoardCompletionStatus> {
         let mut module_repo = ModuleRepository::new(self.conn);
-        let module = module_repo.find_by_id(module_id)?
+        let module = module_repo
+            .find_by_id(module_id)?
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-        
+
         let documents = DocumentRepository::list_by_module(self.conn, module_id)?;
-        
+
         // Get board configuration
         let board_registry = BoardRegistry::new();
-        let board = board_registry.get("module")
+        let board = board_registry
+            .get("module")
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-        
+
         let required_docs = board.required_documents(&module.status);
         let optional_docs = board.optional_documents(&module.status);
         let no_completion_docs = board.no_completion_required_documents(&module.status);
-        
+
         // Filter required docs to exclude those that don't need completion
-        let completion_required_docs: Vec<&str> = required_docs.iter()
+        let completion_required_docs: Vec<&str> = required_docs
+            .iter()
             .filter(|doc| !no_completion_docs.contains(doc))
             .copied()
             .collect();
-        
+
         // Count completed documents (only for those that require completion)
-        let completed_required = documents.iter()
-            .filter(|d| completion_required_docs.contains(&d.template_id.as_str()) && d.completed_at.is_some())
+        let completed_required = documents
+            .iter()
+            .filter(|d| {
+                completion_required_docs.contains(&d.template_id.as_str())
+                    && d.completed_at.is_some()
+            })
             .count();
-            
-        let completed_optional = documents.iter()
+
+        let completed_optional = documents
+            .iter()
             .filter(|d| optional_docs.contains(&d.template_id.as_str()) && d.completed_at.is_some())
             .count();
-        
+
         // Find missing required documents (but exclude no-completion docs from the check)
         let mut missing_required = Vec::new();
         for req_doc in &completion_required_docs {
@@ -429,12 +451,12 @@ impl<'a> ModuleService<'a> {
                 _ => {}
             }
         }
-        
+
         let is_stage_complete = missing_required.is_empty();
-            
+
         let next_stage = board.next_stage(&module.status).map(|s| s.to_string());
         let can_progress = is_stage_complete && next_stage.is_some();
-        
+
         Ok(BoardCompletionStatus {
             board_type: "module".to_string(),
             current_stage: module.status.clone(),
@@ -449,7 +471,7 @@ impl<'a> ModuleService<'a> {
             stage_metadata: board.stage_metadata(&module.status),
         })
     }
-    
+
     /// Check if any modules need next module planning (60% complete).
     ///
     /// Returns modules that are nearing completion so the DM can start
@@ -464,7 +486,7 @@ impl<'a> ModuleService<'a> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.find_modules_needing_next(campaign_id)
     }
-    
+
     /// Increment session count for a module.
     ///
     /// Call after each session to track actual vs expected sessions.
@@ -478,7 +500,7 @@ impl<'a> ModuleService<'a> {
         let mut repo = ModuleRepository::new(self.conn);
         repo.increment_sessions(module_id)
     }
-    
+
     /// Delete a module.
     ///
     /// Permanently removes the module record. Does not delete associated

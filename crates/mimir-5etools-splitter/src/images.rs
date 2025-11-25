@@ -1,17 +1,17 @@
+use anyhow::Result;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
-use anyhow::Result;
 
 /// Find all image files referenced by a book
 pub fn find_book_images(repo_path: &Path, source: &str) -> Result<Vec<PathBuf>> {
     let mut images = Vec::new();
     let img_dir = repo_path.join("img");
-    
+
     if !img_dir.exists() {
         return Ok(images);
     }
-    
+
     // Common image locations for books
     let locations = [
         img_dir.join("book").join(source),
@@ -23,21 +23,23 @@ pub fn find_book_images(repo_path: &Path, source: &str) -> Result<Vec<PathBuf>> 
         img_dir.join("classes").join(source),
         img_dir.join("covers").join(format!("{}.webp", source)),
     ];
-    
+
     for location in &locations {
         if location.is_file() {
             images.push(location.clone());
         } else if location.is_dir() {
-            for entry in WalkDir::new(location).follow_links(true) {
-                if let Ok(entry) = entry {
-                    if entry.file_type().is_file() {
-                        images.push(entry.path().to_path_buf());
-                    }
+            for entry in WalkDir::new(location)
+                .follow_links(true)
+                .into_iter()
+                .flatten()
+            {
+                if entry.file_type().is_file() {
+                    images.push(entry.path().to_path_buf());
                 }
             }
         }
     }
-    
+
     Ok(images)
 }
 
@@ -60,7 +62,7 @@ fn extract_refs_recursive(value: &serde_json::Value, refs: &mut HashSet<String>)
                     refs.insert(path.to_string());
                 }
             }
-            
+
             // Recurse into all values
             for v in map.values() {
                 extract_refs_recursive(v, refs);
@@ -73,10 +75,13 @@ fn extract_refs_recursive(value: &serde_json::Value, refs: &mut HashSet<String>)
         }
         serde_json::Value::String(s) => {
             // Check if string looks like an image path
-            if s.contains(".jpg") || s.contains(".png") || s.contains(".webp") || s.contains(".gif") {
-                if s.starts_with("img/") || s.starts_with("covers/") {
-                    refs.insert(s.to_string());
-                }
+            if (s.contains(".jpg")
+                || s.contains(".png")
+                || s.contains(".webp")
+                || s.contains(".gif"))
+                && (s.starts_with("img/") || s.starts_with("covers/"))
+            {
+                refs.insert(s.to_string());
             }
         }
         _ => {}

@@ -9,7 +9,15 @@ use colored::*;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use flate2::read::GzDecoder;
-use mimir_dm_core::{run_migrations, services::{SpellService, ActionService, ConditionService, LanguageService, RewardService, BackgroundService, FeatService, RaceService, ObjectService, TrapService, CultService, VariantRuleService, OptionalFeatureService, ItemService, MonsterService, DeityService, VehicleService, ClassService}};
+use mimir_dm_core::{
+    run_migrations,
+    services::{
+        ActionService, BackgroundService, ClassService, ConditionService, CultService,
+        DeityService, FeatService, ItemService, LanguageService, MonsterService, ObjectService,
+        OptionalFeatureService, RaceService, RewardService, SpellService, TrapService,
+        VariantRuleService, VehicleService,
+    },
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -67,6 +75,12 @@ pub struct TestSummary {
     pub results: Vec<TestResult>,
 }
 
+impl Default for TestSummary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestSummary {
     /// Creates a new empty test summary.
     pub fn new() -> Self {
@@ -93,15 +107,21 @@ impl TestSummary {
     pub fn print_summary(&self, verbose: bool) {
         println!("\n{}", "=== LOAD TEST SUMMARY ===".bright_cyan().bold());
         println!("📦 Total archives tested: {}", self.total_archives);
-        println!("✅ Successful: {}", self.successful_archives.to_string().green());
+        println!(
+            "✅ Successful: {}",
+            self.successful_archives.to_string().green()
+        );
         println!("❌ Failed: {}", self.failed_archives.to_string().red());
-        
+
         if self.failed_archives > 0 {
             println!("\n{}", "Failed archives:".red().bold());
             for result in &self.results {
                 if !result.overall_success {
-                    println!("  • {}: {}", result.archive_name.red(), 
-                           result.errors.join(", "));
+                    println!(
+                        "  • {}: {}",
+                        result.archive_name.red(),
+                        result.errors.join(", ")
+                    );
                 }
             }
         }
@@ -117,20 +137,22 @@ impl TestSummary {
     fn print_detailed_result(&self, result: &TestResult) {
         let status_icon = if result.overall_success { "✅" } else { "❌" };
         println!("\n{} {}", status_icon, result.archive_name.bold());
-        
+
         if !result.extraction_ok {
             println!("  {} Archive extraction failed", "❌".red());
         }
-        
+
         if !result.metadata_valid {
             println!("  {} Metadata validation failed", "❌".red());
         }
 
         for (catalog_type, import_result) in &result.import_results {
             let status = if import_result.success { "✅" } else { "❌" };
-            println!("  {} {}: {} imported", 
-                   status, catalog_type, import_result.total_imported);
-            
+            println!(
+                "  {} {}: {} imported",
+                status, catalog_type, import_result.total_imported
+            );
+
             if !import_result.errors.is_empty() {
                 for error in &import_result.errors {
                     println!("    • {}", error.red());
@@ -223,8 +245,8 @@ impl LoadTester {
         }
 
         // Determine overall success
-        result.overall_success = result.extraction_ok 
-            && result.metadata_valid 
+        result.overall_success = result.extraction_ok
+            && result.metadata_valid
             && result.import_results.values().all(|r| r.success)
             && result.errors.is_empty();
 
@@ -255,8 +277,8 @@ impl LoadTester {
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "gz") {
+
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "gz") {
                 if let Some(file_name) = path.file_name() {
                     if file_name.to_string_lossy().ends_with(".tar.gz") {
                         archive_paths.push(path);
@@ -306,10 +328,10 @@ impl LoadTester {
         let tar_gz = GzDecoder::new(file);
         let mut archive = Archive::new(tar_gz);
 
-        let temp_dir = TempDir::new()
-            .context("Failed to create temporary directory")?;
+        let temp_dir = TempDir::new().context("Failed to create temporary directory")?;
 
-        archive.unpack(temp_dir.path())
+        archive
+            .unpack(temp_dir.path())
             .context("Failed to extract archive")?;
 
         Ok(temp_dir)
@@ -317,13 +339,13 @@ impl LoadTester {
 
     /// Find the book directory within the extracted archive
     fn find_book_directory(&self, temp_dir: &TempDir) -> Result<PathBuf> {
-        let entries = fs::read_dir(temp_dir.path())
-            .context("Failed to read temporary directory")?;
+        let entries =
+            fs::read_dir(temp_dir.path()).context("Failed to read temporary directory")?;
 
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.is_dir() {
                 debug!("Found book directory: {:?}", path);
                 return Ok(path);
@@ -336,23 +358,27 @@ impl LoadTester {
     /// Validate metadata.json exists and is parseable
     fn validate_metadata(&self, book_dir: &Path) -> Result<serde_json::Value> {
         let metadata_path = book_dir.join("metadata.json");
-        
+
         if !metadata_path.exists() {
             anyhow::bail!("metadata.json not found");
         }
 
-        let metadata_content = fs::read_to_string(&metadata_path)
-            .context("Failed to read metadata.json")?;
+        let metadata_content =
+            fs::read_to_string(&metadata_path).context("Failed to read metadata.json")?;
 
-        let metadata: serde_json::Value = serde_json::from_str(&metadata_content)
-            .context("Failed to parse metadata.json")?;
+        let metadata: serde_json::Value =
+            serde_json::from_str(&metadata_content).context("Failed to parse metadata.json")?;
 
         debug!("Metadata validated successfully");
         Ok(metadata)
     }
 
     /// Test all catalog imports against in-memory database
-    async fn test_imports(&self, book_dir: &Path, source: &str) -> Result<HashMap<String, ImportResult>> {
+    async fn test_imports(
+        &self,
+        book_dir: &Path,
+        source: &str,
+    ) -> Result<HashMap<String, ImportResult>> {
         debug!("Setting up in-memory database for import testing");
 
         let mut conn = SqliteConnection::establish(":memory:")
@@ -363,121 +389,84 @@ impl LoadTester {
         diesel::sql_query("PRAGMA journal_mode = WAL").execute(&mut conn)?;
 
         // Run migrations
-        run_migrations(&mut conn)
-            .context("Failed to run database migrations")?;
+        run_migrations(&mut conn).context("Failed to run database migrations")?;
 
         debug!("Database setup complete, running catalog imports");
 
         let mut results = HashMap::new();
 
         // Test each catalog type
-        self.test_catalog_import(
-            &mut results,
-            "spells",
-            || SpellService::import_spells_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "spells", || {
+            SpellService::import_spells_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "actions",
-            || ActionService::import_actions_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "actions", || {
+            ActionService::import_actions_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "conditions",
-            || ConditionService::import_conditions_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "conditions", || {
+            ConditionService::import_conditions_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "languages",
-            || LanguageService::import_languages_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "languages", || {
+            LanguageService::import_languages_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "rewards",
-            || RewardService::import_rewards_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "rewards", || {
+            RewardService::import_rewards_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "backgrounds",
-            || BackgroundService::import_backgrounds_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "backgrounds", || {
+            BackgroundService::import_backgrounds_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "feats",
-            || FeatService::import_feats_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "feats", || {
+            FeatService::import_feats_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "races",
-            || RaceService::import_races_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "races", || {
+            RaceService::import_races_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "objects",
-            || ObjectService::import_objects_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "objects", || {
+            ObjectService::import_objects_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "traps",
-            || TrapService::import_traps_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "traps", || {
+            TrapService::import_traps_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "cults",
-            || CultService::import_cults_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "cults", || {
+            CultService::import_cults_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "variant_rules",
-            || VariantRuleService::import_variant_rules_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "variant_rules", || {
+            VariantRuleService::import_variant_rules_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "optional_features",
-            || OptionalFeatureService::import_optional_features_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "optional_features", || {
+            OptionalFeatureService::import_optional_features_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "items",
-            || ItemService::import_items_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "items", || {
+            ItemService::import_items_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "monsters",
-            || MonsterService::import_monsters_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "monsters", || {
+            MonsterService::import_monsters_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "deities",
-            || DeityService::import_deities_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "deities", || {
+            DeityService::import_deities_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "vehicles",
-            || VehicleService::import_vehicles_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "vehicles", || {
+            VehicleService::import_vehicles_from_book(&mut conn, book_dir, source)
+        });
 
-        self.test_catalog_import(
-            &mut results,
-            "classes",
-            || ClassService::import_classes_from_book(&mut conn, book_dir, source),
-        );
+        self.test_catalog_import(&mut results, "classes", || {
+            ClassService::import_classes_from_book(&mut conn, book_dir, source)
+        });
 
         Ok(results)
     }

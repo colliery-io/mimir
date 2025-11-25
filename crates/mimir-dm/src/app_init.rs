@@ -21,7 +21,7 @@ impl AppPaths {
     pub fn init_directories() -> Result<Self> {
         // Check if we're in development mode
         let is_dev = cfg!(debug_assertions) || std::env::var("MIMIR_DEV").is_ok();
-        
+
         // Determine app name based on mode
         let app_name = if is_dev { "mimir-test" } else { "mimir" };
         let project_dirs = ProjectDirs::from("com", "mimir", app_name)
@@ -33,7 +33,10 @@ impl AppPaths {
         let logs_dir = app_dir.join("logs");
         let database_path = data_dir.join("mimir.db");
 
-        eprintln!("Initializing {} application directories:", if is_dev { "DEVELOPMENT" } else { "PRODUCTION" });
+        eprintln!(
+            "Initializing {} application directories:",
+            if is_dev { "DEVELOPMENT" } else { "PRODUCTION" }
+        );
         eprintln!("  App dir: {}", app_dir.display());
         eprintln!("  Config dir: {}", config_dir.display());
         eprintln!("  Data dir: {}", data_dir.display());
@@ -43,20 +46,28 @@ impl AppPaths {
         // Create directories if they don't exist
         fs::create_dir_all(&app_dir)
             .with_context(|| format!("Failed to create app directory: {}", app_dir.display()))?;
-        
-        fs::create_dir_all(&config_dir)
-            .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
-        
+
+        fs::create_dir_all(&config_dir).with_context(|| {
+            format!(
+                "Failed to create config directory: {}",
+                config_dir.display()
+            )
+        })?;
+
         fs::create_dir_all(&data_dir)
             .with_context(|| format!("Failed to create data directory: {}", data_dir.display()))?;
-        
+
         fs::create_dir_all(&logs_dir)
             .with_context(|| format!("Failed to create logs directory: {}", logs_dir.display()))?;
-        
+
         // Create chat sessions log subdirectory
         let chat_logs_dir = logs_dir.join("chat_sessions");
-        fs::create_dir_all(&chat_logs_dir)
-            .with_context(|| format!("Failed to create chat logs directory: {}", chat_logs_dir.display()))?;
+        fs::create_dir_all(&chat_logs_dir).with_context(|| {
+            format!(
+                "Failed to create chat logs directory: {}",
+                chat_logs_dir.display()
+            )
+        })?;
 
         Ok(AppPaths {
             app_dir,
@@ -82,12 +93,11 @@ impl AppPaths {
 /// Initialize the application on startup
 pub fn initialize_app() -> Result<AppPaths> {
     // First initialize directories (without logging since we need the logs dir)
-    let app_paths = AppPaths::init_directories()
-        .context("Failed to initialize application directories")?;
+    let app_paths =
+        AppPaths::init_directories().context("Failed to initialize application directories")?;
 
     // Now set up logging with the logs directory available
-    setup_logging(&app_paths.logs_dir)
-        .context("Failed to set up logging")?;
+    setup_logging(&app_paths.logs_dir).context("Failed to set up logging")?;
 
     info!("Starting Mimir application initialization...");
     info!("Application directories initialized successfully");
@@ -100,15 +110,18 @@ pub fn initialize_app() -> Result<AppPaths> {
 /// Set up logging to both console and rotating files (blocking writers for simplicity)
 fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
     // Determine log level based on environment and build type
-    let default_level = if cfg!(debug_assertions) { "debug" } else { "info" };
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            // Default filter: debug for our crates, info for others
-            EnvFilter::new(format!(
-                "{}={},mimir_dm=debug,mimir_dm_llm=debug,mimir_dm_core=debug",
-                default_level, default_level
-            ))
-        });
+    let default_level = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "info"
+    };
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        // Default filter: debug for our crates, info for others
+        EnvFilter::new(format!(
+            "{}={},mimir_dm=debug,mimir_dm_llm=debug,mimir_dm_core=debug",
+            default_level, default_level
+        ))
+    });
 
     // Create daily rotating file appender (blocking)
     let file_appender = tracing_appender::rolling::daily(logs_dir, "mimir.log");
@@ -116,14 +129,13 @@ fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
     // Create separate filters for console and file
     let file_filter = env_filter;
     // Console filter has same levels but excludes file_only target logs
-    let console_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            // Same filter as file but with file_only=off
-            EnvFilter::new(format!(
-                "{}={},mimir_dm=debug,mimir_dm_llm=debug,mimir_dm_core=debug,file_only=off",
-                default_level, default_level
-            ))
-        });
+    let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        // Same filter as file but with file_only=off
+        EnvFilter::new(format!(
+            "{}={},mimir_dm=debug,mimir_dm_llm=debug,mimir_dm_core=debug,file_only=off",
+            default_level, default_level
+        ))
+    });
 
     // Build the subscriber with both console and file outputs
     tracing_subscriber::registry()
@@ -135,7 +147,7 @@ fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
                 .with_thread_ids(true)
                 .with_line_number(true)
                 .with_file(true)
-                .with_filter(file_filter) // Full logging to file
+                .with_filter(file_filter), // Full logging to file
         )
         .with(
             tracing_subscriber::fmt::layer()
@@ -145,7 +157,7 @@ fn setup_logging(logs_dir: &PathBuf) -> Result<()> {
                 .with_thread_ids(false)
                 .with_line_number(false)
                 .with_file(false)
-                .with_filter(console_filter) // Truncated logging to console
+                .with_filter(console_filter), // Truncated logging to console
         )
         .init();
 

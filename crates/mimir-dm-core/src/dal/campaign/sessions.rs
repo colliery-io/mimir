@@ -2,10 +2,10 @@
 
 use crate::connection::DbConnection;
 use crate::error::Result;
-use crate::models::campaign::sessions::{Session, NewSession, UpdateSession};
+use crate::models::campaign::sessions::{NewSession, Session, UpdateSession};
 use crate::schema::sessions;
-use diesel::prelude::*;
 use chrono::Utc;
+use diesel::prelude::*;
 
 /// Repository for session operations
 pub struct SessionRepository<'a> {
@@ -17,7 +17,7 @@ impl<'a> SessionRepository<'a> {
     pub fn new(conn: &'a mut DbConnection) -> Self {
         Self { conn }
     }
-    
+
     /// Create a new session
     pub fn create(&mut self, new_session: NewSession) -> Result<Session> {
         diesel::insert_into(sessions::table)
@@ -26,7 +26,7 @@ impl<'a> SessionRepository<'a> {
             .get_result(self.conn)
             .map_err(Into::into)
     }
-    
+
     /// Find a session by ID
     pub fn find_by_id(&mut self, id: i32) -> Result<Option<Session>> {
         sessions::table
@@ -35,7 +35,7 @@ impl<'a> SessionRepository<'a> {
             .optional()
             .map_err(Into::into)
     }
-    
+
     /// Update a session
     pub fn update(&mut self, id: i32, update: UpdateSession) -> Result<Session> {
         diesel::update(sessions::table.find(id))
@@ -44,20 +44,21 @@ impl<'a> SessionRepository<'a> {
             .get_result(self.conn)
             .map_err(Into::into)
     }
-    
+
     /// Transition a session to a new status
     pub fn transition_status(&mut self, id: i32, new_status: &str) -> Result<Session> {
         // Get the session to check current state
-        let session = self.find_by_id(id)?
+        let session = self
+            .find_by_id(id)?
             .ok_or_else(|| diesel::result::Error::NotFound)?;
-        
+
         // Transition validation is handled by BoardDefinition in the service layer
-        
+
         let mut update = UpdateSession {
             status: Some(new_status.to_string()),
             ..Default::default()
         };
-        
+
         // Set timestamps based on status transitions
         let now = Utc::now().to_rfc3339();
         match new_status {
@@ -78,17 +79,16 @@ impl<'a> SessionRepository<'a> {
             }
             _ => {}
         }
-        
+
         self.update(id, update)
     }
-    
+
     /// Delete a session
     pub fn delete(&mut self, id: i32) -> Result<()> {
-        diesel::delete(sessions::table.find(id))
-            .execute(self.conn)?;
+        diesel::delete(sessions::table.find(id)).execute(self.conn)?;
         Ok(())
     }
-    
+
     /// List all sessions for a campaign
     pub fn list_by_campaign(&mut self, campaign_id: i32) -> Result<Vec<Session>> {
         sessions::table
@@ -97,9 +97,13 @@ impl<'a> SessionRepository<'a> {
             .load(self.conn)
             .map_err(Into::into)
     }
-    
+
     /// List sessions by status for a campaign
-    pub fn list_by_campaign_and_status(&mut self, campaign_id: i32, status: &str) -> Result<Vec<Session>> {
+    pub fn list_by_campaign_and_status(
+        &mut self,
+        campaign_id: i32,
+        status: &str,
+    ) -> Result<Vec<Session>> {
         sessions::table
             .filter(sessions::campaign_id.eq(campaign_id))
             .filter(sessions::status.eq(status))
@@ -107,7 +111,7 @@ impl<'a> SessionRepository<'a> {
             .load(self.conn)
             .map_err(Into::into)
     }
-    
+
     /// List sessions for a module
     pub fn list_by_module(&mut self, module_id: i32) -> Result<Vec<Session>> {
         sessions::table
@@ -116,15 +120,19 @@ impl<'a> SessionRepository<'a> {
             .load(self.conn)
             .map_err(Into::into)
     }
-    
+
     /// Find next session to prep (T-3 check)
-    pub fn find_sessions_needing_prep(&mut self, campaign_id: i32, days_ahead: i32) -> Result<Vec<Session>> {
+    pub fn find_sessions_needing_prep(
+        &mut self,
+        campaign_id: i32,
+        days_ahead: i32,
+    ) -> Result<Vec<Session>> {
         use chrono::Duration;
-        
+
         let target_date = (Utc::now() + Duration::days(days_ahead as i64))
             .date_naive()
             .to_string();
-        
+
         sessions::table
             .filter(sessions::campaign_id.eq(campaign_id))
             .filter(sessions::scheduled_date.le(target_date))
@@ -133,7 +141,7 @@ impl<'a> SessionRepository<'a> {
             .load(self.conn)
             .map_err(Into::into)
     }
-    
+
     /// Get the next session number for a campaign
     pub fn get_next_session_number(&mut self, campaign_id: i32) -> Result<i32> {
         let max_number = sessions::table
@@ -141,20 +149,7 @@ impl<'a> SessionRepository<'a> {
             .select(diesel::dsl::max(sessions::session_number))
             .first::<Option<i32>>(self.conn)?
             .unwrap_or(0);
-            
-        Ok(max_number + 1)
-    }
-}
 
-// Implement Default for UpdateSession
-impl Default for UpdateSession {
-    fn default() -> Self {
-        Self {
-            status: None,
-            scheduled_date: None,
-            prep_started_at: None,
-            prep_completed_at: None,
-            completed_at: None,
-        }
+        Ok(max_number + 1)
     }
 }

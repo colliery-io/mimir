@@ -18,12 +18,12 @@
 //! 3. When the limit is hit, sleeps for the remaining time in the period
 //! 4. Never returns an error, just delays the call
 
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
-use async_trait::async_trait;
 use tokio_util::sync::CancellationToken;
 
 use crate::config::{EndpointType, ModelConfig, RateLimit, RenewalPeriod};
@@ -232,7 +232,7 @@ impl RateLimitState {
             RenewalPeriod::Minutes => Duration::from_secs(60),
             RenewalPeriod::Hours => Duration::from_secs(3600),
         };
-        
+
         Self {
             tokens: AtomicU32::new(max_tokens),
             max_tokens,
@@ -240,34 +240,34 @@ impl RateLimitState {
             last_refill: Mutex::new(Instant::now()),
         }
     }
-    
+
     fn refill(&self) {
         let now = Instant::now();
         let mut last_refill = self.last_refill.lock().unwrap();
         let elapsed = now.duration_since(*last_refill);
-        
+
         if elapsed >= self.refill_rate {
             // Reset tokens to max and update last_refill time
             self.tokens.store(self.max_tokens, Ordering::SeqCst);
             *last_refill = now;
         }
     }
-    
+
     fn acquire(&self) -> bool {
         self.refill();
-        
+
         // Try to acquire a token
         let mut current = self.tokens.load(Ordering::SeqCst);
         loop {
             if current == 0 {
                 return false;
             }
-            
+
             match self.tokens.compare_exchange_weak(
                 current,
                 current - 1,
                 Ordering::SeqCst,
-                Ordering::SeqCst
+                Ordering::SeqCst,
             ) {
                 Ok(_) => return true,
                 Err(new_current) => current = new_current,
@@ -281,15 +281,15 @@ impl RateLimitState {
 pub trait LlmProvider: Send + Sync {
     /// Get a reference to the provider's config
     fn config(&self) -> &ModelConfig;
-    
+
     /// Get a reference to the rate limit state
     fn rate_limit_state(&self) -> &RateLimitState;
-    
+
     /// Check if an endpoint is supported
     fn supports_endpoint(&self, endpoint: EndpointType) -> bool {
         self.config().supported_endpoints.contains(&endpoint)
     }
-    
+
     /// Default rate limiting implementation
     async fn check_rate_limit(&self) -> Result<(), LlmError> {
         // Get rate limit config
@@ -300,18 +300,19 @@ pub trait LlmProvider: Send + Sync {
 
         // Get or initialize rate limit state
         let state = self.rate_limit_state();
-        
+
         // Try to acquire a token
         if !state.acquire() {
             return Err(LlmError::RateLimitExceeded);
         }
-        
+
         Ok(())
     }
-    
+
     /// Chat endpoint with default "not supported" implementation
+    #[allow(clippy::too_many_arguments)]
     async fn chat(
-        &self, 
+        &self,
         _messages: Vec<Message>,
         _tools: Option<Vec<Tool>>,
         _n: Option<u32>,
@@ -327,16 +328,16 @@ pub trait LlmProvider: Send + Sync {
         self.check_rate_limit().await?;
         Err(LlmError::NotImplemented("chat".to_string()))
     }
-    
+
     /// Completion endpoint with default "not supported" implementation
     async fn complete(
-        &self, 
+        &self,
         _prompt: String,
         _n: Option<u32>,
         _temperature: Option<f32>,
         _max_tokens: Option<u32>,
         _stop: Option<Vec<String>>,
-        _extra_config: Option<HashMap<String, String>>
+        _extra_config: Option<HashMap<String, String>>,
     ) -> Result<CompletionResponse, LlmError> {
         if !self.supports_endpoint(EndpointType::Completion) {
             return Err(LlmError::UnsupportedEndpoint("completion".to_string()));
@@ -344,12 +345,12 @@ pub trait LlmProvider: Send + Sync {
         self.check_rate_limit().await?;
         Err(LlmError::NotImplemented("completion".to_string()))
     }
-    
+
     /// Embedding endpoint with default "not supported" implementation
     async fn embed(
-        &self, 
+        &self,
         _input: Vec<String>,
-        _extra_config: Option<HashMap<String, String>>
+        _extra_config: Option<HashMap<String, String>>,
     ) -> Result<EmbeddingResponse, LlmError> {
         if !self.supports_endpoint(EndpointType::Embedding) {
             return Err(LlmError::UnsupportedEndpoint("embedding".to_string()));
@@ -357,29 +358,29 @@ pub trait LlmProvider: Send + Sync {
         self.check_rate_limit().await?;
         Err(LlmError::NotImplemented("embedding".to_string()))
     }
-    
+
     // Model Management Methods (with default "not supported" implementations)
-    
+
     /// Check if the service is available and running
     async fn check_service(&self) -> Result<bool, LlmError> {
         Err(LlmError::NotSupported)
     }
-    
+
     /// List all available models
     async fn list_models(&self) -> Result<Vec<ModelInfo>, LlmError> {
         Err(LlmError::NotSupported)
     }
-    
+
     /// Check if a specific model exists
     async fn model_exists(&self, _model_name: &str) -> Result<bool, LlmError> {
         Err(LlmError::NotSupported)
     }
-    
+
     /// Pull/download a model
     async fn pull_model(&self, _model_name: &str) -> Result<(), LlmError> {
         Err(LlmError::NotSupported)
     }
-    
+
     /// Pull/download a model with progress callback
     async fn pull_model_with_progress<F>(
         &self,
@@ -391,20 +392,20 @@ pub trait LlmProvider: Send + Sync {
     {
         Err(LlmError::NotSupported)
     }
-    
+
     /// Ensure a model is available (download if necessary)
     async fn ensure_model(&self, model_name: &str) -> Result<(), LlmError> {
         // Default implementation that works for providers that support model management
         if !self.check_service().await? {
             return Err(LlmError::ServiceUnavailable(
-                "Service is not running".to_string()
+                "Service is not running".to_string(),
             ));
         }
-        
+
         if !self.model_exists(model_name).await? {
             self.pull_model(model_name).await?;
         }
-        
+
         Ok(())
     }
 }
@@ -412,7 +413,7 @@ pub trait LlmProvider: Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ModelConfig, EndpointType};
+    use crate::config::{EndpointType, ModelConfig};
 
     // Mock provider for testing
     struct MockProvider {
@@ -458,7 +459,7 @@ mod tests {
         };
 
         let provider = MockProvider::new(config);
-        
+
         // Should not block or error without rate limit config
         for _ in 0..10 {
             assert!(provider.check_rate_limit().await.is_ok());
@@ -477,15 +478,17 @@ mod tests {
         };
 
         let provider = MockProvider::new(config);
-        
+
         // Chat should be supported
         assert!(provider.supports_endpoint(EndpointType::Chat));
-        
+
         // Completion should not be supported
         assert!(!provider.supports_endpoint(EndpointType::Completion));
-        
+
         // Trying to use unsupported endpoint should return error
-        let result = provider.complete("test".to_string(), None, None, None, None, None).await;
+        let result = provider
+            .complete("test".to_string(), None, None, None, None, None)
+            .await;
         assert!(matches!(result, Err(LlmError::UnsupportedEndpoint(_))));
     }
 }

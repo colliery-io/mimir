@@ -1,9 +1,9 @@
 //! Integration tests for ConditionService
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::ConditionService;
-use mimir_dm_core::models::catalog::ConditionFilters;
 use diesel::prelude::*;
+use mimir_dm_core::models::catalog::ConditionFilters;
+use mimir_dm_core::services::ConditionService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -62,10 +62,14 @@ fn test_search_conditions_no_filters() {
         sources: None,
         search: None,
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
-    assert_eq!(results.len(), 18, "Should return all 18 seeded conditions/diseases");
+    assert_eq!(
+        results.len(),
+        18,
+        "Should return all 18 seeded conditions/diseases"
+    );
 }
 
 #[test]
@@ -78,10 +82,14 @@ fn test_search_conditions_by_name() {
         sources: None,
         search: None,
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
-    assert_eq!(results.len(), 1, "Should return 1 condition matching 'Blind'");
+    assert_eq!(
+        results.len(),
+        1,
+        "Should return 1 condition matching 'Blind'"
+    );
     assert_eq!(results[0].name, "Blinded");
 }
 
@@ -95,8 +103,8 @@ fn test_search_conditions_by_item_type_condition() {
         sources: None,
         search: None,
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 15, "Should return 15 conditions");
     assert!(results.iter().all(|c| c.item_type == "Condition"));
@@ -112,8 +120,8 @@ fn test_search_conditions_by_item_type_disease() {
         sources: None,
         search: None,
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 3, "Should return 3 diseases");
     assert!(results.iter().all(|c| c.item_type == "Disease"));
@@ -129,8 +137,8 @@ fn test_search_conditions_by_source() {
         sources: Some(vec!["PHB".to_string()]),
         search: None,
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 15, "Should return 15 PHB conditions");
     assert!(results.iter().all(|c| c.source == "PHB"));
@@ -146,11 +154,14 @@ fn test_search_conditions_by_description() {
         sources: None,
         search: Some("incapacitated".to_string()),
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
     // Incapacitated, Paralyzed, Stunned, Unconscious all mention incapacitated
-    assert!(results.len() >= 1, "Should return conditions mentioning incapacitated");
+    assert!(
+        !results.is_empty(),
+        "Should return conditions mentioning incapacitated"
+    );
 }
 
 #[test]
@@ -163,8 +174,8 @@ fn test_search_conditions_combined_filters() {
         sources: Some(vec!["DMG".to_string()]),
         search: None,
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 3, "Should return 3 DMG diseases");
 }
@@ -179,8 +190,8 @@ fn test_search_conditions_empty_results() {
         sources: None,
         search: None,
     };
-    let results = ConditionService::search_conditions(&mut conn, filters)
-        .expect("Search should succeed");
+    let results =
+        ConditionService::search_conditions(&mut conn, filters).expect("Search should succeed");
 
     assert!(results.is_empty(), "Should return empty results");
 }
@@ -190,8 +201,8 @@ fn test_get_condition_by_id() {
     let (mut conn, _temp_dir) = setup_test_db();
 
     // Get first condition (ID 1 in fresh DB)
-    let condition = ConditionService::get_condition_by_id(&mut conn, 1)
-        .expect("Should get condition");
+    let condition =
+        ConditionService::get_condition_by_id(&mut conn, 1).expect("Should get condition");
 
     assert!(condition.is_some());
 }
@@ -200,8 +211,8 @@ fn test_get_condition_by_id() {
 fn test_get_condition_by_id_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let condition = ConditionService::get_condition_by_id(&mut conn, 99999)
-        .expect("Should not error");
+    let condition =
+        ConditionService::get_condition_by_id(&mut conn, 99999).expect("Should not error");
 
     assert!(condition.is_none());
 }
@@ -210,8 +221,7 @@ fn test_get_condition_by_id_not_found() {
 fn test_get_item_types() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let types = ConditionService::get_item_types(&mut conn)
-        .expect("Should get item types");
+    let types = ConditionService::get_item_types(&mut conn).expect("Should get item types");
 
     assert_eq!(types.len(), 2, "Should have 2 item types");
     assert!(types.contains(&"Condition".to_string()));
@@ -222,8 +232,7 @@ fn test_get_item_types() {
 fn test_get_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sources = ConditionService::get_sources(&mut conn)
-        .expect("Should get sources");
+    let sources = ConditionService::get_sources(&mut conn).expect("Should get sources");
 
     assert_eq!(sources.len(), 2, "Should have 2 sources");
     assert!(sources.contains(&"PHB".to_string()));
@@ -234,8 +243,7 @@ fn test_get_sources() {
 fn test_get_condition_count() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let count = ConditionService::get_condition_count(&mut conn)
-        .expect("Should get count");
+    let count = ConditionService::get_condition_count(&mut conn).expect("Should get count");
 
     assert_eq!(count, 18, "Should have 18 conditions/diseases");
 }

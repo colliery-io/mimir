@@ -3,13 +3,13 @@
 //! Provides database-backed feat search, retrieval, and import functionality.
 //! Supports filtering by name, prerequisites, and source.
 
-use diesel::prelude::*;
-use tracing::{debug, info};
 use crate::error::Result;
-use crate::models::catalog::{FeatFilters, FeatSummary, CatalogFeat, NewCatalogFeat, FeatData};
+use crate::models::catalog::{CatalogFeat, FeatData, FeatFilters, FeatSummary, NewCatalogFeat};
 use crate::schema::catalog_feats;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
+use tracing::{debug, info};
 
 /// Service for searching and managing feats in the catalog.
 pub struct FeatService;
@@ -37,9 +37,10 @@ impl FeatService {
             if !search_pattern.is_empty() {
                 let pattern = format!("%{}%", search_pattern.to_lowercase());
                 query = query.filter(
-                    catalog_feats::name.like(pattern.clone())
+                    catalog_feats::name
+                        .like(pattern.clone())
                         .or(catalog_feats::prerequisites.like(pattern.clone()))
-                        .or(catalog_feats::brief.like(pattern))
+                        .or(catalog_feats::brief.like(pattern)),
                 );
             }
         }
@@ -50,7 +51,6 @@ impl FeatService {
                 query = query.filter(catalog_feats::source.eq_any(sources));
             }
         }
-
 
         // Apply has_prerequisites filter
         if let Some(has_prerequisites) = filters.has_prerequisites {
@@ -85,8 +85,9 @@ impl FeatService {
     ) -> Result<CatalogFeat> {
         catalog_feats::table
             .filter(
-                catalog_feats::name.eq(name)
-                    .and(catalog_feats::source.eq(source))
+                catalog_feats::name
+                    .eq(name)
+                    .and(catalog_feats::source.eq(source)),
             )
             .select(CatalogFeat::as_select())
             .first::<CatalogFeat>(conn)
@@ -140,9 +141,12 @@ impl FeatService {
     pub fn import_feats_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing feats from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing feats from book directory: {:?} (source: {})",
+            book_dir, source
+        );
         let mut imported_count = 0;
 
         let feats_dir = book_dir.join("feats");
@@ -189,7 +193,10 @@ impl FeatService {
             }
         }
 
-        info!("Successfully imported {} feats from source: {}", imported_count, source);
+        info!(
+            "Successfully imported {} feats from source: {}",
+            imported_count, source
+        );
         Ok(imported_count)
     }
 
@@ -204,10 +211,7 @@ impl FeatService {
     /// # Returns
     /// * `Ok(usize)` - Number of feats deleted
     /// * `Err(DbError)` - If the database operation fails
-    pub fn remove_feats_by_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_feats_by_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing feats from source: {}", source);
 
         let deleted = diesel::delete(catalog_feats::table)

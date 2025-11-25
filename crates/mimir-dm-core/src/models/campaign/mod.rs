@@ -1,5 +1,5 @@
 //! Campaign Management Models
-//! 
+//!
 //! Models for organizing and running campaigns, modules, and sessions.
 //! These represent the story management layer, not game mechanics.
 
@@ -15,7 +15,7 @@ pub mod workflow_cards;
 pub use campaigns::{Campaign, NewCampaign};
 pub use documents::{Document, NewDocument};
 pub use modules::{Module, NewModule};
-pub use sessions::{Session, NewSession};
+pub use sessions::{NewSession, Session};
 pub use template_documents::TemplateDocument;
 pub use template_frontmatter::TemplateFrontmatter;
-pub use workflow_cards::{WorkflowCard, NewWorkflowCard};
+pub use workflow_cards::{NewWorkflowCard, WorkflowCard};

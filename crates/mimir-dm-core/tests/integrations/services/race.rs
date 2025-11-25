@@ -1,9 +1,9 @@
 //! Integration tests for RaceService
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::RaceService;
-use mimir_dm_core::models::catalog::RaceFilters;
 use diesel::prelude::*;
+use mimir_dm_core::models::catalog::RaceFilters;
+use mimir_dm_core::services::RaceService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -17,16 +17,86 @@ fn setup_test_db() -> (SqliteConnection, TempDir) {
 
 fn seed_test_race_data(conn: &mut SqliteConnection) {
     let races = vec![
-        ("Human", "PHB", "M", 30, "+1 to all", r#"{"name":"Human","source":"PHB","size":["M"],"speed":30,"ability":[{"str":1,"dex":1,"con":1,"int":1,"wis":1,"cha":1}]}"#),
-        ("Elf", "PHB", "M", 30, "+2 Dex", r#"{"name":"Elf","source":"PHB","size":["M"],"speed":30,"darkvision":60,"ability":[{"dex":2}]}"#),
-        ("Dwarf", "PHB", "M", 25, "+2 Con", r#"{"name":"Dwarf","source":"PHB","size":["M"],"speed":25,"darkvision":60,"ability":[{"con":2}]}"#),
-        ("Halfling", "PHB", "S", 25, "+2 Dex", r#"{"name":"Halfling","source":"PHB","size":["S"],"speed":25,"ability":[{"dex":2}]}"#),
-        ("Dragonborn", "PHB", "M", 30, "+2 Str, +1 Cha", r#"{"name":"Dragonborn","source":"PHB","size":["M"],"speed":30,"ability":[{"str":2,"cha":1}]}"#),
-        ("Tiefling", "PHB", "M", 30, "+1 Int, +2 Cha", r#"{"name":"Tiefling","source":"PHB","size":["M"],"speed":30,"darkvision":60,"ability":[{"int":1,"cha":2}]}"#),
-        ("Aarakocra", "EEPC", "M", 25, "+2 Dex, +1 Wis", r#"{"name":"Aarakocra","source":"EEPC","size":["M"],"speed":{"walk":25,"fly":50},"ability":[{"dex":2,"wis":1}]}"#),
-        ("Gnome", "PHB", "S", 25, "+2 Int", r#"{"name":"Gnome","source":"PHB","size":["S"],"speed":25,"darkvision":60,"ability":[{"int":2}]}"#),
-        ("Fairy", "WBtW", "S", 30, "+2 to any", r#"{"name":"Fairy","source":"WBtW","size":["S"],"speed":{"walk":30,"fly":30},"ability":[{"choose":{"from":["str","dex","con","int","wis","cha"],"count":2}}]}"#),
-        ("Half-Orc", "PHB", "M", 30, "+2 Str, +1 Con", r#"{"name":"Half-Orc","source":"PHB","size":["M"],"speed":30,"darkvision":60,"ability":[{"str":2,"con":1}]}"#),
+        (
+            "Human",
+            "PHB",
+            "M",
+            30,
+            "+1 to all",
+            r#"{"name":"Human","source":"PHB","size":["M"],"speed":30,"ability":[{"str":1,"dex":1,"con":1,"int":1,"wis":1,"cha":1}]}"#,
+        ),
+        (
+            "Elf",
+            "PHB",
+            "M",
+            30,
+            "+2 Dex",
+            r#"{"name":"Elf","source":"PHB","size":["M"],"speed":30,"darkvision":60,"ability":[{"dex":2}]}"#,
+        ),
+        (
+            "Dwarf",
+            "PHB",
+            "M",
+            25,
+            "+2 Con",
+            r#"{"name":"Dwarf","source":"PHB","size":["M"],"speed":25,"darkvision":60,"ability":[{"con":2}]}"#,
+        ),
+        (
+            "Halfling",
+            "PHB",
+            "S",
+            25,
+            "+2 Dex",
+            r#"{"name":"Halfling","source":"PHB","size":["S"],"speed":25,"ability":[{"dex":2}]}"#,
+        ),
+        (
+            "Dragonborn",
+            "PHB",
+            "M",
+            30,
+            "+2 Str, +1 Cha",
+            r#"{"name":"Dragonborn","source":"PHB","size":["M"],"speed":30,"ability":[{"str":2,"cha":1}]}"#,
+        ),
+        (
+            "Tiefling",
+            "PHB",
+            "M",
+            30,
+            "+1 Int, +2 Cha",
+            r#"{"name":"Tiefling","source":"PHB","size":["M"],"speed":30,"darkvision":60,"ability":[{"int":1,"cha":2}]}"#,
+        ),
+        (
+            "Aarakocra",
+            "EEPC",
+            "M",
+            25,
+            "+2 Dex, +1 Wis",
+            r#"{"name":"Aarakocra","source":"EEPC","size":["M"],"speed":{"walk":25,"fly":50},"ability":[{"dex":2,"wis":1}]}"#,
+        ),
+        (
+            "Gnome",
+            "PHB",
+            "S",
+            25,
+            "+2 Int",
+            r#"{"name":"Gnome","source":"PHB","size":["S"],"speed":25,"darkvision":60,"ability":[{"int":2}]}"#,
+        ),
+        (
+            "Fairy",
+            "WBtW",
+            "S",
+            30,
+            "+2 to any",
+            r#"{"name":"Fairy","source":"WBtW","size":["S"],"speed":{"walk":30,"fly":30},"ability":[{"choose":{"from":["str","dex","con","int","wis","cha"],"count":2}}]}"#,
+        ),
+        (
+            "Half-Orc",
+            "PHB",
+            "M",
+            30,
+            "+2 Str, +1 Con",
+            r#"{"name":"Half-Orc","source":"PHB","size":["M"],"speed":30,"darkvision":60,"ability":[{"str":2,"con":1}]}"#,
+        ),
     ];
 
     for (name, source, size, speed, ability_bonuses, json) in races {
@@ -55,8 +125,7 @@ fn test_search_races_no_filters() {
         has_darkvision: None,
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 10, "Should return all 10 seeded races");
 }
@@ -72,8 +141,7 @@ fn test_search_races_by_name() {
         has_darkvision: None,
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 1, "Should return 1 race matching 'Elf'");
     assert_eq!(results[0].name, "Elf");
@@ -90,8 +158,7 @@ fn test_search_races_by_source() {
         has_darkvision: None,
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 8, "Should return 8 PHB races");
     assert!(results.iter().all(|r| r.source == "PHB"));
@@ -108,8 +175,7 @@ fn test_search_races_by_size() {
         has_darkvision: None,
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 3, "Should return 3 Small races");
     assert!(results.iter().all(|r| r.size == "S"));
@@ -126,8 +192,7 @@ fn test_search_races_with_darkvision() {
         has_darkvision: Some(true),
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     assert!(results.len() >= 5, "Should return races with darkvision");
 }
@@ -143,8 +208,7 @@ fn test_search_races_without_darkvision() {
         has_darkvision: Some(false),
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     assert!(results.len() >= 3, "Should return races without darkvision");
 }
@@ -160,10 +224,13 @@ fn test_search_races_with_flight() {
         has_darkvision: None,
         has_flight: Some(true),
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
-    assert_eq!(results.len(), 2, "Should return 2 flying races (Aarakocra, Fairy)");
+    assert_eq!(
+        results.len(),
+        2,
+        "Should return 2 flying races (Aarakocra, Fairy)"
+    );
 }
 
 #[test]
@@ -177,11 +244,13 @@ fn test_search_races_combined_filters() {
         has_darkvision: Some(true),
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     // PHB, Medium, with darkvision
-    assert!(results.len() >= 3, "Should return PHB Medium races with darkvision");
+    assert!(
+        results.len() >= 3,
+        "Should return PHB Medium races with darkvision"
+    );
 }
 
 #[test]
@@ -195,8 +264,7 @@ fn test_search_races_empty_results() {
         has_darkvision: None,
         has_flight: None,
     };
-    let results = RaceService::search_races(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RaceService::search_races(&mut conn, filters).expect("Search should succeed");
 
     assert!(results.is_empty(), "Should return empty results");
 }
@@ -205,8 +273,8 @@ fn test_search_races_empty_results() {
 fn test_get_race_details() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let race_json = RaceService::get_race_details(&mut conn, "Human", "PHB")
-        .expect("Should get race details");
+    let race_json =
+        RaceService::get_race_details(&mut conn, "Human", "PHB").expect("Should get race details");
 
     assert!(race_json.is_some());
     let json = race_json.unwrap();
@@ -217,8 +285,8 @@ fn test_get_race_details() {
 fn test_get_race_details_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let race_json = RaceService::get_race_details(&mut conn, "Nonexistent", "PHB")
-        .expect("Should not error");
+    let race_json =
+        RaceService::get_race_details(&mut conn, "Nonexistent", "PHB").expect("Should not error");
 
     assert!(race_json.is_none());
 }
@@ -227,8 +295,7 @@ fn test_get_race_details_not_found() {
 fn test_get_race_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sources = RaceService::get_race_sources(&mut conn)
-        .expect("Should get sources");
+    let sources = RaceService::get_race_sources(&mut conn).expect("Should get sources");
 
     assert!(sources.len() >= 3, "Should have multiple sources");
     assert!(sources.contains(&"PHB".to_string()));
@@ -238,8 +305,7 @@ fn test_get_race_sources() {
 fn test_get_race_sizes() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sizes = RaceService::get_race_sizes(&mut conn)
-        .expect("Should get sizes");
+    let sizes = RaceService::get_race_sizes(&mut conn).expect("Should get sizes");
 
     assert_eq!(sizes.len(), 2, "Should have M and S sizes");
     assert!(sizes.contains(&"M".to_string()));
@@ -250,8 +316,7 @@ fn test_get_race_sizes() {
 fn test_get_race_count() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let count = RaceService::get_race_count(&mut conn)
-        .expect("Should get count");
+    let count = RaceService::get_race_count(&mut conn).expect("Should get count");
 
     assert_eq!(count, 10, "Should have 10 races");
 }

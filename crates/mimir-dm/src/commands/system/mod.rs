@@ -10,5 +10,4 @@ pub mod window_manager;
 
 pub use app_info::*;
 pub use dev_tools::*;
-pub use logs::*;
 pub use window_manager::*;

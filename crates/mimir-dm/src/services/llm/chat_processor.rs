@@ -17,16 +17,16 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
 use crate::services::chat_logger::ChatTokenUsage;
-use crate::services::tools::ToolRegistry;
 use crate::services::llm::LlmService;
 use crate::services::tools::character_tools::{
-    GetCharacterTool, ListCampaignCharactersTool, GetCharacterStatsTool,
-    CheckSpellSlotsTool, ListPlayersTool,
+    CheckSpellSlotsTool, GetCharacterStatsTool, GetCharacterTool, ListCampaignCharactersTool,
+    ListPlayersTool,
 };
 use crate::services::tools::character_write_tools::{
-    UpdateCharacterHpTool, AddInventoryItemTool, CastSpellTool,
-    CreateCharacterTool, UpdateCharacterTool, TakeRestTool,
+    AddInventoryItemTool, CastSpellTool, CreateCharacterTool, TakeRestTool, UpdateCharacterHpTool,
+    UpdateCharacterTool,
 };
+use crate::services::tools::ToolRegistry;
 
 // Model name is now retrieved from LlmService, not a constant
 
@@ -179,10 +179,9 @@ impl<'a> ChatProcessor<'a> {
 
     /// Build a campaign-specific tool registry with all tools
     fn build_campaign_tool_registry(&self, campaign_dir: &str) -> ToolRegistry {
-        let campaign_file_config =
-            Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
-                campaign_dir,
-            )));
+        let campaign_file_config = Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
+            campaign_dir,
+        )));
 
         let mut registry = ToolRegistry::new();
 
@@ -198,23 +197,38 @@ impl<'a> ChatProcessor<'a> {
 
         // Character read tools
         registry.register(Arc::new(GetCharacterTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(ListCampaignCharactersTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(GetCharacterStatsTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(CheckSpellSlotsTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(ListCampaignCharactersTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(GetCharacterStatsTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(CheckSpellSlotsTool::new(
+            self.llm.db_service.clone(),
+        )));
         registry.register(Arc::new(ListPlayersTool::new(self.llm.db_service.clone())));
 
         // Character write tools
-        registry.register(Arc::new(UpdateCharacterHpTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(AddInventoryItemTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(UpdateCharacterHpTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(AddInventoryItemTool::new(
+            self.llm.db_service.clone(),
+        )));
         registry.register(Arc::new(CastSpellTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(CreateCharacterTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(UpdateCharacterTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(CreateCharacterTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(UpdateCharacterTool::new(
+            self.llm.db_service.clone(),
+        )));
         registry.register(Arc::new(TakeRestTool::new(self.llm.db_service.clone())));
 
         registry
     }
 
     /// Process a chat message with optional tool support
+    #[allow(clippy::too_many_arguments)]
     pub async fn process_chat(
         &self,
         mut provider_messages: Vec<mimir_dm_llm::Message>,
@@ -353,8 +367,8 @@ impl<'a> ChatProcessor<'a> {
             }
         }
 
-        let response = final_response
-            .ok_or_else(|| "Maximum tool iterations reached".to_string())?;
+        let response =
+            final_response.ok_or_else(|| "Maximum tool iterations reached".to_string())?;
 
         // Extract token usage
         let usage = response.usage.unwrap_or(mimir_dm_llm::Usage {
@@ -397,10 +411,7 @@ impl<'a> ChatProcessor<'a> {
         _session_id: &str,
     ) -> Vec<mimir_dm_llm::Tool> {
         if let Some(campaign_dir) = campaign_directory_path {
-            info!(
-                "Configuring tools for campaign directory: {}",
-                campaign_dir
-            );
+            info!("Configuring tools for campaign directory: {}", campaign_dir);
             let campaign_tool_registry = self.build_campaign_tool_registry(campaign_dir);
             campaign_tool_registry.get_tool_definitions()
         } else {
@@ -527,10 +538,7 @@ impl<'a> ChatProcessor<'a> {
             .get_provider_with_endpoint(ollama_url)
             .map_err(|e| {
                 error!("Failed to get provider with endpoint: {}", e);
-                error!(
-                    "Endpoint: {}",
-                    ollama_url.unwrap_or(super::OLLAMA_BASE_URL)
-                );
+                error!("Endpoint: {}", ollama_url.unwrap_or(super::OLLAMA_BASE_URL));
                 format!("Failed to get provider with endpoint: {}", e)
             })?;
 
@@ -547,7 +555,7 @@ impl<'a> ChatProcessor<'a> {
             .chat(
                 provider_messages.to_vec(),
                 tools.clone(),
-                None,                      // n (number of completions)
+                None,                             // n (number of completions)
                 temperature.or(Some(0.3)), // temperature (default to 0.3 for more deterministic tool calling)
                 max_tokens.or(Some(16384)), // max_tokens (default to 16384 for thinking models)
                 None,                      // stop sequences
@@ -715,8 +723,10 @@ impl<'a> ChatProcessor<'a> {
     ) {
         if let Some(ref app) = self.llm.app_handle {
             if let Some(tool_calls) = &response.tool_calls {
-                let tool_names: Vec<String> =
-                    tool_calls.iter().map(|tc| tc.function.name.clone()).collect();
+                let tool_names: Vec<String> = tool_calls
+                    .iter()
+                    .map(|tc| tc.function.name.clone())
+                    .collect();
 
                 let intermediate_msg = IntermediateMessage {
                     role: "assistant".to_string(),
@@ -801,9 +811,16 @@ impl<'a> ChatProcessor<'a> {
 
             if requires_confirmation {
                 if let Some(action_desc) = action_desc {
-                    info!("Tool {} requires confirmation, requesting from user", tool_name);
+                    info!(
+                        "Tool {} requires confirmation, requesting from user",
+                        tool_name
+                    );
 
-                    match self.llm.request_confirmation(action_desc, tool_name.clone()).await {
+                    match self
+                        .llm
+                        .request_confirmation(action_desc, tool_name.clone())
+                        .await
+                    {
                         Ok(confirmed) => {
                             if !confirmed {
                                 info!("User rejected tool {} execution", tool_name);
@@ -851,16 +868,11 @@ impl<'a> ChatProcessor<'a> {
                 .await;
 
             // Emit tool result
-            self.emit_tool_result(
-                tool_name,
-                &tool_result,
-                iteration,
-                session_id,
-            );
+            self.emit_tool_result(tool_name, &tool_result, iteration, session_id);
 
             // Add tool response to messages
-            let is_error = tool_result.contains("Tool execution failed")
-                || tool_result.contains("error");
+            let is_error =
+                tool_result.contains("Tool execution failed") || tool_result.contains("error");
             info!(
                 "Adding tool result to conversation: {} (error: {})",
                 tool_name, is_error
@@ -888,7 +900,10 @@ impl<'a> ChatProcessor<'a> {
                 .last()
                 .map(|m| m.role.as_str())
                 .unwrap_or("none"),
-            provider_messages.last().map(|m| m.content.len()).unwrap_or(0)
+            provider_messages
+                .last()
+                .map(|m| m.content.len())
+                .unwrap_or(0)
         );
     }
 

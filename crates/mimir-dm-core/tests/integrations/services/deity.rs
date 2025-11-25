@@ -1,9 +1,9 @@
 //! Integration tests for DeityService
 
 use diesel::prelude::*;
-use mimir_dm_core::{establish_connection, run_migrations};
 use mimir_dm_core::models::catalog::deity::DeityFilters;
 use mimir_dm_core::services::deity_service::DeityService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -19,27 +19,109 @@ fn seed_test_deity_data(conn: &mut SqliteConnection) {
     // Deities with (name, title, pantheon, alignment_parts, domains, symbol, source)
     // alignment_parts is serialized as JSON array (e.g., ["N", "G"])
     let deities: Vec<(&str, &str, &str, &[&str], &str, &str, &str)> = vec![
-        ("Pelor", "The Shining One", "Dawn War", &["N", "G"], "Life, Light", "Sun", "PHB"),
-        ("Moradin", "The All-Father", "Dwarven", &["L", "G"], "Forge, Knowledge", "Hammer and anvil", "PHB"),
-        ("Corellon Larethian", "Creator of Elves", "Elven", &["C", "G"], "Arcana, Light", "Crescent moon", "PHB"),
-        ("Lolth", "Queen of Spiders", "Dark Seldarine", &["C", "E"], "Trickery, War", "Spider", "PHB"),
-        ("Tiamat", "Dragon Queen", "Draconic", &["L", "E"], "Trickery, War", "Five-headed dragon", "PHB"),
-        ("Bahamut", "The Platinum Dragon", "Draconic", &["L", "G"], "Life, War", "Dragon head in profile", "PHB"),
-        ("Odin", "The Allfather", "Norse", &["N", "G"], "Knowledge, War", "Watching blue eye", "MTF"),
-        ("Thor", "God of Thunder", "Norse", &["C", "G"], "Tempest, War", "Hammer", "MTF"),
-        ("Athena", "Goddess of Wisdom", "Greek", &["L", "G"], "Knowledge, War", "Owl", "MTF"),
-        ("Zeus", "King of the Gods", "Greek", &["N"], "Tempest", "Fist full of lightning", "MTF"),
+        (
+            "Pelor",
+            "The Shining One",
+            "Dawn War",
+            &["N", "G"],
+            "Life, Light",
+            "Sun",
+            "PHB",
+        ),
+        (
+            "Moradin",
+            "The All-Father",
+            "Dwarven",
+            &["L", "G"],
+            "Forge, Knowledge",
+            "Hammer and anvil",
+            "PHB",
+        ),
+        (
+            "Corellon Larethian",
+            "Creator of Elves",
+            "Elven",
+            &["C", "G"],
+            "Arcana, Light",
+            "Crescent moon",
+            "PHB",
+        ),
+        (
+            "Lolth",
+            "Queen of Spiders",
+            "Dark Seldarine",
+            &["C", "E"],
+            "Trickery, War",
+            "Spider",
+            "PHB",
+        ),
+        (
+            "Tiamat",
+            "Dragon Queen",
+            "Draconic",
+            &["L", "E"],
+            "Trickery, War",
+            "Five-headed dragon",
+            "PHB",
+        ),
+        (
+            "Bahamut",
+            "The Platinum Dragon",
+            "Draconic",
+            &["L", "G"],
+            "Life, War",
+            "Dragon head in profile",
+            "PHB",
+        ),
+        (
+            "Odin",
+            "The Allfather",
+            "Norse",
+            &["N", "G"],
+            "Knowledge, War",
+            "Watching blue eye",
+            "MTF",
+        ),
+        (
+            "Thor",
+            "God of Thunder",
+            "Norse",
+            &["C", "G"],
+            "Tempest, War",
+            "Hammer",
+            "MTF",
+        ),
+        (
+            "Athena",
+            "Goddess of Wisdom",
+            "Greek",
+            &["L", "G"],
+            "Knowledge, War",
+            "Owl",
+            "MTF",
+        ),
+        (
+            "Zeus",
+            "King of the Gods",
+            "Greek",
+            &["N"],
+            "Tempest",
+            "Fist full of lightning",
+            "MTF",
+        ),
     ];
 
     for (name, title, pantheon, alignment_parts, domains, symbol, source) in deities {
         // Build alignment JSON array
-        let alignment_json = alignment_parts.iter()
+        let alignment_json = alignment_parts
+            .iter()
             .map(|a| format!("\"{}\"", a))
             .collect::<Vec<_>>()
             .join(",");
 
         // Build domains JSON array
-        let domains_json = domains.split(", ")
+        let domains_json = domains
+            .split(", ")
             .map(|d| format!("\"{}\"", d))
             .collect::<Vec<_>>()
             .join(",");
@@ -80,7 +162,9 @@ fn test_search_deities_no_filters() {
         domains: None,
         alignments: None,
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     assert_eq!(results.len(), 10);
 }
@@ -97,7 +181,9 @@ fn test_search_deities_by_name() {
         domains: None,
         alignments: None,
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, "Pelor");
@@ -115,7 +201,9 @@ fn test_search_deities_by_pantheon() {
         domains: None,
         alignments: None,
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     assert_eq!(results.len(), 2);
     assert!(results.iter().all(|d| d.pantheon == "Norse"));
@@ -133,7 +221,9 @@ fn test_search_deities_by_domain() {
         domains: Some(vec!["War".to_string()]),
         alignments: None,
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     // Lolth, Tiamat, Bahamut, Odin, Thor, Athena all have War domain
     assert_eq!(results.len(), 6);
@@ -151,7 +241,9 @@ fn test_search_deities_by_alignment() {
         domains: None,
         alignments: Some(vec!["LG".to_string()]),
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     assert_eq!(results.len(), 3); // Moradin, Bahamut, Athena
 }
@@ -168,7 +260,9 @@ fn test_search_deities_by_source() {
         domains: None,
         alignments: None,
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     assert_eq!(results.len(), 4);
 }
@@ -185,7 +279,9 @@ fn test_search_deities_combined_filters() {
         domains: None,
         alignments: Some(vec!["LG".to_string()]),
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, "Bahamut");
@@ -203,7 +299,9 @@ fn test_search_deities_empty_results() {
         domains: None,
         alignments: None,
     };
-    let results = service.search_deities(filters).expect("Should search deities");
+    let results = service
+        .search_deities(filters)
+        .expect("Should search deities");
 
     assert!(results.is_empty());
 }
@@ -213,7 +311,8 @@ fn test_get_deity_by_name_and_source() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = DeityService::new(&mut conn);
 
-    let result = service.get_deity_by_name_and_source("Pelor", "PHB")
+    let result = service
+        .get_deity_by_name_and_source("Pelor", "PHB")
         .expect("Should get deity");
 
     assert!(result.is_some());
@@ -226,7 +325,8 @@ fn test_get_deity_by_name_and_source_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = DeityService::new(&mut conn);
 
-    let result = service.get_deity_by_name_and_source("Nonexistent", "PHB")
+    let result = service
+        .get_deity_by_name_and_source("Nonexistent", "PHB")
         .expect("Should handle not found");
 
     assert!(result.is_none());
@@ -273,7 +373,9 @@ fn test_get_deity_count_by_source() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = DeityService::new(&mut conn);
 
-    let counts = service.get_deity_count_by_source().expect("Should get counts");
+    let counts = service
+        .get_deity_count_by_source()
+        .expect("Should get counts");
 
     let phb_count = counts.iter().find(|(s, _)| s == "PHB").map(|(_, c)| *c);
     let mtf_count = counts.iter().find(|(s, _)| s == "MTF").map(|(_, c)| *c);

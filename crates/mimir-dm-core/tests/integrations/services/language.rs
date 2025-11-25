@@ -1,9 +1,9 @@
 //! Integration tests for LanguageService
 
 use diesel::prelude::*;
-use mimir_dm_core::{establish_connection, run_migrations};
 use mimir_dm_core::models::catalog::LanguageFilters;
 use mimir_dm_core::services::language_service::LanguageService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -18,7 +18,13 @@ fn setup_test_db() -> (SqliteConnection, TempDir) {
 fn seed_test_language_data(conn: &mut SqliteConnection) {
     // Languages with (name, language_type, script, typical_speakers_array, source)
     let languages: Vec<(&str, &str, &str, &[&str], &str)> = vec![
-        ("Common", "Standard", "Common", &["Humans", "halflings", "most civilized races"], "PHB"),
+        (
+            "Common",
+            "Standard",
+            "Common",
+            &["Humans", "halflings", "most civilized races"],
+            "PHB",
+        ),
         ("Dwarvish", "Standard", "Dwarvish", &["Dwarves"], "PHB"),
         ("Elvish", "Standard", "Elvish", &["Elves"], "PHB"),
         ("Giant", "Standard", "Dwarvish", &["Giants", "ogres"], "PHB"),
@@ -28,17 +34,30 @@ fn seed_test_language_data(conn: &mut SqliteConnection) {
         ("Orc", "Standard", "Dwarvish", &["Orcs"], "PHB"),
         ("Abyssal", "Exotic", "Infernal", &["Demons"], "PHB"),
         ("Celestial", "Exotic", "Celestial", &["Celestials"], "PHB"),
-        ("Draconic", "Exotic", "Draconic", &["Dragons", "dragonborn"], "PHB"),
+        (
+            "Draconic",
+            "Exotic",
+            "Draconic",
+            &["Dragons", "dragonborn"],
+            "PHB",
+        ),
         ("Deep Speech", "Exotic", "None", &["Aberrations"], "PHB"),
         ("Infernal", "Exotic", "Infernal", &["Devils"], "PHB"),
         ("Primordial", "Exotic", "Dwarvish", &["Elementals"], "PHB"),
         ("Sylvan", "Exotic", "Elvish", &["Fey creatures"], "PHB"),
-        ("Undercommon", "Exotic", "Elvish", &["Underdark traders"], "PHB"),
+        (
+            "Undercommon",
+            "Exotic",
+            "Elvish",
+            &["Underdark traders"],
+            "PHB",
+        ),
     ];
 
     for (name, language_type, script, typical_speakers, source) in languages {
         // Build typical_speakers JSON array
-        let speakers_json = typical_speakers.iter()
+        let speakers_json = typical_speakers
+            .iter()
             .map(|s| format!("\"{}\"", s))
             .collect::<Vec<_>>()
             .join(",");
@@ -76,8 +95,8 @@ fn test_search_languages_no_filters() {
         scripts: None,
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     assert_eq!(results.len(), 16);
 }
@@ -93,8 +112,8 @@ fn test_search_languages_by_name() {
         scripts: None,
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, "Elvish");
@@ -111,8 +130,8 @@ fn test_search_languages_by_search() {
         scripts: None,
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     // Should find Draconic (typical speakers include "dragon")
     assert!(!results.is_empty());
@@ -130,8 +149,8 @@ fn test_search_languages_by_type_standard() {
         scripts: None,
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     assert_eq!(results.len(), 8);
     assert!(results.iter().all(|l| l.language_type == "Standard"));
@@ -148,8 +167,8 @@ fn test_search_languages_by_type_exotic() {
         scripts: None,
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     assert_eq!(results.len(), 8);
     assert!(results.iter().all(|l| l.language_type == "Exotic"));
@@ -166,8 +185,8 @@ fn test_search_languages_by_script() {
         scripts: Some(vec!["Dwarvish".to_string()]),
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     // Dwarvish, Giant, Gnomish, Goblin, Orc, Primordial
     assert_eq!(results.len(), 6);
@@ -184,8 +203,8 @@ fn test_search_languages_by_source() {
         scripts: None,
         sources: Some(vec!["PHB".to_string()]),
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     assert_eq!(results.len(), 16);
 }
@@ -201,8 +220,8 @@ fn test_search_languages_combined_filters() {
         scripts: Some(vec!["Elvish".to_string()]),
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     // Sylvan and Undercommon use Elvish script and are Exotic
     assert_eq!(results.len(), 2);
@@ -219,8 +238,8 @@ fn test_search_languages_empty_results() {
         scripts: None,
         sources: None,
     };
-    let results = LanguageService::search_languages(&mut conn, filters)
-        .expect("Should search languages");
+    let results =
+        LanguageService::search_languages(&mut conn, filters).expect("Should search languages");
 
     assert!(results.is_empty());
 }
@@ -229,8 +248,7 @@ fn test_search_languages_empty_results() {
 fn test_get_language_by_id() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let result = LanguageService::get_language_by_id(&mut conn, 1)
-        .expect("Should get language");
+    let result = LanguageService::get_language_by_id(&mut conn, 1).expect("Should get language");
 
     assert!(result.is_some());
 }
@@ -239,8 +257,8 @@ fn test_get_language_by_id() {
 fn test_get_language_by_id_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let result = LanguageService::get_language_by_id(&mut conn, 9999)
-        .expect("Should handle not found");
+    let result =
+        LanguageService::get_language_by_id(&mut conn, 9999).expect("Should handle not found");
 
     assert!(result.is_none());
 }
@@ -271,8 +289,7 @@ fn test_get_language_by_name_and_source_not_found() {
 fn test_get_language_types() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let types = LanguageService::get_language_types(&mut conn)
-        .expect("Should get types");
+    let types = LanguageService::get_language_types(&mut conn).expect("Should get types");
 
     assert!(types.contains(&"Standard".to_string()));
     assert!(types.contains(&"Exotic".to_string()));
@@ -282,8 +299,7 @@ fn test_get_language_types() {
 fn test_get_scripts() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let scripts = LanguageService::get_scripts(&mut conn)
-        .expect("Should get scripts");
+    let scripts = LanguageService::get_scripts(&mut conn).expect("Should get scripts");
 
     assert!(scripts.contains(&"Common".to_string()));
     assert!(scripts.contains(&"Dwarvish".to_string()));
@@ -294,8 +310,7 @@ fn test_get_scripts() {
 fn test_get_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sources = LanguageService::get_sources(&mut conn)
-        .expect("Should get sources");
+    let sources = LanguageService::get_sources(&mut conn).expect("Should get sources");
 
     assert!(sources.contains(&"PHB".to_string()));
 }
@@ -304,8 +319,7 @@ fn test_get_sources() {
 fn test_get_language_count() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let count = LanguageService::get_language_count(&mut conn)
-        .expect("Should get count");
+    let count = LanguageService::get_language_count(&mut conn).expect("Should get count");
 
     assert_eq!(count, 16);
 }

@@ -5,12 +5,12 @@
 
 use crate::app_init::AppPaths;
 use crate::types::{ApiError, ApiResponse};
+use base64::{engine::general_purpose::STANDARD, Engine};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::State;
 use tracing::{error, info};
-use base64::{engine::general_purpose::STANDARD, Engine};
 
 /// Get book content from the archive structure.
 ///
@@ -32,14 +32,12 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 #[tauri::command]
 pub async fn get_book_content(
     book_id: String,
-    app_paths: State<'_, Arc<AppPaths>>
+    app_paths: State<'_, Arc<AppPaths>>,
 ) -> Result<ApiResponse<serde_json::Value>, ApiError> {
     info!("Getting book content for: {}", book_id);
 
     // Get book directory
-    let book_dir = app_paths.data_dir
-        .join("books")
-        .join(&book_id);
+    let book_dir = app_paths.data_dir.join("books").join(&book_id);
 
     info!("Looking for book at: {:?}", book_dir);
 
@@ -51,38 +49,40 @@ pub async fn get_book_content(
     // List contents of book directory for debugging
     info!("Book directory contents:");
     if let Ok(entries) = fs::read_dir(&book_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                info!("  - {:?} ({})",
-                    entry.file_name(),
-                    if entry.path().is_dir() { "dir" } else { "file" }
-                );
-            }
+        for entry in entries.flatten() {
+            info!(
+                "  - {:?} ({})",
+                entry.file_name(),
+                if entry.path().is_dir() { "dir" } else { "file" }
+            );
         }
     }
 
     // Find the main book content file
     info!("Searching for book content file...");
-    let book_content_path = find_book_content_file(&book_dir)?
-        .ok_or_else(|| {
-            error!("No book content file found in {:?}", book_dir);
-            format!("No book content found for: {}", book_id)
-        })?;
+    let book_content_path = find_book_content_file(&book_dir)?.ok_or_else(|| {
+        error!("No book content file found in {:?}", book_dir);
+        format!("No book content found for: {}", book_id)
+    })?;
 
     // Read and parse JSON
     match fs::read_to_string(&book_content_path) {
-        Ok(content) => {
-            match serde_json::from_str::<serde_json::Value>(&content) {
-                Ok(json) => Ok(ApiResponse::success(json)),
-                Err(e) => {
-                    error!("Failed to parse book JSON: {}", e);
-                    Ok(ApiResponse::error(format!("Failed to parse book content: {}", e)))
-                }
+        Ok(content) => match serde_json::from_str::<serde_json::Value>(&content) {
+            Ok(json) => Ok(ApiResponse::success(json)),
+            Err(e) => {
+                error!("Failed to parse book JSON: {}", e);
+                Ok(ApiResponse::error(format!(
+                    "Failed to parse book content: {}",
+                    e
+                )))
             }
-        }
+        },
         Err(e) => {
             error!("Failed to read book file: {}", e);
-            Ok(ApiResponse::error(format!("Failed to read book content: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to read book content: {}",
+                e
+            )))
         }
     }
 }
@@ -125,9 +125,7 @@ pub async fn serve_book_image(
         format!("img/{}", sanitized_image)
     };
 
-    let full_image_path = books_dir
-        .join(&sanitized_book)
-        .join(&image_path_with_img);
+    let full_image_path = books_dir.join(&sanitized_book).join(&image_path_with_img);
 
     if !full_image_path.exists() {
         error!("Image not found: {:?}", full_image_path);
@@ -150,7 +148,11 @@ pub async fn serve_book_image(
             let base64_data = STANDARD.encode(&image_data);
             let data_url = format!("data:{};base64,{}", mime_type, base64_data);
 
-            info!("Successfully served image: {} ({}KB)", image_path_with_img, image_data.len() / 1024);
+            info!(
+                "Successfully served image: {} ({}KB)",
+                image_path_with_img,
+                image_data.len() / 1024
+            );
             Ok(ApiResponse::success(data_url))
         }
         Err(e) => {
@@ -172,9 +174,9 @@ pub(super) fn find_book_content_file(dir: &Path) -> Result<Option<PathBuf>, ApiE
 
     if book_dir.exists() {
         info!("Book subdirectory exists, listing contents:");
-        for entry in fs::read_dir(&book_dir)
-            .map_err(|e| format!("Failed to read book directory: {}", e))? {
-
+        for entry in
+            fs::read_dir(&book_dir).map_err(|e| format!("Failed to read book directory: {}", e))?
+        {
             let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
             let path = entry.path();
 

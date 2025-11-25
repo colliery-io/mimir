@@ -3,15 +3,15 @@
 //! Provides database-backed deity search, retrieval, and import functionality.
 //! Supports filtering by name, pantheon, alignment, domains, and source.
 
-use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::deity::{
-    CatalogDeity, DeitySummary, DeityFilters, Deity, NewCatalogDeity, DeityData
+    CatalogDeity, Deity, DeityData, DeityFilters, DeitySummary, NewCatalogDeity,
 };
 use crate::schema::catalog_deities;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// Service for searching and managing deities in the catalog.
 pub struct DeityService<'a> {
@@ -78,7 +78,11 @@ impl<'a> DeityService<'a> {
     }
 
     /// Get deity by name and source
-    pub fn get_deity_by_name_and_source(&mut self, deity_name: &str, deity_source: &str) -> Result<Option<Deity>> {
+    pub fn get_deity_by_name_and_source(
+        &mut self,
+        deity_name: &str,
+        deity_source: &str,
+    ) -> Result<Option<Deity>> {
         use crate::schema::catalog_deities::dsl::*;
 
         let catalog_deity = catalog_deities
@@ -91,7 +95,7 @@ impl<'a> DeityService<'a> {
             Some(deity_record) => {
                 let parsed_deity: Deity = serde_json::from_str(&deity_record.full_deity_json)?;
                 Ok(Some(parsed_deity))
-            },
+            }
             None => Ok(None),
         }
     }
@@ -179,9 +183,12 @@ impl<'a> DeityService<'a> {
     pub fn import_deities_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing deities from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing deities from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let mut total_imported = 0;
         let deity_files = Self::find_deity_files(book_dir)?;
@@ -246,7 +253,7 @@ impl<'a> DeityService<'a> {
     fn import_deities_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading deities from file: {:?}", file_path);
 
@@ -255,25 +262,36 @@ impl<'a> DeityService<'a> {
 
         if let Some(deities) = data.deity {
             if !deities.is_empty() {
-                let new_deities: Vec<NewCatalogDeity> = deities.iter().map(|deity| {
-                    let mut new_deity = NewCatalogDeity::from(deity);
-                    // Always override the source with the book source to ensure consistency
-                    new_deity.source = source.to_string();
+                let new_deities: Vec<NewCatalogDeity> = deities
+                    .iter()
+                    .map(|deity| {
+                        let mut new_deity = NewCatalogDeity::from(deity);
+                        // Always override the source with the book source to ensure consistency
+                        new_deity.source = source.to_string();
 
-                    // Also update the source in the full_deity_json to maintain consistency
-                    if let Ok(mut deity_json) = serde_json::from_str::<serde_json::Value>(&new_deity.full_deity_json) {
-                        if let Some(obj) = deity_json.as_object_mut() {
-                            obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
-                            if let Ok(updated_json) = serde_json::to_string(&deity_json) {
-                                new_deity.full_deity_json = updated_json;
+                        // Also update the source in the full_deity_json to maintain consistency
+                        if let Ok(mut deity_json) =
+                            serde_json::from_str::<serde_json::Value>(&new_deity.full_deity_json)
+                        {
+                            if let Some(obj) = deity_json.as_object_mut() {
+                                obj.insert(
+                                    "source".to_string(),
+                                    serde_json::Value::String(source.to_string()),
+                                );
+                                if let Ok(updated_json) = serde_json::to_string(&deity_json) {
+                                    new_deity.full_deity_json = updated_json;
+                                }
                             }
                         }
-                    }
 
-                    new_deity
-                }).collect();
+                        new_deity
+                    })
+                    .collect();
 
-                debug!("Inserting {} deities individually (SQLite limitation)", new_deities.len());
+                debug!(
+                    "Inserting {} deities individually (SQLite limitation)",
+                    new_deities.len()
+                );
 
                 for deity in &new_deities {
                     diesel::insert_into(catalog_deities::table)
@@ -283,7 +301,10 @@ impl<'a> DeityService<'a> {
                         .execute(conn)?;
                 }
 
-                info!("Successfully imported {} deities into database", new_deities.len());
+                info!(
+                    "Successfully imported {} deities into database",
+                    new_deities.len()
+                );
                 Ok(new_deities.len())
             } else {
                 Ok(0)
@@ -294,14 +315,12 @@ impl<'a> DeityService<'a> {
     }
 
     /// Remove all deities from a specific source
-    pub fn remove_deities_from_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_deities_from_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing deities from source: {}", source);
 
-        let deleted = diesel::delete(catalog_deities::table.filter(catalog_deities::source.eq(source)))
-            .execute(conn)?;
+        let deleted =
+            diesel::delete(catalog_deities::table.filter(catalog_deities::source.eq(source)))
+                .execute(conn)?;
 
         info!("Removed {} deities from source: {}", deleted, source);
         Ok(deleted)

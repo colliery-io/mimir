@@ -78,9 +78,7 @@ impl From<mimir_dm_core::error::DbError> for ApiError {
             mimir_dm_core::error::DbError::ConstraintViolation { field, message } => {
                 ApiError::Validation(format!("{}: {}", field, message))
             }
-            mimir_dm_core::error::DbError::InvalidData(msg) => {
-                ApiError::Validation(msg)
-            }
+            mimir_dm_core::error::DbError::InvalidData(msg) => ApiError::Validation(msg),
             _ => ApiError::Database(err.to_string()),
         }
     }

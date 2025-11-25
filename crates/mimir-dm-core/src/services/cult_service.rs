@@ -4,7 +4,9 @@
 //! Supports filtering by name, source, category, and cult type.
 
 use crate::error::Result;
-use crate::models::catalog::cult::{CatalogCult, CultFilters, CultBoonSummary, NewCatalogCult, CultData, BoonData};
+use crate::models::catalog::cult::{
+    BoonData, CatalogCult, CultBoonSummary, CultData, CultFilters, NewCatalogCult,
+};
 use crate::schema::catalog_cults;
 use diesel::prelude::*;
 use std::fs;
@@ -16,7 +18,11 @@ pub struct CultService;
 
 impl CultService {
     /// Searches cults and boons with the given filters.
-    pub fn search_cults(&self, conn: &mut SqliteConnection, filters: CultFilters) -> Result<Vec<CultBoonSummary>> {
+    pub fn search_cults(
+        &self,
+        conn: &mut SqliteConnection,
+        filters: CultFilters,
+    ) -> Result<Vec<CultBoonSummary>> {
         debug!("Searching cults with filters: {:?}", filters);
 
         let mut query = catalog_cults::table.into_boxed();
@@ -56,14 +62,19 @@ impl CultService {
             .load(conn)?;
 
         // Convert to CultBoonSummary
-        let summaries: Vec<CultBoonSummary> = results.iter().map(|cult| CultBoonSummary::from(cult)).collect();
+        let summaries: Vec<CultBoonSummary> = results.iter().map(CultBoonSummary::from).collect();
 
         info!("Found {} cults/boons matching filters", summaries.len());
         Ok(summaries)
     }
 
     /// Gets cult details by name and source.
-    pub fn get_cult_details(&self, conn: &mut SqliteConnection, name: String, source: String) -> Result<Option<CatalogCult>> {
+    pub fn get_cult_details(
+        &self,
+        conn: &mut SqliteConnection,
+        name: String,
+        source: String,
+    ) -> Result<Option<CatalogCult>> {
         debug!("Getting cult details for: {} from {}", name, source);
 
         catalog_cults::table
@@ -101,10 +112,7 @@ impl CultService {
             .distinct()
             .load(conn)?;
 
-        let types: Vec<String> = types
-            .into_iter()
-            .flatten()
-            .collect();
+        let types: Vec<String> = types.into_iter().flatten().collect();
 
         Ok(types)
     }
@@ -124,9 +132,12 @@ impl CultService {
     pub fn import_cults_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing cults from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing cults from book directory: {:?} (source: {})",
+            book_dir, source
+        );
         let mut total_imported = 0;
 
         // Import cults
@@ -140,7 +151,10 @@ impl CultService {
                 let path = entry.path();
 
                 if path.extension().and_then(|e| e.to_str()) == Some("json") {
-                    debug!("Processing cult file: {:?}", path.file_name().unwrap_or_default());
+                    debug!(
+                        "Processing cult file: {:?}",
+                        path.file_name().unwrap_or_default()
+                    );
                     let count = Self::import_cults_from_file(conn, &path, source)?;
                     info!("Imported {} cults from {:?}", count, path);
                     total_imported += count;
@@ -159,7 +173,10 @@ impl CultService {
                 let path = entry.path();
 
                 if path.extension().and_then(|e| e.to_str()) == Some("json") {
-                    debug!("Processing boon file: {:?}", path.file_name().unwrap_or_default());
+                    debug!(
+                        "Processing boon file: {:?}",
+                        path.file_name().unwrap_or_default()
+                    );
                     let count = Self::import_boons_from_file(conn, &path, source)?;
                     info!("Imported {} boons from {:?}", count, path);
                     total_imported += count;
@@ -167,14 +184,17 @@ impl CultService {
             }
         }
 
-        info!("Successfully imported {} total cults/boons from {}", total_imported, source);
+        info!(
+            "Successfully imported {} total cults/boons from {}",
+            total_imported, source
+        );
         Ok(total_imported)
     }
 
     fn import_cults_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading cult file: {:?}", file_path);
 
@@ -182,15 +202,21 @@ impl CultService {
         let cult_data: CultData = serde_json::from_str(&content)?;
 
         if let Some(cults) = cult_data.cult {
-            let new_cults: Vec<NewCatalogCult> = cults.iter().map(|cult| {
-                let mut new_cult = NewCatalogCult::from(cult);
-                if new_cult.source.is_empty() {
-                    new_cult.source = source.to_string();
-                }
-                new_cult
-            }).collect();
+            let new_cults: Vec<NewCatalogCult> = cults
+                .iter()
+                .map(|cult| {
+                    let mut new_cult = NewCatalogCult::from(cult);
+                    if new_cult.source.is_empty() {
+                        new_cult.source = source.to_string();
+                    }
+                    new_cult
+                })
+                .collect();
 
-            debug!("Inserting {} cults individually (SQLite limitation)", new_cults.len());
+            debug!(
+                "Inserting {} cults individually (SQLite limitation)",
+                new_cults.len()
+            );
 
             for cult in &new_cults {
                 diesel::insert_into(catalog_cults::table)
@@ -200,7 +226,10 @@ impl CultService {
                     .execute(conn)?;
             }
 
-            info!("Successfully imported {} cults into database", new_cults.len());
+            info!(
+                "Successfully imported {} cults into database",
+                new_cults.len()
+            );
             Ok(new_cults.len())
         } else {
             Ok(0)
@@ -210,7 +239,7 @@ impl CultService {
     fn import_boons_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading boon file: {:?}", file_path);
 
@@ -218,15 +247,21 @@ impl CultService {
         let boon_data: BoonData = serde_json::from_str(&content)?;
 
         if let Some(boons) = boon_data.boon {
-            let new_boons: Vec<NewCatalogCult> = boons.iter().map(|boon| {
-                let mut new_boon = NewCatalogCult::from(boon);
-                if new_boon.source.is_empty() {
-                    new_boon.source = source.to_string();
-                }
-                new_boon
-            }).collect();
+            let new_boons: Vec<NewCatalogCult> = boons
+                .iter()
+                .map(|boon| {
+                    let mut new_boon = NewCatalogCult::from(boon);
+                    if new_boon.source.is_empty() {
+                        new_boon.source = source.to_string();
+                    }
+                    new_boon
+                })
+                .collect();
 
-            debug!("Inserting {} boons individually (SQLite limitation)", new_boons.len());
+            debug!(
+                "Inserting {} boons individually (SQLite limitation)",
+                new_boons.len()
+            );
 
             for boon in &new_boons {
                 diesel::insert_into(catalog_cults::table)
@@ -236,7 +271,10 @@ impl CultService {
                     .execute(conn)?;
             }
 
-            info!("Successfully imported {} boons into database", new_boons.len());
+            info!(
+                "Successfully imported {} boons into database",
+                new_boons.len()
+            );
             Ok(new_boons.len())
         } else {
             Ok(0)
@@ -244,10 +282,7 @@ impl CultService {
     }
 
     /// Remove all cults/boons from a specific source
-    pub fn remove_cults_from_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_cults_from_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing cults/boons from source: {}", source);
 
         let deleted = diesel::delete(catalog_cults::table.filter(catalog_cults::source.eq(source)))

@@ -18,7 +18,7 @@ impl DocumentRepository {
             .values(&new_document)
             .returning(Document::as_returning())
             .get_result(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Get document by ID
@@ -41,7 +41,7 @@ impl DocumentRepository {
             .filter(documents::campaign_id.eq(campaign_id))
             .order(documents::created_at.asc())
             .load(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Get all documents for a module
@@ -50,26 +50,26 @@ impl DocumentRepository {
             .filter(documents::module_id.eq(module_id))
             .order(documents::created_at.asc())
             .load(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
-    
+
     /// Alias for find_by_module for compatibility
     pub fn list_by_module(conn: &mut DbConnection, module_id: i32) -> Result<Vec<Document>> {
         Self::find_by_module(conn, module_id)
     }
-    
+
     /// Find a document by module and template
     pub fn find_by_module_and_template(
-        conn: &mut DbConnection, 
-        module_id: i32, 
-        template_id: &str
+        conn: &mut DbConnection,
+        module_id: i32,
+        template_id: &str,
     ) -> Result<Option<Document>> {
         documents::table
             .filter(documents::module_id.eq(module_id))
             .filter(documents::template_id.eq(template_id))
             .first(conn)
             .optional()
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Get all documents for a session
@@ -78,7 +78,7 @@ impl DocumentRepository {
             .filter(documents::session_id.eq(session_id))
             .order(documents::created_at.asc())
             .load(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Get all documents by template ID
@@ -87,36 +87,46 @@ impl DocumentRepository {
             .filter(documents::template_id.eq(template_id))
             .order(documents::created_at.asc())
             .load(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Get all incomplete documents for a campaign
-    pub fn find_incomplete_by_campaign(conn: &mut DbConnection, campaign_id: i32) -> Result<Vec<Document>> {
+    pub fn find_incomplete_by_campaign(
+        conn: &mut DbConnection,
+        campaign_id: i32,
+    ) -> Result<Vec<Document>> {
         documents::table
             .filter(documents::campaign_id.eq(campaign_id))
             .filter(documents::completed_at.is_null())
             .order(documents::created_at.asc())
             .load(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Get all completed documents for a campaign
-    pub fn find_completed_by_campaign(conn: &mut DbConnection, campaign_id: i32) -> Result<Vec<Document>> {
+    pub fn find_completed_by_campaign(
+        conn: &mut DbConnection,
+        campaign_id: i32,
+    ) -> Result<Vec<Document>> {
         documents::table
             .filter(documents::campaign_id.eq(campaign_id))
             .filter(documents::completed_at.is_not_null())
             .order(documents::created_at.asc())
             .load(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Update a document
-    pub fn update(conn: &mut DbConnection, document_id: i32, update: UpdateDocument) -> Result<Document> {
+    pub fn update(
+        conn: &mut DbConnection,
+        document_id: i32,
+        update: UpdateDocument,
+    ) -> Result<Document> {
         diesel::update(documents::table.find(document_id))
             .set(&update)
             .returning(Document::as_returning())
             .get_result(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Mark a document as completed
@@ -126,7 +136,7 @@ impl DocumentRepository {
             updated_at: Some(chrono::Utc::now().to_rfc3339()),
             completed_at: Some(chrono::Utc::now().to_rfc3339()),
         };
-        
+
         Self::update(conn, document_id, update)
     }
 
@@ -134,7 +144,7 @@ impl DocumentRepository {
     pub fn delete(conn: &mut DbConnection, document_id: i32) -> Result<usize> {
         diesel::delete(documents::table.find(document_id))
             .execute(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 
     /// Check if a document exists by file path
@@ -143,18 +153,21 @@ impl DocumentRepository {
             .filter(documents::file_path.eq(file_path))
             .count()
             .get_result::<i64>(conn)
-            .map_err(|e| DbError::Query(e))?;
-        
+            .map_err(DbError::Query)?;
+
         Ok(count > 0)
     }
 
     /// Get all handout documents for a campaign
-    pub fn find_handouts_by_campaign(conn: &mut DbConnection, campaign_id: i32) -> Result<Vec<Document>> {
+    pub fn find_handouts_by_campaign(
+        conn: &mut DbConnection,
+        campaign_id: i32,
+    ) -> Result<Vec<Document>> {
         documents::table
             .filter(documents::campaign_id.eq(campaign_id))
             .filter(documents::document_type.eq("handout"))
             .order(documents::created_at.asc())
             .load(conn)
-            .map_err(|e| DbError::Query(e))
+            .map_err(DbError::Query)
     }
 }

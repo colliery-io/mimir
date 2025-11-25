@@ -26,11 +26,14 @@ pub async fn search_classes(
     state: State<'_, AppState>,
     filters: ClassFilters,
 ) -> Result<Vec<ClassSummary>, String> {
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let mut class_service = ClassService::new(&mut conn);
-    class_service.search_classes(filters)
+    class_service
+        .search_classes(filters)
         .map_err(|e| e.to_string())
 }
 
@@ -50,16 +53,17 @@ pub async fn search_classes(
 #[tauri::command]
 pub async fn get_class_details(
     state: State<'_, AppState>,
-    #[allow(non_snake_case)]
-    className: String,
-    #[allow(non_snake_case)]
-    classSource: String,
+    #[allow(non_snake_case)] className: String,
+    #[allow(non_snake_case)] classSource: String,
 ) -> Result<Option<Class>, String> {
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut class_service = ClassService::new(&mut conn);
-    class_service.get_class_by_name_and_source(&className, &classSource)
+    class_service
+        .get_class_by_name_and_source(&className, &classSource)
         .map_err(|e| e.to_string())
 }
 
@@ -80,18 +84,18 @@ pub async fn get_class_details(
 #[tauri::command]
 pub async fn get_subclass_details(
     state: State<'_, AppState>,
-    #[allow(non_snake_case)]
-    subclassName: String,
-    #[allow(non_snake_case)]
-    className: String,
-    #[allow(non_snake_case)]
-    classSource: String,
+    #[allow(non_snake_case)] subclassName: String,
+    #[allow(non_snake_case)] className: String,
+    #[allow(non_snake_case)] classSource: String,
 ) -> Result<Option<Subclass>, String> {
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut class_service = ClassService::new(&mut conn);
-    class_service.get_subclass_by_name(&subclassName, &className, &classSource)
+    class_service
+        .get_subclass_by_name(&subclassName, &className, &classSource)
         .map_err(|e| e.to_string())
 }
 
@@ -111,16 +115,17 @@ pub async fn get_subclass_details(
 #[tauri::command]
 pub async fn get_class_subclasses(
     state: State<'_, AppState>,
-    #[allow(non_snake_case)]
-    className: String,
-    #[allow(non_snake_case)]
-    classSource: String,
+    #[allow(non_snake_case)] className: String,
+    #[allow(non_snake_case)] classSource: String,
 ) -> Result<Vec<Subclass>, String> {
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     let mut class_service = ClassService::new(&mut conn);
-    class_service.get_subclasses_for_class(&className, &classSource)
+    class_service
+        .get_subclasses_for_class(&className, &classSource)
         .map_err(|e| e.to_string())
 }
 
@@ -134,15 +139,14 @@ pub async fn get_class_subclasses(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_class_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
-    let mut conn = state.db.get_connection()
+pub async fn get_class_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let mut class_service = ClassService::new(&mut conn);
-    class_service.get_class_sources()
-        .map_err(|e| e.to_string())
+    class_service.get_class_sources().map_err(|e| e.to_string())
 }
 
 /// Get all unique primary abilities used by classes.
@@ -159,11 +163,14 @@ pub async fn get_class_sources(
 pub async fn get_class_primary_abilities(
     state: State<'_, AppState>,
 ) -> Result<Vec<String>, String> {
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let mut class_service = ClassService::new(&mut conn);
-    class_service.get_primary_abilities()
+    class_service
+        .get_primary_abilities()
         .map_err(|e| e.to_string())
 }
 
@@ -181,10 +188,13 @@ pub async fn get_class_primary_abilities(
 pub async fn get_class_statistics(
     state: State<'_, AppState>,
 ) -> Result<Vec<(String, i64)>, String> {
-    let mut conn = state.db.get_connection()
+    let mut conn = state
+        .db
+        .get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
-    
+
     let mut class_service = ClassService::new(&mut conn);
-    class_service.get_class_count_by_source()
+    class_service
+        .get_class_count_by_source()
         .map_err(|e| e.to_string())
 }

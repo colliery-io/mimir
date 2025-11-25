@@ -6,10 +6,7 @@ use mimir_dm_llm::{
 use std::collections::HashMap;
 
 /// Create a basic test configuration for Ollama
-pub fn create_ollama_config(
-    model: &str,
-    endpoints: Vec<EndpointType>,
-) -> ModelConfig {
+pub fn create_ollama_config(model: &str, endpoints: Vec<EndpointType>) -> ModelConfig {
     let mut config_map = HashMap::new();
     config_map.insert("base_url".to_string(), get_ollama_base_url());
 
@@ -39,8 +36,7 @@ pub fn create_rate_limited_config(
 
 /// Get the Ollama base URL from environment or use default
 pub fn get_ollama_base_url() -> String {
-    std::env::var("OLLAMA_BASE_URL")
-        .unwrap_or_else(|_| "http://localhost:11434".to_string())
+    std::env::var("OLLAMA_BASE_URL").unwrap_or_else(|_| "http://localhost:11434".to_string())
 }
 
 /// Check if Ollama service is available
@@ -71,27 +67,28 @@ macro_rules! require_ollama {
 pub fn create_test_provider(model: &str) -> Result<OllamaProvider, mimir_dm_llm::LlmError> {
     let config = create_ollama_config(
         model,
-        vec![EndpointType::Chat, EndpointType::Completion, EndpointType::Embedding],
+        vec![
+            EndpointType::Chat,
+            EndpointType::Completion,
+            EndpointType::Embedding,
+        ],
     );
-    OllamaProvider::new(config)
-        .map_err(|e| mimir_dm_llm::LlmError::ConfigError(e.to_string()))
+    OllamaProvider::new(config).map_err(|e| mimir_dm_llm::LlmError::ConfigError(e.to_string()))
 }
 
 /// Test data for common scenarios
 pub mod test_data {
     use mimir_dm_llm::Message;
-    
+
     /// Create a simple chat conversation
     pub fn simple_chat_messages() -> Vec<Message> {
-        vec![
-            Message {
-                role: "user".to_string(),
-                content: "Hello, how are you?".to_string(),
-                tool_call_id: None,
-            },
-        ]
+        vec![Message {
+            role: "user".to_string(),
+            content: "Hello, how are you?".to_string(),
+            tool_call_id: None,
+        }]
     }
-    
+
     /// Create a multi-turn conversation
     pub fn multi_turn_conversation() -> Vec<Message> {
         vec![
@@ -117,7 +114,7 @@ pub mod test_data {
             },
         ]
     }
-    
+
     /// Test texts for embeddings
     pub fn embedding_test_texts() -> Vec<String> {
         vec![
@@ -131,42 +128,64 @@ pub mod test_data {
 /// Assertion helpers
 pub mod assertions {
     use mimir_dm_llm::{ChatResponse, CompletionResponse, EmbeddingResponse};
-    
+
     /// Assert that a chat response is valid
     pub fn assert_valid_chat_response(response: &ChatResponse) {
-        assert!(!response.content.is_empty(), "Chat response should not be empty");
+        assert!(
+            !response.content.is_empty(),
+            "Chat response should not be empty"
+        );
         assert!(!response.model.is_empty(), "Model name should be specified");
-        
+
         if let Some(usage) = &response.usage {
             assert!(usage.prompt_tokens > 0, "Should have prompt tokens");
-            assert!(usage.total_tokens >= usage.prompt_tokens, "Total tokens should include prompt tokens");
+            assert!(
+                usage.total_tokens >= usage.prompt_tokens,
+                "Total tokens should include prompt tokens"
+            );
         }
     }
-    
+
     /// Assert that a completion response is valid
     pub fn assert_valid_completion_response(response: &CompletionResponse) {
-        assert!(!response.text.is_empty(), "Completion text should not be empty");
+        assert!(
+            !response.text.is_empty(),
+            "Completion text should not be empty"
+        );
         assert!(!response.model.is_empty(), "Model name should be specified");
-        
+
         if let Some(usage) = &response.usage {
             assert!(usage.prompt_tokens > 0, "Should have prompt tokens");
-            assert!(usage.total_tokens >= usage.prompt_tokens, "Total tokens should include prompt tokens");
+            assert!(
+                usage.total_tokens >= usage.prompt_tokens,
+                "Total tokens should include prompt tokens"
+            );
         }
     }
-    
+
     /// Assert that an embedding response is valid
-    pub fn assert_valid_embedding_response(response: &EmbeddingResponse, expected_dim: Option<usize>) {
-        assert!(!response.embedding.is_empty(), "Embedding should not be empty");
+    pub fn assert_valid_embedding_response(
+        response: &EmbeddingResponse,
+        expected_dim: Option<usize>,
+    ) {
+        assert!(
+            !response.embedding.is_empty(),
+            "Embedding should not be empty"
+        );
         assert!(!response.model.is_empty(), "Model name should be specified");
-        
+
         // Check all values are finite
         for value in &response.embedding {
             assert!(value.is_finite(), "Embedding values should be finite");
         }
-        
+
         // Check expected dimension if provided
         if let Some(dim) = expected_dim {
-            assert_eq!(response.embedding.len(), dim, "Embedding dimension mismatch");
+            assert_eq!(
+                response.embedding.len(),
+                dim,
+                "Embedding dimension mismatch"
+            );
         }
     }
 }

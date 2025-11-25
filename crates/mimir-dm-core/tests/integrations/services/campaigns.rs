@@ -1,14 +1,14 @@
 //! Integration tests for campaign service and related functionality
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::campaign_service::CampaignService;
-use mimir_dm_core::services::template_service::TemplateService;
-use mimir_dm_core::models::campaign::documents::{NewDocument, UpdateDocument};
+use diesel::prelude::*;
 use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
 use mimir_dm_core::dal::campaign::documents::DocumentRepository;
 use mimir_dm_core::dal::campaign::template_documents::TemplateRepository;
+use mimir_dm_core::models::campaign::documents::{NewDocument, UpdateDocument};
 use mimir_dm_core::seed::template_seeder::seed_templates;
-use diesel::prelude::*;
+use mimir_dm_core::services::campaign_service::CampaignService;
+use mimir_dm_core::services::template_service::TemplateService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -32,11 +32,13 @@ fn test_campaign_service_create_and_get() {
 
     // Create campaign using the service
     let mut service = CampaignService::new(&mut conn);
-    let campaign = service.create_campaign(
-        "Test Campaign",
-        Some("A test campaign".to_string()),
-        temp_dir.path().to_str().unwrap()
-    ).unwrap();
+    let campaign = service
+        .create_campaign(
+            "Test Campaign",
+            Some("A test campaign".to_string()),
+            temp_dir.path().to_str().unwrap(),
+        )
+        .unwrap();
 
     assert_eq!(campaign.name, "Test Campaign");
     assert_eq!(campaign.status, "concept");
@@ -55,11 +57,13 @@ fn test_campaign_service_list_and_update() {
     // Create multiple campaigns
     let mut service = CampaignService::new(&mut conn);
     for i in 1..=3 {
-        service.create_campaign(
-            &format!("Campaign {}", i),
-            None,
-            temp_dir.path().to_str().unwrap()
-        ).unwrap();
+        service
+            .create_campaign(
+                &format!("Campaign {}", i),
+                None,
+                temp_dir.path().to_str().unwrap(),
+            )
+            .unwrap();
     }
 
     // List campaigns using repository
@@ -70,7 +74,9 @@ fn test_campaign_service_list_and_update() {
     // Update campaign status using service
     let campaign = &campaigns[0];
     let mut service = CampaignService::new(&mut conn);
-    let updated = service.transition_campaign_stage(campaign.id, "session_zero").unwrap();
+    let updated = service
+        .transition_campaign_stage(campaign.id, "session_zero")
+        .unwrap();
     assert_eq!(updated.status, "session_zero");
 }
 
@@ -80,11 +86,9 @@ fn test_document_lifecycle() {
 
     // Create campaign first
     let mut service = CampaignService::new(&mut conn);
-    let campaign = service.create_campaign(
-        "Doc Test Campaign",
-        None,
-        temp_dir.path().to_str().unwrap()
-    ).unwrap();
+    let campaign = service
+        .create_campaign("Doc Test Campaign", None, temp_dir.path().to_str().unwrap())
+        .unwrap();
 
     // Create document using repository
     let new_doc = NewDocument {
@@ -123,11 +127,13 @@ fn test_document_list_by_campaign() {
 
     // Create campaign
     let mut service = CampaignService::new(&mut conn);
-    let campaign = service.create_campaign(
-        "Multi Doc Campaign",
-        None,
-        temp_dir.path().to_str().unwrap()
-    ).unwrap();
+    let campaign = service
+        .create_campaign(
+            "Multi Doc Campaign",
+            None,
+            temp_dir.path().to_str().unwrap(),
+        )
+        .unwrap();
 
     // Create multiple documents
     let templates = vec!["campaign_pitch", "starting_scenario", "world_primer"];
@@ -165,7 +171,10 @@ fn test_template_get_and_render() {
 
     // Verify we can get a specific template
     let campaign_pitch = service.get_template("campaign_pitch").unwrap();
-    assert_eq!(campaign_pitch.document_type, Some("campaign_pitch".to_string()));
+    assert_eq!(
+        campaign_pitch.document_type,
+        Some("campaign_pitch".to_string())
+    );
 }
 
 #[test]
@@ -174,11 +183,13 @@ fn test_campaign_stage_progression() {
 
     // Create campaign
     let mut service = CampaignService::new(&mut conn);
-    let campaign = service.create_campaign(
-        "Stage Test Campaign",
-        None,
-        temp_dir.path().to_str().unwrap()
-    ).unwrap();
+    let campaign = service
+        .create_campaign(
+            "Stage Test Campaign",
+            None,
+            temp_dir.path().to_str().unwrap(),
+        )
+        .unwrap();
 
     // Get initial status
     assert_eq!(campaign.status, "concept");
@@ -205,7 +216,9 @@ fn test_campaign_stage_progression() {
 
     // Progress to next stage
     let mut service = CampaignService::new(&mut conn);
-    let updated = service.transition_campaign_stage(campaign.id, "session_zero").unwrap();
+    let updated = service
+        .transition_campaign_stage(campaign.id, "session_zero")
+        .unwrap();
     assert_eq!(updated.status, "session_zero");
 }
 
@@ -236,15 +249,20 @@ fn test_document_check_exists() {
 
     // Create campaign
     let mut service = CampaignService::new(&mut conn);
-    let campaign = service.create_campaign(
-        "File Check Campaign",
-        None,
-        temp_dir.path().to_str().unwrap()
-    ).unwrap();
+    let campaign = service
+        .create_campaign(
+            "File Check Campaign",
+            None,
+            temp_dir.path().to_str().unwrap(),
+        )
+        .unwrap();
 
     // Check if document exists (should not exist initially)
     let docs = DocumentRepository::find_by_campaign(&mut conn, campaign.id).unwrap();
-    let initial_count = docs.iter().filter(|d| d.template_id == "campaign_pitch").count();
+    let initial_count = docs
+        .iter()
+        .filter(|d| d.template_id == "campaign_pitch")
+        .count();
 
     // Create document
     let new_doc = NewDocument {
@@ -260,6 +278,9 @@ fn test_document_check_exists() {
 
     // Check again (should exist now)
     let docs = DocumentRepository::find_by_campaign(&mut conn, campaign.id).unwrap();
-    let final_count = docs.iter().filter(|d| d.template_id == "campaign_pitch").count();
+    let final_count = docs
+        .iter()
+        .filter(|d| d.template_id == "campaign_pitch")
+        .count();
     assert_eq!(final_count, initial_count + 1);
 }

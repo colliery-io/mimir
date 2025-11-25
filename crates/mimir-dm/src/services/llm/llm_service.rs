@@ -6,16 +6,17 @@
 //! - Downloading models with progress tracking
 //! - Providing LLM access to the application
 
+use crate::services::provider_settings::{ProviderSettings, ProviderType};
 use anyhow::{anyhow, Context, Result};
+use async_trait::async_trait;
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig},
-    providers::ollama::OllamaProvider,
     providers::groq::GroqProvider,
+    providers::ollama::OllamaProvider,
     traits::ActionDescription,
-    ChatResponse, CompletionResponse, EmbeddingResponse, LlmProvider, Message, ModelPullProgress, RateLimitState, TodoListTool, TodoStateManager, Tool,
+    ChatResponse, CompletionResponse, EmbeddingResponse, LlmProvider, Message, ModelPullProgress,
+    RateLimitState, TodoListTool, TodoStateManager, Tool,
 };
-use crate::services::provider_settings::{ProviderSettings, ProviderType};
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -27,12 +28,12 @@ use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
-use crate::services::chat_logger::ChatLogger;
-use mimir_dm_core::DatabaseService;
-use crate::services::tools::ToolRegistry;
-use crate::services::tools::character_write_tools::CreateCharacterTool;
-use crate::services::tools::character_tools::ListPlayersTool;
 use crate::app_init::AppPaths;
+use crate::services::chat_logger::ChatLogger;
+use crate::services::tools::character_tools::ListPlayersTool;
+use crate::services::tools::character_write_tools::CreateCharacterTool;
+use crate::services::tools::ToolRegistry;
+use mimir_dm_core::DatabaseService;
 
 /// Provider enum that wraps concrete provider implementations
 /// This is needed because LlmProvider trait is not dyn-compatible due to generic methods
@@ -70,8 +71,32 @@ impl LlmProvider for Provider {
         cancellation_token: Option<CancellationToken>,
     ) -> Result<ChatResponse, mimir_dm_llm::LlmError> {
         match self {
-            Provider::Ollama(p) => p.chat(messages, tools, n, temperature, max_tokens, stop, extra_config, cancellation_token).await,
-            Provider::Groq(p) => p.chat(messages, tools, n, temperature, max_tokens, stop, extra_config, cancellation_token).await,
+            Provider::Ollama(p) => {
+                p.chat(
+                    messages,
+                    tools,
+                    n,
+                    temperature,
+                    max_tokens,
+                    stop,
+                    extra_config,
+                    cancellation_token,
+                )
+                .await
+            }
+            Provider::Groq(p) => {
+                p.chat(
+                    messages,
+                    tools,
+                    n,
+                    temperature,
+                    max_tokens,
+                    stop,
+                    extra_config,
+                    cancellation_token,
+                )
+                .await
+            }
         }
     }
 
@@ -85,8 +110,14 @@ impl LlmProvider for Provider {
         extra_config: Option<HashMap<String, String>>,
     ) -> Result<CompletionResponse, mimir_dm_llm::LlmError> {
         match self {
-            Provider::Ollama(p) => p.complete(prompt, n, temperature, max_tokens, stop, extra_config).await,
-            Provider::Groq(p) => p.complete(prompt, n, temperature, max_tokens, stop, extra_config).await,
+            Provider::Ollama(p) => {
+                p.complete(prompt, n, temperature, max_tokens, stop, extra_config)
+                    .await
+            }
+            Provider::Groq(p) => {
+                p.complete(prompt, n, temperature, max_tokens, stop, extra_config)
+                    .await
+            }
         }
     }
 
@@ -131,8 +162,14 @@ impl LlmProvider for Provider {
         F: Fn(ModelPullProgress) + Send + 'static,
     {
         match self {
-            Provider::Ollama(p) => p.pull_model_with_progress(model_name, progress_callback).await,
-            Provider::Groq(p) => p.pull_model_with_progress(model_name, progress_callback).await,
+            Provider::Ollama(p) => {
+                p.pull_model_with_progress(model_name, progress_callback)
+                    .await
+            }
+            Provider::Groq(p) => {
+                p.pull_model_with_progress(model_name, progress_callback)
+                    .await
+            }
         }
     }
 }
@@ -201,8 +238,12 @@ impl LlmService {
         let (provider, model_name, provider_type) = Self::create_provider_from_settings(&settings)?;
 
         // Get tool confirmation timeout from settings
-        let tool_confirmation_timeout = Duration::from_secs(settings.tool_confirmation_timeout_secs);
-        info!("Tool confirmation timeout set to {} seconds", settings.tool_confirmation_timeout_secs);
+        let tool_confirmation_timeout =
+            Duration::from_secs(settings.tool_confirmation_timeout_secs);
+        info!(
+            "Tool confirmation timeout set to {} seconds",
+            settings.tool_confirmation_timeout_secs
+        );
 
         // Create todo state manager
         let todo_state_manager = TodoStateManager::new();
@@ -264,11 +305,18 @@ impl LlmService {
                     .context("Missing Ollama configuration")?;
 
                 let config = Self::create_ollama_config(&ollama_config.base_url);
-                let provider = OllamaProvider::new(config)
-                    .context("Failed to create Ollama provider")?;
+                let provider =
+                    OllamaProvider::new(config).context("Failed to create Ollama provider")?;
 
-                info!("Created Ollama provider with base URL: {}", ollama_config.base_url);
-                Ok((Provider::Ollama(Arc::new(provider)), OLLAMA_MODEL.to_string(), ProviderType::Ollama))
+                info!(
+                    "Created Ollama provider with base URL: {}",
+                    ollama_config.base_url
+                );
+                Ok((
+                    Provider::Ollama(Arc::new(provider)),
+                    OLLAMA_MODEL.to_string(),
+                    ProviderType::Ollama,
+                ))
             }
             ProviderType::Groq => {
                 let groq_config = settings
@@ -277,11 +325,15 @@ impl LlmService {
                     .context("Missing Groq configuration")?;
 
                 let config = Self::create_groq_config(&groq_config.api_key);
-                let provider = GroqProvider::new(config)
-                    .context("Failed to create Groq provider")?;
+                let provider =
+                    GroqProvider::new(config).context("Failed to create Groq provider")?;
 
                 info!("Created Groq provider");
-                Ok((Provider::Groq(Arc::new(provider)), GROQ_MODEL.to_string(), ProviderType::Groq))
+                Ok((
+                    Provider::Groq(Arc::new(provider)),
+                    GROQ_MODEL.to_string(),
+                    ProviderType::Groq,
+                ))
             }
         }
     }
@@ -319,7 +371,6 @@ impl LlmService {
             limit: None,
         }
     }
-
 
     /// Check if Ollama service is running
     pub async fn check_service(&self) -> Result<bool> {
@@ -411,8 +462,7 @@ impl LlmService {
                 }
 
                 // Check if download is complete
-                if progress.status.contains("success")
-                    || progress.status.contains("already exists")
+                if progress.status.contains("success") || progress.status.contains("already exists")
                 {
                     info!("Model download completed: {}", progress.status);
                     break;
@@ -445,10 +495,7 @@ impl LlmService {
 
     /// Get the configured provider
     /// Note: The endpoint parameter is deprecated and ignored - configure provider via settings
-    pub(super) fn get_provider_with_endpoint(
-        &self,
-        _endpoint: Option<&str>,
-    ) -> Result<Provider> {
+    pub(super) fn get_provider_with_endpoint(&self, _endpoint: Option<&str>) -> Result<Provider> {
         Ok(self.provider.clone())
     }
 

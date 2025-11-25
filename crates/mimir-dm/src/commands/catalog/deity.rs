@@ -35,7 +35,8 @@ pub async fn search_deities(
     })?;
 
     let mut service = DeityService::new(&mut conn);
-    service.search_deities(filters)
+    service
+        .search_deities(filters)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -58,7 +59,10 @@ pub async fn get_deity_details(
     deity_source: String,
     state: State<'_, AppState>,
 ) -> Result<Option<Deity>, String> {
-    debug!("Getting deity details for name: {}, source: {}", deity_name, deity_source);
+    debug!(
+        "Getting deity details for name: {}, source: {}",
+        deity_name, deity_source
+    );
 
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
@@ -66,7 +70,8 @@ pub async fn get_deity_details(
     })?;
 
     let mut service = DeityService::new(&mut conn);
-    service.get_deity_by_name_and_source(&deity_name, &deity_source)
+    service
+        .get_deity_by_name_and_source(&deity_name, &deity_source)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -81,9 +86,7 @@ pub async fn get_deity_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_deity_pantheons(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_deity_pantheons(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all deity pantheons");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -92,7 +95,8 @@ pub async fn get_deity_pantheons(
     })?;
 
     let mut service = DeityService::new(&mut conn);
-    service.get_all_pantheons()
+    service
+        .get_all_pantheons()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -107,9 +111,7 @@ pub async fn get_deity_pantheons(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_deity_domains(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_deity_domains(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all deity domains");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -118,7 +120,8 @@ pub async fn get_deity_domains(
     })?;
 
     let mut service = DeityService::new(&mut conn);
-    service.get_all_domains()
+    service
+        .get_all_domains()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -133,9 +136,7 @@ pub async fn get_deity_domains(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_deity_alignments(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_deity_alignments(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all deity alignments");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -144,7 +145,8 @@ pub async fn get_deity_alignments(
     })?;
 
     let mut service = DeityService::new(&mut conn);
-    service.get_all_alignments()
+    service
+        .get_all_alignments()
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -170,6 +172,7 @@ pub async fn get_deity_statistics(
     })?;
 
     let mut service = DeityService::new(&mut conn);
-    service.get_deity_count_by_source()
+    service
+        .get_deity_count_by_source()
         .map_err(|e| format!("Database query failed: {}", e))
 }

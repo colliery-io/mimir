@@ -25,10 +25,10 @@ pub mod parallel;
 pub mod parser;
 /// Repository setup and cloning.
 pub mod repo;
-/// SRD content filtering.
-pub mod srd_filter;
 /// SRD content collection.
 pub mod srd_collector;
+/// SRD content filtering.
+pub mod srd_filter;
 
 use anyhow::Result;
 use std::path::Path;
@@ -37,45 +37,39 @@ pub use input::InputSource;
 pub use parser::Book;
 
 /// Process a 5etools repository and split it into book archives
-pub async fn split_repository(
-    input: InputSource,
-    output_dir: &Path,
-) -> Result<SplitResults> {
+pub async fn split_repository(input: InputSource, output_dir: &Path) -> Result<SplitResults> {
     // Setup repository (clone if needed)
     let repo_path = repo::setup_repository(input).await?;
-    
+
     // Load all books
     let books = parser::load_all_books(&repo_path)?;
-    
+
     // Process books in parallel
     let results = parallel::process_all_books(books, &repo_path, output_dir)?;
-    
+
     Ok(results)
 }
 
 /// Extract SRD content from a 5etools repository
-pub async fn extract_srd(
-    input: InputSource,
-    output_dir: &Path,
-) -> Result<SrdResults> {
+pub async fn extract_srd(input: InputSource, output_dir: &Path) -> Result<SrdResults> {
     use crate::srd_collector::collect_srd_content;
-    
+
     // Setup repository (clone if needed)
     let repo_path = repo::setup_repository(input).await?;
-    
+
     // Collect all SRD content
     let content = collect_srd_content(&repo_path)?;
-    
+
     // Create output directory
     std::fs::create_dir_all(output_dir)?;
-    
+
     // Generate summary
     let summary = srd_collector::generate_srd_summary(&content);
-    
+
     // Create archive
     let archive_path = output_dir.join("srd.tar.gz");
     archive::create_tar_gz(&content.files, &archive_path)?;
-    
+
     Ok(SrdResults {
         archive_path: archive_path.to_string_lossy().to_string(),
         total_items: content.metadata.total_items,

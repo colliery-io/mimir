@@ -1,9 +1,9 @@
 //! Integration tests for CharacterService
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::{CharacterService, PlayerService};
-use mimir_dm_core::services::character::creation::{CharacterBuilder, AbilityScoreMethod};
 use diesel::prelude::*;
+use mimir_dm_core::services::character::creation::{AbilityScoreMethod, CharacterBuilder};
+use mimir_dm_core::services::{CharacterService, PlayerService};
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -37,7 +37,7 @@ fn seed_test_class_data(conn: &mut SqliteConnection) {
     }"#;
 
     diesel::sql_query(
-        "INSERT INTO catalog_classes (name, source, hit_dice, full_class_json) VALUES (?, ?, ?, ?)"
+        "INSERT INTO catalog_classes (name, source, hit_dice, full_class_json) VALUES (?, ?, ?, ?)",
     )
     .bind::<diesel::sql_types::Text, _>("Wizard")
     .bind::<diesel::sql_types::Text, _>("PHB")
@@ -55,7 +55,7 @@ fn seed_test_class_data(conn: &mut SqliteConnection) {
     }"#;
 
     diesel::sql_query(
-        "INSERT INTO catalog_classes (name, source, hit_dice, full_class_json) VALUES (?, ?, ?, ?)"
+        "INSERT INTO catalog_classes (name, source, hit_dice, full_class_json) VALUES (?, ?, ?, ?)",
     )
     .bind::<diesel::sql_types::Text, _>("Fighter")
     .bind::<diesel::sql_types::Text, _>("PHB")
@@ -137,9 +137,12 @@ fn test_create_character_basic() {
 
     let char_data = CharacterBuilder::new(&mut conn)
         .set_identity("Gandalf".to_string(), player_id)
-        .set_race("Human", "PHB", None).unwrap()
-        .set_class("Wizard", "PHB", None).unwrap()
-        .set_background("Sage", "PHB").unwrap()
+        .set_race("Human", "PHB", None)
+        .unwrap()
+        .set_class("Wizard", "PHB", None)
+        .unwrap()
+        .set_background("Sage", "PHB")
+        .unwrap()
         .set_ability_scores(AbilityScoreMethod::Manual {
             strength: 10,
             dexterity: 12,
@@ -147,8 +150,10 @@ fn test_create_character_basic() {
             intelligence: 16,
             wisdom: 13,
             charisma: 8,
-        }).unwrap()
-        .build().unwrap();
+        })
+        .unwrap()
+        .build()
+        .unwrap();
 
     assert_eq!(char_data.character_name, "Gandalf");
     assert_eq!(char_data.level, 1);
@@ -157,7 +162,12 @@ fn test_create_character_basic() {
     // Store character
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(
+            Some(campaign_id),
+            player_id,
+            temp_dir.path().to_str().unwrap(),
+            char_data,
+        )
         .unwrap();
 
     assert_eq!(character.character_name, "Gandalf");
@@ -173,9 +183,12 @@ fn test_get_character() {
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
         .set_identity("Aragorn".to_string(), player_id)
-        .set_race("Human", "PHB", None).unwrap()
-        .set_class("Fighter", "PHB", None).unwrap()
-        .set_background("Sage", "PHB").unwrap()
+        .set_race("Human", "PHB", None)
+        .unwrap()
+        .set_class("Fighter", "PHB", None)
+        .unwrap()
+        .set_background("Sage", "PHB")
+        .unwrap()
         .set_ability_scores(AbilityScoreMethod::Manual {
             strength: 16,
             dexterity: 14,
@@ -183,12 +196,19 @@ fn test_get_character() {
             intelligence: 10,
             wisdom: 12,
             charisma: 13,
-        }).unwrap()
-        .build().unwrap();
+        })
+        .unwrap()
+        .build()
+        .unwrap();
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(
+            Some(campaign_id),
+            player_id,
+            temp_dir.path().to_str().unwrap(),
+            char_data,
+        )
         .unwrap();
 
     // Get character
@@ -210,9 +230,12 @@ fn test_list_characters_for_campaign() {
         let builder = CharacterBuilder::new(&mut conn);
         let char_data = builder
             .set_identity(name.to_string(), player_id)
-            .set_race("Human", "PHB", None).unwrap()
-            .set_class("Wizard", "PHB", None).unwrap()
-            .set_background("Sage", "PHB").unwrap()
+            .set_race("Human", "PHB", None)
+            .unwrap()
+            .set_class("Wizard", "PHB", None)
+            .unwrap()
+            .set_background("Sage", "PHB")
+            .unwrap()
             .set_ability_scores(AbilityScoreMethod::Manual {
                 strength: 10,
                 dexterity: 12,
@@ -227,12 +250,19 @@ fn test_list_characters_for_campaign() {
 
         let mut char_service = CharacterService::new(&mut conn);
         char_service
-            .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
+            .create_character(
+                Some(campaign_id),
+                player_id,
+                temp_dir.path().to_str().unwrap(),
+                char_data,
+            )
             .unwrap();
     }
 
     let mut char_service = CharacterService::new(&mut conn);
-    let characters = char_service.list_characters_for_campaign(campaign_id).unwrap();
+    let characters = char_service
+        .list_characters_for_campaign(campaign_id)
+        .unwrap();
     assert_eq!(characters.len(), 3);
 }
 
@@ -245,9 +275,12 @@ fn test_character_versioning() {
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
         .set_identity("Legolas".to_string(), player_id)
-        .set_race("Human", "PHB", None).unwrap()
-        .set_class("Fighter", "PHB", None).unwrap()
-        .set_background("Sage", "PHB").unwrap()
+        .set_race("Human", "PHB", None)
+        .unwrap()
+        .set_class("Fighter", "PHB", None)
+        .unwrap()
+        .set_background("Sage", "PHB")
+        .unwrap()
         .set_ability_scores(AbilityScoreMethod::Manual {
             strength: 10,
             dexterity: 18,
@@ -262,7 +295,12 @@ fn test_character_versioning() {
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(
+            Some(campaign_id),
+            player_id,
+            temp_dir.path().to_str().unwrap(),
+            char_data,
+        )
         .unwrap();
 
     // Get initial version
@@ -299,9 +337,12 @@ fn test_delete_character() {
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
         .set_identity("Boromir".to_string(), player_id)
-        .set_race("Human", "PHB", None).unwrap()
-        .set_class("Fighter", "PHB", None).unwrap()
-        .set_background("Sage", "PHB").unwrap()
+        .set_race("Human", "PHB", None)
+        .unwrap()
+        .set_class("Fighter", "PHB", None)
+        .unwrap()
+        .set_background("Sage", "PHB")
+        .unwrap()
         .set_ability_scores(AbilityScoreMethod::Manual {
             strength: 16,
             dexterity: 10,
@@ -316,7 +357,12 @@ fn test_delete_character() {
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(
+            Some(campaign_id),
+            player_id,
+            temp_dir.path().to_str().unwrap(),
+            char_data,
+        )
         .unwrap();
 
     // Delete character
@@ -336,9 +382,12 @@ fn test_update_character_data() {
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
         .set_identity("Gimli".to_string(), player_id)
-        .set_race("Human", "PHB", None).unwrap()
-        .set_class("Fighter", "PHB", None).unwrap()
-        .set_background("Sage", "PHB").unwrap()
+        .set_race("Human", "PHB", None)
+        .unwrap()
+        .set_class("Fighter", "PHB", None)
+        .unwrap()
+        .set_background("Sage", "PHB")
+        .unwrap()
         .set_ability_scores(AbilityScoreMethod::Manual {
             strength: 16,
             dexterity: 10,
@@ -353,7 +402,12 @@ fn test_update_character_data() {
 
     let mut char_service = CharacterService::new(&mut conn);
     let character = char_service
-        .create_character(Some(campaign_id), player_id, temp_dir.path().to_str().unwrap(), char_data)
+        .create_character(
+            Some(campaign_id),
+            player_id,
+            temp_dir.path().to_str().unwrap(),
+            char_data,
+        )
         .unwrap();
 
     // Update character
@@ -379,9 +433,12 @@ fn test_proficiency_bonus_calculation() {
 
     let char_data = CharacterBuilder::new(&mut conn)
         .set_identity("Test".to_string(), 1)
-        .set_race("Human", "PHB", None).unwrap()
-        .set_class("Wizard", "PHB", None).unwrap()
-        .set_background("Sage", "PHB").unwrap()
+        .set_race("Human", "PHB", None)
+        .unwrap()
+        .set_class("Wizard", "PHB", None)
+        .unwrap()
+        .set_background("Sage", "PHB")
+        .unwrap()
         .set_ability_scores(AbilityScoreMethod::Manual {
             strength: 10,
             dexterity: 10,

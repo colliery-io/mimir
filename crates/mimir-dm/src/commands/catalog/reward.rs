@@ -33,8 +33,10 @@ pub async fn search_rewards(
     sources: Option<Vec<String>>,
     has_prerequisites: Option<bool>,
 ) -> Result<Vec<RewardSummary>, String> {
-    debug!("Database reward search - query: {:?}, types: {:?}, sources: {:?}, prerequisites: {:?}",
-           query, reward_types, sources, has_prerequisites);
+    debug!(
+        "Database reward search - query: {:?}, types: {:?}, sources: {:?}, prerequisites: {:?}",
+        query, reward_types, sources, has_prerequisites
+    );
 
     let filters = RewardFilters {
         name: None,
@@ -108,9 +110,7 @@ pub async fn get_reward_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_reward_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_reward_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting reward types");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -138,9 +138,7 @@ pub async fn get_reward_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_reward_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_reward_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting reward sources");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -167,9 +165,7 @@ pub async fn get_reward_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_reward_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_reward_count(state: State<'_, AppState>) -> Result<i64, String> {
     debug!("Getting reward count");
 
     let mut conn = state.db.get_connection().map_err(|e| {

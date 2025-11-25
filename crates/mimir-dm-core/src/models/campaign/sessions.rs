@@ -34,7 +34,7 @@ pub struct NewSession {
 }
 
 /// Session update structure
-#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = sessions)]
 pub struct UpdateSession {
     pub status: Option<String>,
@@ -46,7 +46,7 @@ pub struct UpdateSession {
 
 impl Session {
     // Transition validation is handled by BoardDefinition in the service layer
-    
+
     /// Get prep duration in minutes
     pub fn prep_duration_minutes(&self) -> Option<i64> {
         match (&self.prep_started_at, &self.prep_completed_at) {

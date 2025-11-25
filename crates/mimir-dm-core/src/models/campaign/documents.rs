@@ -37,20 +37,11 @@ pub struct NewDocument {
 /// Update existing document
 #[derive(Debug, Clone, Serialize, Deserialize, AsChangeset)]
 #[diesel(table_name = documents)]
+#[derive(Default)]
 pub struct UpdateDocument {
     pub title: Option<String>,
     pub updated_at: Option<String>,
     pub completed_at: Option<String>,
-}
-
-impl Default for UpdateDocument {
-    fn default() -> Self {
-        Self {
-            title: None,
-            updated_at: None,
-            completed_at: None,
-        }
-    }
 }
 
 impl Document {
@@ -58,7 +49,7 @@ impl Document {
     pub fn is_completed(&self) -> bool {
         self.completed_at.is_some()
     }
-    
+
     /// Get the level of the document (campaign, module, session, or handout)
     pub fn level(&self) -> DocumentLevel {
         // Check if this is a handout based on document_type

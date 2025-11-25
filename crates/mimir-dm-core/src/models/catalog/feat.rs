@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_feats;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Feat from D&D 5e
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,8 +79,11 @@ impl From<&Feat> for FeatSummary {
                                     if let Some(ab_obj) = ab.as_object() {
                                         for (stat, value) in ab_obj {
                                             if let Some(val) = value.as_u64() {
-                                                prereq_parts.push(format!("{} {}", 
-                                                    stat.to_uppercase(), val));
+                                                prereq_parts.push(format!(
+                                                    "{} {}",
+                                                    stat.to_uppercase(),
+                                                    val
+                                                ));
                                             }
                                         }
                                     }
@@ -92,7 +95,7 @@ impl From<&Feat> for FeatSummary {
                             if let Some(race_arr) = race.as_array() {
                                 for r in race_arr {
                                     if let Some(name) = r.get("name").and_then(|n| n.as_str()) {
-                                        prereq_parts.push(format!("{}", name));
+                                        prereq_parts.push(name.to_string());
                                     }
                                 }
                             }
@@ -102,7 +105,11 @@ impl From<&Feat> for FeatSummary {
                             prereq_parts.push(format!("Level {}", level));
                         }
                         // Check for spellcasting
-                        if obj.get("spellcasting").and_then(|s| s.as_bool()).unwrap_or(false) {
+                        if obj
+                            .get("spellcasting")
+                            .and_then(|s| s.as_bool())
+                            .unwrap_or(false)
+                        {
                             prereq_parts.push("Spellcasting".to_string());
                         }
                     }
@@ -114,13 +121,14 @@ impl From<&Feat> for FeatSummary {
                 }
             }
         });
-        
+
         // Extract a brief description from the first entry
         let brief = feat.entries.first().and_then(|entry| {
             if let Some(text) = entry.as_str() {
                 // Take first sentence or first 100 chars
                 let truncated = if text.len() > 100 {
-                    let end = text.char_indices()
+                    let end = text
+                        .char_indices()
                         .take_while(|(i, _)| *i < 100)
                         .map(|(i, _)| i)
                         .last()
@@ -134,7 +142,7 @@ impl From<&Feat> for FeatSummary {
                 None
             }
         });
-        
+
         FeatSummary {
             name: feat.name.clone(),
             source: feat.source.clone(),
@@ -194,7 +202,7 @@ impl From<&Feat> for NewCatalogFeat {
     fn from(feat: &Feat) -> Self {
         // Extract prerequisites as a simple string (reuse logic from FeatSummary)
         let feat_summary = FeatSummary::from(feat);
-        
+
         NewCatalogFeat {
             name: feat.name.clone(),
             prerequisites: feat_summary.prerequisites,

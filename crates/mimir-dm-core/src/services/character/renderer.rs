@@ -2,8 +2,8 @@
 //!
 //! Generates human-readable markdown character sheets from CharacterData.
 
+use crate::models::catalog::{Item, Spell};
 use crate::models::character::CharacterData;
-use crate::models::catalog::{Spell, Item};
 use std::collections::HashMap;
 
 /// Trait for rendering character sheets in various formats.
@@ -11,7 +11,11 @@ pub trait CharacterRenderer {
     /// Renders a basic character sheet.
     fn render(&self, character: &CharacterData) -> String;
     /// Renders a character sheet with spell details.
-    fn render_with_spells(&self, character: &CharacterData, spell_details: &HashMap<String, Spell>) -> String;
+    fn render_with_spells(
+        &self,
+        character: &CharacterData,
+        spell_details: &HashMap<String, Spell>,
+    ) -> String;
     /// Renders a character sheet with spell and item details.
     fn render_with_details(
         &self,
@@ -24,6 +28,12 @@ pub trait CharacterRenderer {
 /// Markdown renderer for character sheets
 pub struct MarkdownRenderer;
 
+impl Default for MarkdownRenderer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MarkdownRenderer {
     /// Creates a new markdown renderer.
     pub fn new() -> Self {
@@ -33,7 +43,9 @@ impl MarkdownRenderer {
     fn render_header(&self, character: &CharacterData) -> String {
         format!(
             "# {} - Level {} {}\n\n",
-            character.character_name, character.level, character.class_string()
+            character.character_name,
+            character.level,
+            character.class_string()
         )
     }
 
@@ -52,10 +64,16 @@ impl MarkdownRenderer {
             output.push_str(&format!("**Alignment:** {}  \n", alignment));
         }
 
-        output.push_str(&format!("**Experience:** {} XP  \n", character.experience_points));
+        output.push_str(&format!(
+            "**Experience:** {} XP  \n",
+            character.experience_points
+        ));
 
         if let Some(reason) = &character.snapshot_reason {
-            output.push_str(&format!("**Version:** {} ({})  \n", character.version, reason));
+            output.push_str(&format!(
+                "**Version:** {} ({})  \n",
+                character.version, reason
+            ));
         }
 
         output.push_str(&format!("**Created:** {}\n\n", character.created_at));
@@ -97,18 +115,28 @@ impl MarkdownRenderer {
 
         // Calculate AC (base 10 + DEX, note armor if equipped)
         let base_ac = 10 + dex_mod;
-        let shield_bonus = if character.equipped.shield.is_some() { 2 } else { 0 };
+        let shield_bonus = if character.equipped.shield.is_some() {
+            2
+        } else {
+            0
+        };
         let ac = base_ac + shield_bonus;
 
         // Calculate Passive Perception
-        let perception_prof = character.proficiencies.skills.iter()
+        let perception_prof = character
+            .proficiencies
+            .skills
+            .iter()
             .any(|s| s.to_lowercase() == "perception");
         let passive_perception = 10 + wis_mod + if perception_prof { prof_bonus } else { 0 };
 
         // Core combat stats in a compact format
-        output.push_str(&format!("| AC | Initiative | Speed | Passive Perception |\n"));
-        output.push_str(&format!("|:--:|:----------:|:-----:|:------------------:|\n"));
-        output.push_str(&format!("| {} | {:+} | 30 ft | {} |\n\n", ac, dex_mod, passive_perception));
+        output.push_str("| AC | Initiative | Speed | Passive Perception |\n");
+        output.push_str("|:--:|:----------:|:-----:|:------------------:|\n");
+        output.push_str(&format!(
+            "| {} | {:+} | 30 ft | {} |\n\n",
+            ac, dex_mod, passive_perception
+        ));
 
         // Note armor if equipped
         if let Some(armor) = &character.equipped.armor {
@@ -116,10 +144,14 @@ impl MarkdownRenderer {
         }
 
         // HP and Hit Dice
-        output.push_str(&format!("**HP:** {} / {}\n", character.current_hp, character.max_hp));
+        output.push_str(&format!(
+            "**HP:** {} / {}\n",
+            character.current_hp, character.max_hp
+        ));
 
         // Render hit dice for each class
-        let hit_dice_str = character.classes
+        let hit_dice_str = character
+            .classes
             .iter()
             .map(|c| format!("{}{}", c.hit_dice_remaining, c.hit_dice_type))
             .collect::<Vec<_>>()
@@ -161,9 +193,12 @@ impl MarkdownRenderer {
                 || weapon_lower.contains("dart")
                 || weapon_lower.contains("sling");
 
-            let ability_mod = if is_finesse_or_ranged && dex_mod > str_mod {
-                dex_mod
-            } else if is_finesse_or_ranged && weapon_lower.contains("bow") {
+            // Ranged weapons always use DEX; finesse weapons use better of STR/DEX
+            let is_ranged = weapon_lower.contains("bow")
+                || weapon_lower.contains("crossbow")
+                || weapon_lower.contains("dart")
+                || weapon_lower.contains("sling");
+            let ability_mod = if is_ranged || (is_finesse_or_ranged && dex_mod > str_mod) {
                 dex_mod
             } else {
                 str_mod
@@ -173,21 +208,39 @@ impl MarkdownRenderer {
 
             // Estimate damage based on common weapons
             let damage = match weapon_lower.as_str() {
-                w if w.contains("greatsword") || w.contains("maul") => format!("2d6{:+}", ability_mod),
+                w if w.contains("greatsword") || w.contains("maul") => {
+                    format!("2d6{:+}", ability_mod)
+                }
                 w if w.contains("greataxe") => format!("1d12{:+}", ability_mod),
-                w if w.contains("longsword") || w.contains("warhammer") || w.contains("battleaxe") => format!("1d8{:+}", ability_mod),
+                w if w.contains("longsword")
+                    || w.contains("warhammer")
+                    || w.contains("battleaxe") =>
+                {
+                    format!("1d8{:+}", ability_mod)
+                }
                 w if w.contains("rapier") => format!("1d8{:+}", ability_mod),
-                w if w.contains("shortsword") || w.contains("scimitar") => format!("1d6{:+}", ability_mod),
+                w if w.contains("shortsword") || w.contains("scimitar") => {
+                    format!("1d6{:+}", ability_mod)
+                }
                 w if w.contains("dagger") => format!("1d4{:+}", ability_mod),
-                w if w.contains("quarterstaff") || w.contains("spear") => format!("1d6{:+}", ability_mod),
+                w if w.contains("quarterstaff") || w.contains("spear") => {
+                    format!("1d6{:+}", ability_mod)
+                }
                 w if w.contains("longbow") => format!("1d8{:+}", ability_mod),
-                w if w.contains("shortbow") || w.contains("light crossbow") => format!("1d6{:+}", ability_mod),
+                w if w.contains("shortbow") || w.contains("light crossbow") => {
+                    format!("1d6{:+}", ability_mod)
+                }
                 w if w.contains("heavy crossbow") => format!("1d10{:+}", ability_mod),
-                w if w.contains("handaxe") || w.contains("javelin") || w.contains("mace") => format!("1d6{:+}", ability_mod),
+                w if w.contains("handaxe") || w.contains("javelin") || w.contains("mace") => {
+                    format!("1d6{:+}", ability_mod)
+                }
                 _ => format!("1d6{:+}", ability_mod), // Default
             };
 
-            output.push_str(&format!("| {} | {:+} | {} |\n", weapon, attack_bonus, damage));
+            output.push_str(&format!(
+                "| {} | {:+} | {} |\n",
+                weapon, attack_bonus, damage
+            ));
         }
 
         // Off hand weapon (if different from shield)
@@ -204,7 +257,10 @@ impl MarkdownRenderer {
                     _ => "1d6".to_string(),
                 };
 
-                output.push_str(&format!("| {} | {:+} | {} |\n", weapon, attack_bonus, damage));
+                output.push_str(&format!(
+                    "| {} | {:+} | {} |\n",
+                    weapon, attack_bonus, damage
+                ));
             }
         }
 
@@ -219,12 +275,36 @@ impl MarkdownRenderer {
         let saves = &character.proficiencies.saves;
 
         let save_data = [
-            ("STR", abilities.str_modifier(), saves.iter().any(|s| s.to_lowercase().contains("str"))),
-            ("DEX", abilities.dex_modifier(), saves.iter().any(|s| s.to_lowercase().contains("dex"))),
-            ("CON", abilities.con_modifier(), saves.iter().any(|s| s.to_lowercase().contains("con"))),
-            ("INT", abilities.int_modifier(), saves.iter().any(|s| s.to_lowercase().contains("int"))),
-            ("WIS", abilities.wis_modifier(), saves.iter().any(|s| s.to_lowercase().contains("wis"))),
-            ("CHA", abilities.cha_modifier(), saves.iter().any(|s| s.to_lowercase().contains("cha"))),
+            (
+                "STR",
+                abilities.str_modifier(),
+                saves.iter().any(|s| s.to_lowercase().contains("str")),
+            ),
+            (
+                "DEX",
+                abilities.dex_modifier(),
+                saves.iter().any(|s| s.to_lowercase().contains("dex")),
+            ),
+            (
+                "CON",
+                abilities.con_modifier(),
+                saves.iter().any(|s| s.to_lowercase().contains("con")),
+            ),
+            (
+                "INT",
+                abilities.int_modifier(),
+                saves.iter().any(|s| s.to_lowercase().contains("int")),
+            ),
+            (
+                "WIS",
+                abilities.wis_modifier(),
+                saves.iter().any(|s| s.to_lowercase().contains("wis")),
+            ),
+            (
+                "CHA",
+                abilities.cha_modifier(),
+                saves.iter().any(|s| s.to_lowercase().contains("cha")),
+            ),
         ];
 
         output.push_str("| Save | Mod | Prof |\n");
@@ -272,7 +352,9 @@ impl MarkdownRenderer {
         output.push_str("|-------|----:|:----:|\n");
 
         for (name, _ability, modifier) in skills {
-            let is_prof = skill_profs.iter().any(|s| s.to_lowercase() == name.to_lowercase());
+            let is_prof = skill_profs
+                .iter()
+                .any(|s| s.to_lowercase() == name.to_lowercase());
             let total = modifier + if is_prof { prof_bonus } else { 0 };
             let prof_marker = if is_prof { "●" } else { "○" };
             output.push_str(&format!("| {} | {:+} | {} |\n", name, total, prof_marker));
@@ -286,15 +368,21 @@ impl MarkdownRenderer {
         let currency = &character.currency;
 
         // Only render if character has any currency
-        if currency.copper == 0 && currency.silver == 0 && currency.gold == 0 && currency.platinum == 0 {
+        if currency.copper == 0
+            && currency.silver == 0
+            && currency.gold == 0
+            && currency.platinum == 0
+        {
             return String::new();
         }
 
         let mut output = String::from("## Currency\n\n");
         output.push_str("| PP | GP | SP | CP |\n");
         output.push_str("|---:|---:|---:|---:|\n");
-        output.push_str(&format!("| {} | {} | {} | {} |\n\n",
-            currency.platinum, currency.gold, currency.silver, currency.copper));
+        output.push_str(&format!(
+            "| {} | {} | {} | {} |\n\n",
+            currency.platinum, currency.gold, currency.silver, currency.copper
+        ));
 
         output
     }
@@ -303,7 +391,11 @@ impl MarkdownRenderer {
         let prof = &character.proficiencies;
 
         // Check if any proficiencies to render (excluding skills/saves which have their own sections)
-        if prof.armor.is_empty() && prof.weapons.is_empty() && prof.tools.is_empty() && prof.languages.is_empty() {
+        if prof.armor.is_empty()
+            && prof.weapons.is_empty()
+            && prof.tools.is_empty()
+            && prof.languages.is_empty()
+        {
             return String::new();
         }
 
@@ -357,7 +449,11 @@ impl MarkdownRenderer {
         output
     }
 
-    fn render_spells(&self, character: &CharacterData, spell_details: &HashMap<String, Spell>) -> String {
+    fn render_spells(
+        &self,
+        character: &CharacterData,
+        spell_details: &HashMap<String, Spell>,
+    ) -> String {
         let spells = &character.spells;
 
         // Only render if character has any spells
@@ -406,9 +502,7 @@ impl MarkdownRenderer {
             // Group spells by level
             let mut spells_by_level: HashMap<u8, Vec<&str>> = HashMap::new();
             for spell_name in &spells.known_spells {
-                let level = spell_details.get(spell_name)
-                    .map(|s| s.level)
-                    .unwrap_or(1);
+                let level = spell_details.get(spell_name).map(|s| s.level).unwrap_or(1);
                 spells_by_level.entry(level).or_default().push(spell_name);
             }
 
@@ -446,13 +540,19 @@ impl MarkdownRenderer {
         let level_str = if spell.level == 0 {
             format!("{} cantrip", spell.school.as_str())
         } else {
-            format!("{} level {}", Self::ordinal(spell.level), spell.school.as_str().to_lowercase())
+            format!(
+                "{} level {}",
+                Self::ordinal(spell.level),
+                spell.school.as_str().to_lowercase()
+            )
         };
         output.push_str(&format!("**{}**  \n", spell.name));
         output.push_str(&format!("*{}*\n\n", level_str));
 
         // Casting time
-        let casting_time = spell.time.first()
+        let casting_time = spell
+            .time
+            .first()
             .map(|t| {
                 let base = format!("{} {}", t.number, t.unit);
                 if let Some(condition) = &t.condition {
@@ -472,7 +572,7 @@ impl MarkdownRenderer {
                 } else {
                     distance.distance_type.clone()
                 }
-            },
+            }
             crate::models::catalog::SpellRange::Special { range_type } => range_type.clone(),
         };
         output.push_str(&format!("**Range:** {}  \n", range));
@@ -494,7 +594,7 @@ impl MarkdownRenderer {
                     } else {
                         format!("M ({})", text)
                     }
-                },
+                }
                 crate::models::catalog::MaterialComponent::Bool(_) => "M".to_string(),
             };
             comp_parts.push(material_text);
@@ -502,7 +602,9 @@ impl MarkdownRenderer {
         output.push_str(&format!("**Components:** {}  \n", comp_parts.join(", ")));
 
         // Duration
-        let duration = spell.duration.first()
+        let duration = spell
+            .duration
+            .first()
             .map(|d| {
                 let mut dur_str = String::new();
                 if d.concentration.unwrap_or(false) {
@@ -588,11 +690,16 @@ impl MarkdownRenderer {
         output
     }
 
+    #[allow(dead_code)]
     fn render_inventory(&self, character: &CharacterData) -> String {
         self.render_inventory_with_details(character, &HashMap::new())
     }
 
-    fn render_inventory_with_details(&self, character: &CharacterData, item_details: &HashMap<String, Item>) -> String {
+    fn render_inventory_with_details(
+        &self,
+        character: &CharacterData,
+        item_details: &HashMap<String, Item>,
+    ) -> String {
         if character.inventory.is_empty() {
             return String::new();
         }
@@ -678,17 +785,20 @@ impl MarkdownRenderer {
         output
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn format_entry(&self, entry: &serde_json::Value) -> String {
         match entry {
             serde_json::Value::String(s) => s.clone(),
             serde_json::Value::Object(obj) => {
                 if let Some(entries) = obj.get("entries").and_then(|e| e.as_array()) {
-                    entries.iter()
+                    entries
+                        .iter()
                         .map(|e| self.format_entry(e))
                         .collect::<Vec<_>>()
                         .join("\n")
                 } else if let Some(items) = obj.get("items").and_then(|i| i.as_array()) {
-                    items.iter()
+                    items
+                        .iter()
                         .map(|i| format!("- {}", self.format_entry(i)))
                         .collect::<Vec<_>>()
                         .join("\n")
@@ -741,7 +851,11 @@ impl CharacterRenderer for MarkdownRenderer {
         self.render_with_details(character, &HashMap::new(), &HashMap::new())
     }
 
-    fn render_with_spells(&self, character: &CharacterData, spell_details: &HashMap<String, Spell>) -> String {
+    fn render_with_spells(
+        &self,
+        character: &CharacterData,
+        spell_details: &HashMap<String, Spell>,
+    ) -> String {
         self.render_with_details(character, spell_details, &HashMap::new())
     }
 
@@ -776,11 +890,11 @@ impl CharacterRenderer for MarkdownRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::character::data::{ClassLevel, Currency};
     use crate::models::character::{
         AbilityScores, EquippedItems, InventoryItem, Personality, Proficiencies, SpellData,
         SpellSlots,
     };
-    use crate::models::character::data::{ClassLevel, Currency};
 
     fn create_sample_fighter() -> CharacterData {
         CharacterData {
@@ -856,7 +970,9 @@ mod tests {
             personality: Personality {
                 traits: Some("I'm always polite and respectful.".to_string()),
                 ideals: Some("Responsibility.".to_string()),
-                bonds: Some("I would still lay down my life for the people I served with.".to_string()),
+                bonds: Some(
+                    "I would still lay down my life for the people I served with.".to_string(),
+                ),
                 flaws: Some("I obey authority without question.".to_string()),
             },
         }
@@ -897,12 +1013,20 @@ mod tests {
             max_hp: 15,
             current_hp: 15,
             proficiencies: Proficiencies {
-                skills: vec!["Arcana".to_string(), "History".to_string(), "Investigation".to_string()],
+                skills: vec![
+                    "Arcana".to_string(),
+                    "History".to_string(),
+                    "Investigation".to_string(),
+                ],
                 saves: vec!["Intelligence".to_string(), "Wisdom".to_string()],
                 armor: Vec::new(),
                 weapons: vec!["Simple weapons".to_string()],
                 tools: Vec::new(),
-                languages: vec!["Common".to_string(), "Elvish".to_string(), "Draconic".to_string()],
+                languages: vec![
+                    "Common".to_string(),
+                    "Elvish".to_string(),
+                    "Draconic".to_string(),
+                ],
             },
             class_features: vec![
                 "Arcane Recovery".to_string(),
@@ -911,7 +1035,11 @@ mod tests {
             ],
             feats: Vec::new(),
             spells: SpellData {
-                cantrips: vec!["Fire Bolt".to_string(), "Mage Hand".to_string(), "Prestidigitation".to_string()],
+                cantrips: vec![
+                    "Fire Bolt".to_string(),
+                    "Mage Hand".to_string(),
+                    "Prestidigitation".to_string(),
+                ],
                 known_spells: vec![
                     "Magic Missile".to_string(),
                     "Shield".to_string(),

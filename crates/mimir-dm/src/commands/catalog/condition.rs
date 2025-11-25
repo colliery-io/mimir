@@ -4,7 +4,7 @@
 //! from the 5e catalog database. Includes exhaustion, blinded, poisoned, etc.
 
 use crate::state::AppState;
-use mimir_dm_core::models::catalog::{ConditionOrDisease, ConditionFilters, ConditionSummary};
+use mimir_dm_core::models::catalog::{ConditionFilters, ConditionOrDisease, ConditionSummary};
 use mimir_dm_core::services::ConditionService;
 use tauri::State;
 use tracing::{debug, error, info};
@@ -33,8 +33,10 @@ pub async fn search_conditions(
     item_types: Option<Vec<String>>,
     sources: Option<Vec<String>>,
 ) -> Result<Vec<ConditionSummary>, String> {
-    debug!("Database condition search - name: {:?}, search: {:?}, item_types: {:?}, sources: {:?}",
-           name, search, item_types, sources);
+    debug!(
+        "Database condition search - name: {:?}, search: {:?}, item_types: {:?}, sources: {:?}",
+        name, search, item_types, sources
+    );
 
     let filters = ConditionFilters {
         name,
@@ -104,9 +106,7 @@ pub async fn get_condition(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_condition_item_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_condition_item_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting condition item types");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -134,9 +134,7 @@ pub async fn get_condition_item_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_condition_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_condition_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting condition sources");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -163,9 +161,7 @@ pub async fn get_condition_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_condition_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_condition_count(state: State<'_, AppState>) -> Result<i64, String> {
     debug!("Getting condition count");
 
     let mut conn = state.db.get_connection().map_err(|e| {

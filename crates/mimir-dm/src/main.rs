@@ -9,18 +9,36 @@ mod state;
 mod types;
 
 use app_init::initialize_app;
+use commands::catalog::action::{
+    get_action, get_action_count, get_action_sources, get_action_time_types, search_actions,
+};
+use commands::catalog::background::{
+    get_background_count, get_background_details, get_background_sources, search_backgrounds,
+};
+use commands::catalog::condition::{
+    get_condition, get_condition_count, get_condition_item_types, get_condition_sources,
+    search_conditions,
+};
+use commands::catalog::feat::{get_feat_count, get_feat_details, get_feat_sources, search_feats};
+use commands::catalog::language::{
+    get_language_count, get_language_details, get_language_scripts, get_language_sources,
+    get_language_types, search_languages,
+};
+use commands::catalog::psionic::{
+    get_psionic_details, get_psionic_orders, get_psionic_sources, get_psionic_types,
+    search_psionics,
+};
+use commands::catalog::reward::{
+    get_reward_count, get_reward_details, get_reward_sources, get_reward_types, search_rewards,
+};
+use commands::catalog::vehicle::{
+    get_vehicle_details, get_vehicle_sizes, get_vehicle_statistics, get_vehicle_terrains,
+    get_vehicle_types, search_vehicles,
+};
 use commands::{system::logs, *};
-use commands::catalog::action::{search_actions, get_action, get_action_time_types, get_action_sources, get_action_count};
-use commands::catalog::condition::{search_conditions, get_condition, get_condition_item_types, get_condition_sources, get_condition_count};
-use commands::catalog::language::{search_languages, get_language_details, get_language_types, get_language_scripts, get_language_sources, get_language_count};
-use commands::catalog::reward::{search_rewards, get_reward_details, get_reward_types, get_reward_sources, get_reward_count};
-use commands::catalog::background::{search_backgrounds, get_background_details, get_background_sources, get_background_count};
-use commands::catalog::feat::{search_feats, get_feat_details, get_feat_sources, get_feat_count};
-use commands::catalog::psionic::{search_psionics, get_psionic_details, get_psionic_types, get_psionic_orders, get_psionic_sources};
-use commands::catalog::vehicle::{search_vehicles, get_vehicle_details, get_vehicle_types, get_vehicle_sizes, get_vehicle_terrains, get_vehicle_statistics};
-use mimir_dm_core::{DatabaseService, run_migrations};
+use mimir_dm_core::{run_migrations, DatabaseService};
 use services::context_service::ContextState;
-use services::llm::{self, LlmService, ConfirmationReceivers, CancellationTokens};
+use services::llm::{self, CancellationTokens, ConfirmationReceivers, LlmService};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::Manager;
@@ -49,7 +67,7 @@ fn main() {
             // Initialize database service from core
             let db_service = match DatabaseService::new(
                 &app_paths.database_path_str(),
-                app_paths.is_memory_db
+                app_paths.is_memory_db,
             ) {
                 Ok(service) => {
                     info!("Database service initialized successfully");
@@ -57,10 +75,10 @@ fn main() {
                 }
                 Err(e) => {
                     error!("Failed to initialize database service: {}", e);
-                    return Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Database initialization failed: {}", e)
-                    )));
+                    return Err(Box::new(std::io::Error::other(format!(
+                        "Database initialization failed: {}",
+                        e
+                    ))));
                 }
             };
 
@@ -70,13 +88,13 @@ fn main() {
                 Ok(conn) => conn,
                 Err(e) => {
                     error!("Failed to get database connection for migrations: {}", e);
-                    return Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Database connection failed: {}", e)
-                    )));
+                    return Err(Box::new(std::io::Error::other(format!(
+                        "Database connection failed: {}",
+                        e
+                    ))));
                 }
             };
-            match run_migrations(&mut *conn) {
+            match run_migrations(&mut conn) {
                 Ok(_) => info!("Database migrations completed successfully"),
                 Err(e) => warn!("Database migration warning: {}", e),
             }
@@ -94,14 +112,18 @@ fn main() {
             let app_paths_state = Arc::new(app_paths);
             let context_state = ContextState::new();
 
-            let session_manager = commands::chat::chat_sessions::init_session_manager(&app_paths_state)
-                .map_err(|e| {
-                    error!("Failed to initialize session manager: {}", e);
-                    e
-                })?;
+            let session_manager = commands::chat::chat_sessions::init_session_manager(
+                &app_paths_state,
+            )
+            .map_err(|e| {
+                error!("Failed to initialize session manager: {}", e);
+                e
+            })?;
 
-            let confirmation_receivers: ConfirmationReceivers = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
-            let cancellation_tokens: CancellationTokens = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+            let confirmation_receivers: ConfirmationReceivers =
+                Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+            let cancellation_tokens: CancellationTokens =
+                Arc::new(tokio::sync::Mutex::new(HashMap::new()));
             let llm_service = Arc::new(tokio::sync::Mutex::new(None::<LlmService>));
 
             // Clone references needed for async LLM initialization
@@ -128,7 +150,14 @@ fn main() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 info!("Starting LLM service initialization...");
-                match llm::initialize_llm(app_handle, db_service_clone, confirmation_receivers_clone, app_paths_clone).await {
+                match llm::initialize_llm(
+                    app_handle,
+                    db_service_clone,
+                    confirmation_receivers_clone,
+                    app_paths_clone,
+                )
+                .await
+                {
                     Ok(service) => {
                         info!("LLM service initialized successfully");
                         let mut llm = llm_service_clone.lock().await;

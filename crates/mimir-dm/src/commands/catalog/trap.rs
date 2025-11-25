@@ -42,18 +42,16 @@ pub async fn search_traps(
         trap_types,
     };
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = TrapService;
-    service.search_traps(&mut conn, filters)
-        .map_err(|e| {
-            error!("Failed to search traps: {}", e);
-            format!("Search error: {}", e)
-        })
+    service.search_traps(&mut conn, filters).map_err(|e| {
+        error!("Failed to search traps: {}", e);
+        format!("Search error: {}", e)
+    })
 }
 
 /// Get complete trap details by name and source.
@@ -77,14 +75,14 @@ pub async fn get_trap_details(
 ) -> Result<Option<CatalogTrap>, String> {
     debug!("get_trap_details called for: {} from {}", name, source);
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = TrapService;
-    service.get_trap_details(&mut conn, name, source)
+    service
+        .get_trap_details(&mut conn, name, source)
         .map_err(|e| {
             error!("Failed to get trap details: {}", e);
             format!("Database error: {}", e)
@@ -101,23 +99,19 @@ pub async fn get_trap_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_trap_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_trap_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("get_trap_sources called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = TrapService;
-    service.get_trap_sources(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get trap sources: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_trap_sources(&mut conn).map_err(|e| {
+        error!("Failed to get trap sources: {}", e);
+        format!("Database error: {}", e)
+    })
 }
 
 /// Get total number of traps in the catalog.
@@ -130,23 +124,19 @@ pub async fn get_trap_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_trap_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_trap_count(state: State<'_, AppState>) -> Result<i64, String> {
     debug!("get_trap_count called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = TrapService;
-    service.get_trap_count(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get trap count: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_trap_count(&mut conn).map_err(|e| {
+        error!("Failed to get trap count: {}", e);
+        format!("Database error: {}", e)
+    })
 }
 
 /// Get all unique trap types in the catalog.
@@ -160,23 +150,19 @@ pub async fn get_trap_count(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_trap_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_trap_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("get_trap_types called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = TrapService;
-    service.get_trap_types(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get trap types: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_trap_types(&mut conn).map_err(|e| {
+        error!("Failed to get trap types: {}", e);
+        format!("Database error: {}", e)
+    })
 }
 
 /// Get all unique trap categories in the catalog.
@@ -189,21 +175,17 @@ pub async fn get_trap_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_trap_categories(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_trap_categories(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("get_trap_categories called");
 
-    let mut conn = state.db.get_connection()
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            format!("Database connection error: {}", e)
-        })?;
-    
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection error: {}", e)
+    })?;
+
     let service = TrapService;
-    service.get_trap_categories(&mut conn)
-        .map_err(|e| {
-            error!("Failed to get trap categories: {}", e);
-            format!("Database error: {}", e)
-        })
+    service.get_trap_categories(&mut conn).map_err(|e| {
+        error!("Failed to get trap categories: {}", e);
+        format!("Database error: {}", e)
+    })
 }

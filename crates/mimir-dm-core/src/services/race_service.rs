@@ -3,13 +3,13 @@
 //! Provides database-backed race search, retrieval, and import functionality.
 //! Supports filtering by name, size, darkvision, flight, and source.
 
-use diesel::prelude::*;
-use tracing::{debug, error, info};
 use crate::error::Result;
-use crate::models::catalog::{RaceFilters, RaceSummary, CatalogRace, NewCatalogRace, RaceData};
+use crate::models::catalog::{CatalogRace, NewCatalogRace, RaceData, RaceFilters, RaceSummary};
 use crate::schema::catalog_races;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
+use tracing::{debug, error, info};
 
 /// Service for searching and managing races and subraces in the catalog.
 pub struct RaceService;
@@ -37,9 +37,10 @@ impl RaceService {
             if !search_pattern.is_empty() {
                 let pattern = format!("%{}%", search_pattern.to_lowercase());
                 query = query.filter(
-                    catalog_races::name.like(pattern.clone())
+                    catalog_races::name
+                        .like(pattern.clone())
                         .or(catalog_races::ability_bonuses.like(pattern.clone()))
-                        .or(catalog_races::size.like(pattern))
+                        .or(catalog_races::size.like(pattern)),
                 );
             }
         }
@@ -83,10 +84,7 @@ impl RaceService {
 
         debug!("Found {} races", races.len());
 
-        let summaries: Vec<RaceSummary> = races
-            .iter()
-            .map(|r| RaceSummary::from(r))
-            .collect();
+        let summaries: Vec<RaceSummary> = races.iter().map(RaceSummary::from).collect();
 
         Ok(summaries)
     }
@@ -151,9 +149,7 @@ impl RaceService {
     pub fn get_race_count(conn: &mut SqliteConnection) -> Result<i64> {
         debug!("Getting total race count");
 
-        let count = catalog_races::table
-            .count()
-            .get_result(conn)?;
+        let count = catalog_races::table.count().get_result(conn)?;
 
         debug!("Total races: {}", count);
         Ok(count)
@@ -177,7 +173,7 @@ impl RaceService {
             .order_by(catalog_races::size.asc())
             .load::<Option<String>>(conn)?
             .into_iter()
-            .filter_map(|s| s)
+            .flatten()
             .collect();
 
         debug!("Found {} distinct race sizes", sizes.len());
@@ -200,9 +196,12 @@ impl RaceService {
     pub fn import_races_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing races from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing races from book directory: {:?} (source: {})",
+            book_dir, source
+        );
         let mut imported_count = 0;
 
         let races_dir = book_dir.join("races");
@@ -224,7 +223,8 @@ impl RaceService {
                 continue;
             }
 
-            let filename = path.file_name()
+            let filename = path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("unknown");
 
@@ -255,7 +255,8 @@ impl RaceService {
                             catalog_races::traits_count.eq(&new_race.traits_count),
                             catalog_races::full_race_json.eq(&new_race.full_race_json),
                         ))
-                        .execute(conn) {
+                        .execute(conn)
+                    {
                         Ok(_) => {
                             imported_count += 1;
                             debug!("Imported race: {} ({})", race.name, source);
@@ -288,7 +289,8 @@ impl RaceService {
                             catalog_races::traits_count.eq(&new_subrace.traits_count),
                             catalog_races::full_race_json.eq(&new_subrace.full_race_json),
                         ))
-                        .execute(conn) {
+                        .execute(conn)
+                    {
                         Ok(_) => {
                             imported_count += 1;
                             debug!("Imported subrace: {} ({})", new_subrace.name, source);
@@ -301,7 +303,10 @@ impl RaceService {
             }
         }
 
-        info!("Successfully imported {} races/subraces from source: {}", imported_count, source);
+        info!(
+            "Successfully imported {} races/subraces from source: {}",
+            imported_count, source
+        );
         Ok(imported_count)
     }
 
@@ -316,10 +321,7 @@ impl RaceService {
     /// # Returns
     /// * `Ok(usize)` - Number of races deleted
     /// * `Err(DbError)` - If the database operation fails
-    pub fn remove_races_by_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_races_by_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing races from source: {}", source);
 
         let deleted = diesel::delete(catalog_races::table)

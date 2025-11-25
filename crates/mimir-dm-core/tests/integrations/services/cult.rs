@@ -1,9 +1,9 @@
 //! Integration tests for CultService
 
 use diesel::prelude::*;
-use mimir_dm_core::{establish_connection, run_migrations};
 use mimir_dm_core::models::catalog::cult::CultFilters;
 use mimir_dm_core::services::cult_service::CultService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -61,7 +61,9 @@ fn test_search_cults_no_filters() {
         cult_type: None,
         source: None,
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert_eq!(results.len(), 10);
 }
@@ -77,7 +79,9 @@ fn test_search_cults_by_name() {
         cult_type: None,
         source: None,
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, "Cult of Asmodeus");
@@ -94,7 +98,9 @@ fn test_search_cults_by_category_cult() {
         cult_type: None,
         source: None,
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert_eq!(results.len(), 6);
     assert!(results.iter().all(|c| c.item_type == "cult"));
@@ -111,7 +117,9 @@ fn test_search_cults_by_category_boon() {
         cult_type: None,
         source: None,
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert_eq!(results.len(), 4);
     assert!(results.iter().all(|c| c.item_type == "boon"));
@@ -128,7 +136,9 @@ fn test_search_cults_by_cult_type() {
         cult_type: Some(vec!["Demonic".to_string()]),
         source: None,
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert_eq!(results.len(), 4); // 3 cults + 1 boon
 }
@@ -144,7 +154,9 @@ fn test_search_cults_by_source() {
         cult_type: None,
         source: Some(vec!["RoT".to_string()]),
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert_eq!(results.len(), 2);
 }
@@ -160,7 +172,9 @@ fn test_search_cults_combined_filters() {
         cult_type: Some(vec!["Diabolical".to_string()]),
         source: None,
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert_eq!(results.len(), 2); // Dark One's Blessing, Blessing of the Pit
 }
@@ -176,7 +190,9 @@ fn test_search_cults_empty_results() {
         cult_type: None,
         source: None,
     };
-    let results = service.search_cults(&mut conn, filters).expect("Should search cults");
+    let results = service
+        .search_cults(&mut conn, filters)
+        .expect("Should search cults");
 
     assert!(results.is_empty());
 }
@@ -186,7 +202,8 @@ fn test_get_cult_details() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = CultService;
 
-    let result = service.get_cult_details(&mut conn, "Cult of Asmodeus".to_string(), "MTF".to_string())
+    let result = service
+        .get_cult_details(&mut conn, "Cult of Asmodeus".to_string(), "MTF".to_string())
         .expect("Should get cult details");
 
     assert!(result.is_some());
@@ -199,7 +216,8 @@ fn test_get_cult_details_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = CultService;
 
-    let result = service.get_cult_details(&mut conn, "Nonexistent".to_string(), "PHB".to_string())
+    let result = service
+        .get_cult_details(&mut conn, "Nonexistent".to_string(), "PHB".to_string())
         .expect("Should handle not found");
 
     assert!(result.is_none());
@@ -210,7 +228,9 @@ fn test_get_cult_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = CultService;
 
-    let sources = service.get_cult_sources(&mut conn).expect("Should get sources");
+    let sources = service
+        .get_cult_sources(&mut conn)
+        .expect("Should get sources");
 
     assert!(sources.contains(&"MTF".to_string()));
     assert!(sources.contains(&"RoT".to_string()));
@@ -243,7 +263,9 @@ fn test_get_cult_categories() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = CultService;
 
-    let categories = service.get_cult_categories(&mut conn).expect("Should get categories");
+    let categories = service
+        .get_cult_categories(&mut conn)
+        .expect("Should get categories");
 
     assert!(categories.contains(&"cult".to_string()));
     assert!(categories.contains(&"boon".to_string()));

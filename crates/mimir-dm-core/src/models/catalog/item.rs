@@ -1,8 +1,8 @@
 //! Item catalog models
 
-use serde::{Deserialize, Serialize, Deserializer};
-use diesel::prelude::*;
 use crate::schema::catalog_items;
+use diesel::prelude::*;
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// A D&D 5e item
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,7 +17,7 @@ pub struct Item {
     #[serde(default)]
     pub weight: Option<f32>,
     #[serde(default)]
-    pub value: Option<f64>,  // Value in copper pieces (can be fractional)
+    pub value: Option<f64>, // Value in copper pieces (can be fractional)
     #[serde(default)]
     pub ac: Option<u8>,
     #[serde(default)]
@@ -67,19 +67,24 @@ pub struct ItemSummary {
 
 impl From<&Item> for ItemSummary {
     fn from(item: &Item) -> Self {
-        let item_type = item.item_type.clone().unwrap_or_else(|| "Unknown".to_string());
+        let item_type = item
+            .item_type
+            .clone()
+            .unwrap_or_else(|| "Unknown".to_string());
         let type_name = get_type_name(&item_type);
         let rarity = item.rarity.clone().unwrap_or_else(|| "none".to_string());
-        
+
         // Get first line of description for summary
-        let description = item.entries.as_ref()
+        let description = item
+            .entries
+            .as_ref()
             .and_then(|entries| entries.first())
             .and_then(|e| e.as_str())
             .unwrap_or("")
             .chars()
             .take(200)
             .collect::<String>();
-        
+
         // Combine damage fields if present
         let damage = match (&item.dmg1, &item.dmg2) {
             (Some(d1), Some(d2)) => Some(format!("{}/{}", d1, d2)),
@@ -87,7 +92,7 @@ impl From<&Item> for ItemSummary {
             (None, Some(d2)) => Some(d2.clone()),
             _ => None,
         };
-        
+
         ItemSummary {
             name: item.name.clone(),
             source: item.source.clone(),
@@ -112,49 +117,50 @@ fn get_type_name(item_type: &str) -> String {
     } else {
         item_type
     };
-    
+
     // Handle treasure types with $ prefix - these are special and should NOT be stripped
     match base_type {
-        "$" => "Treasure",                      // $ = TREASURE
-        "$A" => "Art Object",                   // $A = TREASURE_ART_OBJECT
-        "$C" => "Coinage",                      // $C = TREASURE_COINAGE  
-        "$G" => "Gemstone",                     // $G = TREASURE_GEMSTONE
+        "$" => "Treasure",    // $ = TREASURE
+        "$A" => "Art Object", // $A = TREASURE_ART_OBJECT
+        "$C" => "Coinage",    // $C = TREASURE_COINAGE
+        "$G" => "Gemstone",   // $G = TREASURE_GEMSTONE
         // Regular item types (without $ prefix)
-        "A" => "Ammunition",                    // A = AMMUNITION
-        "AF" => "Futuristic Ammunition",        // AF = AMMUNITION_FUTURISTIC
-        "AIR" => "Aircraft",                    // AIR = VEHICLE_AIR
-        "AT" => "Artisan's Tools",              // AT = ARTISAN_TOOL
-        "EXP" => "Explosive",                   // EXP = EXPLOSIVE
-        "FD" => "Food & Drink",                 // FD = FOOD_AND_DRINK
-        "G" => "Adventuring Gear",              // G = ADVENTURING_GEAR
-        "GS" => "Gaming Set",                   // GS = GAMING_SET
-        "GV" => "Generic Variant",              // GV = GENERIC_VARIANT
-        "HA" => "Heavy Armor",                  // HA = HEAVY_ARMOR
-        "IDG" => "Illegal Drug",                // IDG = ILLEGAL_DRUG
-        "INS" => "Musical Instrument",          // INS = INSTRUMENT
-        "LA" => "Light Armor",                  // LA = LIGHT_ARMOR
-        "M" => "Melee Weapon",                  // M = MELEE_WEAPON
-        "MA" => "Medium Armor",                 // MA = MEDIUM_ARMOR
-        "MNT" => "Mount",                       // MNT = MOUNT
-        "OTH" => "Other",                       // OTH = OTHER
-        "P" => "Potion",                        // P = POTION
-        "R" => "Ranged Weapon",                 // R = RANGED_WEAPON
-        "RD" => "Rod",                          // RD = ROD
-        "RG" => "Ring",                         // RG = RING
-        "S" => "Shield",                        // S = SHIELD
-        "SC" => "Scroll",                       // SC = SCROLL
-        "SCF" => "Spellcasting Focus",          // SCF = SPELLCASTING_FOCUS
-        "SHP" => "Ship",                        // SHP = VEHICLE_WATER
-        "SPC" => "Spacecraft",                  // SPC = VEHICLE_SPACE
-        "T" => "Tool",                          // T = TOOL
-        "TAH" => "Tack & Harness",              // TAH = TACK_AND_HARNESS
-        "TB" => "Trade Bar",                    // TB = TRADE_BAR
-        "TG" => "Trade Good",                   // TG = TRADE_GOOD
-        "VEH" => "Vehicle (Land)",              // VEH = VEHICLE_LAND
-        "WD" => "Wand",                         // WD = WAND
-        "W" => "Wondrous Item",                 // W = Not in 5etools but commonly used
-        _ => base_type,                         // Return base type without source suffix if no match found
-    }.to_string()
+        "A" => "Ammunition",             // A = AMMUNITION
+        "AF" => "Futuristic Ammunition", // AF = AMMUNITION_FUTURISTIC
+        "AIR" => "Aircraft",             // AIR = VEHICLE_AIR
+        "AT" => "Artisan's Tools",       // AT = ARTISAN_TOOL
+        "EXP" => "Explosive",            // EXP = EXPLOSIVE
+        "FD" => "Food & Drink",          // FD = FOOD_AND_DRINK
+        "G" => "Adventuring Gear",       // G = ADVENTURING_GEAR
+        "GS" => "Gaming Set",            // GS = GAMING_SET
+        "GV" => "Generic Variant",       // GV = GENERIC_VARIANT
+        "HA" => "Heavy Armor",           // HA = HEAVY_ARMOR
+        "IDG" => "Illegal Drug",         // IDG = ILLEGAL_DRUG
+        "INS" => "Musical Instrument",   // INS = INSTRUMENT
+        "LA" => "Light Armor",           // LA = LIGHT_ARMOR
+        "M" => "Melee Weapon",           // M = MELEE_WEAPON
+        "MA" => "Medium Armor",          // MA = MEDIUM_ARMOR
+        "MNT" => "Mount",                // MNT = MOUNT
+        "OTH" => "Other",                // OTH = OTHER
+        "P" => "Potion",                 // P = POTION
+        "R" => "Ranged Weapon",          // R = RANGED_WEAPON
+        "RD" => "Rod",                   // RD = ROD
+        "RG" => "Ring",                  // RG = RING
+        "S" => "Shield",                 // S = SHIELD
+        "SC" => "Scroll",                // SC = SCROLL
+        "SCF" => "Spellcasting Focus",   // SCF = SPELLCASTING_FOCUS
+        "SHP" => "Ship",                 // SHP = VEHICLE_WATER
+        "SPC" => "Spacecraft",           // SPC = VEHICLE_SPACE
+        "T" => "Tool",                   // T = TOOL
+        "TAH" => "Tack & Harness",       // TAH = TACK_AND_HARNESS
+        "TB" => "Trade Bar",             // TB = TRADE_BAR
+        "TG" => "Trade Good",            // TG = TRADE_GOOD
+        "VEH" => "Vehicle (Land)",       // VEH = VEHICLE_LAND
+        "WD" => "Wand",                  // WD = WAND
+        "W" => "Wondrous Item",          // W = Not in 5etools but commonly used
+        _ => base_type,                  // Return base type without source suffix if no match found
+    }
+    .to_string()
 }
 
 // Database models
@@ -209,12 +215,18 @@ impl From<&CatalogItem> for ItemSummary {
         Self {
             name: catalog.name.clone(),
             source: catalog.source.clone(),
-            item_type: catalog.item_type.clone().unwrap_or_else(|| "Unknown".to_string()),
-            type_name: catalog.type_name.clone().unwrap_or_else(|| "Unknown".to_string()),
+            item_type: catalog
+                .item_type
+                .clone()
+                .unwrap_or_else(|| "Unknown".to_string()),
+            type_name: catalog
+                .type_name
+                .clone()
+                .unwrap_or_else(|| "Unknown".to_string()),
             rarity: catalog.rarity.clone().unwrap_or_else(|| "none".to_string()),
             value: catalog.value,
             weight: catalog.weight.map(|w| w as f32), // Convert f64 to f32 for compatibility
-            ac: catalog.ac.map(|ac| ac as u8), // Convert i32 to u8 for compatibility
+            ac: catalog.ac.map(|ac| ac as u8),        // Convert i32 to u8 for compatibility
             damage: catalog.damage.clone(),
             req_attune: catalog.requires_attunement.clone(),
             description: String::new(), // Will be populated from JSON if needed
@@ -227,7 +239,7 @@ impl From<&Item> for NewCatalogItem {
         let item_type = item.item_type.clone();
         let type_name = item_type.as_ref().map(|t| get_type_name(t));
         let rarity = item.rarity.clone();
-        
+
         // Combine damage fields if present
         let damage = match (&item.dmg1, &item.dmg2) {
             (Some(d1), Some(d2)) => Some(format!("{}/{}", d1, d2)),
@@ -235,7 +247,7 @@ impl From<&Item> for NewCatalogItem {
             (None, Some(d2)) => Some(d2.clone()),
             _ => None,
         };
-        
+
         Self {
             name: item.name.clone(),
             item_type,
@@ -243,7 +255,7 @@ impl From<&Item> for NewCatalogItem {
             rarity,
             value: item.value,
             weight: item.weight.map(|w| w as f64), // Convert f32 to f64
-            ac: item.ac.map(|ac| ac as i32), // Convert u8 to i32
+            ac: item.ac.map(|ac| ac as i32),       // Convert u8 to i32
             damage,
             requires_attunement: item.requires_attunement.clone(),
             source: item.source.clone(),
@@ -260,15 +272,18 @@ where
 {
     use serde::de::Error;
     use serde_json::Value;
-    
+
     let value = Option::<Value>::deserialize(deserializer)?;
-    
+
     match value {
         None => Ok(None),
         Some(Value::Bool(true)) => Ok(Some("true".to_string())),
         Some(Value::Bool(false)) => Ok(None), // false means no attunement required
         Some(Value::String(s)) => Ok(Some(s)),
-        Some(other) => Err(D::Error::custom(format!("Expected boolean or string for requires_attunement, got {:?}", other))),
+        Some(other) => Err(D::Error::custom(format!(
+            "Expected boolean or string for requires_attunement, got {:?}",
+            other
+        ))),
     }
 }
 
@@ -282,15 +297,18 @@ where
 {
     use serde::de::Error;
     use serde_json::Value;
-    
+
     let value = Option::<Value>::deserialize(deserializer)?;
-    
+
     match value {
         None => Ok(None),
         Some(Value::Bool(true)) => Ok(Some("true".to_string())), // In SRD with same name
-        Some(Value::Bool(false)) => Ok(None), // Not in SRD
-        Some(Value::String(s)) => Ok(Some(s)), // In SRD with different name
-        Some(other) => Err(D::Error::custom(format!("Expected boolean or string for srd, got {:?}", other))),
+        Some(Value::Bool(false)) => Ok(None),                    // Not in SRD
+        Some(Value::String(s)) => Ok(Some(s)),                   // In SRD with different name
+        Some(other) => Err(D::Error::custom(format!(
+            "Expected boolean or string for srd, got {:?}",
+            other
+        ))),
     }
 }
 
@@ -344,12 +362,12 @@ mod tests {
         let json = r#"{"srd": true}"#;
         let test_struct: serde_json::Value = serde_json::from_str(json).unwrap();
         let srd_value = test_struct.get("srd").unwrap();
-        
+
         // Test boolean false
         let json_false = r#"{"srd": false}"#;
         let test_struct_false: serde_json::Value = serde_json::from_str(json_false).unwrap();
         let srd_value_false = test_struct_false.get("srd").unwrap();
-        
+
         assert!(srd_value.is_boolean());
         assert!(srd_value_false.is_boolean());
     }
@@ -360,19 +378,19 @@ mod tests {
         let json = r#"{"srd": "Apparatus of the Crab"}"#;
         let test_struct: serde_json::Value = serde_json::from_str(json).unwrap();
         let srd_value = test_struct.get("srd").unwrap();
-        
+
         assert!(srd_value.is_string());
         assert_eq!(srd_value.as_str().unwrap(), "Apparatus of the Crab");
     }
 
-    #[test] 
+    #[test]
     fn test_deserialize_requires_attunement_boolean() {
         let json_true = r#"{"reqAttune": true}"#;
         let json_false = r#"{"reqAttune": false}"#;
-        
+
         let test_true: serde_json::Value = serde_json::from_str(json_true).unwrap();
         let test_false: serde_json::Value = serde_json::from_str(json_false).unwrap();
-        
+
         assert!(test_true.get("reqAttune").unwrap().is_boolean());
         assert!(test_false.get("reqAttune").unwrap().is_boolean());
     }
@@ -382,7 +400,7 @@ mod tests {
         let json = r#"{"reqAttune": "by a spellcaster"}"#;
         let test_struct: serde_json::Value = serde_json::from_str(json).unwrap();
         let attune_value = test_struct.get("reqAttune").unwrap();
-        
+
         assert!(attune_value.is_string());
         assert_eq!(attune_value.as_str().unwrap(), "by a spellcaster");
     }
@@ -405,12 +423,14 @@ mod tests {
             range: None,
             reload: None,
             requires_attunement: None,
-            entries: Some(vec![serde_json::Value::String("A versatile weapon".to_string())]),
+            entries: Some(vec![serde_json::Value::String(
+                "A versatile weapon".to_string(),
+            )]),
             srd: Some("true".to_string()),
         };
 
         let summary = ItemSummary::from(&item);
-        
+
         assert_eq!(summary.name, "Longsword");
         assert_eq!(summary.source, "PHB");
         assert_eq!(summary.item_type, "M");

@@ -35,15 +35,12 @@ use tracing::error;
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_background_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_background_count(state: State<'_, AppState>) -> Result<i64, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
     let mut service = BackgroundService::new(&mut conn);
-    service.get_background_count()
-        .map_err(|e| e.to_string())
+    service.get_background_count().map_err(|e| e.to_string())
 }

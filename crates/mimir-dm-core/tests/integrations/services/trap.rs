@@ -1,9 +1,9 @@
 //! Integration tests for TrapService
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::TrapService;
-use mimir_dm_core::models::catalog::TrapFilters;
 use diesel::prelude::*;
+use mimir_dm_core::models::catalog::TrapFilters;
+use mimir_dm_core::services::TrapService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -19,22 +19,112 @@ fn seed_test_trap_data(conn: &mut SqliteConnection) {
     // Schema: name, category, trap_type, source, full_trap_json
     let traps = vec![
         // Traps
-        ("Collapsing Roof", "Trap", "Mechanical", "DMG", r#"{"name":"Collapsing Roof","source":"DMG","trapHazType":"MECH"}"#),
-        ("Falling Net", "Trap", "Mechanical", "DMG", r#"{"name":"Falling Net","source":"DMG","trapHazType":"MECH"}"#),
-        ("Fire-Breathing Statue", "Trap", "Magic", "DMG", r#"{"name":"Fire-Breathing Statue","source":"DMG","trapHazType":"MAG"}"#),
-        ("Pits", "Trap", "Mechanical", "DMG", r#"{"name":"Pits","source":"DMG","trapHazType":"MECH"}"#),
-        ("Poison Darts", "Trap", "Mechanical", "DMG", r#"{"name":"Poison Darts","source":"DMG","trapHazType":"MECH"}"#),
-        ("Poison Needle", "Trap", "Mechanical", "DMG", r#"{"name":"Poison Needle","source":"DMG","trapHazType":"MECH"}"#),
-        ("Rolling Sphere", "Trap", "Mechanical", "DMG", r#"{"name":"Rolling Sphere","source":"DMG","trapHazType":"MECH"}"#),
-        ("Sphere of Annihilation", "Trap", "Magic", "DMG", r#"{"name":"Sphere of Annihilation","source":"DMG","trapHazType":"MAG"}"#),
+        (
+            "Collapsing Roof",
+            "Trap",
+            "Mechanical",
+            "DMG",
+            r#"{"name":"Collapsing Roof","source":"DMG","trapHazType":"MECH"}"#,
+        ),
+        (
+            "Falling Net",
+            "Trap",
+            "Mechanical",
+            "DMG",
+            r#"{"name":"Falling Net","source":"DMG","trapHazType":"MECH"}"#,
+        ),
+        (
+            "Fire-Breathing Statue",
+            "Trap",
+            "Magic",
+            "DMG",
+            r#"{"name":"Fire-Breathing Statue","source":"DMG","trapHazType":"MAG"}"#,
+        ),
+        (
+            "Pits",
+            "Trap",
+            "Mechanical",
+            "DMG",
+            r#"{"name":"Pits","source":"DMG","trapHazType":"MECH"}"#,
+        ),
+        (
+            "Poison Darts",
+            "Trap",
+            "Mechanical",
+            "DMG",
+            r#"{"name":"Poison Darts","source":"DMG","trapHazType":"MECH"}"#,
+        ),
+        (
+            "Poison Needle",
+            "Trap",
+            "Mechanical",
+            "DMG",
+            r#"{"name":"Poison Needle","source":"DMG","trapHazType":"MECH"}"#,
+        ),
+        (
+            "Rolling Sphere",
+            "Trap",
+            "Mechanical",
+            "DMG",
+            r#"{"name":"Rolling Sphere","source":"DMG","trapHazType":"MECH"}"#,
+        ),
+        (
+            "Sphere of Annihilation",
+            "Trap",
+            "Magic",
+            "DMG",
+            r#"{"name":"Sphere of Annihilation","source":"DMG","trapHazType":"MAG"}"#,
+        ),
         // Hazards
-        ("Brown Mold", "Hazard", "Environmental", "DMG", r#"{"name":"Brown Mold","source":"DMG","trapHazType":"ENV"}"#),
-        ("Green Slime", "Hazard", "Environmental", "DMG", r#"{"name":"Green Slime","source":"DMG","trapHazType":"ENV"}"#),
-        ("Yellow Mold", "Hazard", "Environmental", "DMG", r#"{"name":"Yellow Mold","source":"DMG","trapHazType":"ENV"}"#),
-        ("Quicksand", "Hazard", "Wild", "DMG", r#"{"name":"Quicksand","source":"DMG","trapHazType":"WLD"}"#),
-        ("Razorvine", "Hazard", "Wild", "DMG", r#"{"name":"Razorvine","source":"DMG","trapHazType":"WLD"}"#),
-        ("Webs", "Hazard", "Wild", "DMG", r#"{"name":"Webs","source":"DMG","trapHazType":"WLD"}"#),
-        ("Desecrated Ground", "Hazard", "Magic", "XGE", r#"{"name":"Desecrated Ground","source":"XGE","trapHazType":"MAG"}"#),
+        (
+            "Brown Mold",
+            "Hazard",
+            "Environmental",
+            "DMG",
+            r#"{"name":"Brown Mold","source":"DMG","trapHazType":"ENV"}"#,
+        ),
+        (
+            "Green Slime",
+            "Hazard",
+            "Environmental",
+            "DMG",
+            r#"{"name":"Green Slime","source":"DMG","trapHazType":"ENV"}"#,
+        ),
+        (
+            "Yellow Mold",
+            "Hazard",
+            "Environmental",
+            "DMG",
+            r#"{"name":"Yellow Mold","source":"DMG","trapHazType":"ENV"}"#,
+        ),
+        (
+            "Quicksand",
+            "Hazard",
+            "Wild",
+            "DMG",
+            r#"{"name":"Quicksand","source":"DMG","trapHazType":"WLD"}"#,
+        ),
+        (
+            "Razorvine",
+            "Hazard",
+            "Wild",
+            "DMG",
+            r#"{"name":"Razorvine","source":"DMG","trapHazType":"WLD"}"#,
+        ),
+        (
+            "Webs",
+            "Hazard",
+            "Wild",
+            "DMG",
+            r#"{"name":"Webs","source":"DMG","trapHazType":"WLD"}"#,
+        ),
+        (
+            "Desecrated Ground",
+            "Hazard",
+            "Magic",
+            "XGE",
+            r#"{"name":"Desecrated Ground","source":"XGE","trapHazType":"MAG"}"#,
+        ),
     ];
 
     for (name, category, trap_type, source, json) in traps {
@@ -62,10 +152,15 @@ fn test_search_traps_no_filters() {
         categories: None,
         trap_types: None,
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
-    assert_eq!(results.len(), 15, "Should return all 15 seeded traps/hazards");
+    assert_eq!(
+        results.len(),
+        15,
+        "Should return all 15 seeded traps/hazards"
+    );
 }
 
 #[test]
@@ -79,7 +174,8 @@ fn test_search_traps_by_search() {
         categories: None,
         trap_types: None,
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
     // Brown Mold, Yellow Mold
@@ -97,7 +193,8 @@ fn test_search_traps_by_category_trap() {
         categories: Some(vec!["Trap".to_string()]),
         trap_types: None,
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
     assert_eq!(results.len(), 8, "Should return 8 traps");
@@ -115,7 +212,8 @@ fn test_search_traps_by_category_hazard() {
         categories: Some(vec!["Hazard".to_string()]),
         trap_types: None,
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
     assert_eq!(results.len(), 7, "Should return 7 hazards");
@@ -133,7 +231,8 @@ fn test_search_traps_by_trap_type() {
         categories: None,
         trap_types: Some(vec!["Mechanical".to_string()]),
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
     // Collapsing Roof, Falling Net, Pits, Poison Darts, Poison Needle, Rolling Sphere
@@ -151,7 +250,8 @@ fn test_search_traps_by_source() {
         categories: None,
         trap_types: None,
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
     assert_eq!(results.len(), 1, "Should return 1 XGE hazard");
@@ -169,11 +269,16 @@ fn test_search_traps_combined_filters() {
         categories: Some(vec!["Hazard".to_string()]),
         trap_types: Some(vec!["Environmental".to_string()]),
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
     // Brown Mold, Green Slime, Yellow Mold
-    assert_eq!(results.len(), 3, "Should return 3 DMG environmental hazards");
+    assert_eq!(
+        results.len(),
+        3,
+        "Should return 3 DMG environmental hazards"
+    );
 }
 
 #[test]
@@ -187,7 +292,8 @@ fn test_search_traps_empty_results() {
         categories: None,
         trap_types: None,
     };
-    let results = service.search_traps(&mut conn, filters)
+    let results = service
+        .search_traps(&mut conn, filters)
         .expect("Search should succeed");
 
     assert!(results.is_empty(), "Should return empty results");
@@ -198,7 +304,8 @@ fn test_get_trap_details() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = TrapService;
 
-    let trap = service.get_trap_details(&mut conn, "Collapsing Roof".to_string(), "DMG".to_string())
+    let trap = service
+        .get_trap_details(&mut conn, "Collapsing Roof".to_string(), "DMG".to_string())
         .expect("Should get trap");
 
     assert!(trap.is_some());
@@ -212,7 +319,8 @@ fn test_get_trap_details_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = TrapService;
 
-    let trap = service.get_trap_details(&mut conn, "Nonexistent".to_string(), "DMG".to_string())
+    let trap = service
+        .get_trap_details(&mut conn, "Nonexistent".to_string(), "DMG".to_string())
         .expect("Should not error");
 
     assert!(trap.is_none());
@@ -223,7 +331,8 @@ fn test_get_trap_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = TrapService;
 
-    let sources = service.get_trap_sources(&mut conn)
+    let sources = service
+        .get_trap_sources(&mut conn)
         .expect("Should get sources");
 
     assert_eq!(sources.len(), 2, "Should have 2 sources");
@@ -236,8 +345,7 @@ fn test_get_trap_count() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = TrapService;
 
-    let count = service.get_trap_count(&mut conn)
-        .expect("Should get count");
+    let count = service.get_trap_count(&mut conn).expect("Should get count");
 
     assert_eq!(count, 15, "Should have 15 traps/hazards");
 }
@@ -247,7 +355,8 @@ fn test_get_trap_types() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = TrapService;
 
-    let types = service.get_trap_types(&mut conn)
+    let types = service
+        .get_trap_types(&mut conn)
         .expect("Should get trap types");
 
     // Environmental, Magic, Mechanical, Wild
@@ -263,7 +372,8 @@ fn test_get_trap_categories() {
     let (mut conn, _temp_dir) = setup_test_db();
     let service = TrapService;
 
-    let categories = service.get_trap_categories(&mut conn)
+    let categories = service
+        .get_trap_categories(&mut conn)
         .expect("Should get categories");
 
     assert_eq!(categories.len(), 2, "Should have 2 categories");

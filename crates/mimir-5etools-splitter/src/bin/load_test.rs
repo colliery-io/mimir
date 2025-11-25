@@ -8,7 +8,6 @@ use clap::{Parser, Subcommand};
 use colored::*;
 use mimir_5etools_splitter::load_tester::{LoadTester, TestSummary};
 use std::path::PathBuf;
-use tracing_subscriber;
 
 /// Test 5etools splitter archives for database import compatibility
 #[derive(Parser, Debug)]
@@ -48,9 +47,7 @@ async fn main() -> Result<()> {
 
     // Setup logging
     let log_level = if args.verbose { "debug" } else { "info" };
-    tracing_subscriber::fmt()
-        .with_env_filter(log_level)
-        .init();
+    tracing_subscriber::fmt().with_env_filter(log_level).init();
 
     let tester = LoadTester::new(args.verbose);
 
@@ -62,39 +59,59 @@ async fn main() -> Result<()> {
             }
 
             if !archive.is_file() {
-                eprintln!("{} Path is not a file: {:?}", "Error:".red().bold(), archive);
+                eprintln!(
+                    "{} Path is not a file: {:?}",
+                    "Error:".red().bold(),
+                    archive
+                );
                 std::process::exit(1);
             }
 
-            if !archive.extension().map_or(false, |ext| ext == "gz") {
-                eprintln!("{} File is not a .tar.gz archive: {:?}", "Error:".red().bold(), archive);
+            if archive.extension().is_none_or(|ext| ext != "gz") {
+                eprintln!(
+                    "{} File is not a .tar.gz archive: {:?}",
+                    "Error:".red().bold(),
+                    archive
+                );
                 std::process::exit(1);
             }
 
-            println!("{} Testing single archive: {}", 
-                   "🧪".bright_blue(), 
-                   archive.display().to_string().bright_white());
+            println!(
+                "{} Testing single archive: {}",
+                "🧪".bright_blue(),
+                archive.display().to_string().bright_white()
+            );
 
             let result = tester.test_archive(&archive).await?;
             let mut summary = TestSummary::new();
             summary.add_result(result);
             summary
         }
-        
+
         Commands::TestAll { directory } => {
             if !directory.exists() {
-                eprintln!("{} Directory not found: {:?}", "Error:".red().bold(), directory);
+                eprintln!(
+                    "{} Directory not found: {:?}",
+                    "Error:".red().bold(),
+                    directory
+                );
                 std::process::exit(1);
             }
 
             if !directory.is_dir() {
-                eprintln!("{} Path is not a directory: {:?}", "Error:".red().bold(), directory);
+                eprintln!(
+                    "{} Path is not a directory: {:?}",
+                    "Error:".red().bold(),
+                    directory
+                );
                 std::process::exit(1);
             }
 
-            println!("{} Testing all archives in directory: {}", 
-                   "🧪".bright_blue(), 
-                   directory.display().to_string().bright_white());
+            println!(
+                "{} Testing all archives in directory: {}",
+                "🧪".bright_blue(),
+                directory.display().to_string().bright_white()
+            );
 
             tester.test_directory(&directory).await?
         }

@@ -4,7 +4,10 @@
 //! replacing the in-memory catalog system.
 
 use crate::error::Result;
-use crate::models::catalog::{CatalogSpell, SpellFilters, SpellSummary, Spell, NewCatalogSpell, SpellData, Classes, ClassReference};
+use crate::models::catalog::{
+    CatalogSpell, ClassReference, Classes, NewCatalogSpell, Spell, SpellData, SpellFilters,
+    SpellSummary,
+};
 use crate::schema::catalog_spells;
 use crate::services::CatalogService;
 use diesel::prelude::*;
@@ -50,9 +53,7 @@ impl SpellService {
         // Apply name search filter
         if let Some(name_query) = &filters.query {
             if !name_query.trim().is_empty() {
-                query = query.filter(
-                    catalog_spells::name.like(format!("%{}%", name_query.trim()))
-                );
+                query = query.filter(catalog_spells::name.like(format!("%{}%", name_query.trim())));
             }
         }
 
@@ -90,9 +91,8 @@ impl SpellService {
         }
 
         // Execute query with explicit select
-        let catalog_spells: Vec<CatalogSpell> = query
-            .select(CatalogSpell::as_select())
-            .load(conn)?;
+        let catalog_spells: Vec<CatalogSpell> =
+            query.select(CatalogSpell::as_select()).load(conn)?;
 
         let summaries: Vec<SpellSummary> = catalog_spells
             .iter()
@@ -102,7 +102,7 @@ impl SpellService {
         info!("Found {} spells matching search criteria", summaries.len());
         Ok(summaries)
     }
-    
+
     /// Get detailed spell information by name and source.
     ///
     /// Retrieves the full spell data including description, components,
@@ -138,11 +138,14 @@ impl SpellService {
             debug!("Found spell details for: {}", name);
             Ok(Some(spell))
         } else {
-            debug!("No spell found with name '{}' from source '{}'", name, source);
+            debug!(
+                "No spell found with name '{}' from source '{}'",
+                name, source
+            );
             Ok(None)
         }
     }
-    
+
     /// Get unique spell sources for filter dropdown.
     ///
     /// # Arguments
@@ -217,9 +220,7 @@ impl SpellService {
 
         use diesel::dsl::count_star;
 
-        let count: i64 = catalog_spells::table
-            .select(count_star())
-            .first(conn)?;
+        let count: i64 = catalog_spells::table.select(count_star()).first(conn)?;
 
         debug!("Total spells in database: {}", count);
         Ok(count)
@@ -243,9 +244,12 @@ impl SpellService {
     pub fn import_spells_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing spells from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing spells from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let mut total_imported = 0;
         let spell_files = Self::find_spell_files(book_dir)?;
@@ -280,7 +284,10 @@ impl SpellService {
             }
         }
 
-        info!("Successfully imported {} total spells from {}", total_imported, source);
+        info!(
+            "Successfully imported {} total spells from {}",
+            total_imported, source
+        );
         Ok(total_imported)
     }
 
@@ -306,20 +313,16 @@ impl SpellService {
             if path.exists() {
                 debug!("Found sources.json at: {:?}", path);
                 match fs::read_to_string(&path) {
-                    Ok(content) => {
-                        match serde_json::from_str::<SpellSources>(&content) {
-                            Ok(sources) => {
-                                let total_spells: usize = sources.values()
-                                    .map(|m| m.len())
-                                    .sum();
-                                debug!("Loaded {} spell entries from sources.json", total_spells);
-                                return Some(sources);
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse sources.json: {}", e);
-                            }
+                    Ok(content) => match serde_json::from_str::<SpellSources>(&content) {
+                        Ok(sources) => {
+                            let total_spells: usize = sources.values().map(|m| m.len()).sum();
+                            debug!("Loaded {} spell entries from sources.json", total_spells);
+                            return Some(sources);
                         }
-                    }
+                        Err(e) => {
+                            warn!("Failed to parse sources.json: {}", e);
+                        }
+                    },
                     Err(e) => {
                         warn!("Failed to read sources.json: {}", e);
                     }
@@ -356,9 +359,7 @@ impl SpellService {
                     let path = entry.path();
 
                     if path.is_file() {
-                        let file_name = path.file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("");
+                        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                         // Check if file matches any of our patterns
                         for pattern in &file_patterns {
@@ -383,7 +384,7 @@ impl SpellService {
         conn: &mut SqliteConnection,
         file_path: &Path,
         source: &str,
-        spell_sources: Option<&SpellSources>
+        spell_sources: Option<&SpellSources>,
     ) -> Result<usize> {
         debug!("Reading spell file: {:?}", file_path);
 
@@ -394,7 +395,10 @@ impl SpellService {
 
         // Try to parse as SpellData structure first (spells-*.json files)
         if let Ok(spell_data) = serde_json::from_value::<SpellData>(json_value.clone()) {
-            debug!("Parsed as SpellData, found {} spells", spell_data.spell.len());
+            debug!(
+                "Parsed as SpellData, found {} spells",
+                spell_data.spell.len()
+            );
 
             for spell in spell_data.spell {
                 spells_to_import.push(spell);
@@ -402,7 +406,10 @@ impl SpellService {
         }
         // Try to extract spells from book structure (book-*.json files)
         else if let Some(spell_array) = json_value.get("spell").and_then(|v| v.as_array()) {
-            debug!("Found spell array in book structure with {} entries", spell_array.len());
+            debug!(
+                "Found spell array in book structure with {} entries",
+                spell_array.len()
+            );
 
             for spell_value in spell_array {
                 match serde_json::from_value::<Spell>(spell_value.clone()) {
@@ -420,7 +427,10 @@ impl SpellService {
 
             for data_section in data_array {
                 if let Some(spell_array) = data_section.get("spell").and_then(|v| v.as_array()) {
-                    debug!("Found nested spell array with {} entries", spell_array.len());
+                    debug!(
+                        "Found nested spell array with {} entries",
+                        spell_array.len()
+                    );
 
                     for spell_value in spell_array {
                         match serde_json::from_value::<Spell>(spell_value.clone()) {
@@ -440,7 +450,10 @@ impl SpellService {
             return Ok(0);
         }
 
-        debug!("Processing {} spells for database import", spells_to_import.len());
+        debug!(
+            "Processing {} spells for database import",
+            spells_to_import.len()
+        );
 
         // Transform spells to database format, merging class data from sources.json
         let catalog_spells: Vec<NewCatalogSpell> = spells_to_import
@@ -456,8 +469,11 @@ impl SpellService {
                                     from_class_list: Some(class_list.clone()),
                                     from_subclass: None,
                                 });
-                                debug!("Added {} class associations for spell '{}'",
-                                    class_list.len(), spell.name);
+                                debug!(
+                                    "Added {} class associations for spell '{}'",
+                                    class_list.len(),
+                                    spell.name
+                                );
                             }
                         }
                     }
@@ -473,7 +489,7 @@ impl SpellService {
     /// Batch insert spells into the database
     fn batch_insert_spells(
         conn: &mut SqliteConnection,
-        spells: Vec<NewCatalogSpell>
+        spells: Vec<NewCatalogSpell>,
     ) -> Result<usize> {
         if spells.is_empty() {
             return Ok(0);
@@ -486,7 +502,10 @@ impl SpellService {
             .values(&spells)
             .execute(conn)?;
 
-        debug!("Successfully inserted {} spells (duplicates ignored)", inserted);
+        debug!(
+            "Successfully inserted {} spells (duplicates ignored)",
+            inserted
+        );
         Ok(inserted)
     }
 
@@ -500,14 +519,12 @@ impl SpellService {
     ///
     /// # Returns
     /// * `Ok(usize)` - Number of spells deleted
-    pub fn remove_spells_by_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_spells_by_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing all spells from source: {}", source);
 
-        let deleted = diesel::delete(catalog_spells::table.filter(catalog_spells::source.eq(source)))
-            .execute(conn)?;
+        let deleted =
+            diesel::delete(catalog_spells::table.filter(catalog_spells::source.eq(source)))
+                .execute(conn)?;
 
         info!("Removed {} spells from source: {}", deleted, source);
         Ok(deleted)

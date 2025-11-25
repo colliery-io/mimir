@@ -255,9 +255,11 @@ impl From<&Class> for ClassSummary {
         let hit_dice = if let Some(hd) = &class.hd {
             if let Some(obj) = hd.as_object() {
                 if let (Some(number), Some(faces)) = (obj.get("number"), obj.get("faces")) {
-                    format!("{}d{}", 
-                        number.as_u64().unwrap_or(1), 
-                        faces.as_u64().unwrap_or(6))
+                    format!(
+                        "{}d{}",
+                        number.as_u64().unwrap_or(1),
+                        faces.as_u64().unwrap_or(6)
+                    )
                 } else {
                     "1d6".to_string()
                 }
@@ -267,13 +269,14 @@ impl From<&Class> for ClassSummary {
         } else {
             "1d6".to_string()
         };
-        
+
         // Format proficiency - extract saving throws from startingProficiencies
         let proficiency = if let Some(start_prof) = &class.starting_proficiencies {
             if let Some(obj) = start_prof.as_object() {
                 if let Some(saves_val) = obj.get("savingThrows") {
                     if let Some(saves_arr) = saves_val.as_array() {
-                        let saves: Vec<String> = saves_arr.iter()
+                        let saves: Vec<String> = saves_arr
+                            .iter()
                             .filter_map(|v| v.as_str())
                             .map(|s| match s {
                                 "str" => "STR",
@@ -303,21 +306,21 @@ impl From<&Class> for ClassSummary {
         } else {
             "None".to_string()
         };
-        
+
         // Determine primary ability based on class name
         let primary_ability = match class.name.to_lowercase().as_str() {
             "barbarian" | "fighter" => "Strength".to_string(),
-            "rogue" | "ranger" | "monk" => "Dexterity".to_string(),  
+            "rogue" | "ranger" | "monk" => "Dexterity".to_string(),
             "wizard" => "Intelligence".to_string(),
             "cleric" | "druid" => "Wisdom".to_string(),
             "bard" | "paladin" | "sorcerer" | "warlock" => "Charisma".to_string(),
             _ => "Various".to_string(),
         };
-        
-        
+
         // Get a simple description from class features if available
         let description = if let Some(features) = &class.class_features {
-            features.first()
+            features
+                .first()
                 .and_then(|f| f.as_str())
                 .unwrap_or("")
                 .chars()
@@ -326,7 +329,7 @@ impl From<&Class> for ClassSummary {
         } else {
             format!("A {} class", class.name)
         };
-        
+
         ClassSummary {
             name: class.name.clone(),
             source: class.source.clone(),
@@ -489,9 +492,11 @@ impl From<&Class> for NewCatalogClass {
         let hit_dice = if let Some(hd) = &class.hd {
             if let Some(obj) = hd.as_object() {
                 if let (Some(number), Some(faces)) = (obj.get("number"), obj.get("faces")) {
-                    Some(format!("{}d{}", 
-                        number.as_u64().unwrap_or(1), 
-                        faces.as_u64().unwrap_or(6)))
+                    Some(format!(
+                        "{}d{}",
+                        number.as_u64().unwrap_or(1),
+                        faces.as_u64().unwrap_or(6)
+                    ))
                 } else {
                     Some("1d6".to_string())
                 }
@@ -501,13 +506,14 @@ impl From<&Class> for NewCatalogClass {
         } else {
             Some("1d6".to_string())
         };
-        
+
         // Format proficiency - extract saving throws from startingProficiencies
         let proficiency = if let Some(start_prof) = &class.starting_proficiencies {
             if let Some(obj) = start_prof.as_object() {
                 if let Some(saves_val) = obj.get("savingThrows") {
                     if let Some(saves_arr) = saves_val.as_array() {
-                        let saves: Vec<String> = saves_arr.iter()
+                        let saves: Vec<String> = saves_arr
+                            .iter()
                             .filter_map(|v| v.as_str())
                             .map(|s| match s {
                                 "str" => "STR",
@@ -537,11 +543,11 @@ impl From<&Class> for NewCatalogClass {
         } else {
             Some("None".to_string())
         };
-        
+
         // Determine primary ability based on class name
         let primary_ability = match class.name.to_lowercase().as_str() {
             "barbarian" | "fighter" => Some("Strength".to_string()),
-            "rogue" | "ranger" | "monk" => Some("Dexterity".to_string()),  
+            "rogue" | "ranger" | "monk" => Some("Dexterity".to_string()),
             "wizard" => Some("Intelligence".to_string()),
             "cleric" | "druid" => Some("Wisdom".to_string()),
             "bard" | "paladin" | "sorcerer" | "warlock" => Some("Charisma".to_string()),
@@ -621,9 +627,18 @@ impl From<&CatalogClass> for ClassSummary {
             name: catalog.name.clone(),
             source: catalog.source.clone(),
             page: catalog.page.map(|p| p as u32),
-            hit_dice: catalog.hit_dice.clone().unwrap_or_else(|| "1d6".to_string()),
-            proficiency: catalog.proficiency.clone().unwrap_or_else(|| "None".to_string()),
-            primary_ability: catalog.primary_ability.clone().unwrap_or_else(|| "Various".to_string()),
+            hit_dice: catalog
+                .hit_dice
+                .clone()
+                .unwrap_or_else(|| "1d6".to_string()),
+            proficiency: catalog
+                .proficiency
+                .clone()
+                .unwrap_or_else(|| "None".to_string()),
+            primary_ability: catalog
+                .primary_ability
+                .clone()
+                .unwrap_or_else(|| "Various".to_string()),
             spellcasting_ability: catalog.spellcasting_ability.clone(),
             table_groups: None, // This would need to be parsed from full_class_json if needed
             subclass_title: catalog.subclass_title.clone(),
@@ -638,14 +653,25 @@ impl From<&CatalogClass> for ClassSummary {
 impl ClassSummary {
     pub fn from_subclass(subclass: &CatalogSubclass, base_class: &CatalogClass) -> Self {
         ClassSummary {
-            name: base_class.name.clone(), // Class name (e.g., "Barbarian")
+            name: base_class.name.clone(),   // Class name (e.g., "Barbarian")
             source: subclass.source.clone(), // Subclass source
             page: subclass.page.map(|p| p as u32),
-            hit_dice: base_class.hit_dice.clone().unwrap_or_else(|| "1d6".to_string()),
-            proficiency: base_class.proficiency.clone().unwrap_or_else(|| "None".to_string()),
-            primary_ability: base_class.primary_ability.clone().unwrap_or_else(|| "Various".to_string()),
+            hit_dice: base_class
+                .hit_dice
+                .clone()
+                .unwrap_or_else(|| "1d6".to_string()),
+            proficiency: base_class
+                .proficiency
+                .clone()
+                .unwrap_or_else(|| "None".to_string()),
+            primary_ability: base_class
+                .primary_ability
+                .clone()
+                .unwrap_or_else(|| "Various".to_string()),
             // Prefer subclass spellcasting ability if available, otherwise use base class
-            spellcasting_ability: subclass.spellcasting_ability.clone()
+            spellcasting_ability: subclass
+                .spellcasting_ability
+                .clone()
                 .or_else(|| base_class.spellcasting_ability.clone()),
             table_groups: None,
             subclass_title: base_class.subclass_title.clone(),

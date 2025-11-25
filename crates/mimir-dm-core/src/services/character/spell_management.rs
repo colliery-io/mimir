@@ -2,10 +2,10 @@
 //!
 //! Handles spell learning, preparation, casting, and slot management
 
-use crate::error::DbError;
-use crate::models::character::data::{CharacterData, SpellSlots};
-use crate::models::catalog::Spell;
 use crate::connection::DbConnection;
+use crate::error::DbError;
+use crate::models::catalog::Spell;
+use crate::models::character::data::{CharacterData, SpellSlots};
 use std::collections::HashMap;
 
 type Result<T> = std::result::Result<T, DbError>;
@@ -26,7 +26,10 @@ pub fn calculate_spell_slots(
         let level = class.level;
 
         // Full casters: contribute full level
-        if matches!(class_name.as_str(), "bard" | "cleric" | "druid" | "sorcerer" | "wizard") {
+        if matches!(
+            class_name.as_str(),
+            "bard" | "cleric" | "druid" | "sorcerer" | "wizard"
+        ) {
             caster_level += level;
         }
         // Half casters: contribute level / 2 (round down)

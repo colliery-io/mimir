@@ -59,7 +59,7 @@ macro_rules! catalog_commands {
             #[tauri::command]
             pub async fn [<search_ $entity s>](
                 filters: $filters,
-                state: tauri::State<'_, crate::state::AppState>,
+                state: tauri::State<'_, $crate::state::AppState>,
             ) -> Result<Vec<$summary>, String> {
                 use mimir_dm_core::services::CatalogService;
                 tracing::debug!(concat!("Searching ", stringify!($entity), "s with filters: {:?}"), filters);
@@ -93,7 +93,7 @@ macro_rules! catalog_commands {
             pub async fn [<get_ $entity _details>](
                 name: String,
                 source: String,
-                state: tauri::State<'_, crate::state::AppState>,
+                state: tauri::State<'_, $crate::state::AppState>,
             ) -> Result<Option<$full>, String> {
                 use mimir_dm_core::services::CatalogService;
                 tracing::debug!(concat!("Getting ", stringify!($entity), " details: {} from {}"), name, source);
@@ -122,7 +122,7 @@ macro_rules! catalog_commands {
             /// Returns an error string if the database connection or query fails.
             #[tauri::command]
             pub async fn [<get_ $entity _sources>](
-                state: tauri::State<'_, crate::state::AppState>,
+                state: tauri::State<'_, $crate::state::AppState>,
             ) -> Result<Vec<String>, String> {
                 use mimir_dm_core::services::CatalogService;
                 tracing::debug!(concat!("Getting ", stringify!($entity), " sources"));
@@ -141,5 +141,3 @@ macro_rules! catalog_commands {
         }
     };
 }
-
-pub use catalog_commands;

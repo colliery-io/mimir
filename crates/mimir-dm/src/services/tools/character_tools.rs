@@ -3,8 +3,8 @@
 //! Provides read-only query access to character data during chat sessions
 
 use async_trait::async_trait;
-use mimir_dm_core::{DatabaseService, services::CharacterService};
 use mimir_dm_core::services::player_service::PlayerService;
+use mimir_dm_core::{services::CharacterService, DatabaseService};
 use mimir_dm_llm::ToolTrait;
 use serde_json::{json, Value};
 use std::error::Error;
@@ -66,15 +66,19 @@ Output includes:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'character_id' parameter")? as i32;
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (character, char_data) = char_service.get_character(character_id)
+        let (character, char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Failed to retrieve character: {}", e))?;
 
         // Format character data for LLM consumption
@@ -161,7 +165,10 @@ Output includes:
             }
         });
 
-        debug!("Retrieved character: {} (ID: {})", char_data.character_name, character.id);
+        debug!(
+            "Retrieved character: {} (ID: {})",
+            char_data.character_name, character.id
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -217,15 +224,19 @@ Output format:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let campaign_id = arguments.get("campaign_id")
+        let campaign_id = arguments
+            .get("campaign_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'campaign_id' parameter")? as i32;
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let characters = char_service.list_characters_for_campaign(campaign_id)
+        let characters = char_service
+            .list_characters_for_campaign(campaign_id)
             .map_err(|e| format!("Failed to list characters: {}", e))?;
 
         if characters.is_empty() {
@@ -234,7 +245,8 @@ Output format:
                 "character_count": 0,
                 "characters": [],
                 "message": "No characters found in this campaign"
-            }).to_string());
+            })
+            .to_string());
         }
 
         // Get full data for each character for summary
@@ -256,7 +268,10 @@ Output format:
                     }));
                 }
                 Err(e) => {
-                    error!("Failed to get character data for ID {}: {}", character.id, e);
+                    error!(
+                        "Failed to get character data for ID {}: {}",
+                        character.id, e
+                    );
                 }
             }
         }
@@ -267,7 +282,11 @@ Output format:
             "characters": character_summaries
         });
 
-        debug!("Listed {} characters for campaign {}", character_summaries.len(), campaign_id);
+        debug!(
+            "Listed {} characters for campaign {}",
+            character_summaries.len(),
+            campaign_id
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -325,15 +344,19 @@ Output includes:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'character_id' parameter")? as i32;
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (character, char_data) = char_service.get_character(character_id)
+        let (character, char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Failed to retrieve character: {}", e))?;
 
         let result = json!({
@@ -380,7 +403,10 @@ Output includes:
             }
         });
 
-        debug!("Retrieved stats for character: {} (ID: {})", char_data.character_name, character.id);
+        debug!(
+            "Retrieved stats for character: {} (ID: {})",
+            char_data.character_name, character.id
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -437,15 +463,19 @@ Output format:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'character_id' parameter")? as i32;
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (character, char_data) = char_service.get_character(character_id)
+        let (character, char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Failed to retrieve character: {}", e))?;
 
         let result = json!({
@@ -460,7 +490,10 @@ Output format:
             "is_spellcaster": !char_data.spells.spell_slots.is_empty()
         });
 
-        debug!("Checked spell slots for character: {} (ID: {})", char_data.character_name, character.id);
+        debug!(
+            "Checked spell slots for character: {} (ID: {})",
+            char_data.character_name, character.id
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -503,20 +536,26 @@ Output:
     }
 
     async fn execute(&self, _arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut player_service = PlayerService::new(&mut conn);
-        let players = player_service.list_players()
+        let players = player_service
+            .list_players()
             .map_err(|e| format!("Failed to list players: {}", e))?;
 
-        let result: Vec<Value> = players.iter().map(|p| {
-            json!({
-                "id": p.id,
-                "name": p.name,
-                "email": p.email
+        let result: Vec<Value> = players
+            .iter()
+            .map(|p| {
+                json!({
+                    "id": p.id,
+                    "name": p.name,
+                    "email": p.email
+                })
             })
-        }).collect();
+            .collect();
 
         debug!("Listed {} players", result.len());
         Ok(serde_json::to_string_pretty(&result)?)

@@ -1,30 +1,30 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_cults;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cult {
     pub name: String,
     pub source: String,
-    
+
     #[serde(rename = "type")]
     pub cult_type: Option<String>,
-    
+
     pub page: Option<i32>,
-    
+
     #[serde(default)]
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     // Cult-specific fields
     pub cultists: Option<CultistInfo>,
     pub goal: Option<GoalInfo>,
-    
+
     #[serde(rename = "signatureSpells")]
     pub signature_spells: Option<SignatureSpellInfo>,
-    
+
     #[serde(rename = "otherSources")]
     pub other_sources: Option<Vec<SourceReference>>,
-    
+
     #[serde(flatten)]
     pub other_fields: std::collections::HashMap<String, serde_json::Value>,
 }
@@ -54,24 +54,24 @@ pub struct SourceReference {
 pub struct Boon {
     pub name: String,
     pub source: String,
-    
+
     #[serde(rename = "type")]
     pub boon_type: Option<String>,
-    
+
     pub page: Option<i32>,
-    
+
     #[serde(default)]
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     // Boon-specific fields
     pub ability: Option<AbilityInfo>,
-    
+
     #[serde(rename = "signatureSpells")]
     pub signature_spells: Option<SignatureSpellInfo>,
-    
+
     #[serde(rename = "reprintedAs")]
     pub reprinted_as: Option<Vec<ReprintInfo>>,
-    
+
     #[serde(flatten)]
     pub other_fields: std::collections::HashMap<String, serde_json::Value>,
 }
@@ -102,7 +102,7 @@ pub struct BoonData {
 pub struct CultBoonSummary {
     pub name: String,
     pub source: String,
-    pub item_type: String, // "cult" or "boon"
+    pub item_type: String,       // "cult" or "boon"
     pub subtype: Option<String>, // Diabolical, Demonic, Elder Evil, etc.
     pub page: Option<i32>,
 }
@@ -160,7 +160,7 @@ pub struct NewCatalogCult {
 #[derive(Debug, Default)]
 pub struct CultFilters {
     pub name: Option<String>,
-    pub category: Option<Vec<String>>, // cult, boon
+    pub category: Option<Vec<String>>,  // cult, boon
     pub cult_type: Option<Vec<String>>, // Diabolical, Demonic, Elder Evil
     pub source: Option<Vec<String>>,
 }

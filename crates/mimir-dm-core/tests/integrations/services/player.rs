@@ -1,8 +1,8 @@
 //! Integration tests for PlayerService
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::PlayerService;
 use diesel::prelude::*;
+use mimir_dm_core::services::PlayerService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -19,7 +19,11 @@ fn test_create_player() {
     let mut service = PlayerService::new(&mut conn);
 
     let player = service
-        .create_player("Alice", Some("alice@example.com".to_string()), Some("Test player".to_string()))
+        .create_player(
+            "Alice",
+            Some("alice@example.com".to_string()),
+            Some("Test player".to_string()),
+        )
         .unwrap();
 
     assert_eq!(player.name, "Alice");
@@ -139,7 +143,9 @@ fn test_add_player_to_campaign() {
         .add_player_to_campaign(campaign.id, player.id)
         .unwrap();
 
-    let players = player_service.list_players_for_campaign(campaign.id).unwrap();
+    let players = player_service
+        .list_players_for_campaign(campaign.id)
+        .unwrap();
     assert_eq!(players.len(), 1);
     assert_eq!(players[0].id, player.id);
 }
@@ -200,7 +206,9 @@ fn test_remove_player_from_campaign() {
         .remove_player_from_campaign(campaign.id, player.id)
         .unwrap();
 
-    let players = player_service.list_players_for_campaign(campaign.id).unwrap();
+    let players = player_service
+        .list_players_for_campaign(campaign.id)
+        .unwrap();
     assert_eq!(players.len(), 0);
 }
 

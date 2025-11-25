@@ -13,19 +13,19 @@ use thiserror::Error;
 pub enum TemplateLoadError {
     #[error("Failed to read template file: {0}")]
     FileRead(#[from] std::io::Error),
-    
+
     #[error("Failed to parse frontmatter: {0}")]
     FrontmatterParse(#[from] serde_yaml::Error),
-    
+
     #[error("Template has no frontmatter")]
     NoFrontmatter,
-    
+
     #[error("Failed to validate template rendering: {0}")]
     TemplateValidation(String),
-    
+
     #[error("Database error: {0}")]
     Database(#[from] diesel::result::Error),
-    
+
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
 }
@@ -33,6 +33,12 @@ pub enum TemplateLoadError {
 /// Template loader for importing and validating templates
 pub struct TemplateLoader {
     tera: Tera,
+}
+
+impl Default for TemplateLoader {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TemplateLoader {
@@ -51,10 +57,10 @@ impl TemplateLoader {
                 t
             }
         };
-        
+
         Self { tera }
     }
-    
+
     /// Load a single template file
     pub fn load_template_file(
         &mut self,
@@ -62,20 +68,20 @@ impl TemplateLoader {
     ) -> Result<(TemplateFrontmatter, String), TemplateLoadError> {
         // Read the file
         let content = fs::read_to_string(file_path)?;
-        
+
         // Parse frontmatter
         let frontmatter = TemplateFrontmatter::parse_from_markdown(&content)
             .ok_or(TemplateLoadError::NoFrontmatter)?;
-        
+
         // Extract template content (after frontmatter)
         let template_content = TemplateFrontmatter::extract_content(&content);
-        
+
         // Validate the template renders
         self.validate_template(&frontmatter.id, &template_content, &frontmatter)?;
-        
+
         Ok((frontmatter, template_content))
     }
-    
+
     /// Validate that a template renders with its default values
     fn validate_template(
         &mut self,
@@ -84,22 +90,24 @@ impl TemplateLoader {
         frontmatter: &TemplateFrontmatter,
     ) -> Result<(), TemplateLoadError> {
         // Add template to Tera
-        self.tera.add_raw_template(template_id, content)
+        self.tera
+            .add_raw_template(template_id, content)
             .map_err(|e| TemplateLoadError::TemplateValidation(e.to_string()))?;
-        
+
         // Create context with default values
         let mut context = Context::new();
         for var in &frontmatter.variables {
             context.insert(&var.name, &var.default);
         }
-        
+
         // Try to render the template
-        self.tera.render(template_id, &context)
+        self.tera
+            .render(template_id, &context)
             .map_err(|e| TemplateLoadError::TemplateValidation(e.to_string()))?;
-        
+
         Ok(())
     }
-    
+
     /// Load and import a template into the database
     pub fn import_template(
         &mut self,
@@ -107,7 +115,7 @@ impl TemplateLoader {
         file_path: &Path,
     ) -> Result<String, TemplateLoadError> {
         let (frontmatter, content) = self.load_template_file(file_path)?;
-        
+
         // Create the template document
         let new_template = NewTemplateDocument {
             document_id: frontmatter.id.clone(),
@@ -122,13 +130,13 @@ impl TemplateLoader {
             is_active: Some(true),
             metadata: Some(frontmatter.to_json()?),
         };
-        
+
         // Insert into database
         let created = TemplateRepository::create(conn, new_template)?;
-        
+
         Ok(created.document_id)
     }
-    
+
     /// Load all templates from a directory
     pub fn load_directory(
         &mut self,
@@ -136,26 +144,26 @@ impl TemplateLoader {
         dir_path: &Path,
     ) -> Result<LoadSummary, TemplateLoadError> {
         let mut summary = LoadSummary::default();
-        
+
         // Read all .md files in directory
         let entries = fs::read_dir(dir_path)?;
-        
+
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
+
             // Skip non-markdown files
             if path.extension().and_then(|s| s.to_str()) != Some("md") {
                 continue;
             }
-            
+
             // Skip README
             if path.file_name().and_then(|s| s.to_str()) == Some("README.md") {
                 continue;
             }
-            
+
             summary.total += 1;
-            
+
             // Try to load the template
             match self.import_template(conn, &path) {
                 Ok(template_id) => {
@@ -165,19 +173,20 @@ impl TemplateLoader {
                 Err(e) => {
                     summary.errors += 1;
                     summary.error_details.push((path.clone(), e.to_string()));
-                    
+
                     // Check if it's because template already exists
                     if let TemplateLoadError::Database(diesel::result::Error::DatabaseError(
                         diesel::result::DatabaseErrorKind::UniqueViolation,
-                        _
-                    )) = e {
+                        _,
+                    )) = e
+                    {
                         summary.skipped += 1;
                         summary.errors -= 1; // Don't count duplicates as errors
                     }
                 }
             }
         }
-        
+
         Ok(summary)
     }
 }
@@ -205,11 +214,11 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::TempDir;
-    
+
     #[test]
     fn test_validate_template() {
         let mut loader = TemplateLoader::new();
-        
+
         let frontmatter = TemplateFrontmatter {
             id: "test-template".to_string(),
             title: "Test Template".to_string(),
@@ -223,22 +232,24 @@ mod tests {
                     description: "A name".to_string(),
                     default: serde_json::json!("World"),
                     required: true,
-                }
+                },
             ],
             author: "Test".to_string(),
         };
-        
+
         let content = "Hello {{ name }}!";
-        
+
         // Should validate successfully
-        loader.validate_template("test", content, &frontmatter).unwrap();
+        loader
+            .validate_template("test", content, &frontmatter)
+            .unwrap();
     }
-    
+
     #[test]
     fn test_load_template_file() {
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test.md");
-        
+
         let content = r#"---
 id: test-template
 title: Test Template
@@ -257,13 +268,13 @@ variables:
 # {{ campaign_name }}
 
 This is a test template."#;
-        
+
         let mut file = fs::File::create(&file_path).unwrap();
         file.write_all(content.as_bytes()).unwrap();
-        
+
         let mut loader = TemplateLoader::new();
         let (frontmatter, template_content) = loader.load_template_file(&file_path).unwrap();
-        
+
         assert_eq!(frontmatter.id, "test-template");
         assert_eq!(frontmatter.title, "Test Template");
         assert!(template_content.contains("# {{ campaign_name }}"));

@@ -3,13 +3,13 @@
 //! These tools allow LLMs to modify character data with user confirmation
 
 use async_trait::async_trait;
-use mimir_dm_core::{DatabaseService, services::CharacterService};
 use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
 use mimir_dm_core::models::character::data::{InventoryItem, Personality};
-use mimir_dm_core::services::character::creation::{CharacterBuilder, AbilityScoreMethod};
+use mimir_dm_core::services::character::creation::{AbilityScoreMethod, CharacterBuilder};
 use mimir_dm_core::services::character::spell_management::RestType;
-use mimir_dm_llm::ToolTrait;
+use mimir_dm_core::{services::CharacterService, DatabaseService};
 use mimir_dm_llm::traits::{ActionDescription, ChangeDetail};
+use mimir_dm_llm::ToolTrait;
 use serde_json::{json, Value};
 use std::error::Error;
 use std::sync::Arc;
@@ -80,7 +80,8 @@ Output:
     fn describe_action(&self, arguments: &Value) -> Option<ActionDescription> {
         let character_id = arguments.get("character_id")?.as_i64()?;
         let new_hp = arguments.get("new_hp")?.as_i64()?;
-        let reason = arguments.get("reason")
+        let reason = arguments
+            .get("reason")
             .and_then(|v| v.as_str())
             .unwrap_or("HP updated");
 
@@ -88,7 +89,11 @@ Output:
         let current_hp_info = if let Ok(mut conn) = self.db_service.get_connection() {
             let mut char_service = CharacterService::new(&mut conn);
             if let Ok((_, char_data)) = char_service.get_character(character_id as i32) {
-                Some((char_data.character_name.clone(), char_data.current_hp, char_data.max_hp))
+                Some((
+                    char_data.character_name.clone(),
+                    char_data.current_hp,
+                    char_data.max_hp,
+                ))
             } else {
                 None
             }
@@ -131,33 +136,39 @@ Output:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'character_id' parameter")? as i32;
 
-        let new_hp = arguments.get("new_hp")
+        let new_hp = arguments
+            .get("new_hp")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'new_hp' parameter")? as i32;
 
-        let reason = arguments.get("reason")
+        let reason = arguments
+            .get("reason")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (_, mut char_data) = char_service.get_character(character_id)
+        let (_, mut char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Failed to retrieve character: {}", e))?;
 
         let old_hp = char_data.current_hp;
         char_data.current_hp = new_hp.max(0).min(char_data.max_hp);
 
-        let snapshot_reason = reason.unwrap_or_else(|| {
-            format!("HP updated from {} to {}", old_hp, char_data.current_hp)
-        });
+        let snapshot_reason = reason
+            .unwrap_or_else(|| format!("HP updated from {} to {}", old_hp, char_data.current_hp));
 
-        char_service.update_character(character_id, char_data.clone(), Some(snapshot_reason))
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
             .map_err(|e| format!("Failed to update character: {}", e))?;
 
         let result = json!({
@@ -170,7 +181,10 @@ Output:
             "message": format!("Updated {} HP from {} to {}", char_data.character_name, old_hp, char_data.current_hp)
         });
 
-        debug!("Updated character {} HP: {} -> {}", character_id, old_hp, char_data.current_hp);
+        debug!(
+            "Updated character {} HP: {} -> {}",
+            character_id, old_hp, char_data.current_hp
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -255,7 +269,10 @@ Output:
     fn describe_action(&self, arguments: &Value) -> Option<ActionDescription> {
         let character_id = arguments.get("character_id")?.as_i64()?;
         let item_name = arguments.get("item_name")?.as_str()?;
-        let quantity = arguments.get("quantity").and_then(|v| v.as_i64()).unwrap_or(1);
+        let quantity = arguments
+            .get("quantity")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(1);
         let weight = arguments.get("weight").and_then(|v| v.as_f64());
         let value = arguments.get("value").and_then(|v| v.as_f64());
 
@@ -280,39 +297,49 @@ Output:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'character_id' parameter")? as i32;
 
-        let item_name = arguments.get("item_name")
+        let item_name = arguments
+            .get("item_name")
             .and_then(|v| v.as_str())
             .ok_or("Missing 'item_name' parameter")?;
 
-        let item_source = arguments.get("item_source")
+        let item_source = arguments
+            .get("item_source")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let quantity = arguments.get("quantity")
+        let quantity = arguments
+            .get("quantity")
             .and_then(|v| v.as_i64())
             .unwrap_or(1) as i32;
 
-        let weight = arguments.get("weight")
+        let weight = arguments
+            .get("weight")
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
 
-        let value = arguments.get("value")
+        let value = arguments
+            .get("value")
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
 
-        let notes = arguments.get("notes")
+        let notes = arguments
+            .get("notes")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (_, mut char_data) = char_service.get_character(character_id)
+        let (_, mut char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Failed to retrieve character: {}", e))?;
 
         // Check if item already exists in inventory
@@ -330,7 +357,8 @@ Output:
         }
 
         let snapshot_reason = format!("Added {} × {} to inventory", quantity, item_name);
-        char_service.update_character(character_id, char_data.clone(), Some(snapshot_reason))
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
             .map_err(|e| format!("Failed to update character: {}", e))?;
 
         let result = json!({
@@ -342,7 +370,10 @@ Output:
             "message": format!("Added {} × {} to {}'s inventory", quantity, item_name, char_data.character_name)
         });
 
-        debug!("Added item to character {}: {} × {}", character_id, quantity, item_name);
+        debug!(
+            "Added item to character {}: {} × {}",
+            character_id, quantity, item_name
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -418,7 +449,10 @@ Output:
         let slot_info = if let Ok(mut conn) = self.db_service.get_connection() {
             let mut char_service = CharacterService::new(&mut conn);
             if let Ok((_, char_data)) = char_service.get_character(character_id as i32) {
-                char_data.spells.spell_slots.get(&(spell_level as i32))
+                char_data
+                    .spells
+                    .spell_slots
+                    .get(&(spell_level as i32))
                     .map(|slots| (char_data.character_name.clone(), slots.current, slots.max))
             } else {
                 None
@@ -432,7 +466,14 @@ Output:
         } else if let Some((name, current, max)) = slot_info {
             format!(
                 "{} casts {} (level {})\nCurrent level {} slots: {}/{}\nAfter cast: {}/{}",
-                name, spell_name, spell_level, spell_level, current, max, current - 1, max
+                name,
+                spell_name,
+                spell_level,
+                spell_level,
+                current,
+                max,
+                current - 1,
+                max
             )
         } else {
             format!(
@@ -460,15 +501,18 @@ Output:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'character_id' parameter")? as i32;
 
-        let spell_name = arguments.get("spell_name")
+        let spell_name = arguments
+            .get("spell_name")
             .and_then(|v| v.as_str())
             .ok_or("Missing 'spell_name' parameter")?;
 
-        let spell_level = arguments.get("spell_level")
+        let spell_level = arguments
+            .get("spell_level")
             .and_then(|v| v.as_i64())
             .ok_or("Missing 'spell_level' parameter")? as i32;
 
@@ -476,25 +520,36 @@ Output:
             return Ok(json!({
                 "success": true,
                 "message": format!("Cast cantrip {} (no slot consumed)", spell_name)
-            }).to_string());
+            })
+            .to_string());
         }
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Failed to get database connection: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (_, mut char_data) = char_service.get_character(character_id)
+        let (_, mut char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Failed to retrieve character: {}", e))?;
 
         // Check if character has spell slots for this level
-        let slots = char_data.spells.spell_slots.get_mut(&spell_level)
-            .ok_or(format!("Character has no level {} spell slots", spell_level))?;
+        let slots = char_data
+            .spells
+            .spell_slots
+            .get_mut(&spell_level)
+            .ok_or(format!(
+                "Character has no level {} spell slots",
+                spell_level
+            ))?;
 
         if slots.current <= 0 {
             return Err(format!(
                 "No level {} spell slots remaining (0/{})",
                 spell_level, slots.max
-            ).into());
+            )
+            .into());
         }
 
         // Consume spell slot
@@ -509,7 +564,8 @@ Output:
             spell_name, spell_level, slots_remaining
         );
 
-        char_service.update_character(character_id, char_data.clone(), Some(snapshot_reason))
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
             .map_err(|e| format!("Failed to update character: {}", e))?;
 
         let result = json!({
@@ -526,7 +582,10 @@ Output:
             )
         });
 
-        debug!("Character {} cast spell: {} (level {})", character_id, spell_name, spell_level);
+        debug!(
+            "Character {} cast spell: {} (level {})",
+            character_id, spell_name, spell_level
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -671,7 +730,10 @@ Output:
 
         Some(ActionDescription {
             title: "Create Character".to_string(),
-            description: format!("Create new character: {} the {} {}", character_name, race, class),
+            description: format!(
+                "Create new character: {} the {} {}",
+                character_name, race, class
+            ),
             changes: ChangeDetail::Generic {
                 items: vec![
                     format!("Name: {}", character_name),
@@ -683,79 +745,106 @@ Output:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let player_id = arguments.get("player_id")
+        let player_id = arguments
+            .get("player_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing player_id")? as i32;
 
-        let campaign_id = arguments.get("campaign_id")
+        let campaign_id = arguments
+            .get("campaign_id")
             .and_then(|v| v.as_i64())
             .map(|v| v as i32);
 
-        let character_name = arguments.get("character_name")
+        let character_name = arguments
+            .get("character_name")
             .and_then(|v| v.as_str())
             .ok_or("Missing character_name")?
             .to_string();
 
-        let race = arguments.get("race")
+        let race = arguments
+            .get("race")
             .and_then(|v| v.as_str())
             .ok_or("Missing race")?
             .to_string();
 
-        let race_source = arguments.get("race_source")
+        let race_source = arguments
+            .get("race_source")
             .and_then(|v| v.as_str())
             .ok_or("Missing race_source")?
             .to_string();
 
-        let subrace = arguments.get("subrace")
+        let subrace = arguments
+            .get("subrace")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let class = arguments.get("class")
+        let class = arguments
+            .get("class")
             .and_then(|v| v.as_str())
             .ok_or("Missing class")?
             .to_string();
 
-        let class_source = arguments.get("class_source")
+        let class_source = arguments
+            .get("class_source")
             .and_then(|v| v.as_str())
             .ok_or("Missing class_source")?
             .to_string();
 
-        let subclass = arguments.get("subclass")
+        let subclass = arguments
+            .get("subclass")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let background = arguments.get("background")
+        let background = arguments
+            .get("background")
             .and_then(|v| v.as_str())
             .ok_or("Missing background")?
             .to_string();
 
-        let background_source = arguments.get("background_source")
+        let background_source = arguments
+            .get("background_source")
             .and_then(|v| v.as_str())
             .ok_or("Missing background_source")?
             .to_string();
 
-        let ability_scores = arguments.get("ability_scores")
+        let ability_scores = arguments
+            .get("ability_scores")
             .ok_or("Missing ability_scores")?;
 
-        let alignment = arguments.get("alignment")
+        let alignment = arguments
+            .get("alignment")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let personality = arguments.get("personality")
-            .map(|p| Personality {
-                traits: p.get("traits").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                ideals: p.get("ideals").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                bonds: p.get("bonds").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                flaws: p.get("flaws").and_then(|v| v.as_str()).map(|s| s.to_string()),
-            });
+        let personality = arguments.get("personality").map(|p| Personality {
+            traits: p
+                .get("traits")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            ideals: p
+                .get("ideals")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            bonds: p
+                .get("bonds")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            flaws: p
+                .get("flaws")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+        });
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Database error: {}", e))?;
 
         // Look up campaign directory if campaign_id is provided
         let base_directory = if let Some(cid) = campaign_id {
             let mut campaign_repo = CampaignRepository::new(&mut conn);
-            let campaign = campaign_repo.find_by_id(cid)
+            let campaign = campaign_repo
+                .find_by_id(cid)
                 .map_err(|e| format!("Failed to find campaign: {}", e))?
                 .ok_or_else(|| format!("Campaign with id {} not found", cid))?;
             campaign.directory_path
@@ -765,12 +854,30 @@ Output:
 
         // Build ability scores
         let scores = AbilityScoreMethod::Manual {
-            strength: ability_scores.get("strength").and_then(|v| v.as_i64()).unwrap_or(10) as i32,
-            dexterity: ability_scores.get("dexterity").and_then(|v| v.as_i64()).unwrap_or(10) as i32,
-            constitution: ability_scores.get("constitution").and_then(|v| v.as_i64()).unwrap_or(10) as i32,
-            intelligence: ability_scores.get("intelligence").and_then(|v| v.as_i64()).unwrap_or(10) as i32,
-            wisdom: ability_scores.get("wisdom").and_then(|v| v.as_i64()).unwrap_or(10) as i32,
-            charisma: ability_scores.get("charisma").and_then(|v| v.as_i64()).unwrap_or(10) as i32,
+            strength: ability_scores
+                .get("strength")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(10) as i32,
+            dexterity: ability_scores
+                .get("dexterity")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(10) as i32,
+            constitution: ability_scores
+                .get("constitution")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(10) as i32,
+            intelligence: ability_scores
+                .get("intelligence")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(10) as i32,
+            wisdom: ability_scores
+                .get("wisdom")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(10) as i32,
+            charisma: ability_scores
+                .get("charisma")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(10) as i32,
         };
 
         // Create character using builder
@@ -793,12 +900,14 @@ Output:
             builder = builder.set_personality(pers);
         }
 
-        let char_data = builder.build()
+        let char_data = builder
+            .build()
             .map_err(|e| format!("Failed to create character: {}", e))?;
 
         // Store the character in the database
         let mut char_service = CharacterService::new(&mut conn);
-        let character = char_service.create_character(campaign_id, player_id, &base_directory, char_data.clone())
+        let character = char_service
+            .create_character(campaign_id, player_id, &base_directory, char_data.clone())
             .map_err(|e| format!("Failed to store character: {}", e))?;
 
         let result = json!({
@@ -816,7 +925,10 @@ Output:
             )
         });
 
-        debug!("Created character: {} (ID: {})", char_data.character_name, character.id);
+        debug!(
+            "Created character: {} (ID: {})",
+            char_data.character_name, character.id
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -927,15 +1039,19 @@ Output:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing character_id")? as i32;
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Database error: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (_character, mut char_data) = char_service.get_character(character_id)
+        let (_character, mut char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Character not found: {}", e))?;
 
         // Update fields if provided
@@ -962,7 +1078,12 @@ Output:
             }
         }
 
-        char_service.update_character(character_id, char_data.clone(), Some("AI-assisted update".to_string()))
+        char_service
+            .update_character(
+                character_id,
+                char_data.clone(),
+                Some("AI-assisted update".to_string()),
+            )
             .map_err(|e| format!("Failed to update character: {}", e))?;
 
         let result = json!({
@@ -972,7 +1093,10 @@ Output:
             "message": format!("Updated character: {}", char_data.character_name)
         });
 
-        debug!("Updated character: {} (ID: {})", char_data.character_name, character_id);
+        debug!(
+            "Updated character: {} (ID: {})",
+            char_data.character_name, character_id
+        );
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
@@ -1052,7 +1176,10 @@ Output:
         let rest_type = arguments.get("rest_type")?.as_str()?;
 
         Some(ActionDescription {
-            title: format!("{} Rest", if rest_type == "long" { "Long" } else { "Short" }),
+            title: format!(
+                "{} Rest",
+                if rest_type == "long" { "Long" } else { "Short" }
+            ),
             description: format!("Character {} takes a {} rest", character_id, rest_type),
             changes: ChangeDetail::Generic {
                 items: vec![
@@ -1064,11 +1191,13 @@ Output:
     }
 
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let character_id = arguments.get("character_id")
+        let character_id = arguments
+            .get("character_id")
             .and_then(|v| v.as_i64())
             .ok_or("Missing character_id")? as i32;
 
-        let rest_type_str = arguments.get("rest_type")
+        let rest_type_str = arguments
+            .get("rest_type")
             .and_then(|v| v.as_str())
             .ok_or("Missing rest_type")?;
 
@@ -1078,11 +1207,14 @@ Output:
             _ => return Err("Invalid rest_type, must be 'short' or 'long'".into()),
         };
 
-        let mut conn = self.db_service.get_connection()
+        let mut conn = self
+            .db_service
+            .get_connection()
             .map_err(|e| format!("Database error: {}", e))?;
 
         let mut char_service = CharacterService::new(&mut conn);
-        let (_character, mut char_data) = char_service.get_character(character_id)
+        let (_character, mut char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Character not found: {}", e))?;
 
         let old_hp = char_data.current_hp;
@@ -1107,8 +1239,16 @@ Output:
             }
         }
 
-        let snapshot_reason = format!("{} rest", if rest_type == RestType::Long { "Long" } else { "Short" });
-        char_service.update_character(character_id, char_data.clone(), Some(snapshot_reason))
+        let snapshot_reason = format!(
+            "{} rest",
+            if rest_type == RestType::Long {
+                "Long"
+            } else {
+                "Short"
+            }
+        );
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
             .map_err(|e| format!("Failed to update character: {}", e))?;
 
         let result = json!({

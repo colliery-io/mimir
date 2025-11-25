@@ -1,33 +1,32 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_languages;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Language {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     #[serde(rename = "type")]
     pub language_type: Option<String>, // standard, exotic, secret, etc.
-    
+
     pub script: Option<String>,
-    
+
     #[serde(rename = "typicalSpeakers")]
     pub typical_speakers: Option<Vec<String>>,
-    
+
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     #[serde(rename = "basicRules")]
     pub basic_rules: Option<bool>,
-    
-    
+
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
-    
+
     // Additional fields from expanded sources
     pub fonts: Option<Vec<String>>,
     pub dialects: Option<Vec<String>>,
@@ -73,7 +72,8 @@ fn format_speakers(speakers: &Option<Vec<String>>) -> String {
             return "—".to_string();
         }
         // For the summary view, just extract readable names
-        speakers.iter()
+        speakers
+            .iter()
             .map(|s| {
                 if s.starts_with("{@filter ") && s.ends_with("}") {
                     // Extract display name from filter tags
@@ -171,7 +171,7 @@ impl From<Language> for NewCatalogLanguage {
     fn from(language: Language) -> Self {
         let summary = LanguageSummary::from(&language);
         let json = serde_json::to_string(&language).unwrap_or_default();
-        
+
         Self {
             name: summary.name,
             language_type: summary.language_type,

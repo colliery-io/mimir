@@ -76,10 +76,10 @@ pub struct ClassInfo {
 /// Type of spellcasting progression
 #[derive(Debug, Clone, PartialEq)]
 pub enum SpellcastingType {
-    Full,      // Wizard, Cleric, etc.
-    Half,      // Paladin, Ranger
-    Third,     // Eldritch Knight, Arcane Trickster
-    Warlock,   // Unique progression
+    Full,    // Wizard, Cleric, etc.
+    Half,    // Paladin, Ranger
+    Third,   // Eldritch Knight, Arcane Trickster
+    Warlock, // Unique progression
 }
 
 /// Multiclassing prerequisites (minimum ability scores)
@@ -154,7 +154,9 @@ impl LevelUpOptions {
                 }
                 AsiOrFeat::Feat(feat_name) => {
                     if feat_name.trim().is_empty() {
-                        return Err(DbError::InvalidData("Feat name cannot be empty".to_string()));
+                        return Err(DbError::InvalidData(
+                            "Feat name cannot be empty".to_string(),
+                        ));
                     }
                 }
             }
@@ -232,19 +234,25 @@ impl ClassInfo {
             for group in table_groups {
                 if let Some(group_obj) = group.as_object() {
                     // Look for "Ability Score Improvement" or similar columns
-                    if let Some(col_labels) = group_obj.get("colLabels").and_then(|c| c.as_array()) {
+                    if let Some(col_labels) = group_obj.get("colLabels").and_then(|c| c.as_array())
+                    {
                         for label in col_labels {
                             if let Some(label_str) = label.as_str() {
-                                if label_str.contains("Ability Score") || label_str.contains("ASI") {
+                                if label_str.contains("Ability Score") || label_str.contains("ASI")
+                                {
                                     // Found ASI column, now extract levels from rows
-                                    if let Some(rows) = group_obj.get("rows").and_then(|r| r.as_array()) {
+                                    if let Some(rows) =
+                                        group_obj.get("rows").and_then(|r| r.as_array())
+                                    {
                                         let mut levels = Vec::new();
                                         for (idx, row) in rows.iter().enumerate() {
                                             if let Some(row_array) = row.as_array() {
                                                 // Check if this row has an ASI marker
                                                 for cell in row_array {
                                                     if let Some(cell_str) = cell.as_str() {
-                                                        if cell_str.contains("Ability Score") || cell_str == "✓" {
+                                                        if cell_str.contains("Ability Score")
+                                                            || cell_str == "✓"
+                                                        {
                                                             levels.push((idx + 1) as i32);
                                                         }
                                                     }
@@ -294,7 +302,10 @@ impl MulticlassPrerequisites {
         if let Some(class) = class {
             // Parse multiclassing requirements from class JSON
             if let Some(multiclassing) = &class.multiclassing {
-                if let Some(requirements) = multiclassing.as_object().and_then(|m| m.get("requirements")) {
+                if let Some(requirements) = multiclassing
+                    .as_object()
+                    .and_then(|m| m.get("requirements"))
+                {
                     let mut required_abilities = Vec::new();
 
                     // Requirements can be in different formats
@@ -443,10 +454,17 @@ mod tests {
         conn
     }
 
-    fn insert_test_class(conn: &mut DbConnection, class_name: &str, hit_die: i32, caster_prog: Option<&str>, multiclass_req: Option<&str>) {
+    fn insert_test_class(
+        conn: &mut DbConnection,
+        class_name: &str,
+        hit_die: i32,
+        caster_prog: Option<&str>,
+        multiclass_req: Option<&str>,
+    ) {
         use diesel::prelude::*;
 
-        let class_json = format!(r#"{{
+        let class_json = format!(
+            r#"{{
             "name": "{}",
             "source": "PHB",
             "hd": {{"number": 1, "faces": {}}},
@@ -456,7 +474,9 @@ mod tests {
         }}"#,
             class_name,
             hit_die,
-            caster_prog.map(|c| format!(r#""{}""#, c)).unwrap_or("null".to_string()),
+            caster_prog
+                .map(|c| format!(r#""{}""#, c))
+                .unwrap_or("null".to_string()),
             multiclass_req.unwrap_or("null")
         );
 
@@ -536,8 +556,20 @@ mod tests {
     #[test]
     fn test_multiclass_prerequisites() {
         let mut conn = setup_test_db();
-        insert_test_class(&mut conn, "Barbarian", 12, None, Some(r#"{"requirements": {"str": 13}}"#));
-        insert_test_class(&mut conn, "Monk", 8, None, Some(r#"{"requirements": {"dex": 13, "wis": 13}}"#));
+        insert_test_class(
+            &mut conn,
+            "Barbarian",
+            12,
+            None,
+            Some(r#"{"requirements": {"str": 13}}"#),
+        );
+        insert_test_class(
+            &mut conn,
+            "Monk",
+            8,
+            None,
+            Some(r#"{"requirements": {"dex": 13, "wis": 13}}"#),
+        );
 
         let abilities = AbilityScores {
             strength: 15,
@@ -565,13 +597,11 @@ mod tests {
         insert_test_class(&mut conn, "Fighter", 10, None, None);
         insert_test_class(&mut conn, "Wizard", 6, Some("full"), None);
 
-        let fighter = ClassInfo::get(&mut conn, "Fighter", "PHB")
-            .expect("Failed to get Fighter");
+        let fighter = ClassInfo::get(&mut conn, "Fighter", "PHB").expect("Failed to get Fighter");
         assert_eq!(fighter.hit_die_value, 10);
         assert_eq!(fighter.average_hp_gain(), 6);
 
-        let wizard = ClassInfo::get(&mut conn, "Wizard", "PHB")
-            .expect("Failed to get Wizard");
+        let wizard = ClassInfo::get(&mut conn, "Wizard", "PHB").expect("Failed to get Wizard");
         assert_eq!(wizard.hit_die_value, 6);
         assert_eq!(wizard.average_hp_gain(), 4);
         assert_eq!(wizard.spellcasting_type, Some(SpellcastingType::Full));

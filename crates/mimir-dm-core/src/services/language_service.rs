@@ -3,13 +3,15 @@
 //! Provides database-backed language search, retrieval, and import functionality.
 //! Supports filtering by name, type, script, and source.
 
-use diesel::prelude::*;
-use tracing::{debug, info};
 use crate::error::Result;
-use crate::models::catalog::{CatalogLanguage, LanguageFilters, LanguageSummary, Language, NewCatalogLanguage, LanguageData};
+use crate::models::catalog::{
+    CatalogLanguage, Language, LanguageData, LanguageFilters, LanguageSummary, NewCatalogLanguage,
+};
 use crate::schema::catalog_languages;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
+use tracing::{debug, info};
 
 /// Service for searching and managing languages in the catalog.
 pub struct LanguageService;
@@ -35,9 +37,10 @@ impl LanguageService {
             let pattern_clone1 = search_pattern.clone();
             let pattern_clone2 = search_pattern.clone();
             query = query.filter(
-                catalog_languages::name.like(search_pattern)
+                catalog_languages::name
+                    .like(search_pattern)
                     .or(catalog_languages::script.like(pattern_clone1))
-                    .or(catalog_languages::typical_speakers.like(pattern_clone2))
+                    .or(catalog_languages::typical_speakers.like(pattern_clone2)),
             );
         }
 
@@ -62,9 +65,8 @@ impl LanguageService {
             }
         }
 
-        let catalog_languages: Vec<CatalogLanguage> = query
-            .select(CatalogLanguage::as_select())
-            .load(conn)?;
+        let catalog_languages: Vec<CatalogLanguage> =
+            query.select(CatalogLanguage::as_select()).load(conn)?;
 
         let summaries: Vec<LanguageSummary> = catalog_languages
             .into_iter()
@@ -108,7 +110,10 @@ impl LanguageService {
         name: &str,
         source: &str,
     ) -> Result<Option<Language>> {
-        debug!("Getting language by name '{}' and source '{}'", name, source);
+        debug!(
+            "Getting language by name '{}' and source '{}'",
+            name, source
+        );
 
         let catalog_language: Option<CatalogLanguage> = catalog_languages::table
             .filter(catalog_languages::name.eq(name))
@@ -181,7 +186,10 @@ impl LanguageService {
         book_dir: &Path,
         source: &str,
     ) -> Result<usize> {
-        info!("Importing languages from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing languages from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let languages_dir = book_dir.join("languages");
         if !languages_dir.exists() || !languages_dir.is_dir() {
@@ -230,19 +238,20 @@ impl LanguageService {
             }
         }
 
-        info!("Successfully imported {} languages from source: {}", imported_count, source);
+        info!(
+            "Successfully imported {} languages from source: {}",
+            imported_count, source
+        );
         Ok(imported_count)
     }
 
     /// Remove all languages from a specific source
-    pub fn remove_languages_by_source(
-        conn: &mut SqliteConnection,
-        source: &str,
-    ) -> Result<usize> {
+    pub fn remove_languages_by_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing languages from source: {}", source);
 
-        let deleted = diesel::delete(catalog_languages::table.filter(catalog_languages::source.eq(source)))
-            .execute(conn)?;
+        let deleted =
+            diesel::delete(catalog_languages::table.filter(catalog_languages::source.eq(source)))
+                .execute(conn)?;
 
         info!("Removed {} languages from source: {}", deleted, source);
         Ok(deleted)

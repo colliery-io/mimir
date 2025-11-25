@@ -13,27 +13,32 @@
 //! - [`creation`] - Character builder
 //! - [`spell_management`] - Spell slot calculations
 
-pub mod renderer;
-pub mod level_up;
 pub mod creation;
-pub mod spell_management;
-pub mod progression;
-pub mod spells;
 pub mod inventory;
+pub mod level_up;
+pub mod progression;
+pub mod renderer;
+pub mod spell_management;
+pub mod spells;
 
-pub use renderer::{CharacterRenderer, MarkdownRenderer};
-pub use level_up::{LevelUpOptions, HpGainMethod, AsiOrFeat, ClassInfo, MulticlassPrerequisites};
-pub use creation::{CharacterBuilder, AbilityScoreMethod};
-pub use spell_management::{calculate_spell_slots, calculate_spell_save_dc, calculate_spell_attack_bonus, RestType};
-pub use progression::CharacterProgressionService;
-pub use spells::CharacterSpellService;
+pub use creation::{AbilityScoreMethod, CharacterBuilder};
 pub use inventory::CharacterInventoryService;
+pub use level_up::{AsiOrFeat, ClassInfo, HpGainMethod, LevelUpOptions, MulticlassPrerequisites};
+pub use progression::CharacterProgressionService;
+pub use renderer::{CharacterRenderer, MarkdownRenderer};
+pub use spell_management::{
+    calculate_spell_attack_bonus, calculate_spell_save_dc, calculate_spell_slots, RestType,
+};
+pub use spells::CharacterSpellService;
 
 use crate::{
     connection::DbConnection,
     dal::character::{CharacterRepository, CharacterVersionRepository},
     error::{DbError, Result},
-    models::character::{Character, CharacterData, CharacterVersion, NewCharacter, NewCharacterVersion, UpdateCharacter},
+    models::character::{
+        Character, CharacterData, CharacterVersion, NewCharacter, NewCharacterVersion,
+        UpdateCharacter,
+    },
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -59,19 +64,28 @@ impl<'a> CharacterService<'a> {
     ) -> Result<Character> {
         // Validate inputs
         if character_data.character_name.trim().is_empty() {
-            return Err(DbError::InvalidData("Character name cannot be empty".to_string()));
+            return Err(DbError::InvalidData(
+                "Character name cannot be empty".to_string(),
+            ));
         }
 
         // Serialize character data to YAML (always needed for database)
-        let yaml_data = serde_yaml::to_string(&character_data)
-            .map_err(|e| DbError::InvalidData(format!("Failed to serialize character data: {}", e)))?;
+        let yaml_data = serde_yaml::to_string(&character_data).map_err(|e| {
+            DbError::InvalidData(format!("Failed to serialize character data: {}", e))
+        })?;
 
         let version_number = 1;
-        let (directory_path, file_path_str) = if campaign_id.is_some() && !base_directory.is_empty() {
+        let (directory_path, file_path_str) = if campaign_id.is_some() && !base_directory.is_empty()
+        {
             // Character is assigned to a campaign with valid directory - create files
-            let char_dir = self.create_character_directory(base_directory, &character_data.character_name)?;
+            let char_dir =
+                self.create_character_directory(base_directory, &character_data.character_name)?;
             let directory_path = char_dir.to_string_lossy().to_string();
-            let file_path = self.get_version_file_path(&char_dir, &character_data.character_name, version_number);
+            let file_path = self.get_version_file_path(
+                &char_dir,
+                &character_data.character_name,
+                version_number,
+            );
 
             // Generate markdown
             let renderer = MarkdownRenderer::new();
@@ -119,14 +133,16 @@ impl<'a> CharacterService<'a> {
     /// Get a character by ID with its latest version data
     pub fn get_character(&mut self, character_id: i32) -> Result<(Character, CharacterData)> {
         let mut char_repo = CharacterRepository::new(self.conn);
-        let character = char_repo.find_by_id(character_id)?
+        let character = char_repo
+            .find_by_id(character_id)?
             .ok_or_else(|| DbError::NotFound {
                 entity_type: "Character".to_string(),
                 id: character_id.to_string(),
             })?;
 
         let mut ver_repo = CharacterVersionRepository::new(self.conn);
-        let version = ver_repo.find_latest(character_id)?
+        let version = ver_repo
+            .find_latest(character_id)?
             .ok_or_else(|| DbError::NotFound {
                 entity_type: "CharacterVersion".to_string(),
                 id: format!("character_id={}", character_id),
@@ -148,7 +164,8 @@ impl<'a> CharacterService<'a> {
         // Get character and version number
         let character = {
             let mut char_repo = CharacterRepository::new(self.conn);
-            char_repo.find_by_id(character_id)?
+            char_repo
+                .find_by_id(character_id)?
                 .ok_or_else(|| DbError::NotFound {
                     entity_type: "Character".to_string(),
                     id: character_id.to_string(),
@@ -161,13 +178,18 @@ impl<'a> CharacterService<'a> {
         };
 
         // Serialize character data to YAML
-        let yaml_data = serde_yaml::to_string(&character_data)
-            .map_err(|e| DbError::InvalidData(format!("Failed to serialize character data: {}", e)))?;
+        let yaml_data = serde_yaml::to_string(&character_data).map_err(|e| {
+            DbError::InvalidData(format!("Failed to serialize character data: {}", e))
+        })?;
 
         // Only write files if character has a directory assigned
         let file_path_str = if !character.directory_path.is_empty() {
             let char_dir = Path::new(&character.directory_path);
-            let file_path = self.get_version_file_path(char_dir, &character_data.character_name, version_number);
+            let file_path = self.get_version_file_path(
+                char_dir,
+                &character_data.character_name,
+                version_number,
+            );
 
             // Generate markdown
             let renderer = MarkdownRenderer::new();
@@ -215,7 +237,8 @@ impl<'a> CharacterService<'a> {
     /// Delete a character and all its files
     pub fn delete_character(&mut self, character_id: i32) -> Result<()> {
         let mut char_repo = CharacterRepository::new(self.conn);
-        let character = char_repo.find_by_id(character_id)?
+        let character = char_repo
+            .find_by_id(character_id)?
             .ok_or_else(|| DbError::NotFound {
                 entity_type: "Character".to_string(),
                 id: character_id.to_string(),
@@ -244,7 +267,8 @@ impl<'a> CharacterService<'a> {
         // Get the character
         let character = {
             let mut char_repo = CharacterRepository::new(self.conn);
-            char_repo.find_by_id(character_id)?
+            char_repo
+                .find_by_id(character_id)?
                 .ok_or_else(|| DbError::NotFound {
                     entity_type: "Character".to_string(),
                     id: character_id.to_string(),
@@ -254,12 +278,13 @@ impl<'a> CharacterService<'a> {
         // Verify character is not already assigned
         if character.campaign_id.is_some() {
             return Err(DbError::InvalidData(
-                "Character is already assigned to a campaign".to_string()
+                "Character is already assigned to a campaign".to_string(),
             ));
         }
 
         // Create character directory
-        let char_dir = self.create_character_directory(campaign_directory, &character.character_name)?;
+        let char_dir =
+            self.create_character_directory(campaign_directory, &character.character_name)?;
         let directory_path = char_dir.to_string_lossy().to_string();
 
         // Get all versions and write them to files
@@ -273,10 +298,16 @@ impl<'a> CharacterService<'a> {
         for version in &versions {
             // Parse character data
             let character_data: CharacterData = serde_yaml::from_str(&version.character_data)
-                .map_err(|e| DbError::InvalidData(format!("Failed to parse character data: {}", e)))?;
+                .map_err(|e| {
+                    DbError::InvalidData(format!("Failed to parse character data: {}", e))
+                })?;
 
             // Generate file path and content
-            let file_path = self.get_version_file_path(&char_dir, &character.character_name, version.version_number);
+            let file_path = self.get_version_file_path(
+                &char_dir,
+                &character.character_name,
+                version.version_number,
+            );
             let markdown = renderer.render(&character_data);
 
             // Write file
@@ -327,7 +358,8 @@ impl<'a> CharacterService<'a> {
         version_number: i32,
     ) -> Result<CharacterData> {
         let mut ver_repo = CharacterVersionRepository::new(self.conn);
-        let version = ver_repo.find_by_character_and_version(character_id, version_number)?
+        let version = ver_repo
+            .find_by_character_and_version(character_id, version_number)?
             .ok_or_else(|| DbError::NotFound {
                 entity_type: "CharacterVersion".to_string(),
                 id: format!("character_id={}, version={}", character_id, version_number),
@@ -356,7 +388,9 @@ impl<'a> CharacterService<'a> {
 
         // Validate multiclass prerequisites
         if is_multiclass {
-            if let Some(prereqs) = MulticlassPrerequisites::get(self.conn, &options.class_name, &options.class_source)? {
+            if let Some(prereqs) =
+                MulticlassPrerequisites::get(self.conn, &options.class_name, &options.class_source)?
+            {
                 prereqs.check(&char_data.abilities)?;
             }
         }
@@ -410,10 +444,18 @@ impl<'a> CharacterService<'a> {
                         increase2,
                     } => {
                         // Apply ability score increases (cap at 20)
-                        self.apply_ability_increase(&mut char_data.abilities, ability1, *increase1)?;
+                        self.apply_ability_increase(
+                            &mut char_data.abilities,
+                            ability1,
+                            *increase1,
+                        )?;
 
                         if let (Some(ability), Some(increase)) = (ability2, increase2) {
-                            self.apply_ability_increase(&mut char_data.abilities, ability, *increase)?;
+                            self.apply_ability_increase(
+                                &mut char_data.abilities,
+                                ability,
+                                *increase,
+                            )?;
                         }
                     }
                     AsiOrFeat::Feat(feat_name) => {
@@ -437,9 +479,9 @@ impl<'a> CharacterService<'a> {
         // For now, we'll skip this complex logic and leave it for future enhancement
 
         // Update snapshot reason
-        let snapshot_reason = options.snapshot_reason.or_else(|| {
-            Some(format!("Leveled up to {}", char_data.level))
-        });
+        let snapshot_reason = options
+            .snapshot_reason
+            .or_else(|| Some(format!("Leveled up to {}", char_data.level)));
 
         // Create new version
         self.update_character(character_id, char_data, snapshot_reason)
@@ -494,7 +536,11 @@ impl<'a> CharacterService<'a> {
             )))?;
 
         // Validate spell is available for any of character's classes
-        let class_names: Vec<String> = char_data.classes.iter().map(|c| c.class_name.clone()).collect();
+        let class_names: Vec<String> = char_data
+            .classes
+            .iter()
+            .map(|c| c.class_name.clone())
+            .collect();
         let mut valid_for_any_class = false;
         for class_name in &class_names {
             if spell_management::validate_spell_for_class(self.conn, &spell, class_name)? {
@@ -505,7 +551,8 @@ impl<'a> CharacterService<'a> {
         if !valid_for_any_class {
             return Err(DbError::InvalidData(format!(
                 "Spell '{}' is not available for any of character's classes: {}",
-                spell_name, char_data.class_string()
+                spell_name,
+                char_data.class_string()
             )));
         }
 
@@ -516,10 +563,8 @@ impl<'a> CharacterService<'a> {
             if !char_data.spells.cantrips.contains(&spell_key) {
                 char_data.spells.cantrips.push(spell_key);
             }
-        } else {
-            if !char_data.spells.known_spells.contains(&spell_key) {
-                char_data.spells.known_spells.push(spell_key);
-            }
+        } else if !char_data.spells.known_spells.contains(&spell_key) {
+            char_data.spells.known_spells.push(spell_key);
         }
 
         // Create new version
@@ -540,12 +585,14 @@ impl<'a> CharacterService<'a> {
 
         // Calculate maximum prepared spells
         // Formula: spellcasting ability modifier + character level
-        let ability_mod = spell_management::calculate_spell_attack_bonus(&char_data, spellcasting_ability)
-            - char_data.proficiency_bonus();
+        let ability_mod =
+            spell_management::calculate_spell_attack_bonus(&char_data, spellcasting_ability)
+                - char_data.proficiency_bonus();
         let max_prepared = (ability_mod + char_data.level).max(1);
 
         // Validate spell count (not including cantrips)
-        let non_cantrip_count = spell_keys.iter()
+        let non_cantrip_count = spell_keys
+            .iter()
             .filter(|key| !char_data.spells.cantrips.contains(key))
             .count();
 
@@ -559,7 +606,8 @@ impl<'a> CharacterService<'a> {
         // Validate all spells are known
         for spell_key in &spell_keys {
             if !char_data.spells.cantrips.contains(spell_key)
-                && !char_data.spells.known_spells.contains(spell_key) {
+                && !char_data.spells.known_spells.contains(spell_key)
+            {
                 return Err(DbError::InvalidData(format!(
                     "Spell '{}' is not known by this character",
                     spell_key
@@ -615,11 +663,7 @@ impl<'a> CharacterService<'a> {
     }
 
     /// Rest and restore spell slots
-    pub fn rest(
-        &mut self,
-        character_id: i32,
-        rest_type: RestType,
-    ) -> Result<CharacterVersion> {
+    pub fn rest(&mut self, character_id: i32, rest_type: RestType) -> Result<CharacterVersion> {
         let (_character, mut char_data) = self.get_character(character_id)?;
 
         match rest_type {
@@ -698,24 +742,23 @@ impl<'a> CharacterService<'a> {
         let value = item.value.unwrap_or(0.0);
 
         // Check if item already exists in inventory
-        let existing_item = char_data
-            .inventory
-            .iter_mut()
-            .find(|i| i.name == item_name);
+        let existing_item = char_data.inventory.iter_mut().find(|i| i.name == item_name);
 
         if let Some(existing) = existing_item {
             // Item exists - add to quantity
             existing.quantity += quantity;
         } else {
             // New item - add to inventory
-            char_data.inventory.push(crate::models::character::data::InventoryItem {
-                name: item_name.to_string(),
-                source: Some(item_source.to_string()),
-                quantity,
-                weight,
-                value,
-                notes,
-            });
+            char_data
+                .inventory
+                .push(crate::models::character::data::InventoryItem {
+                    name: item_name.to_string(),
+                    source: Some(item_source.to_string()),
+                    quantity,
+                    weight,
+                    value,
+                    notes,
+                });
         }
 
         // Create new version
@@ -752,7 +795,10 @@ impl<'a> CharacterService<'a> {
         }
 
         // Create new version
-        let snapshot_reason = Some(format!("Removed {} x{} from inventory", item_name, quantity));
+        let snapshot_reason = Some(format!(
+            "Removed {} x{} from inventory",
+            item_name, quantity
+        ));
         self.update_character(character_id, char_data, snapshot_reason)
     }
 
@@ -818,7 +864,11 @@ impl<'a> CharacterService<'a> {
 
     // Helper methods
 
-    fn create_character_directory(&self, campaign_dir: &str, character_name: &str) -> Result<PathBuf> {
+    fn create_character_directory(
+        &self,
+        campaign_dir: &str,
+        character_name: &str,
+    ) -> Result<PathBuf> {
         let campaign_path = Path::new(campaign_dir);
         let characters_dir = campaign_path.join("characters");
 
@@ -836,13 +886,26 @@ impl<'a> CharacterService<'a> {
         Ok(char_dir)
     }
 
-    fn get_version_file_path(&self, char_dir: &Path, character_name: &str, version: i32) -> PathBuf {
+    fn get_version_file_path(
+        &self,
+        char_dir: &Path,
+        character_name: &str,
+        version: i32,
+    ) -> PathBuf {
         char_dir.join(format!("{}-{:03}.md", character_name, version))
     }
 
-    fn write_character_files(&self, file_path: &Path, yaml_data: &str, markdown: &str) -> Result<()> {
+    fn write_character_files(
+        &self,
+        file_path: &Path,
+        yaml_data: &str,
+        markdown: &str,
+    ) -> Result<()> {
         // Write YAML data as a comment at the top of the markdown file
-        let full_content = format!("<!--\nCharacter Data (YAML):\n{}\n-->\n\n{}", yaml_data, markdown);
+        let full_content = format!(
+            "<!--\nCharacter Data (YAML):\n{}\n-->\n\n{}",
+            yaml_data, markdown
+        );
 
         fs::write(file_path, full_content)?;
 
@@ -943,9 +1006,7 @@ mod tests {
 
     fn create_test_player(conn: &mut DbConnection) -> i32 {
         diesel::insert_into(crate::schema::players::table)
-            .values((
-                crate::schema::players::name.eq("Test Player"),
-            ))
+            .values((crate::schema::players::name.eq("Test Player"),))
             .returning(crate::models::player::Player::as_returning())
             .get_result(conn)
             .expect("Failed to create player")
@@ -1037,7 +1098,9 @@ mod tests {
         assert_eq!(character.current_version, 1);
 
         // Verify directory structure was created
-        let char_dir = Path::new(campaign_dir).join("characters").join("Test Character");
+        let char_dir = Path::new(campaign_dir)
+            .join("characters")
+            .join("Test Character");
         assert!(char_dir.exists());
 
         // Verify file was created
@@ -1064,7 +1127,8 @@ mod tests {
         character_data.character_name = "".to_string();
         character_data.player_id = player_id;
 
-        let result = service.create_character(Some(campaign_id), player_id, campaign_dir, character_data);
+        let result =
+            service.create_character(Some(campaign_id), player_id, campaign_dir, character_data);
         assert!(result.is_err());
     }
 
@@ -1119,7 +1183,12 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data.clone())
+            .create_character(
+                Some(campaign_id),
+                player_id,
+                campaign_dir,
+                character_data.clone(),
+            )
             .expect("Failed to create character");
 
         // Update character (level up)
@@ -1129,7 +1198,11 @@ mod tests {
         character_data.current_hp = 20;
 
         let version = service
-            .update_character(created.id, character_data, Some("Level up to 2".to_string()))
+            .update_character(
+                created.id,
+                character_data,
+                Some("Level up to 2".to_string()),
+            )
             .expect("Failed to update character");
 
         assert_eq!(version.version_number, 2);
@@ -1137,7 +1210,9 @@ mod tests {
         assert_eq!(version.level, 2);
 
         // Verify character metadata was updated
-        let (character, data) = service.get_character(created.id).expect("Failed to get character");
+        let (character, data) = service
+            .get_character(created.id)
+            .expect("Failed to get character");
         assert_eq!(character.current_level, 2);
         assert_eq!(character.current_version, 2);
         assert_eq!(data.level, 2);
@@ -1169,7 +1244,9 @@ mod tests {
         let char_dir = Path::new(&created.directory_path);
         assert!(char_dir.exists());
 
-        service.delete_character(created.id).expect("Failed to delete character");
+        service
+            .delete_character(created.id)
+            .expect("Failed to delete character");
 
         // Verify directory was removed
         assert!(!char_dir.exists());
@@ -1194,12 +1271,16 @@ mod tests {
         let mut char1 = create_test_character_data();
         char1.character_name = "Character 1".to_string();
         char1.player_id = player_id;
-        service.create_character(Some(campaign_id), player_id, campaign_dir, char1).unwrap();
+        service
+            .create_character(Some(campaign_id), player_id, campaign_dir, char1)
+            .unwrap();
 
         let mut char2 = create_test_character_data();
         char2.character_name = "Character 2".to_string();
         char2.player_id = player_id;
-        service.create_character(Some(campaign_id), player_id, campaign_dir, char2).unwrap();
+        service
+            .create_character(Some(campaign_id), player_id, campaign_dir, char2)
+            .unwrap();
 
         let characters = service
             .list_characters_for_campaign(campaign_id)
@@ -1222,7 +1303,12 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data.clone())
+            .create_character(
+                Some(campaign_id),
+                player_id,
+                campaign_dir,
+                character_data.clone(),
+            )
             .expect("Failed to create character");
 
         // Create a second version
@@ -1254,7 +1340,12 @@ mod tests {
         character_data.player_id = player_id;
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data.clone())
+            .create_character(
+                Some(campaign_id),
+                player_id,
+                campaign_dir,
+                character_data.clone(),
+            )
             .expect("Failed to create character");
 
         // Create a second version
@@ -1333,7 +1424,9 @@ mod tests {
         assert_eq!(version.level, 2);
 
         // Get updated character
-        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        let (_character, data) = service
+            .get_character(created.id)
+            .expect("Failed to get character");
         assert_eq!(data.level, 2);
         // HP should be 12 (initial) + 8 (roll) + 2 (CON modifier) = 22
         assert_eq!(data.max_hp, 22);
@@ -1371,7 +1464,9 @@ mod tests {
             .expect("Failed to level up");
 
         // Get updated character
-        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        let (_character, data) = service
+            .get_character(created.id)
+            .expect("Failed to get character");
         assert_eq!(data.level, 2);
         // HP should be 12 (initial) + 6 (average for d10) + 2 (CON modifier) = 20
         assert_eq!(data.max_hp, 20);
@@ -1422,10 +1517,14 @@ mod tests {
             snapshot_reason: Some("Level 4 with ASI".to_string()),
         };
 
-        service.level_up_character(created.id, options).expect("Failed to level up with ASI");
+        service
+            .level_up_character(created.id, options)
+            .expect("Failed to level up with ASI");
 
         // Get updated character
-        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        let (_character, data) = service
+            .get_character(created.id)
+            .expect("Failed to get character");
         assert_eq!(data.level, 4);
         // Strength should be 18 (16 + 2)
         assert_eq!(data.abilities.strength, 18);
@@ -1470,10 +1569,14 @@ mod tests {
             snapshot_reason: None,
         };
 
-        service.level_up_character(created.id, options).expect("Failed to level up with feat");
+        service
+            .level_up_character(created.id, options)
+            .expect("Failed to level up with feat");
 
         // Get updated character
-        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        let (_character, data) = service
+            .get_character(created.id)
+            .expect("Failed to get character");
         assert_eq!(data.level, 4);
         assert!(data.feats.contains(&"Great Weapon Master".to_string()));
     }
@@ -1507,10 +1610,14 @@ mod tests {
             snapshot_reason: Some("Multiclass to Barbarian".to_string()),
         };
 
-        service.level_up_character(created.id, options).expect("Failed to multiclass");
+        service
+            .level_up_character(created.id, options)
+            .expect("Failed to multiclass");
 
         // Get updated character
-        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        let (_character, data) = service
+            .get_character(created.id)
+            .expect("Failed to get character");
         assert_eq!(data.level, 2);
         assert!(data.has_class("Barbarian"));
     }
@@ -1596,10 +1703,14 @@ mod tests {
             snapshot_reason: None,
         };
 
-        service.level_up_character(created.id, options).expect("Failed to level up");
+        service
+            .level_up_character(created.id, options)
+            .expect("Failed to level up");
 
         // Get updated character
-        let (_character, data) = service.get_character(created.id).expect("Failed to get character");
+        let (_character, data) = service
+            .get_character(created.id)
+            .expect("Failed to get character");
         // STR should be capped at 20 (not 21)
         assert_eq!(data.abilities.strength, 20);
     }

@@ -42,15 +42,14 @@ pub async fn search_feats(
         has_prerequisites,
     };
 
-    let feats = FeatService::search_feats(&mut conn, filters)
-        .map_err(|e| e.to_string())?;
-    
+    let feats = FeatService::search_feats(&mut conn, filters).map_err(|e| e.to_string())?;
+
     // Convert to JSON for frontend
     let json_feats: Vec<serde_json::Value> = feats
         .into_iter()
         .map(|feat| serde_json::to_value(feat).unwrap_or(serde_json::Value::Null))
         .collect();
-    
+
     Ok(json_feats)
 }
 
@@ -80,11 +79,11 @@ pub async fn get_feat_details(
 
     let feat = FeatService::get_feat_by_name_and_source(&mut conn, &name, &source)
         .map_err(|e| e.to_string())?;
-    
+
     // Parse the full JSON data
     let full_data: serde_json::Value = serde_json::from_str(&feat.full_feat_json)
         .map_err(|e| format!("Failed to parse feat JSON: {}", e))?;
-    
+
     Ok(full_data)
 }
 
@@ -99,16 +98,13 @@ pub async fn get_feat_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_feat_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_feat_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    FeatService::get_feat_sources(&mut conn)
-        .map_err(|e| e.to_string())
+    FeatService::get_feat_sources(&mut conn).map_err(|e| e.to_string())
 }
 
 /// Get total number of feats in the catalog.
@@ -121,14 +117,11 @@ pub async fn get_feat_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_feat_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_feat_count(state: State<'_, AppState>) -> Result<i64, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    FeatService::get_feat_count(&mut conn)
-        .map_err(|e| e.to_string())
+    FeatService::get_feat_count(&mut conn).map_err(|e| e.to_string())
 }

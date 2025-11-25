@@ -5,6 +5,12 @@ use super::{BoardDefinition, StageMetadata};
 /// Module workflow board with progression stages.
 pub struct ModuleBoard;
 
+impl Default for ModuleBoard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleBoard {
     /// Creates a new module board.
     pub fn new() -> Self {
@@ -16,11 +22,11 @@ impl BoardDefinition for ModuleBoard {
     fn board_type(&self) -> &str {
         "module"
     }
-    
+
     fn stages(&self) -> Vec<&str> {
         vec!["planning", "development", "ready", "active", "completed"]
     }
-    
+
     fn can_transition(&self, from: &str, to: &str) -> bool {
         match (from, to) {
             // Forward progression
@@ -28,15 +34,15 @@ impl BoardDefinition for ModuleBoard {
             ("development", "ready") => true,
             ("ready", "active") => true,
             ("active", "completed") => true,
-            
+
             // Allow moving back
             ("development", "planning") => true,
             ("ready", "development") => true,
-            
+
             _ => false,
         }
     }
-    
+
     fn required_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
             "planning" => vec!["module_overview"],
@@ -46,7 +52,7 @@ impl BoardDefinition for ModuleBoard {
             _ => vec![],
         }
     }
-    
+
     fn optional_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
             "planning" => vec![],
@@ -56,7 +62,7 @@ impl BoardDefinition for ModuleBoard {
             _ => vec![],
         }
     }
-    
+
     fn next_stage(&self, current: &str) -> Option<&str> {
         match current {
             "planning" => Some("development"),
@@ -66,7 +72,7 @@ impl BoardDefinition for ModuleBoard {
             _ => None,
         }
     }
-    
+
     fn stage_metadata(&self, stage: &str) -> StageMetadata {
         match stage {
             "planning" => StageMetadata {
@@ -292,7 +298,7 @@ impl BoardDefinition for ModuleBoard {
             },
         }
     }
-    
+
     fn no_completion_required_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
             "active" => vec!["document_tracker"],

@@ -3,10 +3,10 @@
 //! This module contains all Tauri commands that expose LLM functionality
 //! to the frontend application.
 
+use crate::app_init::AppPaths;
 use crate::services::llm::chat_processor::ChatProcessor;
 use crate::services::llm::LlmService;
 use crate::services::provider_settings::ProviderSettings;
-use crate::app_init::AppPaths;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::State;
@@ -63,6 +63,7 @@ pub async fn get_llm_model_info(
 
 /// Tauri command to send a chat message (with optional tool support)
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn send_chat_message(
     service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
     cancellation_tokens: tauri::State<'_, CancellationTokens>,
@@ -166,8 +167,8 @@ pub async fn confirm_tool_action(
         confirmation_id, confirmed
     );
 
-    let id = Uuid::parse_str(&confirmation_id)
-        .map_err(|e| format!("Invalid confirmation ID: {}", e))?;
+    let id =
+        Uuid::parse_str(&confirmation_id).map_err(|e| format!("Invalid confirmation ID: {}", e))?;
 
     // Find and remove the sender for this confirmation
     let sender = {
@@ -280,11 +281,10 @@ pub async fn get_provider_settings(
 ) -> Result<ProviderSettings, String> {
     info!("Loading provider settings");
 
-    ProviderSettings::load(&app_paths.config_dir)
-        .map_err(|e| {
-            error!("Failed to load provider settings: {}", e);
-            format!("Failed to load provider settings: {}", e)
-        })
+    ProviderSettings::load(&app_paths.config_dir).map_err(|e| {
+        error!("Failed to load provider settings: {}", e);
+        format!("Failed to load provider settings: {}", e)
+    })
 }
 
 /// Tauri command to save provider settings
@@ -301,11 +301,10 @@ pub async fn save_provider_settings(
         format!("Invalid provider settings: {}", e)
     })?;
 
-    settings.save(&app_paths.config_dir)
-        .map_err(|e| {
-            error!("Failed to save provider settings: {}", e);
-            format!("Failed to save provider settings: {}", e)
-        })?;
+    settings.save(&app_paths.config_dir).map_err(|e| {
+        error!("Failed to save provider settings: {}", e);
+        format!("Failed to save provider settings: {}", e)
+    })?;
 
     info!("Provider settings saved successfully");
     Ok(())

@@ -24,10 +24,17 @@ impl<'a> PlayerService<'a> {
     }
 
     /// Create a new player
-    pub fn create_player(&mut self, name: &str, email: Option<String>, notes: Option<String>) -> Result<Player> {
+    pub fn create_player(
+        &mut self,
+        name: &str,
+        email: Option<String>,
+        notes: Option<String>,
+    ) -> Result<Player> {
         // Validate inputs
         if name.trim().is_empty() {
-            return Err(DbError::InvalidData("Player name cannot be empty".to_string()));
+            return Err(DbError::InvalidData(
+                "Player name cannot be empty".to_string(),
+            ));
         }
 
         let mut repo = PlayerRepository::new(self.conn);
@@ -61,7 +68,9 @@ impl<'a> PlayerService<'a> {
         // Validate name if provided
         if let Some(ref n) = name {
             if n.trim().is_empty() {
-                return Err(DbError::InvalidData("Player name cannot be empty".to_string()));
+                return Err(DbError::InvalidData(
+                    "Player name cannot be empty".to_string(),
+                ));
             }
         }
 
@@ -94,7 +103,10 @@ impl<'a> PlayerService<'a> {
         if cp_repo.is_player_in_campaign(campaign_id, player_id)? {
             return Err(DbError::ConstraintViolation {
                 field: "campaign_player".to_string(),
-                message: format!("Player {} already associated with campaign {}", player_id, campaign_id),
+                message: format!(
+                    "Player {} already associated with campaign {}",
+                    player_id, campaign_id
+                ),
             });
         }
 
@@ -184,7 +196,9 @@ mod tests {
             .create_player("Test Player", None, None)
             .expect("Failed to create player");
 
-        let fetched = service.get_player(created.id).expect("Failed to get player");
+        let fetched = service
+            .get_player(created.id)
+            .expect("Failed to get player");
         assert_eq!(fetched.id, created.id);
         assert_eq!(fetched.name, "Test Player");
     }
@@ -214,7 +228,9 @@ mod tests {
             .create_player("To Delete", None, None)
             .expect("Failed to create player");
 
-        service.delete_player(player.id).expect("Failed to delete player");
+        service
+            .delete_player(player.id)
+            .expect("Failed to delete player");
 
         let result = service.get_player(player.id);
         assert!(result.is_err());
@@ -278,7 +294,9 @@ mod tests {
         let mut service = PlayerService::new(&mut conn);
         let player = service.create_player("Test Player", None, None).unwrap();
 
-        service.add_player_to_campaign(campaign.id, player.id).unwrap();
+        service
+            .add_player_to_campaign(campaign.id, player.id)
+            .unwrap();
 
         // Try to add again - should fail
         let result = service.add_player_to_campaign(campaign.id, player.id);
@@ -302,7 +320,9 @@ mod tests {
         let mut service = PlayerService::new(&mut conn);
         let player = service.create_player("Test Player", None, None).unwrap();
 
-        service.add_player_to_campaign(campaign.id, player.id).unwrap();
+        service
+            .add_player_to_campaign(campaign.id, player.id)
+            .unwrap();
         service
             .remove_player_from_campaign(campaign.id, player.id)
             .expect("Failed to remove player from campaign");
@@ -328,10 +348,14 @@ mod tests {
         let mut service = PlayerService::new(&mut conn);
         let player = service.create_player("Test Player", None, None).unwrap();
 
-        service.add_player_to_campaign(campaign.id, player.id).unwrap();
+        service
+            .add_player_to_campaign(campaign.id, player.id)
+            .unwrap();
 
         // Initially active (default)
-        let active_players = service.list_active_players_for_campaign(campaign.id).unwrap();
+        let active_players = service
+            .list_active_players_for_campaign(campaign.id)
+            .unwrap();
         assert_eq!(active_players.len(), 1);
 
         // Set to inactive
@@ -339,7 +363,9 @@ mod tests {
             .set_player_active_status(campaign.id, player.id, false)
             .expect("Failed to set inactive");
 
-        let active_players = service.list_active_players_for_campaign(campaign.id).unwrap();
+        let active_players = service
+            .list_active_players_for_campaign(campaign.id)
+            .unwrap();
         assert_eq!(active_players.len(), 0);
     }
 }

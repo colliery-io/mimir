@@ -9,8 +9,8 @@ use crate::connection::DbConnection;
 use crate::error::{DbError, Result};
 use crate::models::catalog::{Background, Race};
 use crate::models::character::data::{
-    AbilityScores, CharacterData, ClassLevel, Currency, EquippedItems, InventoryItem, Personality, Proficiencies,
-    SpellData,
+    AbilityScores, CharacterData, ClassLevel, Currency, EquippedItems, InventoryItem, Personality,
+    Proficiencies, SpellData,
 };
 use crate::services::{BackgroundService, RaceService};
 use serde::{Deserialize, Serialize};
@@ -140,7 +140,12 @@ impl<'a> CharacterBuilder<'a> {
     }
 
     /// Set class by name and source (looks up from database)
-    pub fn set_class(mut self, class: &str, source: &str, subclass: Option<String>) -> Result<Self> {
+    pub fn set_class(
+        mut self,
+        class: &str,
+        source: &str,
+        subclass: Option<String>,
+    ) -> Result<Self> {
         // Validate class exists in database
         let _class_info = super::level_up::ClassInfo::get(self.conn, class, source)?;
 
@@ -386,7 +391,9 @@ impl<'a> CharacterBuilder<'a> {
         };
 
         // Initialize spell slots from class data
-        if let Ok(spell_slots) = super::spell_management::calculate_spell_slots(self.conn, &character_data) {
+        if let Ok(spell_slots) =
+            super::spell_management::calculate_spell_slots(self.conn, &character_data)
+        {
             character_data.spells.spell_slots = spell_slots;
         }
 
@@ -397,61 +404,159 @@ impl<'a> CharacterBuilder<'a> {
     fn add_class_proficiencies(&mut self, class: &str) {
         match class.to_lowercase().as_str() {
             "barbarian" => {
-                self.proficiencies.armor.extend(vec!["Light armor".to_string(), "Medium armor".to_string(), "Shields".to_string()]);
-                self.proficiencies.weapons.extend(vec!["Simple weapons".to_string(), "Martial weapons".to_string()]);
-                self.proficiencies.saves.extend(vec!["Strength".to_string(), "Constitution".to_string()]);
+                self.proficiencies.armor.extend(vec![
+                    "Light armor".to_string(),
+                    "Medium armor".to_string(),
+                    "Shields".to_string(),
+                ]);
+                self.proficiencies.weapons.extend(vec![
+                    "Simple weapons".to_string(),
+                    "Martial weapons".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Strength".to_string(), "Constitution".to_string()]);
             }
             "bard" => {
                 self.proficiencies.armor.push("Light armor".to_string());
-                self.proficiencies.weapons.extend(vec!["Simple weapons".to_string(), "Hand crossbows".to_string(), "Longswords".to_string(), "Rapiers".to_string(), "Shortswords".to_string()]);
-                self.proficiencies.saves.extend(vec!["Dexterity".to_string(), "Charisma".to_string()]);
+                self.proficiencies.weapons.extend(vec![
+                    "Simple weapons".to_string(),
+                    "Hand crossbows".to_string(),
+                    "Longswords".to_string(),
+                    "Rapiers".to_string(),
+                    "Shortswords".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Dexterity".to_string(), "Charisma".to_string()]);
             }
             "cleric" => {
-                self.proficiencies.armor.extend(vec!["Light armor".to_string(), "Medium armor".to_string(), "Shields".to_string()]);
-                self.proficiencies.weapons.push("Simple weapons".to_string());
-                self.proficiencies.saves.extend(vec!["Wisdom".to_string(), "Charisma".to_string()]);
+                self.proficiencies.armor.extend(vec![
+                    "Light armor".to_string(),
+                    "Medium armor".to_string(),
+                    "Shields".to_string(),
+                ]);
+                self.proficiencies
+                    .weapons
+                    .push("Simple weapons".to_string());
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Wisdom".to_string(), "Charisma".to_string()]);
             }
             "druid" => {
-                self.proficiencies.armor.extend(vec!["Light armor".to_string(), "Medium armor".to_string(), "Shields".to_string()]);
-                self.proficiencies.weapons.extend(vec!["Clubs".to_string(), "Daggers".to_string(), "Darts".to_string(), "Javelins".to_string(), "Maces".to_string(), "Quarterstaffs".to_string(), "Scimitars".to_string(), "Sickles".to_string(), "Slings".to_string(), "Spears".to_string()]);
-                self.proficiencies.saves.extend(vec!["Intelligence".to_string(), "Wisdom".to_string()]);
+                self.proficiencies.armor.extend(vec![
+                    "Light armor".to_string(),
+                    "Medium armor".to_string(),
+                    "Shields".to_string(),
+                ]);
+                self.proficiencies.weapons.extend(vec![
+                    "Clubs".to_string(),
+                    "Daggers".to_string(),
+                    "Darts".to_string(),
+                    "Javelins".to_string(),
+                    "Maces".to_string(),
+                    "Quarterstaffs".to_string(),
+                    "Scimitars".to_string(),
+                    "Sickles".to_string(),
+                    "Slings".to_string(),
+                    "Spears".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Intelligence".to_string(), "Wisdom".to_string()]);
             }
             "fighter" => {
-                self.proficiencies.armor.extend(vec!["All armor".to_string(), "Shields".to_string()]);
-                self.proficiencies.weapons.extend(vec!["Simple weapons".to_string(), "Martial weapons".to_string()]);
-                self.proficiencies.saves.extend(vec!["Strength".to_string(), "Constitution".to_string()]);
+                self.proficiencies
+                    .armor
+                    .extend(vec!["All armor".to_string(), "Shields".to_string()]);
+                self.proficiencies.weapons.extend(vec![
+                    "Simple weapons".to_string(),
+                    "Martial weapons".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Strength".to_string(), "Constitution".to_string()]);
             }
             "monk" => {
-                self.proficiencies.weapons.extend(vec!["Simple weapons".to_string(), "Shortswords".to_string()]);
-                self.proficiencies.saves.extend(vec!["Strength".to_string(), "Dexterity".to_string()]);
+                self.proficiencies.weapons.extend(vec![
+                    "Simple weapons".to_string(),
+                    "Shortswords".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Strength".to_string(), "Dexterity".to_string()]);
             }
             "paladin" => {
-                self.proficiencies.armor.extend(vec!["All armor".to_string(), "Shields".to_string()]);
-                self.proficiencies.weapons.extend(vec!["Simple weapons".to_string(), "Martial weapons".to_string()]);
-                self.proficiencies.saves.extend(vec!["Wisdom".to_string(), "Charisma".to_string()]);
+                self.proficiencies
+                    .armor
+                    .extend(vec!["All armor".to_string(), "Shields".to_string()]);
+                self.proficiencies.weapons.extend(vec![
+                    "Simple weapons".to_string(),
+                    "Martial weapons".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Wisdom".to_string(), "Charisma".to_string()]);
             }
             "ranger" => {
-                self.proficiencies.armor.extend(vec!["Light armor".to_string(), "Medium armor".to_string(), "Shields".to_string()]);
-                self.proficiencies.weapons.extend(vec!["Simple weapons".to_string(), "Martial weapons".to_string()]);
-                self.proficiencies.saves.extend(vec!["Strength".to_string(), "Dexterity".to_string()]);
+                self.proficiencies.armor.extend(vec![
+                    "Light armor".to_string(),
+                    "Medium armor".to_string(),
+                    "Shields".to_string(),
+                ]);
+                self.proficiencies.weapons.extend(vec![
+                    "Simple weapons".to_string(),
+                    "Martial weapons".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Strength".to_string(), "Dexterity".to_string()]);
             }
             "rogue" => {
                 self.proficiencies.armor.push("Light armor".to_string());
-                self.proficiencies.weapons.extend(vec!["Simple weapons".to_string(), "Hand crossbows".to_string(), "Longswords".to_string(), "Rapiers".to_string(), "Shortswords".to_string()]);
-                self.proficiencies.saves.extend(vec!["Dexterity".to_string(), "Intelligence".to_string()]);
+                self.proficiencies.weapons.extend(vec![
+                    "Simple weapons".to_string(),
+                    "Hand crossbows".to_string(),
+                    "Longswords".to_string(),
+                    "Rapiers".to_string(),
+                    "Shortswords".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Dexterity".to_string(), "Intelligence".to_string()]);
             }
             "sorcerer" => {
-                self.proficiencies.weapons.extend(vec!["Daggers".to_string(), "Darts".to_string(), "Slings".to_string(), "Quarterstaffs".to_string(), "Light crossbows".to_string()]);
-                self.proficiencies.saves.extend(vec!["Constitution".to_string(), "Charisma".to_string()]);
+                self.proficiencies.weapons.extend(vec![
+                    "Daggers".to_string(),
+                    "Darts".to_string(),
+                    "Slings".to_string(),
+                    "Quarterstaffs".to_string(),
+                    "Light crossbows".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Constitution".to_string(), "Charisma".to_string()]);
             }
             "warlock" => {
                 self.proficiencies.armor.push("Light armor".to_string());
-                self.proficiencies.weapons.push("Simple weapons".to_string());
-                self.proficiencies.saves.extend(vec!["Wisdom".to_string(), "Charisma".to_string()]);
+                self.proficiencies
+                    .weapons
+                    .push("Simple weapons".to_string());
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Wisdom".to_string(), "Charisma".to_string()]);
             }
             "wizard" => {
-                self.proficiencies.weapons.extend(vec!["Daggers".to_string(), "Darts".to_string(), "Slings".to_string(), "Quarterstaffs".to_string(), "Light crossbows".to_string()]);
-                self.proficiencies.saves.extend(vec!["Intelligence".to_string(), "Wisdom".to_string()]);
+                self.proficiencies.weapons.extend(vec![
+                    "Daggers".to_string(),
+                    "Darts".to_string(),
+                    "Slings".to_string(),
+                    "Quarterstaffs".to_string(),
+                    "Light crossbows".to_string(),
+                ]);
+                self.proficiencies
+                    .saves
+                    .extend(vec!["Intelligence".to_string(), "Wisdom".to_string()]);
             }
             _ => {}
         }
@@ -654,13 +759,16 @@ mod tests {
 
     fn insert_test_class(conn: &mut DbConnection, class_name: &str, hit_die: i32) {
         // Insert a test class
-        let class_json = format!(r#"{{
+        let class_json = format!(
+            r#"{{
             "name": "{}",
             "source": "PHB",
             "hd": {{"number": 1, "faces": {}}},
             "proficiency": ["str", "con"],
             "casterProgression": null
-        }}"#, class_name, hit_die);
+        }}"#,
+            class_name, hit_die
+        );
 
         diesel::insert_into(crate::schema::catalog_classes::table)
             .values((
@@ -885,7 +993,10 @@ mod tests {
         let result = CharacterBuilder::new(&mut conn).build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Character name is required"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Character name is required"));
     }
 
     #[test]

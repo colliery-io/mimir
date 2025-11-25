@@ -7,14 +7,13 @@
 
 use crate::connection::DbConnection;
 use crate::dal::campaign::{
-    documents::DocumentRepository,
-    campaigns::CampaignRepository,
+    campaigns::CampaignRepository, documents::DocumentRepository,
     template_documents::TemplateRepository,
 };
 use crate::error::Result;
 use crate::models::campaign::documents::{Document, NewDocument, UpdateDocument};
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 /// Service for managing documents
 pub struct DocumentService<'a> {
@@ -64,29 +63,35 @@ impl<'a> DocumentService<'a> {
         match level {
             "campaign" => {
                 // Get campaign-level documents (no module or session id)
-                DocumentRepository::find_by_campaign(self.conn, campaign_id)
-                    .map(|docs| docs.into_iter()
-                        .filter(|d| d.module_id.is_none() && d.session_id.is_none() && d.document_type != "handout")
-                        .collect())
-            },
+                DocumentRepository::find_by_campaign(self.conn, campaign_id).map(|docs| {
+                    docs.into_iter()
+                        .filter(|d| {
+                            d.module_id.is_none()
+                                && d.session_id.is_none()
+                                && d.document_type != "handout"
+                        })
+                        .collect()
+                })
+            }
             "module" => {
                 if let Some(mid) = module_id {
                     DocumentRepository::find_by_module(self.conn, mid)
                 } else {
                     Ok(vec![])
                 }
-            },
+            }
             "session" => {
                 if let Some(sid) = session_id {
                     DocumentRepository::find_by_session(self.conn, sid)
                 } else {
                     Ok(vec![])
                 }
-            },
-            "handout" => {
-                DocumentRepository::find_handouts_by_campaign(self.conn, campaign_id)
-            },
-            _ => Err(crate::error::DbError::InvalidData(format!("Invalid document level: {}", level))),
+            }
+            "handout" => DocumentRepository::find_handouts_by_campaign(self.conn, campaign_id),
+            _ => Err(crate::error::DbError::InvalidData(format!(
+                "Invalid document level: {}",
+                level
+            ))),
         }
     }
 
@@ -112,7 +117,11 @@ impl<'a> DocumentService<'a> {
     ///
     /// # Returns
     /// * `Ok(Document)` - The updated document record
-    pub fn update_document(&mut self, document_id: i32, update: UpdateDocument) -> Result<Document> {
+    pub fn update_document(
+        &mut self,
+        document_id: i32,
+        update: UpdateDocument,
+    ) -> Result<Document> {
         DocumentRepository::update(self.conn, document_id, update)
     }
 
@@ -188,16 +197,19 @@ impl<'a> DocumentService<'a> {
     ) -> Result<Document> {
         // Get the campaign
         let mut campaign_repo = CampaignRepository::new(self.conn);
-        let campaign = campaign_repo.find_by_id(campaign_id)?
-            .ok_or_else(|| crate::error::DbError::NotFound {
+        let campaign = campaign_repo.find_by_id(campaign_id)?.ok_or_else(|| {
+            crate::error::DbError::NotFound {
                 entity_type: "Campaign".to_string(),
                 id: campaign_id.to_string(),
-            })?;
+            }
+        })?;
 
         // Check if document already exists
         let existing = DocumentRepository::find_by_campaign(self.conn, campaign_id)?;
         if existing.iter().any(|d| d.template_id == template_id) {
-            return Err(crate::error::DbError::InvalidData("Document already exists".into()));
+            return Err(crate::error::DbError::InvalidData(
+                "Document already exists".into(),
+            ));
         }
 
         // Get the template
@@ -211,10 +223,13 @@ impl<'a> DocumentService<'a> {
         let context = template.create_context();
         let mut tera = tera::Tera::default();
         tera.add_raw_template(&template.document_id, &template.document_content)
-            .map_err(|e| crate::error::DbError::InvalidData(format!("Failed to add template: {}", e)))?;
+            .map_err(|e| {
+                crate::error::DbError::InvalidData(format!("Failed to add template: {}", e))
+            })?;
 
-        let content = tera.render(&template.document_id, &context)
-            .map_err(|e| crate::error::DbError::InvalidData(format!("Failed to render template: {}", e)))?;
+        let content = tera.render(&template.document_id, &context).map_err(|e| {
+            crate::error::DbError::InvalidData(format!("Failed to render template: {}", e))
+        })?;
 
         // Write file to disk
         fs::write(&file_path, content)?;

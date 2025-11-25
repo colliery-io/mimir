@@ -1,28 +1,27 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_optional_features;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionalFeature {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     #[serde(rename = "featureType")]
     pub feature_type: Vec<String>, // EI, MM, FS:F, etc.
-    
+
     pub prerequisite: Option<Vec<Prerequisite>>,
     pub entries: Vec<serde_json::Value>,
-    
+
     #[serde(rename = "isClassFeatureVariant")]
     pub is_class_feature_variant: Option<bool>,
-    
+
     pub consumes: Option<Consumes>,
-    
+
     #[serde(rename = "additionalSpells")]
     pub additional_spells: Option<Vec<serde_json::Value>>,
-    
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
@@ -52,13 +51,13 @@ pub enum PrerequisiteLevel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClassRef {
     pub name: String,
-    pub source: Option<String>,  // Make source optional
+    pub source: Option<String>, // Make source optional
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubclassRef {
     pub name: String,
-    pub source: Option<String>,  // Make source optional
+    pub source: Option<String>, // Make source optional
     #[serde(rename = "shortName")]
     pub short_name: Option<String>,
 }
@@ -94,78 +93,89 @@ impl From<&OptionalFeature> for OptionalFeatureSummary {
 }
 
 fn format_feature_types(types: &[String]) -> String {
-    let formatted: Vec<String> = types.iter().map(|t| {
-        match t.as_str() {
-            "AI" => "Artificer Infusion",
-            "ED" => "Elemental Discipline",
-            "EI" => "Eldritch Invocation",
-            "MM" => "Metamagic",
-            "MV" => "Maneuver",
-            "MV:B" => "Maneuver (Battle Master)",
-            "MV:C2-UA" => "Maneuver (Cavalier V2 UA)",
-            "AS:V1-UA" => "Arcane Shot (V1 UA)",
-            "AS:V2-UA" => "Arcane Shot (V2 UA)",
-            "AS" => "Arcane Shot",
-            "OTH" => "Other",
-            "FS:F" => "Fighting Style (Fighter)",
-            "FS:B" => "Fighting Style (Bard)",
-            "FS:P" => "Fighting Style (Paladin)",
-            "FS:R" => "Fighting Style (Ranger)",
-            "PB" => "Pact Boon",
-            "OR" => "Onomancy Resonant",
-            "RN" => "Rune Knight Rune",
-            "AF" => "Alchemical Formula",
-            "TT" => "Traveler's Trick",
-            _ => t,
-        }
-    }.to_string()).collect();
-    
+    let formatted: Vec<String> = types
+        .iter()
+        .map(|t| {
+            {
+                match t.as_str() {
+                    "AI" => "Artificer Infusion",
+                    "ED" => "Elemental Discipline",
+                    "EI" => "Eldritch Invocation",
+                    "MM" => "Metamagic",
+                    "MV" => "Maneuver",
+                    "MV:B" => "Maneuver (Battle Master)",
+                    "MV:C2-UA" => "Maneuver (Cavalier V2 UA)",
+                    "AS:V1-UA" => "Arcane Shot (V1 UA)",
+                    "AS:V2-UA" => "Arcane Shot (V2 UA)",
+                    "AS" => "Arcane Shot",
+                    "OTH" => "Other",
+                    "FS:F" => "Fighting Style (Fighter)",
+                    "FS:B" => "Fighting Style (Bard)",
+                    "FS:P" => "Fighting Style (Paladin)",
+                    "FS:R" => "Fighting Style (Ranger)",
+                    "PB" => "Pact Boon",
+                    "OR" => "Onomancy Resonant",
+                    "RN" => "Rune Knight Rune",
+                    "AF" => "Alchemical Formula",
+                    "TT" => "Traveler's Trick",
+                    _ => t,
+                }
+            }
+            .to_string()
+        })
+        .collect();
+
     formatted.join(", ")
 }
 
 fn format_prerequisites(prereqs: &Option<Vec<Prerequisite>>) -> String {
     if let Some(prereqs) = prereqs {
-        let parts: Vec<String> = prereqs.iter().filter_map(|p| {
-            if let Some(level) = &p.level {
-                match level {
-                    PrerequisiteLevel::Simple(lvl) => Some(format!("Level {}", lvl)),
-                    PrerequisiteLevel::Complex { level, class, subclass } => {
-                        let mut text = String::new();
-                        if let Some(cls) = class {
-                            text.push_str(&cls.name);
-                            if let Some(sub) = subclass {
-                                text.push_str(&format!(" ({})", sub.name));
+        let parts: Vec<String> = prereqs
+            .iter()
+            .filter_map(|p| {
+                if let Some(level) = &p.level {
+                    match level {
+                        PrerequisiteLevel::Simple(lvl) => Some(format!("Level {}", lvl)),
+                        PrerequisiteLevel::Complex {
+                            level,
+                            class,
+                            subclass,
+                        } => {
+                            let mut text = String::new();
+                            if let Some(cls) = class {
+                                text.push_str(&cls.name);
+                                if let Some(sub) = subclass {
+                                    text.push_str(&format!(" ({})", sub.name));
+                                }
+                                text.push_str(&format!(" Level {}", level));
+                            } else {
+                                text.push_str(&format!("Level {}", level));
                             }
-                            text.push_str(&format!(" Level {}", level));
-                        } else {
-                            text.push_str(&format!("Level {}", level));
+                            Some(text)
                         }
-                        Some(text)
                     }
-                }
-            } else if let Some(pact) = &p.pact {
-                Some(format!("Pact of the {}", pact))
-            } else if let Some(patron) = &p.patron {
-                Some(format!("{} Patron", patron))
-            } else if let Some(spells) = &p.spell {
-                if !spells.is_empty() {
-                    Some(format!("{} cantrip", spells[0].replace("#c", "")))
+                } else if let Some(pact) = &p.pact {
+                    Some(format!("Pact of the {}", pact))
+                } else if let Some(patron) = &p.patron {
+                    Some(format!("{} Patron", patron))
+                } else if let Some(spells) = &p.spell {
+                    if !spells.is_empty() {
+                        Some(format!("{} cantrip", spells[0].replace("#c", "")))
+                    } else {
+                        None
+                    }
+                } else if let Some(features) = &p.feature {
+                    if !features.is_empty() {
+                        Some(features.join(", "))
+                    } else {
+                        None
+                    }
                 } else {
-                    None
+                    p.other_summary.clone()
                 }
-            } else if let Some(features) = &p.feature {
-                if !features.is_empty() {
-                    Some(features.join(", "))
-                } else {
-                    None
-                }
-            } else if let Some(summary) = &p.other_summary {
-                Some(summary.clone())
-            } else {
-                None
-            }
-        }).collect();
-        
+            })
+            .collect();
+
         if parts.is_empty() {
             String::new()
         } else {
@@ -190,7 +200,7 @@ pub struct CatalogOptionalFeature {
     pub id: i32,
     pub name: String,
     pub feature_types: Option<String>,
-    pub feature_type_full: Option<String>, 
+    pub feature_type_full: Option<String>,
     pub prerequisite_text: Option<String>,
     pub grants_spells: Option<bool>,
     pub source: String,
@@ -225,7 +235,8 @@ impl From<&CatalogOptionalFeature> for OptionalFeatureSummary {
         Self {
             name: catalog.name.clone(),
             source: catalog.source.clone(),
-            feature_types: catalog.feature_types
+            feature_types: catalog
+                .feature_types
                 .as_ref()
                 .and_then(|s| serde_json::from_str(s).ok())
                 .unwrap_or_default(),

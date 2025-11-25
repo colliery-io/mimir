@@ -81,7 +81,7 @@ pub enum ChangeDetail {
     Generic {
         /// List of change descriptions.
         items: Vec<String>,
-    }
+    },
 }
 
 /// Individual line-based edit operation
@@ -131,49 +131,49 @@ pub struct DiffPreview {
 pub trait Tool: Send + Sync {
     /// Get the tool's unique name
     fn name(&self) -> &str;
-    
+
     /// Get the tool's description for the LLM
     fn description(&self) -> &str;
-    
+
     /// Get the JSON Schema for the tool's parameters
     fn parameters_schema(&self) -> Value;
-    
+
     /// Whether this tool requires user confirmation before execution
-    /// 
+    ///
     /// Default implementation returns false (no confirmation needed)
     fn requires_confirmation(&self) -> bool {
         false
     }
-    
+
     /// Generate a human-readable description of the action for confirmation
-    /// 
+    ///
     /// This is only called when `requires_confirmation()` returns true.
     /// Default implementation returns None.
     fn describe_action(&self, _arguments: &Value) -> Option<ActionDescription> {
         None
     }
-    
+
     /// Execute the tool with the given arguments
     async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>>;
-    
+
     /// Execute with access to recent tool calls (default delegates to execute)
     async fn execute_with_context(
         &self,
         arguments: Value,
-        _recent_calls: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<ToolCall>>>
+        _recent_calls: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<ToolCall>>>,
     ) -> Result<String, Box<dyn Error + Send + Sync>> {
         // Default implementation ignores context
         self.execute(arguments).await
     }
-    
+
     /// Get workflow guidance for this tool (relationships, dependencies, usage patterns)
-    /// 
+    ///
     /// Default implementation returns None. Tools should override this to provide
     /// guidance about how they interact with other tools.
     fn workflow_guidance(&self) -> Option<String> {
         None
     }
-    
+
     /// Convert to LLM tool definition
     fn to_llm_tool(&self) -> LlmTool {
         let name = self.name().to_string();

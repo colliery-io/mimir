@@ -2,5 +2,5 @@
 // These tests require a running Ollama instance on localhost:11434
 
 mod common;
-mod ollama;
 mod model_management;
+mod ollama;

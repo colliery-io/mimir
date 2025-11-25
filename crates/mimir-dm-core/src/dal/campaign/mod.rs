@@ -1,5 +1,5 @@
 //! Data Access Layer for Campaign Management
-//! 
+//!
 //! Repository implementations for campaign organization and story management.
 
 pub mod campaigns;

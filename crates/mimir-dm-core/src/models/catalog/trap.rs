@@ -1,22 +1,22 @@
-use serde::{Deserialize, Serialize};
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Trap {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     #[serde(rename = "trapHazType")]
     pub trap_haz_type: Option<String>, // MECH, MAG, WLD, WTH, ENV
-    
+
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     pub srd: Option<bool>,
-    
+
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
@@ -26,17 +26,17 @@ pub struct Hazard {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     #[serde(rename = "trapHazType")]
     pub trap_haz_type: Option<String>, // MECH, MAG, WLD, WTH, ENV
-    
+
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     pub srd: Option<bool>,
-    
+
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
@@ -56,25 +56,25 @@ impl TrapOrHazard {
             TrapOrHazard::Hazard(h) => &h.name,
         }
     }
-    
+
     pub fn source(&self) -> &str {
         match self {
             TrapOrHazard::Trap(t) => &t.source,
             TrapOrHazard::Hazard(h) => &h.source,
         }
     }
-    
+
     pub fn trap_haz_type(&self) -> Option<&String> {
         match self {
             TrapOrHazard::Trap(t) => t.trap_haz_type.as_ref(),
             TrapOrHazard::Hazard(h) => h.trap_haz_type.as_ref(),
         }
     }
-    
+
     pub fn is_trap(&self) -> bool {
         matches!(self, TrapOrHazard::Trap(_))
     }
-    
+
     pub fn is_srd(&self) -> bool {
         match self {
             TrapOrHazard::Trap(t) => t.srd.unwrap_or(false),
@@ -98,7 +98,11 @@ impl From<&TrapOrHazard> for TrapSummary {
             name: item.name().to_string(),
             source: item.source().to_string(),
             trap_type: format_trap_type(item.trap_haz_type()),
-            category: if item.is_trap() { "Trap".to_string() } else { "Hazard".to_string() },
+            category: if item.is_trap() {
+                "Trap".to_string()
+            } else {
+                "Hazard".to_string()
+            },
         }
     }
 }
@@ -163,7 +167,11 @@ impl From<&TrapOrHazard> for NewCatalogTrap {
     fn from(item: &TrapOrHazard) -> Self {
         Self {
             name: item.name().to_string(),
-            category: if item.is_trap() { "Trap".to_string() } else { "Hazard".to_string() },
+            category: if item.is_trap() {
+                "Trap".to_string()
+            } else {
+                "Hazard".to_string()
+            },
             trap_type: item.trap_haz_type().map(|t| format_trap_type(Some(t))),
             source: item.source().to_string(),
             full_trap_json: serde_json::to_string(item).unwrap_or_default(),

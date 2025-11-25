@@ -1,27 +1,27 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_deities;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Deity {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     pub title: Option<String>,
     pub pantheon: Option<String>,
     pub alignment: Option<Vec<String>>,
     pub domains: Option<Vec<String>>,
     pub symbol: Option<String>,
-    
+
     #[serde(rename = "additionalSources")]
     pub additional_sources: Option<Vec<SourceReference>>,
-    
+
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
@@ -60,8 +60,9 @@ impl From<&Deity> for DeitySummary {
 
 fn format_alignment(alignment: &Option<Vec<String>>) -> String {
     if let Some(align) = alignment {
-        align.iter().map(|a| {
-            match a.as_str() {
+        align
+            .iter()
+            .map(|a| match a.as_str() {
                 "L" => "Lawful",
                 "N" => "Neutral",
                 "C" => "Chaotic",
@@ -70,8 +71,9 @@ fn format_alignment(alignment: &Option<Vec<String>>) -> String {
                 "U" => "Unaligned",
                 "A" => "Any",
                 _ => a,
-            }
-        }).collect::<Vec<_>>().join(" ")
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
     } else {
         String::new()
     }
@@ -125,10 +127,12 @@ pub struct DeityFilters {
 
 impl From<&CatalogDeity> for DeitySummary {
     fn from(catalog: &CatalogDeity) -> Self {
-        let domains = catalog.domains.as_ref()
+        let domains = catalog
+            .domains
+            .as_ref()
             .map(|d| d.split(',').map(|s| s.trim().to_string()).collect())
             .unwrap_or_default();
-        
+
         Self {
             name: catalog.name.clone(),
             source: catalog.source.clone(),
@@ -144,10 +148,12 @@ impl From<&CatalogDeity> for DeitySummary {
 impl From<&Deity> for NewCatalogDeity {
     fn from(deity: &Deity) -> Self {
         // Convert domains Vec<String> to comma-separated string for database storage
-        let domains_str = deity.domains.as_ref()
+        let domains_str = deity
+            .domains
+            .as_ref()
             .map(|d| d.join(", "))
             .filter(|s| !s.is_empty());
-        
+
         Self {
             name: deity.name.clone(),
             title: deity.title.clone(),

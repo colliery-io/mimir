@@ -1,9 +1,9 @@
 //! Integration tests for RewardService
 
-use mimir_dm_core::{establish_connection, run_migrations};
-use mimir_dm_core::services::RewardService;
-use mimir_dm_core::models::catalog::RewardFilters;
 use diesel::prelude::*;
+use mimir_dm_core::models::catalog::RewardFilters;
+use mimir_dm_core::services::RewardService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -62,8 +62,7 @@ fn test_search_rewards_no_filters() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 16, "Should return all 16 seeded rewards");
 }
@@ -79,10 +78,13 @@ fn test_search_rewards_by_name() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
-    assert_eq!(results.len(), 1, "Should return 1 reward matching exact name");
+    assert_eq!(
+        results.len(),
+        1,
+        "Should return 1 reward matching exact name"
+    );
     assert_eq!(results[0].name, "Blessing of Health");
 }
 
@@ -97,11 +99,13 @@ fn test_search_rewards_by_search() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     // Multiple rewards mention "spell" in their descriptions
-    assert!(results.len() >= 2, "Should return rewards mentioning 'spell'");
+    assert!(
+        results.len() >= 2,
+        "Should return rewards mentioning 'spell'"
+    );
 }
 
 #[test]
@@ -115,8 +119,7 @@ fn test_search_rewards_by_reward_type_blessing() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 5, "Should return 5 blessings");
     assert!(results.iter().all(|r| r.reward_type == "Blessing"));
@@ -133,8 +136,7 @@ fn test_search_rewards_by_reward_type_boon() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 5, "Should return 5 boons");
 }
@@ -150,8 +152,7 @@ fn test_search_rewards_by_reward_type_charm() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 6, "Should return 6 charms");
 }
@@ -167,8 +168,7 @@ fn test_search_rewards_by_source() {
         sources: Some(vec!["XGE".to_string()]),
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     assert_eq!(results.len(), 1, "Should return 1 XGE reward");
     assert_eq!(results[0].source, "XGE");
@@ -185,11 +185,14 @@ fn test_search_rewards_by_has_prerequisites_true() {
         sources: None,
         has_prerequisites: Some(true),
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     // All 5 boons have prerequisites
-    assert_eq!(results.len(), 5, "Should return 5 rewards with prerequisites");
+    assert_eq!(
+        results.len(),
+        5,
+        "Should return 5 rewards with prerequisites"
+    );
     assert!(results.iter().all(|r| r.has_prerequisites));
 }
 
@@ -204,11 +207,14 @@ fn test_search_rewards_by_has_prerequisites_false() {
         sources: None,
         has_prerequisites: Some(false),
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     // 5 blessings + 6 charms = 11 rewards without prerequisites
-    assert_eq!(results.len(), 11, "Should return 11 rewards without prerequisites");
+    assert_eq!(
+        results.len(),
+        11,
+        "Should return 11 rewards without prerequisites"
+    );
     assert!(results.iter().all(|r| !r.has_prerequisites));
 }
 
@@ -223,11 +229,14 @@ fn test_search_rewards_combined_filters() {
         sources: Some(vec!["DMG".to_string()]),
         has_prerequisites: Some(true),
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     // All 5 DMG boons have prerequisites
-    assert_eq!(results.len(), 5, "Should return 5 DMG boons with prerequisites");
+    assert_eq!(
+        results.len(),
+        5,
+        "Should return 5 DMG boons with prerequisites"
+    );
 }
 
 #[test]
@@ -241,8 +250,7 @@ fn test_search_rewards_empty_results() {
         sources: None,
         has_prerequisites: None,
     };
-    let results = RewardService::search_rewards(&mut conn, filters)
-        .expect("Search should succeed");
+    let results = RewardService::search_rewards(&mut conn, filters).expect("Search should succeed");
 
     assert!(results.is_empty(), "Should return empty results");
 }
@@ -252,8 +260,7 @@ fn test_get_reward_by_id() {
     let (mut conn, _temp_dir) = setup_test_db();
 
     // First reward in fresh DB should be ID 1
-    let reward = RewardService::get_reward_by_id(&mut conn, 1)
-        .expect("Should get reward");
+    let reward = RewardService::get_reward_by_id(&mut conn, 1).expect("Should get reward");
 
     assert!(reward.is_some());
 }
@@ -262,8 +269,7 @@ fn test_get_reward_by_id() {
 fn test_get_reward_by_id_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let reward = RewardService::get_reward_by_id(&mut conn, 99999)
-        .expect("Should not error");
+    let reward = RewardService::get_reward_by_id(&mut conn, 99999).expect("Should not error");
 
     assert!(reward.is_none());
 }
@@ -272,8 +278,9 @@ fn test_get_reward_by_id_not_found() {
 fn test_get_reward_by_name_and_source() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let reward = RewardService::get_reward_by_name_and_source(&mut conn, "Blessing of Health", "DMG")
-        .expect("Should get reward");
+    let reward =
+        RewardService::get_reward_by_name_and_source(&mut conn, "Blessing of Health", "DMG")
+            .expect("Should get reward");
 
     assert!(reward.is_some());
     let reward = reward.unwrap();
@@ -295,8 +302,7 @@ fn test_get_reward_by_name_and_source_not_found() {
 fn test_get_reward_types() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let types = RewardService::get_reward_types(&mut conn)
-        .expect("Should get reward types");
+    let types = RewardService::get_reward_types(&mut conn).expect("Should get reward types");
 
     assert_eq!(types.len(), 3, "Should have 3 reward types");
     assert!(types.contains(&"Blessing".to_string()));
@@ -308,8 +314,7 @@ fn test_get_reward_types() {
 fn test_get_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let sources = RewardService::get_sources(&mut conn)
-        .expect("Should get sources");
+    let sources = RewardService::get_sources(&mut conn).expect("Should get sources");
 
     assert_eq!(sources.len(), 2, "Should have 2 sources");
     assert!(sources.contains(&"DMG".to_string()));
@@ -320,8 +325,7 @@ fn test_get_sources() {
 fn test_get_reward_count() {
     let (mut conn, _temp_dir) = setup_test_db();
 
-    let count = RewardService::get_reward_count(&mut conn)
-        .expect("Should get count");
+    let count = RewardService::get_reward_count(&mut conn).expect("Should get count");
 
     assert_eq!(count, 16, "Should have 16 rewards");
 }

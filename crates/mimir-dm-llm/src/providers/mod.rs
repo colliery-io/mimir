@@ -1,3 +1,3 @@
-pub mod ollama;
 pub mod groq;
+pub mod ollama;
 pub mod openai_compat;

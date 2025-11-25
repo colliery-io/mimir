@@ -4,7 +4,9 @@
 //! from the 5e catalog database. Includes fighting styles, invocations, maneuvers, etc.
 
 use crate::state::AppState;
-use mimir_dm_core::models::catalog::optionalfeature::{OptionalFeature, OptionalFeatureFilters, OptionalFeatureSummary};
+use mimir_dm_core::models::catalog::optionalfeature::{
+    OptionalFeature, OptionalFeatureFilters, OptionalFeatureSummary,
+};
 use mimir_dm_core::services::OptionalFeatureService;
 use tauri::State;
 use tracing::{debug, error, info};
@@ -49,7 +51,8 @@ pub async fn search_optional_features(
     };
 
     let mut service = OptionalFeatureService::new(&mut conn);
-    let results = service.search_optional_features(filters)
+    let results = service
+        .search_optional_features(filters)
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     info!("Found {} optional features", results.len());
@@ -81,7 +84,8 @@ pub async fn get_optional_feature(
     })?;
 
     let mut service = OptionalFeatureService::new(&mut conn);
-    let result = service.get_optional_feature_by_id(id)
+    let result = service
+        .get_optional_feature_by_id(id)
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     result.ok_or_else(|| format!("Optional feature with ID {} not found", id))
@@ -106,7 +110,10 @@ pub async fn get_optional_feature_details(
     source: String,
     state: State<'_, AppState>,
 ) -> Result<OptionalFeature, String> {
-    debug!("Getting optional feature details for name: {}, source: {}", name, source);
+    debug!(
+        "Getting optional feature details for name: {}, source: {}",
+        name, source
+    );
 
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
@@ -114,10 +121,16 @@ pub async fn get_optional_feature_details(
     })?;
 
     let mut service = OptionalFeatureService::new(&mut conn);
-    let result = service.get_optional_feature_by_name_and_source(&name, &source)
+    let result = service
+        .get_optional_feature_by_name_and_source(&name, &source)
         .map_err(|e| format!("Database query failed: {}", e))?;
 
-    result.ok_or_else(|| format!("Optional feature '{}' from source '{}' not found", name, source))
+    result.ok_or_else(|| {
+        format!(
+            "Optional feature '{}' from source '{}' not found",
+            name, source
+        )
+    })
 }
 
 /// Get all unique feature types in the optional feature catalog.
@@ -131,9 +144,7 @@ pub async fn get_optional_feature_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_optional_feature_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_optional_feature_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all optional feature types");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -142,7 +153,8 @@ pub async fn get_optional_feature_types(
     })?;
 
     let mut service = OptionalFeatureService::new(&mut conn);
-    let types = service.get_optional_feature_types()
+    let types = service
+        .get_optional_feature_types()
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     info!("Found {} feature types", types.len());
@@ -170,7 +182,8 @@ pub async fn get_optional_feature_sources(
     })?;
 
     let mut service = OptionalFeatureService::new(&mut conn);
-    let sources = service.get_optional_feature_sources()
+    let sources = service
+        .get_optional_feature_sources()
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     info!("Found {} sources", sources.len());

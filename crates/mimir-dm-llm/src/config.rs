@@ -170,7 +170,9 @@ limit:
         assert_eq!(config.model, "llama3");
         assert_eq!(config.supported_endpoints.len(), 2);
         assert!(config.supported_endpoints.contains(&EndpointType::Chat));
-        assert!(config.supported_endpoints.contains(&EndpointType::Embedding));
+        assert!(config
+            .supported_endpoints
+            .contains(&EndpointType::Embedding));
         assert!(config.config.is_some());
         assert!(config.limit.is_some());
     }
@@ -180,7 +182,7 @@ limit:
         let mut temp_file = NamedTempFile::new().unwrap();
         let yaml = create_valid_config();
         temp_file.write_all(yaml.as_bytes()).unwrap();
-        
+
         let result = ModelConfig::from_yaml_file(temp_file.path());
         assert!(result.is_ok());
     }
@@ -209,9 +211,11 @@ pub struct FileToolsConfig {
 impl FileToolsConfig {
     /// Create a new config with the specified allowed directories
     pub fn new(allowed_directories: Vec<PathBuf>) -> Self {
-        Self { allowed_directories }
+        Self {
+            allowed_directories,
+        }
     }
-    
+
     /// Create a config with a single root directory
     pub fn with_root(root_directory: PathBuf) -> Self {
         Self {

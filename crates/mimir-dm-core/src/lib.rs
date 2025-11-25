@@ -23,16 +23,11 @@ pub use connection::establish_connection;
 pub use db::{DatabaseService, DbConnection, DbPool};
 pub use error::{DbError, Result};
 
-
-
-// Re-export campaign models  
-pub use models::campaign::{
-    Campaign, Module, Session, Document,
-    WorkflowCard, TemplateDocument
-};
+// Re-export campaign models
+pub use models::campaign::{Campaign, Document, Module, Session, TemplateDocument, WorkflowCard};
 
 // Re-export DAL traits
-pub use dal::traits::{Repository, AsyncRepository};
+pub use dal::traits::{AsyncRepository, Repository};
 
 /// Embedded database migrations for automatic schema updates.
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");

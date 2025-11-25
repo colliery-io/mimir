@@ -3,11 +3,12 @@
 //! Provides database-backed optional feature search, retrieval, and import functionality.
 //! Supports filtering by name, feature type, source, and spell-granting features.
 
-use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::optionalfeature::{
-    CatalogOptionalFeature, OptionalFeatureSummary, OptionalFeatureFilters, OptionalFeature, NewCatalogOptionalFeature, OptionalFeatureData
+    CatalogOptionalFeature, NewCatalogOptionalFeature, OptionalFeature, OptionalFeatureData,
+    OptionalFeatureFilters, OptionalFeatureSummary,
 };
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
@@ -25,7 +26,10 @@ impl<'a> OptionalFeatureService<'a> {
     }
 
     /// Searches optional features with the given filters.
-    pub fn search_optional_features(&mut self, filters: OptionalFeatureFilters) -> Result<Vec<OptionalFeatureSummary>> {
+    pub fn search_optional_features(
+        &mut self,
+        filters: OptionalFeatureFilters,
+    ) -> Result<Vec<OptionalFeatureSummary>> {
         use crate::schema::catalog_optional_features::dsl::*;
 
         let mut query = catalog_optional_features.into_boxed();
@@ -56,14 +60,13 @@ impl<'a> OptionalFeatureService<'a> {
             .order(name.asc())
             .load::<CatalogOptionalFeature>(self.conn)?;
 
-        let mut results: Vec<OptionalFeatureSummary> = features.iter().map(OptionalFeatureSummary::from).collect();
+        let mut results: Vec<OptionalFeatureSummary> =
+            features.iter().map(OptionalFeatureSummary::from).collect();
 
         // Apply feature type filtering in post-processing
         if let Some(types) = requested_types {
             if !types.is_empty() {
-                results.retain(|feature| {
-                    feature.feature_types.iter().any(|ft| types.contains(ft))
-                });
+                results.retain(|feature| feature.feature_types.iter().any(|ft| types.contains(ft)));
             }
         }
 
@@ -71,7 +74,10 @@ impl<'a> OptionalFeatureService<'a> {
     }
 
     /// Gets an optional feature by its database ID.
-    pub fn get_optional_feature_by_id(&mut self, feature_id: i32) -> Result<Option<OptionalFeature>> {
+    pub fn get_optional_feature_by_id(
+        &mut self,
+        feature_id: i32,
+    ) -> Result<Option<OptionalFeature>> {
         use crate::schema::catalog_optional_features::dsl::*;
 
         let catalog_feature = catalog_optional_features
@@ -89,7 +95,11 @@ impl<'a> OptionalFeatureService<'a> {
     }
 
     /// Gets an optional feature by its name and source book.
-    pub fn get_optional_feature_by_name_and_source(&mut self, feature_name: &str, feature_source: &str) -> Result<Option<OptionalFeature>> {
+    pub fn get_optional_feature_by_name_and_source(
+        &mut self,
+        feature_name: &str,
+        feature_source: &str,
+    ) -> Result<Option<OptionalFeature>> {
         use crate::schema::catalog_optional_features::dsl::*;
 
         let catalog_feature = catalog_optional_features
@@ -146,9 +156,12 @@ impl<'a> OptionalFeatureService<'a> {
     pub fn import_optional_features_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing optional features from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing optional features from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let mut total_imported = 0;
         let optional_feature_files = Self::find_optional_feature_files(book_dir)?;
@@ -158,18 +171,30 @@ impl<'a> OptionalFeatureService<'a> {
             return Ok(0);
         }
 
-        info!("Found {} optional feature files to process", optional_feature_files.len());
+        info!(
+            "Found {} optional feature files to process",
+            optional_feature_files.len()
+        );
 
         for optional_feature_file in optional_feature_files {
-            debug!("Processing optional feature file: {:?}", optional_feature_file);
+            debug!(
+                "Processing optional feature file: {:?}",
+                optional_feature_file
+            );
 
             match Self::import_optional_features_from_file(conn, &optional_feature_file, source) {
                 Ok(count) => {
-                    info!("Imported {} optional features from {:?}", count, optional_feature_file);
+                    info!(
+                        "Imported {} optional features from {:?}",
+                        count, optional_feature_file
+                    );
                     total_imported += count;
                 }
                 Err(e) => {
-                    debug!("Failed to import optional features from {:?}: {}", optional_feature_file, e);
+                    debug!(
+                        "Failed to import optional features from {:?}: {}",
+                        optional_feature_file, e
+                    );
                     // Continue processing other files instead of failing completely
                 }
             }
@@ -200,10 +225,7 @@ impl<'a> OptionalFeatureService<'a> {
         }
 
         // Also check the main data directory for optionalfeatures.json files
-        let search_dirs = vec![
-            book_dir.join("data"),
-            book_dir.to_path_buf(),
-        ];
+        let search_dirs = vec![book_dir.join("data"), book_dir.to_path_buf()];
 
         for search_dir in search_dirs {
             if !search_dir.exists() || !search_dir.is_dir() {
@@ -213,13 +235,13 @@ impl<'a> OptionalFeatureService<'a> {
             if let Ok(entries) = fs::read_dir(&search_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    let filename = path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("");
+                    let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-                    if path.is_file() &&
-                       path.extension().and_then(|e| e.to_str()) == Some("json") &&
-                       (filename.contains("optionalfeature") || filename.contains("optional-feature")) {
+                    if path.is_file()
+                        && path.extension().and_then(|e| e.to_str()) == Some("json")
+                        && (filename.contains("optionalfeature")
+                            || filename.contains("optional-feature"))
+                    {
                         debug!("Found optional feature file: {:?}", path);
                         files.push(path);
                     }
@@ -234,7 +256,7 @@ impl<'a> OptionalFeatureService<'a> {
     fn import_optional_features_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading optional features from file: {:?}", file_path);
 
@@ -242,25 +264,37 @@ impl<'a> OptionalFeatureService<'a> {
         let data: OptionalFeatureData = serde_json::from_str(&content)?;
 
         if let Some(optional_features) = data.optional_features {
-            let new_optional_features: Vec<NewCatalogOptionalFeature> = optional_features.iter().map(|feature| {
-                let mut new_feature = NewCatalogOptionalFeature::from(feature);
-                // Always override the source with the book source to ensure consistency
-                new_feature.source = source.to_string();
-                new_feature
-            }).collect();
+            let new_optional_features: Vec<NewCatalogOptionalFeature> = optional_features
+                .iter()
+                .map(|feature| {
+                    let mut new_feature = NewCatalogOptionalFeature::from(feature);
+                    // Always override the source with the book source to ensure consistency
+                    new_feature.source = source.to_string();
+                    new_feature
+                })
+                .collect();
 
-            debug!("Inserting {} optional features individually (SQLite limitation)", new_optional_features.len());
+            debug!(
+                "Inserting {} optional features individually (SQLite limitation)",
+                new_optional_features.len()
+            );
 
             use crate::schema::catalog_optional_features;
             for feature in &new_optional_features {
                 diesel::insert_into(catalog_optional_features::table)
                     .values(feature)
-                    .on_conflict((catalog_optional_features::name, catalog_optional_features::source))
+                    .on_conflict((
+                        catalog_optional_features::name,
+                        catalog_optional_features::source,
+                    ))
                     .do_nothing()
                     .execute(conn)?;
             }
 
-            info!("Successfully imported {} optional features into database", new_optional_features.len());
+            info!(
+                "Successfully imported {} optional features into database",
+                new_optional_features.len()
+            );
             Ok(new_optional_features.len())
         } else {
             Ok(0)
@@ -270,15 +304,20 @@ impl<'a> OptionalFeatureService<'a> {
     /// Remove all optional features from a specific source
     pub fn remove_optional_features_from_source(
         conn: &mut SqliteConnection,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         use crate::schema::catalog_optional_features;
         info!("Removing optional features from source: {}", source);
 
-        let deleted = diesel::delete(catalog_optional_features::table.filter(catalog_optional_features::source.eq(source)))
-            .execute(conn)?;
+        let deleted = diesel::delete(
+            catalog_optional_features::table.filter(catalog_optional_features::source.eq(source)),
+        )
+        .execute(conn)?;
 
-        info!("Removed {} optional features from source: {}", deleted, source);
+        info!(
+            "Removed {} optional features from source: {}",
+            deleted, source
+        );
         Ok(deleted)
     }
 }

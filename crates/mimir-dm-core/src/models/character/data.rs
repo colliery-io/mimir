@@ -57,7 +57,7 @@ impl AbilityScores {
 }
 
 /// Proficiency tracking for skills, saves, armor, weapons, tools, languages
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Proficiencies {
     #[serde(default)]
     pub skills: Vec<String>,
@@ -71,19 +71,6 @@ pub struct Proficiencies {
     pub tools: Vec<String>,
     #[serde(default)]
     pub languages: Vec<String>,
-}
-
-impl Default for Proficiencies {
-    fn default() -> Self {
-        Self {
-            skills: Vec::new(),
-            saves: Vec::new(),
-            armor: Vec::new(),
-            weapons: Vec::new(),
-            tools: Vec::new(),
-            languages: Vec::new(),
-        }
-    }
 }
 
 /// Spell slot tracking for a specific spell level
@@ -117,7 +104,7 @@ impl SpellSlots {
 }
 
 /// Spell data for spellcasting characters
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct SpellData {
     #[serde(default)]
     pub known_spells: Vec<String>,
@@ -129,19 +116,8 @@ pub struct SpellData {
     pub spell_slots: std::collections::HashMap<i32, SpellSlots>,
 }
 
-impl Default for SpellData {
-    fn default() -> Self {
-        Self {
-            known_spells: Vec::new(),
-            prepared_spells: Vec::new(),
-            cantrips: Vec::new(),
-            spell_slots: std::collections::HashMap::new(),
-        }
-    }
-}
-
 /// Currency tracking for D&D denominations
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Currency {
     #[serde(default)]
     pub copper: i32,
@@ -153,18 +129,6 @@ pub struct Currency {
     pub gold: i32,
     #[serde(default)]
     pub platinum: i32,
-}
-
-impl Default for Currency {
-    fn default() -> Self {
-        Self {
-            copper: 0,
-            silver: 0,
-            electrum: 0,
-            gold: 0,
-            platinum: 0,
-        }
-    }
 }
 
 /// Inventory item
@@ -182,7 +146,7 @@ pub struct InventoryItem {
 }
 
 /// Equipped items in specific slots
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct EquippedItems {
     pub armor: Option<String>,
     pub shield: Option<String>,
@@ -190,35 +154,13 @@ pub struct EquippedItems {
     pub off_hand: Option<String>,
 }
 
-impl Default for EquippedItems {
-    fn default() -> Self {
-        Self {
-            armor: None,
-            shield: None,
-            main_hand: None,
-            off_hand: None,
-        }
-    }
-}
-
 /// Character personality traits
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Personality {
     pub traits: Option<String>,
     pub ideals: Option<String>,
     pub bonds: Option<String>,
     pub flaws: Option<String>,
-}
-
-impl Default for Personality {
-    fn default() -> Self {
-        Self {
-            traits: None,
-            ideals: None,
-            bonds: None,
-            flaws: None,
-        }
-    }
 }
 
 /// Individual class level for multiclassing support
@@ -325,7 +267,10 @@ impl CharacterData {
 
     /// Get primary class name for display
     pub fn primary_class_name(&self) -> &str {
-        self.classes.first().map(|c| c.class_name.as_str()).unwrap_or("Unknown")
+        self.classes
+            .first()
+            .map(|c| c.class_name.as_str())
+            .unwrap_or("Unknown")
     }
 
     /// Get class display string (e.g., "Fighter 3 / Wizard 2")
@@ -536,7 +481,9 @@ mod tests {
             personality: Personality {
                 traits: Some("I'm always polite and respectful.".to_string()),
                 ideals: Some("Responsibility.".to_string()),
-                bonds: Some("I would still lay down my life for the people I served with.".to_string()),
+                bonds: Some(
+                    "I would still lay down my life for the people I served with.".to_string(),
+                ),
                 flaws: Some("I obey authority without question.".to_string()),
             },
         };

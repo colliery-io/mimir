@@ -47,7 +47,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::debug;
 
 use crate::config::{EndpointType, ModelConfig};
-use crate::providers::openai_compat::{OpenAiCompatClient, OpenAiChatRequest, OpenAiMessage};
+use crate::providers::openai_compat::{OpenAiChatRequest, OpenAiCompatClient, OpenAiMessage};
 use crate::traits::{
     ChatResponse, CompletionResponse, EmbeddingResponse, LlmError, LlmProvider, Message,
     RateLimitState, Tool,
@@ -91,10 +91,10 @@ impl GroqProvider {
             .trim_end_matches('/')
             .to_string();
 
-        let rate_limit_state = config.limit.as_ref().map_or_else(
-            || RateLimitState::default(),
-            |limit| RateLimitState::new(limit),
-        );
+        let rate_limit_state = config
+            .limit
+            .as_ref()
+            .map_or_else(RateLimitState::default, RateLimitState::new);
 
         // Create OpenAI-compatible client with API key
         let openai_client = OpenAiCompatClient::new(base_url, Some(api_key), 300)?;
@@ -135,10 +135,8 @@ impl LlmProvider for GroqProvider {
         self.check_rate_limit().await?;
 
         // Convert messages to OpenAI format
-        let openai_messages: Vec<OpenAiMessage> = messages
-            .into_iter()
-            .map(OpenAiMessage::from)
-            .collect();
+        let openai_messages: Vec<OpenAiMessage> =
+            messages.into_iter().map(OpenAiMessage::from).collect();
 
         let request = OpenAiChatRequest {
             model: self.config.model.clone(),
@@ -150,8 +148,11 @@ impl LlmProvider for GroqProvider {
             stream: false,
         };
 
-        debug!("Groq chat request via OpenAI-compat: model={} messages={}",
-            request.model, request.messages.len());
+        debug!(
+            "Groq chat request via OpenAI-compat: model={} messages={}",
+            request.model,
+            request.messages.len()
+        );
 
         // Use the OpenAI-compatible client
         self.openai_client.chat(request, cancellation_token).await
@@ -172,16 +173,21 @@ impl LlmProvider for GroqProvider {
 
         self.check_rate_limit().await?;
 
-        debug!("Groq complete request via OpenAI-compat: model={}", self.config.model);
+        debug!(
+            "Groq complete request via OpenAI-compat: model={}",
+            self.config.model
+        );
 
         // Use the OpenAI-compatible client (converts to chat format internally)
-        self.openai_client.complete(
-            self.config.model.clone(),
-            prompt,
-            temperature,
-            max_tokens,
-            stop,
-        ).await
+        self.openai_client
+            .complete(
+                self.config.model.clone(),
+                prompt,
+                temperature,
+                max_tokens,
+                stop,
+            )
+            .await
     }
 
     async fn embed(
@@ -284,7 +290,10 @@ mod tests {
         }"#;
 
         let response: OpenAiChatResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(response.choices[0].message.content, Some("Hello, world!".to_string()));
+        assert_eq!(
+            response.choices[0].message.content,
+            Some("Hello, world!".to_string())
+        );
         assert!(response.choices[0].message.tool_calls.is_none());
     }
 
@@ -354,7 +363,10 @@ mod tests {
         }"#;
 
         let response: OpenAiChatResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(response.choices[0].message.content, Some("I'll check the weather for you.".to_string()));
+        assert_eq!(
+            response.choices[0].message.content,
+            Some("I'll check the weather for you.".to_string())
+        );
         assert!(response.choices[0].message.tool_calls.is_some());
     }
 

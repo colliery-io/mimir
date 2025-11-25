@@ -59,26 +59,29 @@ pub struct UpdateTemplateDocument {
 impl TemplateDocument {
     /// Parse variables schema as JSON
     pub fn parse_variables_schema(&self) -> Option<JsonValue> {
-        self.variables_schema.as_ref()
+        self.variables_schema
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok())
     }
-    
+
     /// Parse default values as JSON
     pub fn parse_default_values(&self) -> Option<JsonValue> {
-        self.default_values.as_ref()
+        self.default_values
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok())
     }
-    
+
     /// Parse metadata as JSON
     pub fn parse_metadata(&self) -> Option<JsonValue> {
-        self.metadata.as_ref()
+        self.metadata
+            .as_ref()
             .and_then(|s| serde_json::from_str(s).ok())
     }
-    
+
     /// Create a Tera context from default values
     pub fn create_context(&self) -> tera::Context {
         let mut context = tera::Context::new();
-        
+
         // Add default values if available
         if let Some(defaults) = self.parse_default_values() {
             if let Some(obj) = defaults.as_object() {
@@ -87,7 +90,7 @@ impl TemplateDocument {
                 }
             }
         }
-        
+
         context
     }
 }
@@ -111,7 +114,8 @@ impl DocumentLevel {
             Self::Handout => "handout",
         }
     }
-    
+
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "campaign" => Some(Self::Campaign),
@@ -132,7 +136,7 @@ pub enum TemplateType {
     CampaignPitch,
     StartingScenario,
     QuickStartKit,
-    
+
     // Module Templates
     ModuleOverview,
     ModuleDungeon,
@@ -140,18 +144,18 @@ pub enum TemplateType {
     ModuleHorror,
     ModuleMystery,
     ModulePolitical,
-    
+
     // Character & NPC Templates
     CharacterIntegration,
     MajorNpcTracker,
     QuickNpcReference,
     PcArcTracker,
-    
+
     // World Building Templates
     WorldOverview,
     RegionOverview,
     FactionTemplate,
-    
+
     // Session Management Templates
     SessionOutline,
     ClueTracker,
@@ -166,7 +170,7 @@ impl TemplateType {
             Self::CampaignPitch => "campaign_pitch",
             Self::StartingScenario => "starting_scenario",
             Self::QuickStartKit => "quick_start_kit",
-            
+
             // Module Types
             Self::ModuleOverview => "module_overview",
             Self::ModuleDungeon => "module_dungeon",
@@ -174,25 +178,26 @@ impl TemplateType {
             Self::ModuleHorror => "module_horror",
             Self::ModuleMystery => "module_mystery",
             Self::ModulePolitical => "module_political",
-            
+
             // Character & NPC
             Self::CharacterIntegration => "character_integration",
             Self::MajorNpcTracker => "major_npc_tracker",
             Self::QuickNpcReference => "quick_npc_reference",
             Self::PcArcTracker => "pc_arc_tracker",
-            
+
             // World Building
             Self::WorldOverview => "world_overview",
             Self::RegionOverview => "region_overview",
             Self::FactionTemplate => "faction_template",
-            
+
             // Session Management
             Self::SessionOutline => "session_outline",
             Self::ClueTracker => "clue_tracker",
             Self::DocumentTracker => "document_tracker",
         }
     }
-    
+
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             // Campaign Level
@@ -200,7 +205,7 @@ impl TemplateType {
             "campaign_pitch" => Some(Self::CampaignPitch),
             "starting_scenario" => Some(Self::StartingScenario),
             "quick_start_kit" => Some(Self::QuickStartKit),
-            
+
             // Module Types
             "module_overview" => Some(Self::ModuleOverview),
             "module_dungeon" => Some(Self::ModuleDungeon),
@@ -208,27 +213,27 @@ impl TemplateType {
             "module_horror" => Some(Self::ModuleHorror),
             "module_mystery" => Some(Self::ModuleMystery),
             "module_political" => Some(Self::ModulePolitical),
-            
+
             // Character & NPC
             "character_integration" => Some(Self::CharacterIntegration),
             "major_npc_tracker" => Some(Self::MajorNpcTracker),
             "quick_npc_reference" => Some(Self::QuickNpcReference),
             "pc_arc_tracker" => Some(Self::PcArcTracker),
-            
+
             // World Building
             "world_overview" => Some(Self::WorldOverview),
             "region_overview" => Some(Self::RegionOverview),
             "faction_template" => Some(Self::FactionTemplate),
-            
+
             // Session Management
             "session_outline" => Some(Self::SessionOutline),
             "clue_tracker" => Some(Self::ClueTracker),
             "document_tracker" => Some(Self::DocumentTracker),
-            
+
             _ => None,
         }
     }
-    
+
     /// Get the file name for this template type
     pub fn file_name(&self) -> &'static str {
         match self {
@@ -237,29 +242,29 @@ impl TemplateType {
             Self::CampaignPitch => "campaign-pitch.md",
             Self::StartingScenario => "starting-scenario.md",
             Self::QuickStartKit => "quick-start-kit.md",
-            
+
             Self::ModuleOverview => "module-overview.md",
             Self::ModuleDungeon => "module-dungeon.md",
             Self::ModuleHeist => "module-heist.md",
             Self::ModuleHorror => "module-horror.md",
             Self::ModuleMystery => "module-mystery.md",
             Self::ModulePolitical => "module-political.md",
-            
+
             Self::CharacterIntegration => "character-integration.md",
             Self::MajorNpcTracker => "major-npc-tracker.md",
             Self::QuickNpcReference => "quick-npc-reference.md",
             Self::PcArcTracker => "pc-arc-tracker.md",
-            
+
             Self::WorldOverview => "world-overview.md",
             Self::RegionOverview => "region-overview.md",
             Self::FactionTemplate => "faction-template.md",
-            
+
             Self::SessionOutline => "session-outline.md",
             Self::ClueTracker => "clue-tracker.md",
             Self::DocumentTracker => "document-tracker.md",
         }
     }
-    
+
     /// Get all template types
     pub fn all() -> Vec<Self> {
         vec![
@@ -268,7 +273,6 @@ impl TemplateType {
             Self::CampaignPitch,
             Self::StartingScenario,
             Self::QuickStartKit,
-            
             // Module Types
             Self::ModuleOverview,
             Self::ModuleDungeon,
@@ -276,43 +280,51 @@ impl TemplateType {
             Self::ModuleHorror,
             Self::ModuleMystery,
             Self::ModulePolitical,
-            
             // Character & NPC
             Self::CharacterIntegration,
             Self::MajorNpcTracker,
             Self::QuickNpcReference,
             Self::PcArcTracker,
-            
             // World Building
             Self::WorldOverview,
             Self::RegionOverview,
             Self::FactionTemplate,
-            
             // Session Management
             Self::SessionOutline,
             Self::ClueTracker,
             Self::DocumentTracker,
         ]
     }
-    
+
     /// Get the document level for this template type
     pub fn document_level(&self) -> DocumentLevel {
         match self {
             // Campaign Level Templates
-            Self::CampaignBible | Self::CampaignPitch | Self::StartingScenario | 
-            Self::QuickStartKit | Self::WorldOverview | Self::RegionOverview | 
-            Self::FactionTemplate => DocumentLevel::Campaign,
-            
+            Self::CampaignBible
+            | Self::CampaignPitch
+            | Self::StartingScenario
+            | Self::QuickStartKit
+            | Self::WorldOverview
+            | Self::RegionOverview
+            | Self::FactionTemplate => DocumentLevel::Campaign,
+
             // Module Templates
-            Self::ModuleOverview | Self::ModuleDungeon | Self::ModuleHeist |
-            Self::ModuleHorror | Self::ModuleMystery | Self::ModulePolitical => DocumentLevel::Module,
-            
+            Self::ModuleOverview
+            | Self::ModuleDungeon
+            | Self::ModuleHeist
+            | Self::ModuleHorror
+            | Self::ModuleMystery
+            | Self::ModulePolitical => DocumentLevel::Module,
+
             // Session Templates
             Self::SessionOutline | Self::ClueTracker => DocumentLevel::Session,
-            
+
             // Handout Templates
-            Self::CharacterIntegration | Self::MajorNpcTracker | 
-            Self::QuickNpcReference | Self::PcArcTracker | Self::DocumentTracker => DocumentLevel::Handout,
+            Self::CharacterIntegration
+            | Self::MajorNpcTracker
+            | Self::QuickNpcReference
+            | Self::PcArcTracker
+            | Self::DocumentTracker => DocumentLevel::Handout,
         }
     }
 }

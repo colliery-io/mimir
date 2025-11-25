@@ -5,6 +5,12 @@ use super::{BoardDefinition, StageMetadata};
 /// Session workflow board with progression stages.
 pub struct SessionBoard;
 
+impl Default for SessionBoard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionBoard {
     /// Creates a new session board.
     pub fn new() -> Self {
@@ -16,11 +22,11 @@ impl BoardDefinition for SessionBoard {
     fn board_type(&self) -> &str {
         "session"
     }
-    
+
     fn stages(&self) -> Vec<&str> {
         vec!["next_week", "prep_needed", "in_prep", "ready", "complete"]
     }
-    
+
     fn can_transition(&self, from: &str, to: &str) -> bool {
         match (from, to) {
             // Forward progression
@@ -28,18 +34,18 @@ impl BoardDefinition for SessionBoard {
             ("prep_needed", "in_prep") => true,
             ("in_prep", "ready") => true,
             ("ready", "complete") => true,
-            
+
             // Allow deferring
             ("prep_needed", "next_week") => true,
-            
+
             // Allow moving back for more prep
             ("in_prep", "prep_needed") => true,
             ("ready", "in_prep") => true,
-            
+
             _ => false,
         }
     }
-    
+
     fn required_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
             "in_prep" => vec!["session_outline"],
@@ -47,7 +53,7 @@ impl BoardDefinition for SessionBoard {
             _ => vec![],
         }
     }
-    
+
     fn optional_documents(&self, stage: &str) -> Vec<&str> {
         match stage {
             "prep_needed" => vec!["prep_checklist"],
@@ -57,7 +63,7 @@ impl BoardDefinition for SessionBoard {
             _ => vec![],
         }
     }
-    
+
     fn next_stage(&self, current: &str) -> Option<&str> {
         match current {
             "next_week" => Some("prep_needed"),
@@ -67,7 +73,7 @@ impl BoardDefinition for SessionBoard {
             _ => None,
         }
     }
-    
+
     fn stage_metadata(&self, stage: &str) -> StageMetadata {
         StageMetadata {
             display_name: stage.to_string(),

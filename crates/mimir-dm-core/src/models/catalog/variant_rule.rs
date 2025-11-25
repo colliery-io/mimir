@@ -1,20 +1,20 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_variant_rules;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantRule {
     pub name: String,
     pub source: String,
-    
+
     #[serde(rename = "ruleType")]
     pub rule_type: Option<String>,
-    
+
     pub page: Option<i32>,
-    
+
     #[serde(default)]
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     #[serde(flatten)]
     pub other_fields: std::collections::HashMap<String, serde_json::Value>,
 }

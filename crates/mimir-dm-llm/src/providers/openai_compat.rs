@@ -12,9 +12,7 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 
-use crate::traits::{
-    ChatResponse, CompletionResponse, LlmError, Message, Tool, ToolCall, Usage,
-};
+use crate::traits::{ChatResponse, CompletionResponse, LlmError, Message, Tool, ToolCall, Usage};
 
 /// OpenAI-compatible chat request
 #[derive(Debug, Serialize)]
@@ -144,7 +142,11 @@ impl OpenAiCompatClient {
     /// * `base_url` - Base URL for the API (e.g., "http://localhost:11434/v1")
     /// * `api_key` - Optional API key for authentication
     /// * `timeout_secs` - Request timeout in seconds
-    pub fn new(base_url: String, api_key: Option<String>, timeout_secs: u64) -> Result<Self, LlmError> {
+    pub fn new(
+        base_url: String,
+        api_key: Option<String>,
+        timeout_secs: u64,
+    ) -> Result<Self, LlmError> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(timeout_secs))
             .build()
@@ -165,11 +167,16 @@ impl OpenAiCompatClient {
     ) -> Result<ChatResponse, LlmError> {
         let url = format!("{}/chat/completions", self.base_url);
 
-        debug!("OpenAI-compat request to {}: model={} messages={}",
-            url, request.model, request.messages.len());
+        debug!(
+            "OpenAI-compat request to {}: model={} messages={}",
+            url,
+            request.model,
+            request.messages.len()
+        );
 
         // Build the request
-        let mut req_builder = self.client
+        let mut req_builder = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&request);
@@ -191,27 +198,36 @@ impl OpenAiCompatClient {
                 }
             }
         } else {
-            req_builder.send().await
+            req_builder
+                .send()
+                .await
                 .map_err(|e| LlmError::ProviderError(format!("Request failed: {}", e)))?
         };
 
         let status = response.status();
 
         if !status.is_success() {
-            let error_text = response.text().await
+            let error_text = response
+                .text()
+                .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
 
             // Try to parse as OpenAI error format
             if let Ok(error_response) = serde_json::from_str::<OpenAiErrorResponse>(&error_text) {
                 error!("OpenAI-compat API error: {}", error_response.error.message);
                 return Err(LlmError::ProviderError(format!(
-                    "API error: {}", error_response.error.message
+                    "API error: {}",
+                    error_response.error.message
                 )));
             }
 
-            error!("OpenAI-compat API error (status {}): {}", status, error_text);
+            error!(
+                "OpenAI-compat API error (status {}): {}",
+                status, error_text
+            );
             return Err(LlmError::ProviderError(format!(
-                "API error (status {}): {}", status, error_text
+                "API error (status {}): {}",
+                status, error_text
             )));
         }
 
@@ -227,14 +243,16 @@ impl OpenAiCompatClient {
                 }
             }
         } else {
-            response.text().await
+            response
+                .text()
+                .await
                 .map_err(|e| LlmError::ProviderError(format!("Failed to read response: {}", e)))?
         };
 
         debug!("Response size: {} bytes", response_text.len());
 
-        let api_response: OpenAiChatResponse = serde_json::from_str(&response_text)
-            .map_err(|e| {
+        let api_response: OpenAiChatResponse =
+            serde_json::from_str(&response_text).map_err(|e| {
                 error!("Failed to parse response: {}", e);
                 if response_text.len() > 500 {
                     error!("Response preview: {}...", &response_text[..500]);
@@ -245,7 +263,9 @@ impl OpenAiCompatClient {
             })?;
 
         // Extract first choice
-        let choice = api_response.choices.first()
+        let choice = api_response
+            .choices
+            .first()
             .ok_or_else(|| LlmError::ProviderError("No choices in response".to_string()))?;
 
         Ok(ChatResponse {
@@ -339,7 +359,10 @@ mod tests {
         }"#;
 
         let response: OpenAiChatResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(response.choices[0].message.content, Some("Hello!".to_string()));
+        assert_eq!(
+            response.choices[0].message.content,
+            Some("Hello!".to_string())
+        );
         assert_eq!(response.usage.total_tokens, 15);
     }
 

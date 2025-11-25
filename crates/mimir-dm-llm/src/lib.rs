@@ -55,20 +55,22 @@
 #![warn(missing_docs)]
 
 pub mod config;
-pub mod traits;
 /// LLM provider implementations.
 pub mod providers;
 /// Tool implementations for LLM function calling.
 pub mod tools;
+pub mod traits;
 
 // Re-export commonly used types from config
-pub use config::{ModelConfig, EndpointType, RateLimit, RenewalPeriod, ConfigError, FileToolsConfig};
+pub use config::{
+    ConfigError, EndpointType, FileToolsConfig, ModelConfig, RateLimit, RenewalPeriod,
+};
 
 // Re-export provider trait and types
 pub use traits::provider::{
-    LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse,
-    Message, Usage, Timing, ModelInfo, ModelPullProgress, RateLimitState,
-    Tool, ToolFunction, ToolCall, ToolCallFunction
+    ChatResponse, CompletionResponse, EmbeddingResponse, LlmError, LlmProvider, Message, ModelInfo,
+    ModelPullProgress, RateLimitState, Timing, Tool, ToolCall, ToolCallFunction, ToolFunction,
+    Usage,
 };
 
 // Re-export tool trait
@@ -76,6 +78,6 @@ pub use traits::ToolTrait;
 
 // Re-export tools
 pub use tools::{
-    TodoListTool, TodoItem, TodoStateManager,
-    ReadFileTool, WriteFileTool, ListFilesTool, EditFileTool,
+    EditFileTool, ListFilesTool, ReadFileTool, TodoItem, TodoListTool, TodoStateManager,
+    WriteFileTool,
 };

@@ -6,4 +6,4 @@
 pub mod template_loader;
 pub mod template_seeder;
 
-pub use template_loader::{TemplateLoader, LoadSummary};
+pub use template_loader::{LoadSummary, TemplateLoader};

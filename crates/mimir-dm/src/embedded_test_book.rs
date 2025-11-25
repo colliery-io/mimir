@@ -1,9 +1,9 @@
 //! Embedded test books for development builds
 //! Automatically loads all .tar.gz files from assets/dev/
 
-use tar::Archive;
 use flate2::read::GzDecoder;
-use tracing::{info, error};
+use tar::Archive;
+use tracing::{error, info};
 
 /// Structure to hold embedded test book data
 #[allow(dead_code)]
@@ -17,7 +17,7 @@ pub struct EmbeddedTestBook {
 /// Only includes files that exist (checked by build.rs setting cfg flags)
 macro_rules! include_test_books {
     () => {{
-        #[allow(unused_mut)]
+        #[allow(unused_mut, clippy::vec_init_then_push)]
         let mut books = Vec::new();
 
         // PHB - only included if build.rs detected the file exists
@@ -51,37 +51,46 @@ pub fn is_dev_build() -> bool {
 }
 
 /// Get all embedded test books
+#[allow(clippy::vec_init_then_push)]
 pub fn get_embedded_test_books() -> Vec<EmbeddedTestBook> {
     include_test_books!()
 }
 
 /// Extract all embedded test book archives
 #[allow(dead_code)]
-pub fn extract_all_test_books(target_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn extract_all_test_books(
+    target_dir: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     let test_books = get_embedded_test_books();
-    
-    info!("Extracting {} embedded test books to {:?}", test_books.len(), target_dir);
-    
+
+    info!(
+        "Extracting {} embedded test books to {:?}",
+        test_books.len(),
+        target_dir
+    );
+
     for book in test_books {
         match extract_single_book(&book, target_dir) {
             Ok(_) => info!("Successfully extracted test book: {}", book.name),
             Err(e) => error!("Failed to extract test book {}: {}", book.name, e),
         }
     }
-    
+
     Ok(())
 }
 
 /// Extract a single test book archive
 #[allow(dead_code)]
-fn extract_single_book(book: &EmbeddedTestBook, target_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+fn extract_single_book(
+    book: &EmbeddedTestBook,
+    target_dir: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Create a decoder from the embedded bytes
     let decoder = GzDecoder::new(book.data);
     let mut archive = Archive::new(decoder);
-    
+
     // Extract the archive
     archive.unpack(target_dir)?;
-    
+
     Ok(())
 }
-

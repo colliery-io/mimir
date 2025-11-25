@@ -38,8 +38,10 @@ pub async fn search_items(
     max_value: Option<f64>,
     state: State<'_, AppState>,
 ) -> Result<Vec<ItemSummary>, String> {
-    debug!("Searching items with name: {:?}, item_types: {:?}, rarities: {:?}, sources: {:?}",
-           name, item_types, rarities, sources);
+    debug!(
+        "Searching items with name: {:?}, item_types: {:?}, rarities: {:?}, sources: {:?}",
+        name, item_types, rarities, sources
+    );
 
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
@@ -56,7 +58,8 @@ pub async fn search_items(
     };
 
     let mut service = ItemService::new(&mut conn);
-    let results = service.search_items(filters)
+    let results = service
+        .search_items(filters)
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     info!("Found {} items", results.len());
@@ -76,10 +79,7 @@ pub async fn search_items(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_item(
-    item_id: i32,
-    state: State<'_, AppState>,
-) -> Result<Option<Item>, String> {
+pub async fn get_item(item_id: i32, state: State<'_, AppState>) -> Result<Option<Item>, String> {
     debug!("Getting item details for ID: {}", item_id);
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -88,7 +88,8 @@ pub async fn get_item(
     })?;
 
     let mut service = ItemService::new(&mut conn);
-    service.get_item_by_id(item_id)
+    service
+        .get_item_by_id(item_id)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -111,7 +112,10 @@ pub async fn get_item_details(
     item_source: String,
     state: State<'_, AppState>,
 ) -> Result<Option<Item>, String> {
-    debug!("Getting item details for name: {}, source: {}", item_name, item_source);
+    debug!(
+        "Getting item details for name: {}, source: {}",
+        item_name, item_source
+    );
 
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
@@ -119,7 +123,8 @@ pub async fn get_item_details(
     })?;
 
     let mut service = ItemService::new(&mut conn);
-    service.get_item_by_name_and_source(&item_name, &item_source)
+    service
+        .get_item_by_name_and_source(&item_name, &item_source)
         .map_err(|e| format!("Database query failed: {}", e))
 }
 
@@ -134,9 +139,7 @@ pub async fn get_item_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_item_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_item_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all item types");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -145,7 +148,8 @@ pub async fn get_item_types(
     })?;
 
     let mut service = ItemService::new(&mut conn);
-    let types = service.get_item_types()
+    let types = service
+        .get_item_types()
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     info!("Found {} item types", types.len());
@@ -163,9 +167,7 @@ pub async fn get_item_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_item_rarities(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_item_rarities(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all item rarities");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -174,7 +176,8 @@ pub async fn get_item_rarities(
     })?;
 
     let mut service = ItemService::new(&mut conn);
-    let rarities = service.get_item_rarities()
+    let rarities = service
+        .get_item_rarities()
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     info!("Found {} rarities", rarities.len());
@@ -192,9 +195,7 @@ pub async fn get_item_rarities(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_item_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_item_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting all item sources");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -203,7 +204,8 @@ pub async fn get_item_sources(
     })?;
 
     let mut service = ItemService::new(&mut conn);
-    let sources = service.get_item_sources()
+    let sources = service
+        .get_item_sources()
         .map_err(|e| format!("Database query failed: {}", e))?;
 
     info!("Found {} sources", sources.len());

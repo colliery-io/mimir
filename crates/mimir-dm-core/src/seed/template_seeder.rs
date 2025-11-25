@@ -18,7 +18,7 @@ macro_rules! define_templates {
                 concat!("../../../../docs/src/campaign-framework/06-templates/templates/", $file_name)
             );
         )*
-        
+
         /// Get template content by filename
         fn get_template_content(file_name: &str) -> Option<&'static str> {
             match file_name {
@@ -28,7 +28,7 @@ macro_rules! define_templates {
                 _ => None,
             }
         }
-        
+
         /// Get all template filenames
         fn get_all_template_files() -> Vec<&'static str> {
             vec![
@@ -56,7 +56,7 @@ define_templates! {
     WORLD_PRIMER => "world_primer.md",
     REGION_OVERVIEW => "region_overview.md",
     FACTION_TEMPLATE => "faction_template.md",
-    
+
     // Module Board Documents - Module-specific templates
     MODULE_OVERVIEW => "module_overview.md",
     MODULE_DUNGEON => "module_dungeon.md",
@@ -64,7 +64,7 @@ define_templates! {
     MODULE_HORROR => "module_horror.md",
     MODULE_MYSTERY => "module_mystery.md",
     MODULE_POLITICAL => "module_political.md",
-    
+
     // Session Board Documents - Session management
     SESSION_OUTLINE => "session_outline.md",
     SESSION_NOTES => "session_notes.md",
@@ -75,23 +75,30 @@ define_templates! {
 /// Seed the database with initial templates
 pub fn seed_templates(conn: &mut SqliteConnection) -> Result<usize, diesel::result::Error> {
     let mut count = 0;
-    
+
     for file_name in get_all_template_files() {
         // Get the template content using the generated function
-        let raw_content = get_template_content(file_name)
-            .ok_or_else(|| diesel::result::Error::QueryBuilderError(
-                format!("Unknown template file: {}", file_name).into()
-            ))?;
-        
+        let raw_content = get_template_content(file_name).ok_or_else(|| {
+            diesel::result::Error::QueryBuilderError(
+                format!("Unknown template file: {}", file_name).into(),
+            )
+        })?;
+
         // Parse frontmatter from the file - required
-        let frontmatter = TemplateFrontmatter::parse_from_markdown(&raw_content)
-            .ok_or_else(|| diesel::result::Error::QueryBuilderError(
-                format!("Template file {} is missing required frontmatter", file_name).into()
-            ))?;
-        
+        let frontmatter =
+            TemplateFrontmatter::parse_from_markdown(raw_content).ok_or_else(|| {
+                diesel::result::Error::QueryBuilderError(
+                    format!(
+                        "Template file {} is missing required frontmatter",
+                        file_name
+                    )
+                    .into(),
+                )
+            })?;
+
         // Extract content without frontmatter
-        let content = TemplateFrontmatter::extract_content(&raw_content);
-        
+        let content = TemplateFrontmatter::extract_content(raw_content);
+
         // Create the template document
         let new_template = NewTemplateDocument {
             document_id: frontmatter.id.clone(),
@@ -101,27 +108,35 @@ pub fn seed_templates(conn: &mut SqliteConnection) -> Result<usize, diesel::resu
             document_type: Some(frontmatter.template_type.clone()),
             document_level: Some(frontmatter.level.clone()),
             purpose: Some(frontmatter.purpose.clone()),
-            variables_schema: Some(frontmatter.variables_schema().map_err(|e| 
-                diesel::result::Error::QueryBuilderError(format!("Failed to serialize variables schema: {}", e).into())
-            )?),
-            default_values: Some(serde_json::to_string(&frontmatter.defaults_map()).map_err(|e| 
-                diesel::result::Error::QueryBuilderError(format!("Failed to serialize default values: {}", e).into())
+            variables_schema: Some(frontmatter.variables_schema().map_err(|e| {
+                diesel::result::Error::QueryBuilderError(
+                    format!("Failed to serialize variables schema: {}", e).into(),
+                )
+            })?),
+            default_values: Some(serde_json::to_string(&frontmatter.defaults_map()).map_err(
+                |e| {
+                    diesel::result::Error::QueryBuilderError(
+                        format!("Failed to serialize default values: {}", e).into(),
+                    )
+                },
             )?),
             is_active: Some(true),
-            metadata: Some(frontmatter.to_json().map_err(|e| 
-                diesel::result::Error::QueryBuilderError(format!("Failed to serialize metadata: {}", e).into())
-            )?),
+            metadata: Some(frontmatter.to_json().map_err(|e| {
+                diesel::result::Error::QueryBuilderError(
+                    format!("Failed to serialize metadata: {}", e).into(),
+                )
+            })?),
         };
-        
+
         // Check if template already exists
         let exists = TemplateRepository::get_latest(conn, &new_template.document_id).is_ok();
-        
+
         if !exists {
             TemplateRepository::create(conn, new_template)?;
             count += 1;
         }
     }
-    
+
     Ok(count)
 }
 
@@ -129,23 +144,23 @@ pub fn seed_templates(conn: &mut SqliteConnection) -> Result<usize, diesel::resu
 mod tests {
     use super::*;
     use crate::establish_connection;
-    
+
     #[test]
     fn test_seed_templates() {
         let mut conn = establish_connection(":memory:").unwrap();
-        
+
         // Run migrations
         crate::run_migrations(&mut conn).unwrap();
-        
+
         // Seed templates
         let count = seed_templates(&mut conn).unwrap();
         assert_eq!(count, 23); // We have 23 templates
-        
+
         // Verify a few templates exist
         let campaign_pitch = TemplateRepository::get_latest(&mut conn, "campaign_pitch").unwrap();
         assert_eq!(campaign_pitch.document_type.unwrap(), "campaign_pitch");
         assert_eq!(campaign_pitch.document_level.unwrap(), "campaign");
-        
+
         let module_overview = TemplateRepository::get_latest(&mut conn, "module_overview").unwrap();
         assert_eq!(module_overview.document_type.unwrap(), "module_overview");
         assert_eq!(module_overview.document_level.unwrap(), "module");

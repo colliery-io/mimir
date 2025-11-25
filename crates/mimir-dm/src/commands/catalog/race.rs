@@ -48,8 +48,7 @@ pub async fn search_races(
         has_flight,
     };
 
-    let results = RaceService::search_races(&mut conn, filters)
-        .map_err(|e| e.to_string())?;
+    let results = RaceService::search_races(&mut conn, filters).map_err(|e| e.to_string())?;
 
     // Convert RaceSummary to JSON values for frontend compatibility
     let json_results: Vec<serde_json::Value> = results
@@ -84,8 +83,7 @@ pub async fn get_race_details(
         format!("Database connection failed: {}", e)
     })?;
 
-    RaceService::get_race_details(&mut conn, &name, &source)
-        .map_err(|e| e.to_string())
+    RaceService::get_race_details(&mut conn, &name, &source).map_err(|e| e.to_string())
 }
 
 /// Get all unique source books containing races.
@@ -99,16 +97,13 @@ pub async fn get_race_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_race_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_race_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    RaceService::get_race_sources(&mut conn)
-        .map_err(|e| e.to_string())
+    RaceService::get_race_sources(&mut conn).map_err(|e| e.to_string())
 }
 
 /// Get total number of races in the catalog.
@@ -121,16 +116,13 @@ pub async fn get_race_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_race_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_race_count(state: State<'_, AppState>) -> Result<i64, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    RaceService::get_race_count(&mut conn)
-        .map_err(|e| e.to_string())
+    RaceService::get_race_count(&mut conn).map_err(|e| e.to_string())
 }
 
 /// Get all unique race sizes in the catalog.
@@ -144,14 +136,11 @@ pub async fn get_race_count(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_race_sizes(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_race_sizes(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
-    RaceService::get_race_sizes(&mut conn)
-        .map_err(|e| e.to_string())
+    RaceService::get_race_sizes(&mut conn).map_err(|e| e.to_string())
 }

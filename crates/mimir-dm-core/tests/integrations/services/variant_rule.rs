@@ -1,9 +1,9 @@
 //! Integration tests for VariantRuleService
 
 use diesel::prelude::*;
-use mimir_dm_core::{establish_connection, run_migrations};
 use mimir_dm_core::models::catalog::variant_rule::VariantRuleFilters;
 use mimir_dm_core::services::variant_rule_service::VariantRuleService;
+use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
@@ -56,10 +56,7 @@ fn seed_test_variant_rule_data(conn: &mut SqliteConnection) {
     ];
 
     for (name, source) in general_rules {
-        let json = format!(
-            r#"{{"name":"{}","source":"{}"}}"#,
-            name, source
-        );
+        let json = format!(r#"{{"name":"{}","source":"{}"}}"#, name, source);
 
         diesel::sql_query(
             "INSERT INTO catalog_variant_rules (name, rule_type, source, full_variant_rule_json) VALUES (?, NULL, ?, ?)"
@@ -82,7 +79,9 @@ fn test_search_variant_rules_no_filters() {
         rule_types: None,
         sources: None,
     };
-    let results = service.search_variant_rules(filters).expect("Should search rules");
+    let results = service
+        .search_variant_rules(filters)
+        .expect("Should search rules");
 
     assert_eq!(results.len(), 14);
 }
@@ -97,7 +96,9 @@ fn test_search_variant_rules_by_name() {
         rule_types: None,
         sources: None,
     };
-    let results = service.search_variant_rules(filters).expect("Should search rules");
+    let results = service
+        .search_variant_rules(filters)
+        .expect("Should search rules");
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, "Flanking");
@@ -113,7 +114,9 @@ fn test_search_variant_rules_by_rule_type() {
         rule_types: Some(vec!["Combat".to_string()]),
         sources: None,
     };
-    let results = service.search_variant_rules(filters).expect("Should search rules");
+    let results = service
+        .search_variant_rules(filters)
+        .expect("Should search rules");
 
     assert_eq!(results.len(), 7); // All combat-related rules
 }
@@ -128,7 +131,9 @@ fn test_search_variant_rules_by_general_type() {
         rule_types: Some(vec!["General".to_string()]),
         sources: None,
     };
-    let results = service.search_variant_rules(filters).expect("Should search rules");
+    let results = service
+        .search_variant_rules(filters)
+        .expect("Should search rules");
 
     // Rules with NULL rule_type are categorized as "General"
     assert_eq!(results.len(), 2);
@@ -144,7 +149,9 @@ fn test_search_variant_rules_by_source() {
         rule_types: None,
         sources: Some(vec!["TCoE".to_string()]),
     };
-    let results = service.search_variant_rules(filters).expect("Should search rules");
+    let results = service
+        .search_variant_rules(filters)
+        .expect("Should search rules");
 
     assert_eq!(results.len(), 2);
 }
@@ -159,7 +166,9 @@ fn test_search_variant_rules_combined_filters() {
         rule_types: Some(vec!["Rest".to_string()]),
         sources: Some(vec!["DMG".to_string()]),
     };
-    let results = service.search_variant_rules(filters).expect("Should search rules");
+    let results = service
+        .search_variant_rules(filters)
+        .expect("Should search rules");
 
     // Gritty Realism and Slow Natural Healing
     assert_eq!(results.len(), 2);
@@ -175,7 +184,9 @@ fn test_search_variant_rules_empty_results() {
         rule_types: None,
         sources: None,
     };
-    let results = service.search_variant_rules(filters).expect("Should search rules");
+    let results = service
+        .search_variant_rules(filters)
+        .expect("Should search rules");
 
     assert!(results.is_empty());
 }
@@ -195,7 +206,9 @@ fn test_get_variant_rule_by_id_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = VariantRuleService::new(&mut conn);
 
-    let result = service.get_variant_rule_by_id(9999).expect("Should handle not found");
+    let result = service
+        .get_variant_rule_by_id(9999)
+        .expect("Should handle not found");
 
     assert!(result.is_none());
 }
@@ -205,7 +218,8 @@ fn test_get_variant_rule_by_name_and_source() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = VariantRuleService::new(&mut conn);
 
-    let result = service.get_variant_rule_by_name_and_source("Flanking", "DMG")
+    let result = service
+        .get_variant_rule_by_name_and_source("Flanking", "DMG")
         .expect("Should get rule");
 
     assert!(result.is_some());
@@ -218,7 +232,8 @@ fn test_get_variant_rule_by_name_and_source_not_found() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = VariantRuleService::new(&mut conn);
 
-    let result = service.get_variant_rule_by_name_and_source("Nonexistent", "DMG")
+    let result = service
+        .get_variant_rule_by_name_and_source("Nonexistent", "DMG")
         .expect("Should handle not found");
 
     assert!(result.is_none());
@@ -243,7 +258,9 @@ fn test_get_variant_rule_sources() {
     let (mut conn, _temp_dir) = setup_test_db();
     let mut service = VariantRuleService::new(&mut conn);
 
-    let sources = service.get_variant_rule_sources().expect("Should get sources");
+    let sources = service
+        .get_variant_rule_sources()
+        .expect("Should get sources");
 
     assert!(sources.contains(&"DMG".to_string()));
     assert!(sources.contains(&"TCoE".to_string()));

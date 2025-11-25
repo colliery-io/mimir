@@ -33,8 +33,10 @@ pub async fn search_languages(
     scripts: Option<Vec<String>>,
     sources: Option<Vec<String>>,
 ) -> Result<Vec<LanguageSummary>, String> {
-    debug!("Database language search - query: {:?}, types: {:?}, scripts: {:?}, sources: {:?}",
-           query, language_types, scripts, sources);
+    debug!(
+        "Database language search - query: {:?}, types: {:?}, scripts: {:?}, sources: {:?}",
+        query, language_types, scripts, sources
+    );
 
     let filters = LanguageFilters {
         name: None,
@@ -108,9 +110,7 @@ pub async fn get_language_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_language_types(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_language_types(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting language types");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -138,9 +138,7 @@ pub async fn get_language_types(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_language_scripts(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_language_scripts(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting language scripts");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -168,9 +166,7 @@ pub async fn get_language_scripts(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_language_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_language_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting language sources");
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -197,9 +193,7 @@ pub async fn get_language_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_language_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_language_count(state: State<'_, AppState>) -> Result<i64, String> {
     debug!("Getting language count");
 
     let mut conn = state.db.get_connection().map_err(|e| {

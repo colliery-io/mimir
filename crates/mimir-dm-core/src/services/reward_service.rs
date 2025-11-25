@@ -3,13 +3,15 @@
 //! Provides database-backed reward search, retrieval, and import functionality.
 //! Supports filtering by name, type, prerequisites, and source.
 
-use diesel::prelude::*;
-use tracing::{debug, info};
 use crate::error::Result;
-use crate::models::catalog::{CatalogReward, RewardFilters, RewardSummary, Reward, NewCatalogReward, RewardData};
+use crate::models::catalog::{
+    CatalogReward, NewCatalogReward, Reward, RewardData, RewardFilters, RewardSummary,
+};
 use crate::schema::catalog_rewards;
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
+use tracing::{debug, info};
 
 /// Service for searching and managing rewards in the catalog.
 pub struct RewardService;
@@ -35,9 +37,10 @@ impl RewardService {
             let pattern_clone1 = search_pattern.clone();
             let pattern_clone2 = search_pattern.clone();
             query = query.filter(
-                catalog_rewards::name.like(search_pattern)
+                catalog_rewards::name
+                    .like(search_pattern)
                     .or(catalog_rewards::reward_type.like(pattern_clone1))
-                    .or(catalog_rewards::description.like(pattern_clone2))
+                    .or(catalog_rewards::description.like(pattern_clone2)),
             );
         }
 
@@ -61,10 +64,9 @@ impl RewardService {
             query = query.filter(catalog_rewards::has_prerequisites.eq(filter_value));
         }
 
-        let catalog_rewards: Vec<CatalogReward> = query
-            .select(CatalogReward::as_select())
-            .load(conn)?;
-        
+        let catalog_rewards: Vec<CatalogReward> =
+            query.select(CatalogReward::as_select()).load(conn)?;
+
         let summaries: Vec<RewardSummary> = catalog_rewards
             .into_iter()
             .map(|cr| RewardSummary {
@@ -75,16 +77,13 @@ impl RewardService {
                 has_prerequisites: cr.has_prerequisites != 0,
             })
             .collect();
-        
+
         debug!("Found {} rewards matching filters", summaries.len());
         Ok(summaries)
     }
-    
+
     /// Get a specific reward by ID
-    pub fn get_reward_by_id(
-        conn: &mut SqliteConnection,
-        reward_id: i32,
-    ) -> Result<Option<Reward>> {
+    pub fn get_reward_by_id(conn: &mut SqliteConnection, reward_id: i32) -> Result<Option<Reward>> {
         debug!("Getting reward by ID: {}", reward_id);
 
         let catalog_reward: Option<CatalogReward> = catalog_rewards::table
@@ -101,7 +100,7 @@ impl RewardService {
             None => Ok(None),
         }
     }
-    
+
     /// Get a specific reward by name and source
     pub fn get_reward_by_name_and_source(
         conn: &mut SqliteConnection,
@@ -125,7 +124,7 @@ impl RewardService {
             None => Ok(None),
         }
     }
-    
+
     /// Get all unique reward types
     pub fn get_reward_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         debug!("Getting all reward types");
@@ -168,7 +167,10 @@ impl RewardService {
         book_dir: &Path,
         source: &str,
     ) -> Result<usize> {
-        info!("Importing rewards from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing rewards from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let rewards_dir = book_dir.join("rewards");
         if !rewards_dir.exists() || !rewards_dir.is_dir() {
@@ -217,19 +219,20 @@ impl RewardService {
             }
         }
 
-        info!("Successfully imported {} rewards from source: {}", imported_count, source);
+        info!(
+            "Successfully imported {} rewards from source: {}",
+            imported_count, source
+        );
         Ok(imported_count)
     }
 
     /// Remove all rewards from a specific source
-    pub fn remove_rewards_by_source(
-        conn: &mut SqliteConnection,
-        source: &str,
-    ) -> Result<usize> {
+    pub fn remove_rewards_by_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing rewards from source: {}", source);
 
-        let deleted = diesel::delete(catalog_rewards::table.filter(catalog_rewards::source.eq(source)))
-            .execute(conn)?;
+        let deleted =
+            diesel::delete(catalog_rewards::table.filter(catalog_rewards::source.eq(source)))
+                .execute(conn)?;
 
         info!("Removed {} rewards from source: {}", deleted, source);
         Ok(deleted)

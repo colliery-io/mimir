@@ -33,7 +33,7 @@ pub struct NewModule {
 }
 
 /// Module update structure
-#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = modules)]
 pub struct UpdateModule {
     pub name: Option<String>,
@@ -52,11 +52,11 @@ impl Module {
         }
         (self.actual_sessions as f32 / self.expected_sessions as f32) * 100.0
     }
-    
+
     /// Check if module has reached 60% completion (trigger for next module planning)
     pub fn should_trigger_next_module(&self) -> bool {
         self.completion_percentage() >= 60.0
     }
-    
+
     // Transition validation is handled by BoardDefinition in the service layer
 }

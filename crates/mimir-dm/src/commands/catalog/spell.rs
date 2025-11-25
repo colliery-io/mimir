@@ -30,6 +30,7 @@ use tracing::{debug, error, info};
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn search_spells(
     query: Option<String>,
     sources: Option<Vec<String>>,
@@ -40,8 +41,10 @@ pub async fn search_spells(
     offset: Option<i32>,
     state: State<'_, AppState>,
 ) -> Result<Vec<SpellSummary>, String> {
-    debug!("Database spell search - query: {:?}, sources: {:?}, levels: {:?}",
-           query, sources, levels);
+    debug!(
+        "Database spell search - query: {:?}, sources: {:?}, levels: {:?}",
+        query, sources, levels
+    );
 
     let filters = SpellFilters {
         query,
@@ -90,10 +93,16 @@ pub async fn get_spell_details(
     source: String,
     state: State<'_, AppState>,
 ) -> Result<Option<Spell>, String> {
-    debug!("Getting spell details from database: {} from {}", name, source);
+    debug!(
+        "Getting spell details from database: {} from {}",
+        name, source
+    );
 
     let mut conn = state.db.get_connection().map_err(|e| {
-        error!("Database connection error during spell details fetch: {}", e);
+        error!(
+            "Database connection error during spell details fetch: {}",
+            e
+        );
         format!("Database connection failed: {}", e)
     })?;
 
@@ -124,13 +133,14 @@ pub async fn get_spell_details(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_spell_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_spell_sources(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting spell sources from database");
 
     let mut conn = state.db.get_connection().map_err(|e| {
-        error!("Database connection error during spell sources fetch: {}", e);
+        error!(
+            "Database connection error during spell sources fetch: {}",
+            e
+        );
         format!("Database connection failed: {}", e)
     })?;
 
@@ -157,13 +167,14 @@ pub async fn get_spell_sources(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_spell_schools(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_spell_schools(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     debug!("Getting spell schools from database");
 
     let mut conn = state.db.get_connection().map_err(|e| {
-        error!("Database connection error during spell schools fetch: {}", e);
+        error!(
+            "Database connection error during spell schools fetch: {}",
+            e
+        );
         format!("Database connection failed: {}", e)
     })?;
 
@@ -196,7 +207,10 @@ pub async fn get_spell_statistics(
     debug!("Getting spell statistics from database");
 
     let mut conn = state.db.get_connection().map_err(|e| {
-        error!("Database connection error during spell statistics fetch: {}", e);
+        error!(
+            "Database connection error during spell statistics fetch: {}",
+            e
+        );
         format!("Database connection failed: {}", e)
     })?;
 
@@ -222,9 +236,7 @@ pub async fn get_spell_statistics(
 /// # Errors
 /// Returns an error string if the database connection or query fails.
 #[tauri::command]
-pub async fn get_spell_count(
-    state: State<'_, AppState>,
-) -> Result<i64, String> {
+pub async fn get_spell_count(state: State<'_, AppState>) -> Result<i64, String> {
     debug!("Getting total spell count from database");
 
     let mut conn = state.db.get_connection().map_err(|e| {

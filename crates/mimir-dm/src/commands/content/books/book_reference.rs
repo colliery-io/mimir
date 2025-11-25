@@ -6,13 +6,13 @@
 
 use crate::app_init::AppPaths;
 use crate::types::{ApiError, ApiResponse};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use tauri::State;
 use tracing::{debug, info};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 /// Reference lookup data structure
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,9 +47,12 @@ pub async fn lookup_reference(
     ref_type: String,
     ref_name: String,
     ref_source: Option<String>,
-    app_paths: State<'_, Arc<AppPaths>>
+    app_paths: State<'_, Arc<AppPaths>>,
 ) -> Result<ApiResponse<ReferenceData>, ApiError> {
-    info!("Looking up reference: {} '{}' from {:?}", ref_type, ref_name, ref_source);
+    info!(
+        "Looking up reference: {} '{}' from {:?}",
+        ref_type, ref_name, ref_source
+    );
 
     let books_dir = app_paths.data_dir.join("books");
 
@@ -92,7 +95,10 @@ async fn search_book_for_reference(
     ref_type: &str,
     ref_name: &str,
 ) -> Result<Option<ReferenceData>, ApiError> {
-    debug!("Searching book {:?} for {} '{}'", book_dir, ref_type, ref_name);
+    debug!(
+        "Searching book {:?} for {} '{}'",
+        book_dir, ref_type, ref_name
+    );
 
     // Map reference types to data file patterns
     let file_patterns = match ref_type {
@@ -136,15 +142,15 @@ async fn search_book_for_reference(
             if let Ok(entries) = fs::read_dir(&dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    let file_name = path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("");
+                    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                     // Check if filename matches pattern
                     if matches_pattern(file_name, pattern) {
                         if let Ok(content) = fs::read_to_string(&path) {
                             if let Ok(json) = serde_json::from_str::<Value>(&content) {
-                                if let Some(data) = find_reference_in_json(&json, ref_type, ref_name) {
+                                if let Some(data) =
+                                    find_reference_in_json(&json, ref_type, ref_name)
+                                {
                                     return Ok(Some(data));
                                 }
                             }
@@ -177,7 +183,10 @@ async fn search_all_books_for_reference(
         }
     }
 
-    Ok(ApiResponse::error(format!("Reference not found: {} '{}'", ref_type, ref_name)))
+    Ok(ApiResponse::error(format!(
+        "Reference not found: {} '{}'",
+        ref_type, ref_name
+    )))
 }
 
 /// Check if a filename matches a pattern (simple glob)
@@ -224,7 +233,11 @@ fn find_reference_in_json(json: &Value, ref_type: &str, ref_name: &str) -> Optio
 }
 
 /// Search through entries recursively for references
-fn search_entries_for_reference(entry: &Value, ref_type: &str, ref_name_lower: &str) -> Option<ReferenceData> {
+fn search_entries_for_reference(
+    entry: &Value,
+    ref_type: &str,
+    ref_name_lower: &str,
+) -> Option<ReferenceData> {
     // Check if this entry is the reference we're looking for
     if let Some(entry_type) = entry.get("type").and_then(|v| v.as_str()) {
         if entry_type == ref_type || (ref_type == "spell" && entry_type == "spellList") {
@@ -255,7 +268,10 @@ fn create_reference_data(ref_type: &str, name: &str, data: &Value) -> ReferenceD
     ReferenceData {
         ref_type: ref_type.to_string(),
         name: name.to_string(),
-        source: data.get("source").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        source: data
+            .get("source")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
         data: data.clone(),
         preview,
     }
@@ -266,7 +282,9 @@ fn generate_preview(ref_type: &str, data: &Value) -> String {
     match ref_type {
         "spell" => {
             let level = data.get("level").and_then(|v| v.as_u64()).unwrap_or(0);
-            let school = data.get("school").and_then(|v| v.as_str())
+            let school = data
+                .get("school")
+                .and_then(|v| v.as_str())
                 .map(|s| get_spell_school_name(s))
                 .unwrap_or("Unknown");
             let range = format_spell_range(data.get("range"));
@@ -280,72 +298,109 @@ fn generate_preview(ref_type: &str, data: &Value) -> String {
         "item" => {
             let item_type = data.get("type").and_then(|v| v.as_str()).unwrap_or("Item");
             let rarity = data.get("rarity").and_then(|v| v.as_str()).unwrap_or("");
-            let value = data.get("value").and_then(|v| v.as_u64()).map(|v| format!("{} gp", v)).unwrap_or_default();
+            let value = data
+                .get("value")
+                .and_then(|v| v.as_u64())
+                .map(|v| format!("{} gp", v))
+                .unwrap_or_default();
 
-            format!("{}{}<br/>{}",
+            format!(
+                "{}{}<br/>{}",
                 item_type,
-                if !rarity.is_empty() { format!(" • {}", rarity) } else { String::new() },
+                if !rarity.is_empty() {
+                    format!(" • {}", rarity)
+                } else {
+                    String::new()
+                },
                 value
             )
         }
         "creature" | "monster" => {
-            let cr = data.get("cr").and_then(|v| {
-                if let Some(s) = v.as_str() {
-                    Some(s.to_string())
-                } else if let Some(obj) = v.as_object() {
-                    obj.get("cr").and_then(|c| c.as_str()).map(|s| s.to_string())
-                } else {
-                    None
-                }
-            }).unwrap_or_else(|| "?".to_string());
+            let cr = data
+                .get("cr")
+                .and_then(|v| {
+                    if let Some(s) = v.as_str() {
+                        Some(s.to_string())
+                    } else if let Some(obj) = v.as_object() {
+                        obj.get("cr")
+                            .and_then(|c| c.as_str())
+                            .map(|s| s.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "?".to_string());
 
-            let type_str = data.get("type").and_then(|v| {
-                if let Some(s) = v.as_str() {
-                    Some(s.to_string())
-                } else if let Some(obj) = v.as_object() {
-                    obj.get("type").and_then(|t| t.as_str()).map(|s| s.to_string())
-                } else {
-                    None
-                }
-            }).unwrap_or_else(|| "creature".to_string());
+            let type_str = data
+                .get("type")
+                .and_then(|v| {
+                    if let Some(s) = v.as_str() {
+                        Some(s.to_string())
+                    } else if let Some(obj) = v.as_object() {
+                        obj.get("type")
+                            .and_then(|t| t.as_str())
+                            .map(|s| s.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "creature".to_string());
 
-            let ac = data.get("ac").and_then(|v| {
-                if let Some(n) = v.as_u64() {
-                    Some(n.to_string())
-                } else if let Some(arr) = v.as_array() {
-                    arr.first().and_then(|a| {
-                        if let Some(n) = a.as_u64() {
-                            Some(n.to_string())
-                        } else if let Some(obj) = a.as_object() {
-                            obj.get("ac").and_then(|ac| ac.as_u64()).map(|n| n.to_string())
-                        } else {
-                            None
-                        }
-                    })
-                } else {
-                    None
-                }
-            }).unwrap_or_else(|| "?".to_string());
+            let ac = data
+                .get("ac")
+                .and_then(|v| {
+                    if let Some(n) = v.as_u64() {
+                        Some(n.to_string())
+                    } else if let Some(arr) = v.as_array() {
+                        arr.first().and_then(|a| {
+                            if let Some(n) = a.as_u64() {
+                                Some(n.to_string())
+                            } else if let Some(obj) = a.as_object() {
+                                obj.get("ac")
+                                    .and_then(|ac| ac.as_u64())
+                                    .map(|n| n.to_string())
+                            } else {
+                                None
+                            }
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "?".to_string());
 
-            let hp = data.get("hp").and_then(|v| {
-                if let Some(obj) = v.as_object() {
-                    obj.get("average").and_then(|a| a.as_u64()).map(|n| n.to_string())
-                } else {
-                    None
-                }
-            }).unwrap_or_else(|| "?".to_string());
+            let hp = data
+                .get("hp")
+                .and_then(|v| {
+                    if let Some(obj) = v.as_object() {
+                        obj.get("average")
+                            .and_then(|a| a.as_u64())
+                            .map(|n| n.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "?".to_string());
 
             format!("{} • CR {}<br/>AC {}, HP {}", type_str, cr, ac, hp)
         }
         "class" => {
-            let hd = data.get("hd").and_then(|v| v.as_object())
+            let hd = data
+                .get("hd")
+                .and_then(|v| v.as_object())
                 .and_then(|o| o.get("faces").and_then(|f| f.as_u64()))
                 .map(|d| format!("d{}", d))
                 .unwrap_or_else(|| "d?".to_string());
 
             format!("Class • {} Hit Die", hd)
         }
-        _ => format!("{}: {}", ref_type, data.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown"))
+        _ => format!(
+            "{}: {}",
+            ref_type,
+            data.get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown")
+        ),
     }
 }
 

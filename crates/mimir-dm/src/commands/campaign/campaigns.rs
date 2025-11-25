@@ -44,7 +44,6 @@ pub struct CreateCampaignRequest {
     pub directory_location: String, // Base directory where campaign folder will be created
 }
 
-
 /// List all active (non-archived) campaigns.
 ///
 /// # Parameters
@@ -62,8 +61,8 @@ pub async fn list_campaigns(
     info!("Listing campaigns");
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.list_active_campaigns() {
         Ok(campaigns) => {
             let campaigns: Vec<Campaign> = campaigns.into_iter().map(Campaign::from).collect();
@@ -96,23 +95,32 @@ pub async fn create_campaign(
     request: CreateCampaignRequest,
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Campaign>, ApiError> {
-    info!("Creating new campaign: {} at location: {}", request.name, request.directory_location);
+    info!(
+        "Creating new campaign: {} at location: {}",
+        request.name, request.directory_location
+    );
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.create_campaign(
         &request.name,
         request.description,
         &request.directory_location,
     ) {
         Ok(campaign) => {
-            info!("Created campaign: {} with directory: {}", campaign.name, campaign.directory_path);
+            info!(
+                "Created campaign: {} with directory: {}",
+                campaign.name, campaign.directory_path
+            );
             Ok(ApiResponse::success(Campaign::from(campaign)))
         }
         Err(e) => {
             error!("Failed to create campaign '{}': {}", request.name, e);
-            Ok(ApiResponse::error(format!("Failed to create campaign: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to create campaign: {}",
+                e
+            )))
         }
     }
 }
@@ -138,16 +146,15 @@ pub async fn generate_campaign_document(
     request: GenerateDocumentRequest,
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<GeneratedDocument>, ApiError> {
-    info!("Generating document from template '{}' for campaign {}", request.template_id, request.campaign_id);
+    info!(
+        "Generating document from template '{}' for campaign {}",
+        request.template_id, request.campaign_id
+    );
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::TemplateService::new(&mut *conn);
-    
-    match service.generate_document(
-        request.campaign_id,
-        &request.template_id,
-        request.variables,
-    ) {
+    let mut service = mimir_dm_core::services::TemplateService::new(&mut conn);
+
+    match service.generate_document(request.campaign_id, &request.template_id, request.variables) {
         Ok(file_path) => {
             info!("Generated document at: {}", file_path);
             Ok(ApiResponse::success(GeneratedDocument {
@@ -159,7 +166,10 @@ pub async fn generate_campaign_document(
         }
         Err(e) => {
             error!("Failed to generate document: {}", e);
-            Ok(ApiResponse::error(format!("Failed to generate document: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to generate document: {}",
+                e
+            )))
         }
     }
 }
@@ -172,7 +182,7 @@ pub async fn list_templates(
     info!("Listing available templates");
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::TemplateService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::TemplateService::new(&mut conn);
 
     match service.list_templates_with_details() {
         Ok(template_infos) => {
@@ -181,11 +191,13 @@ pub async fn list_templates(
         }
         Err(e) => {
             error!("Failed to list templates: {}", e);
-            Ok(ApiResponse::error(format!("Failed to list templates: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to list templates: {}",
+                e
+            )))
         }
     }
 }
-
 
 /// Get a campaign by ID.
 ///
@@ -206,8 +218,8 @@ pub async fn get_campaign(
     info!("Getting campaign with id: {}", id);
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.get_campaign(id) {
         Ok(Some(campaign)) => {
             info!("Found campaign: {}", campaign.name);
@@ -215,7 +227,10 @@ pub async fn get_campaign(
         }
         Ok(None) => {
             error!("Campaign {} not found", id);
-            Ok(ApiResponse::error(format!("Campaign with id {} not found", id)))
+            Ok(ApiResponse::error(format!(
+                "Campaign with id {} not found",
+                id
+            )))
         }
         Err(e) => {
             error!("Failed to find campaign {}: {}", id, e);
@@ -233,7 +248,7 @@ pub async fn check_campaign_stage_completion(
     info!("Checking stage completion for campaign {}", campaign_id);
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
 
     match service.check_stage_completion(campaign_id) {
         Ok(status) => {
@@ -242,7 +257,10 @@ pub async fn check_campaign_stage_completion(
         }
         Err(e) => {
             error!("Failed to check stage completion: {}", e);
-            Ok(ApiResponse::error(format!("Failed to check stage completion: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to check stage completion: {}",
+                e
+            )))
         }
     }
 }
@@ -254,11 +272,14 @@ pub async fn transition_campaign_stage(
     new_stage: String,
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<Campaign>, ApiError> {
-    info!("Transitioning campaign {} to stage {}", campaign_id, new_stage);
+    info!(
+        "Transitioning campaign {} to stage {}",
+        campaign_id, new_stage
+    );
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.transition_campaign_stage(campaign_id, &new_stage) {
         Ok(updated_campaign) => {
             info!("Successfully transitioned campaign to {}", new_stage);
@@ -266,7 +287,10 @@ pub async fn transition_campaign_stage(
         }
         Err(e) => {
             error!("Failed to transition campaign: {}", e);
-            Ok(ApiResponse::error(format!("Failed to transition campaign: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to transition campaign: {}",
+                e
+            )))
         }
     }
 }
@@ -280,8 +304,8 @@ pub async fn archive_campaign(
     info!("Archiving campaign {}", campaign_id);
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.archive_campaign(campaign_id) {
         Ok(archived_campaign) => {
             info!("Successfully archived campaign {}", campaign_id);
@@ -289,7 +313,10 @@ pub async fn archive_campaign(
         }
         Err(e) => {
             error!("Failed to archive campaign: {}", e);
-            Ok(ApiResponse::error(format!("Failed to archive campaign: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to archive campaign: {}",
+                e
+            )))
         }
     }
 }
@@ -303,8 +330,8 @@ pub async fn unarchive_campaign(
     info!("Unarchiving campaign {}", campaign_id);
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.unarchive_campaign(campaign_id) {
         Ok(unarchived_campaign) => {
             info!("Successfully unarchived campaign {}", campaign_id);
@@ -312,7 +339,10 @@ pub async fn unarchive_campaign(
         }
         Err(e) => {
             error!("Failed to unarchive campaign: {}", e);
-            Ok(ApiResponse::error(format!("Failed to unarchive campaign: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to unarchive campaign: {}",
+                e
+            )))
         }
     }
 }
@@ -329,11 +359,14 @@ pub async fn delete_campaign(
     request: DeleteCampaignRequest,
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<()>, ApiError> {
-    info!("Deleting campaign {} (delete_files: {})", request.campaign_id, request.delete_files);
+    info!(
+        "Deleting campaign {} (delete_files: {})",
+        request.campaign_id, request.delete_files
+    );
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.delete_campaign(request.campaign_id, request.delete_files) {
         Ok(()) => {
             info!("Successfully deleted campaign {}", request.campaign_id);
@@ -341,7 +374,10 @@ pub async fn delete_campaign(
         }
         Err(e) => {
             error!("Failed to delete campaign: {}", e);
-            Ok(ApiResponse::error(format!("Failed to delete campaign: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to delete campaign: {}",
+                e
+            )))
         }
     }
 }
@@ -354,8 +390,8 @@ pub async fn list_archived_campaigns(
     info!("Listing archived campaigns");
 
     let mut conn = state.db.get_connection()?;
-    let mut service = mimir_dm_core::services::CampaignService::new(&mut *conn);
-    
+    let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+
     match service.list_archived_campaigns() {
         Ok(campaigns) => {
             let campaigns: Vec<Campaign> = campaigns.into_iter().map(Campaign::from).collect();
@@ -364,8 +400,10 @@ pub async fn list_archived_campaigns(
         }
         Err(e) => {
             error!("Failed to list archived campaigns: {}", e);
-            Ok(ApiResponse::error(format!("Failed to list archived campaigns: {}", e)))
+            Ok(ApiResponse::error(format!(
+                "Failed to list archived campaigns: {}",
+                e
+            )))
         }
     }
 }
-

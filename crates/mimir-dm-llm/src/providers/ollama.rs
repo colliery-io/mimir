@@ -28,12 +28,11 @@ use tokio_util::sync::CancellationToken;
 use tracing::debug;
 use url::Url;
 
-use crate::config::{ModelConfig, EndpointType};
-use crate::providers::openai_compat::{OpenAiCompatClient, OpenAiChatRequest, OpenAiMessage};
+use crate::config::{EndpointType, ModelConfig};
+use crate::providers::openai_compat::{OpenAiChatRequest, OpenAiCompatClient, OpenAiMessage};
 use crate::traits::{
-    LlmProvider, LlmError, ChatResponse, CompletionResponse, EmbeddingResponse,
-    Message, RateLimitState, Usage, ModelInfo, ModelPullProgress,
-    Tool,
+    ChatResponse, CompletionResponse, EmbeddingResponse, LlmError, LlmProvider, Message, ModelInfo,
+    ModelPullProgress, RateLimitState, Tool, Usage,
 };
 
 // Note: Chat and completion now use OpenAI-compatible endpoint via OpenAiCompatClient.
@@ -121,10 +120,10 @@ impl OllamaProvider {
         let _url = Url::parse(&base_url)
             .map_err(|e| LlmError::ConfigError(format!("Invalid base_url: {}", e)))?;
 
-        let rate_limit_state = config.limit.as_ref().map_or_else(
-            || RateLimitState::default(),
-            |limit| RateLimitState::new(limit)
-        );
+        let rate_limit_state = config
+            .limit
+            .as_ref()
+            .map_or_else(RateLimitState::default, RateLimitState::new);
 
         // Create OpenAI-compatible client for chat/completion
         // Ollama's OpenAI-compatible endpoint is at /v1
@@ -175,10 +174,8 @@ impl LlmProvider for OllamaProvider {
         self.check_rate_limit().await?;
 
         // Convert messages to OpenAI format
-        let openai_messages: Vec<OpenAiMessage> = messages
-            .into_iter()
-            .map(OpenAiMessage::from)
-            .collect();
+        let openai_messages: Vec<OpenAiMessage> =
+            messages.into_iter().map(OpenAiMessage::from).collect();
 
         let request = OpenAiChatRequest {
             model: self.config.model.clone(),
@@ -190,8 +187,11 @@ impl LlmProvider for OllamaProvider {
             stream: false,
         };
 
-        debug!("Ollama chat request via OpenAI-compat: model={} messages={}",
-            request.model, request.messages.len());
+        debug!(
+            "Ollama chat request via OpenAI-compat: model={} messages={}",
+            request.model,
+            request.messages.len()
+        );
 
         // Use the OpenAI-compatible client
         self.openai_client.chat(request, cancellation_token).await
@@ -212,16 +212,21 @@ impl LlmProvider for OllamaProvider {
 
         self.check_rate_limit().await?;
 
-        debug!("Ollama complete request via OpenAI-compat: model={}", self.config.model);
+        debug!(
+            "Ollama complete request via OpenAI-compat: model={}",
+            self.config.model
+        );
 
         // Use the OpenAI-compatible client (converts to chat format internally)
-        self.openai_client.complete(
-            self.config.model.clone(),
-            prompt,
-            temperature,
-            max_tokens,
-            stop,
-        ).await
+        self.openai_client
+            .complete(
+                self.config.model.clone(),
+                prompt,
+                temperature,
+                max_tokens,
+                stop,
+            )
+            .await
     }
 
     async fn embed(
@@ -246,7 +251,7 @@ impl LlmProvider for OllamaProvider {
 
         let response = self
             .client
-            .post(&format!("{}/api/embeddings", self.base_url))
+            .post(format!("{}/api/embeddings", self.base_url))
             .json(&request)
             .send()
             .await
@@ -280,14 +285,14 @@ impl LlmProvider for OllamaProvider {
             model: self.config.model.clone(),
         })
     }
-    
+
     // Model Management implementations
-    
+
     /// Check if the Ollama service is available and responding
-    /// 
+    ///
     /// Returns `Ok(true)` if the service is running and accessible,
     /// `Ok(false)` if the service is not responding.
-    /// 
+    ///
     /// # Example
     /// ```no_run
     /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
@@ -302,20 +307,20 @@ impl LlmProvider for OllamaProvider {
     /// ```
     async fn check_service(&self) -> Result<bool, LlmError> {
         let url = format!("{}/api/tags", self.base_url);
-        
+
         match self.client.get(&url).send().await {
             Ok(response) => Ok(response.status().is_success()),
             Err(_) => Ok(false), // Service not running
         }
     }
-    
+
     /// List all models available in the Ollama service
-    /// 
+    ///
     /// Returns a vector of `ModelInfo` containing the names of all locally available models.
-    /// 
+    ///
     /// # Errors
     /// Returns an error if the service is not available or if the response cannot be parsed.
-    /// 
+    ///
     /// # Example
     /// ```no_run
     /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
@@ -329,38 +334,43 @@ impl LlmProvider for OllamaProvider {
     /// ```
     async fn list_models(&self) -> Result<Vec<ModelInfo>, LlmError> {
         let url = format!("{}/api/tags", self.base_url);
-        
-        let response = self.client.get(&url)
-            .send()
-            .await
-            .map_err(|e| LlmError::ProviderError(format!(
-                "Failed to list models from {}: {}", self.base_url, e
-            )))?;
-            
+
+        let response = self.client.get(&url).send().await.map_err(|e| {
+            LlmError::ProviderError(format!(
+                "Failed to list models from {}: {}",
+                self.base_url, e
+            ))
+        })?;
+
         if !response.status().is_success() {
             return Err(LlmError::ServiceUnavailable(format!(
-                "Ollama service at {} returned status: {}", 
-                self.base_url, response.status()
+                "Ollama service at {} returned status: {}",
+                self.base_url,
+                response.status()
             )));
         }
-        
-        let tags_response: OllamaTagsResponse = response.json().await
+
+        let tags_response: OllamaTagsResponse = response
+            .json()
+            .await
             .map_err(|e| LlmError::ProviderError(format!("Failed to parse model list: {}", e)))?;
-            
-        Ok(tags_response.models.into_iter()
+
+        Ok(tags_response
+            .models
+            .into_iter()
             .map(|m| ModelInfo { name: m.name })
             .collect())
     }
-    
+
     /// Check if a specific model exists locally in Ollama
-    /// 
+    ///
     /// This method checks if a model with the given name (or starting with the given name)
     /// exists in the local Ollama installation. It handles partial matches, so "llama3.1"
     /// will match "llama3.1:latest" or "llama3.1-instruct".
-    /// 
+    ///
     /// # Arguments
     /// * `model_name` - The name of the model to check for
-    /// 
+    ///
     /// # Example
     /// ```no_run
     /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
@@ -379,18 +389,18 @@ impl LlmProvider for OllamaProvider {
         // This handles cases like "qwen2:8b" matching "qwen2:8b-instruct-q4_0"
         Ok(models.iter().any(|m| m.name.starts_with(model_name)))
     }
-    
+
     /// Pull (download) a model from the Ollama library
-    /// 
+    ///
     /// This method downloads a model from the Ollama library if it's not already available locally.
     /// The download happens synchronously (blocking until complete).
-    /// 
+    ///
     /// # Arguments
     /// * `model_name` - The name of the model to pull (e.g., "llama3.1", "mistral:latest")
-    /// 
+    ///
     /// # Errors
     /// Returns an error if the model cannot be found or if the download fails.
-    /// 
+    ///
     /// # Example
     /// ```no_run
     /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider};
@@ -402,45 +412,55 @@ impl LlmProvider for OllamaProvider {
     /// ```
     async fn pull_model(&self, model_name: &str) -> Result<(), LlmError> {
         let url = format!("{}/api/pull", self.base_url);
-        
+
         let request = OllamaPullRequest {
             name: model_name.to_string(),
             stream: false,
         };
-        
-        let response = self.client.post(&url)
+
+        let response = self
+            .client
+            .post(&url)
             .json(&request)
             .send()
             .await
-            .map_err(|e| LlmError::ProviderError(format!(
-                "Failed to pull model '{}' from {}: {}", model_name, self.base_url, e
-            )))?;
-            
+            .map_err(|e| {
+                LlmError::ProviderError(format!(
+                    "Failed to pull model '{}' from {}: {}",
+                    model_name, self.base_url, e
+                ))
+            })?;
+
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(LlmError::ModelPullFailed(
-                format!("Failed to pull model '{}': HTTP {} - {}", 
-                    model_name, status, error_text)
-            ));
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(LlmError::ModelPullFailed(format!(
+                "Failed to pull model '{}': HTTP {} - {}",
+                model_name, status, error_text
+            )));
         }
-        
+
         // Wait for the response to complete (non-streaming)
-        let _body = response.text().await
+        let _body = response
+            .text()
+            .await
             .map_err(|e| LlmError::ProviderError(format!("Failed to read pull response: {}", e)))?;
-            
+
         Ok(())
     }
-    
+
     /// Pull (download) a model with progress updates
-    /// 
+    ///
     /// This method downloads a model from the Ollama library and provides progress updates
     /// through a callback function. This is useful for showing download progress to users.
-    /// 
+    ///
     /// # Arguments
     /// * `model_name` - The name of the model to pull
     /// * `progress_callback` - A callback function that receives progress updates
-    /// 
+    ///
     /// # Example
     /// ```no_run
     /// # use mimir_dm_llm::{providers::ollama::OllamaProvider, LlmProvider, ModelPullProgress};
@@ -460,43 +480,47 @@ impl LlmProvider for OllamaProvider {
         F: Fn(ModelPullProgress) + Send + 'static,
     {
         let url = format!("{}/api/pull", self.base_url);
-        
+
         let request = OllamaPullRequest {
             name: model_name.to_string(),
             stream: true,
         };
-        
-        let response = self.client.post(&url)
+
+        let response = self
+            .client
+            .post(&url)
             .json(&request)
             .send()
             .await
-            .map_err(|e| LlmError::ProviderError(format!(
-                "Failed to initiate pull for model '{}' from {}: {}", 
-                model_name, self.base_url, e
-            )))?;
-            
+            .map_err(|e| {
+                LlmError::ProviderError(format!(
+                    "Failed to initiate pull for model '{}' from {}: {}",
+                    model_name, self.base_url, e
+                ))
+            })?;
+
         if !response.status().is_success() {
             let status = response.status();
-            return Err(LlmError::ModelPullFailed(
-                format!("Failed to pull model '{}': HTTP {} from {}", 
-                    model_name, status, self.base_url)
-            ));
+            return Err(LlmError::ModelPullFailed(format!(
+                "Failed to pull model '{}': HTTP {} from {}",
+                model_name, status, self.base_url
+            )));
         }
-        
+
         // Process streaming response
         use futures::StreamExt;
         let mut stream = response.bytes_stream();
-        
+
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk
-                .map_err(|e| LlmError::ProviderError(format!("Stream error: {}", e)))?;
-            
+            let chunk =
+                chunk.map_err(|e| LlmError::ProviderError(format!("Stream error: {}", e)))?;
+
             // Parse each line as JSON (Ollama sends newline-delimited JSON)
             for line in chunk.split(|&b| b == b'\n') {
                 if line.is_empty() {
                     continue;
                 }
-                
+
                 match serde_json::from_slice::<OllamaPullStreamResponse>(line) {
                     Ok(progress_data) => {
                         let progress = ModelPullProgress {
@@ -504,12 +528,13 @@ impl LlmProvider for OllamaProvider {
                             downloaded: progress_data.completed,
                             total: progress_data.total,
                         };
-                        
+
                         progress_callback(progress);
-                        
+
                         // Check if done
-                        if progress_data.status.contains("success") || 
-                           progress_data.status.contains("already exists") {
+                        if progress_data.status.contains("success")
+                            || progress_data.status.contains("already exists")
+                        {
                             return Ok(());
                         }
                     }
@@ -520,7 +545,7 @@ impl LlmProvider for OllamaProvider {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -528,7 +553,7 @@ impl LlmProvider for OllamaProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ModelConfig, EndpointType};
+    use crate::config::{EndpointType, ModelConfig};
     use std::collections::HashMap;
 
     fn create_test_config() -> ModelConfig {
@@ -559,10 +584,11 @@ mod tests {
     #[test]
     fn test_ollama_provider_invalid_url() {
         let mut config = create_test_config();
-        config.config.as_mut().unwrap().insert(
-            "base_url".to_string(),
-            "invalid-url".to_string(),
-        );
+        config
+            .config
+            .as_mut()
+            .unwrap()
+            .insert("base_url".to_string(), "invalid-url".to_string());
 
         let provider = OllamaProvider::new(config);
         assert!(provider.is_err());

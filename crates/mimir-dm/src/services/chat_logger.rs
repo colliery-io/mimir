@@ -7,10 +7,10 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
-use std::path::{Path, PathBuf};
-use tracing::{error, info};
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::{Path, PathBuf};
+use tracing::{error, info};
 
 /// Token usage information for chat logging
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,10 +62,7 @@ pub enum ChatLogEvent {
         error_type: String,
     },
     /// Session metadata
-    SessionInfo {
-        action: String,
-        details: Value,
-    },
+    SessionInfo { action: String, details: Value },
     /// Complete conversation context sent to LLM
     FullConversationContext {
         iteration: usize,
@@ -97,20 +94,28 @@ impl ChatLogger {
     pub fn new(session_id: String, logs_dir: &Path) -> Result<Self> {
         // Create chat_sessions subdirectory if it doesn't exist
         let chat_logs_dir = logs_dir.join("chat_sessions");
-        fs::create_dir_all(&chat_logs_dir)
-            .with_context(|| format!("Failed to create chat logs directory: {}", chat_logs_dir.display()))?;
-        
+        fs::create_dir_all(&chat_logs_dir).with_context(|| {
+            format!(
+                "Failed to create chat logs directory: {}",
+                chat_logs_dir.display()
+            )
+        })?;
+
         let sanitized_session_id = sanitize_filename(&session_id);
         let log_file_path = chat_logs_dir.join(format!("{}.log", sanitized_session_id));
-        
-        info!("Created chat logger for session: {} -> {}", session_id, log_file_path.display());
-        
+
+        info!(
+            "Created chat logger for session: {} -> {}",
+            session_id,
+            log_file_path.display()
+        );
+
         Ok(Self {
             session_id,
             log_file_path,
         })
     }
-    
+
     /// Log a structured chat event
     pub fn log_event(&self, event: ChatLogEvent) {
         let entry = ChatLogEntry {
@@ -118,7 +123,7 @@ impl ChatLogger {
             session_id: self.session_id.clone(),
             event,
         };
-        
+
         match serde_json::to_string(&entry) {
             Ok(json_line) => {
                 // Write directly to the log file
@@ -142,7 +147,7 @@ impl ChatLogger {
             }
         }
     }
-    
+
     /// Log user message
     pub fn log_user_message(&self, content: &str, message_id: Option<String>) {
         self.log_event(ChatLogEvent::UserMessage {
@@ -150,7 +155,7 @@ impl ChatLogger {
             message_id,
         });
     }
-    
+
     /// Log system prompt
     pub fn log_system_prompt(&self, content: &str, context_type: &str) {
         self.log_event(ChatLogEvent::SystemPrompt {
@@ -158,9 +163,15 @@ impl ChatLogger {
             context_type: context_type.to_string(),
         });
     }
-    
+
     /// Log LLM call
-    pub fn log_llm_call(&self, iteration: usize, messages_count: usize, tools_enabled: bool, model: &str) {
+    pub fn log_llm_call(
+        &self,
+        iteration: usize,
+        messages_count: usize,
+        tools_enabled: bool,
+        model: &str,
+    ) {
         self.log_event(ChatLogEvent::LlmCall {
             iteration,
             messages_count,
@@ -168,24 +179,29 @@ impl ChatLogger {
             model: model.to_string(),
         });
     }
-    
+
     /// Log LLM response
-    pub fn log_llm_response(&self, content: &str, tokens: Option<ChatTokenUsage>, tool_calls_count: usize) {
+    pub fn log_llm_response(
+        &self,
+        content: &str,
+        tokens: Option<ChatTokenUsage>,
+        tool_calls_count: usize,
+    ) {
         self.log_event(ChatLogEvent::LlmResponse {
             content: content.to_string(),
             tokens,
             tool_calls_count,
         });
     }
-    
+
     /// Log tool call
     pub fn log_tool_call(
-        &self, 
-        tool_name: &str, 
-        args: &Value, 
-        success: bool, 
+        &self,
+        tool_name: &str,
+        args: &Value,
+        success: bool,
         result: &str,
-        execution_time_ms: Option<u64>
+        execution_time_ms: Option<u64>,
     ) {
         self.log_event(ChatLogEvent::ToolCall {
             tool_name: tool_name.to_string(),
@@ -195,7 +211,7 @@ impl ChatLogger {
             execution_time_ms,
         });
     }
-    
+
     /// Log error
     pub fn log_error(&self, context: &str, error: &str, error_type: &str) {
         self.log_event(ChatLogEvent::Error {
@@ -204,7 +220,7 @@ impl ChatLogger {
             error_type: error_type.to_string(),
         });
     }
-    
+
     /// Log session info
     pub fn log_session_info(&self, action: &str, details: Value) {
         self.log_event(ChatLogEvent::SessionInfo {
@@ -212,7 +228,7 @@ impl ChatLogger {
             details,
         });
     }
-    
+
     /// Log complete conversation context sent to LLM
     pub fn log_full_conversation_context(
         &self,
@@ -225,12 +241,14 @@ impl ChatLogger {
     ) {
         let message_values: Vec<Value> = messages
             .iter()
-            .map(|msg| serde_json::json!({
-                "role": msg.role,
-                "content": msg.content
-            }))
+            .map(|msg| {
+                serde_json::json!({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+            })
             .collect();
-            
+
         self.log_event(ChatLogEvent::FullConversationContext {
             iteration,
             messages: message_values,
@@ -240,7 +258,7 @@ impl ChatLogger {
             tools_count,
         });
     }
-    
+
     /// Get the session ID
     #[allow(dead_code)]
     pub fn session_id(&self) -> &str {
@@ -272,23 +290,28 @@ fn sanitize_filename(name: &str) -> String {
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    
+
     #[test]
     fn test_sanitize_filename() {
         assert_eq!(sanitize_filename("abc123"), "abc123");
         assert_eq!(sanitize_filename("abc-123_def"), "abc-123_def");
         assert_eq!(sanitize_filename("abc/def\\ghi:jkl"), "abc_def_ghi_jkl");
-        assert_eq!(sanitize_filename("session-id-with-special-chars!@#"), "session-id-with-special-chars___");
+        assert_eq!(
+            sanitize_filename("session-id-with-special-chars!@#"),
+            "session-id-with-special-chars___"
+        );
     }
-    
+
     #[test]
     fn test_chat_logger_creation() {
         let temp_dir = TempDir::new().unwrap();
         let session_id = "test-session-123".to_string();
-        
+
         let logger = ChatLogger::new(session_id.clone(), temp_dir.path()).unwrap();
-        
+
         assert_eq!(logger.session_id(), &session_id);
-        assert!(logger.log_file_path().exists() || logger.log_file_path().parent().unwrap().exists());
+        assert!(
+            logger.log_file_path().exists() || logger.log_file_path().parent().unwrap().exists()
+        );
     }
 }

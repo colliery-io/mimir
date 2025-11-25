@@ -3,11 +3,12 @@
 //! Provides database-backed variant rule search, retrieval, and import functionality.
 //! Supports filtering by name, rule type, and source.
 
-use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::variant_rule::{
-    CatalogVariantRule, VariantRuleSummary, VariantRuleFilters, VariantRule, NewCatalogVariantRule, VariantRuleData
+    CatalogVariantRule, NewCatalogVariantRule, VariantRule, VariantRuleData, VariantRuleFilters,
+    VariantRuleSummary,
 };
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
 use tracing::{debug, info};
@@ -25,7 +26,10 @@ impl<'a> VariantRuleService<'a> {
     }
 
     /// Searches variant rules by filters.
-    pub fn search_variant_rules(&mut self, filters: VariantRuleFilters) -> Result<Vec<VariantRuleSummary>> {
+    pub fn search_variant_rules(
+        &mut self,
+        filters: VariantRuleFilters,
+    ) -> Result<Vec<VariantRuleSummary>> {
         use crate::schema::catalog_variant_rules::dsl::*;
 
         let mut query = catalog_variant_rules.into_boxed();
@@ -42,10 +46,8 @@ impl<'a> VariantRuleService<'a> {
             if !types.is_empty() {
                 // Handle "General" type by checking for null values
                 let has_general = types.contains(&"General".to_string());
-                let other_types: Vec<String> = types.iter()
-                    .filter(|t| *t != "General")
-                    .cloned()
-                    .collect();
+                let other_types: Vec<String> =
+                    types.iter().filter(|t| *t != "General").cloned().collect();
 
                 if has_general && !other_types.is_empty() {
                     query = query.filter(rule_type.is_null().or(rule_type.eq_any(other_types)));
@@ -90,7 +92,11 @@ impl<'a> VariantRuleService<'a> {
     }
 
     /// Gets a variant rule by its name and source book.
-    pub fn get_variant_rule_by_name_and_source(&mut self, rule_name: &str, rule_source: &str) -> Result<Option<VariantRule>> {
+    pub fn get_variant_rule_by_name_and_source(
+        &mut self,
+        rule_name: &str,
+        rule_source: &str,
+    ) -> Result<Option<VariantRule>> {
         use crate::schema::catalog_variant_rules::dsl::*;
 
         let catalog_rule = catalog_variant_rules
@@ -142,9 +148,12 @@ impl<'a> VariantRuleService<'a> {
     pub fn import_variant_rules_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing variant rules from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing variant rules from book directory: {:?} (source: {})",
+            book_dir, source
+        );
 
         let mut total_imported = 0;
         let variant_rule_files = Self::find_variant_rule_files(book_dir)?;
@@ -154,24 +163,36 @@ impl<'a> VariantRuleService<'a> {
             return Ok(0);
         }
 
-        info!("Found {} variant rule files to process", variant_rule_files.len());
+        info!(
+            "Found {} variant rule files to process",
+            variant_rule_files.len()
+        );
 
         for variant_rule_file in variant_rule_files {
             debug!("Processing variant rule file: {:?}", variant_rule_file);
 
             match Self::import_variant_rules_from_file(conn, &variant_rule_file, source) {
                 Ok(count) => {
-                    info!("Imported {} variant rules from {:?}", count, variant_rule_file);
+                    info!(
+                        "Imported {} variant rules from {:?}",
+                        count, variant_rule_file
+                    );
                     total_imported += count;
                 }
                 Err(e) => {
-                    debug!("Failed to import variant rules from {:?}: {}", variant_rule_file, e);
+                    debug!(
+                        "Failed to import variant rules from {:?}: {}",
+                        variant_rule_file, e
+                    );
                     // Continue processing other files instead of failing completely
                 }
             }
         }
 
-        info!("Successfully imported {} total variant rules from {}", total_imported, source);
+        info!(
+            "Successfully imported {} total variant rules from {}",
+            total_imported, source
+        );
         Ok(total_imported)
     }
 
@@ -199,7 +220,7 @@ impl<'a> VariantRuleService<'a> {
     fn import_variant_rules_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading variant rule file: {:?}", file_path);
 
@@ -207,14 +228,20 @@ impl<'a> VariantRuleService<'a> {
         let variant_rule_data: VariantRuleData = serde_json::from_str(&content)?;
 
         if let Some(variant_rules) = variant_rule_data.variantrule {
-            let new_variant_rules: Vec<NewCatalogVariantRule> = variant_rules.iter().map(|rule| {
-                let mut new_rule = NewCatalogVariantRule::from(rule);
-                // Always override the source with the book source to ensure consistency
-                new_rule.source = source.to_string();
-                new_rule
-            }).collect();
+            let new_variant_rules: Vec<NewCatalogVariantRule> = variant_rules
+                .iter()
+                .map(|rule| {
+                    let mut new_rule = NewCatalogVariantRule::from(rule);
+                    // Always override the source with the book source to ensure consistency
+                    new_rule.source = source.to_string();
+                    new_rule
+                })
+                .collect();
 
-            debug!("Inserting {} variant rules individually (SQLite limitation)", new_variant_rules.len());
+            debug!(
+                "Inserting {} variant rules individually (SQLite limitation)",
+                new_variant_rules.len()
+            );
 
             use crate::schema::catalog_variant_rules;
             for rule in &new_variant_rules {
@@ -225,7 +252,10 @@ impl<'a> VariantRuleService<'a> {
                     .execute(conn)?;
             }
 
-            info!("Successfully imported {} variant rules into database", new_variant_rules.len());
+            info!(
+                "Successfully imported {} variant rules into database",
+                new_variant_rules.len()
+            );
             Ok(new_variant_rules.len())
         } else {
             Ok(0)
@@ -235,13 +265,15 @@ impl<'a> VariantRuleService<'a> {
     /// Remove all variant rules from a specific source
     pub fn remove_variant_rules_from_source(
         conn: &mut SqliteConnection,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         use crate::schema::catalog_variant_rules;
         info!("Removing variant rules from source: {}", source);
 
-        let deleted = diesel::delete(catalog_variant_rules::table.filter(catalog_variant_rules::source.eq(source)))
-            .execute(conn)?;
+        let deleted = diesel::delete(
+            catalog_variant_rules::table.filter(catalog_variant_rules::source.eq(source)),
+        )
+        .execute(conn)?;
 
         info!("Removed {} variant rules from source: {}", deleted, source);
         Ok(deleted)

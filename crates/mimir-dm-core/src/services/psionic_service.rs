@@ -4,7 +4,9 @@
 //! Supports filtering by name, psionic type, order, and source.
 
 use crate::error::Result;
-use crate::models::catalog::{CatalogPsionic, NewCatalogPsionic, PsionicFilters, PsionicSummary, Psionic};
+use crate::models::catalog::{
+    CatalogPsionic, NewCatalogPsionic, Psionic, PsionicFilters, PsionicSummary,
+};
 use crate::schema::catalog_psionics;
 use diesel::prelude::*;
 use std::fs;
@@ -53,10 +55,8 @@ impl PsionicService {
             .order(catalog_psionics::name.asc())
             .load(conn)?;
 
-        let summaries: Vec<PsionicSummary> = catalog_psionics
-            .iter()
-            .map(|cp| PsionicSummary::from(cp))
-            .collect();
+        let summaries: Vec<PsionicSummary> =
+            catalog_psionics.iter().map(PsionicSummary::from).collect();
 
         Ok(summaries)
     }
@@ -84,10 +84,7 @@ impl PsionicService {
     }
 
     /// Gets a psionic by its database ID.
-    pub fn get_psionic_by_id(
-        conn: &mut SqliteConnection,
-        id: i32,
-    ) -> Result<Option<Psionic>> {
+    pub fn get_psionic_by_id(conn: &mut SqliteConnection, id: i32) -> Result<Option<Psionic>> {
         let catalog_psionic: Option<CatalogPsionic> = catalog_psionics::table
             .filter(catalog_psionics::id.eq(id))
             .select(CatalogPsionic::as_select())
@@ -104,9 +101,7 @@ impl PsionicService {
     }
 
     /// Gets all unique psionic types.
-    pub fn get_all_psionic_types(
-        conn: &mut SqliteConnection,
-    ) -> Result<Vec<String>> {
+    pub fn get_all_psionic_types(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let types: Vec<String> = catalog_psionics::table
             .select(catalog_psionics::psionic_type)
             .distinct()
@@ -117,9 +112,7 @@ impl PsionicService {
     }
 
     /// Gets all unique psionic orders.
-    pub fn get_all_psionic_orders(
-        conn: &mut SqliteConnection,
-    ) -> Result<Vec<String>> {
+    pub fn get_all_psionic_orders(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let orders: Vec<Option<String>> = catalog_psionics::table
             .select(catalog_psionics::psionic_order)
             .distinct()
@@ -127,18 +120,13 @@ impl PsionicService {
             .load(conn)?;
 
         // Filter out None values and collect
-        let filtered_orders: Vec<String> = orders
-            .into_iter()
-            .flatten()
-            .collect();
+        let filtered_orders: Vec<String> = orders.into_iter().flatten().collect();
 
         Ok(filtered_orders)
     }
 
     /// Gets all unique source books containing psionics.
-    pub fn get_all_psionic_sources(
-        conn: &mut SqliteConnection,
-    ) -> Result<Vec<String>> {
+    pub fn get_all_psionic_sources(conn: &mut SqliteConnection) -> Result<Vec<String>> {
         let sources: Vec<String> = catalog_psionics::table
             .select(catalog_psionics::source)
             .distinct()
@@ -152,9 +140,12 @@ impl PsionicService {
     pub fn import_psionics_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        info!("Importing psionics from book directory: {:?} (source: {})", book_dir, source);
+        info!(
+            "Importing psionics from book directory: {:?} (source: {})",
+            book_dir, source
+        );
         let mut total_imported = 0;
 
         let psionics_dir = book_dir.join("psionics");
@@ -167,7 +158,10 @@ impl PsionicService {
                 let path = entry.path();
 
                 if path.extension().and_then(|e| e.to_str()) == Some("json") {
-                    debug!("Processing psionic file: {:?}", path.file_name().unwrap_or_default());
+                    debug!(
+                        "Processing psionic file: {:?}",
+                        path.file_name().unwrap_or_default()
+                    );
                     let count = Self::import_psionics_from_file(conn, &path, source)?;
                     info!("Imported {} psionics from {:?}", count, path);
                     total_imported += count;
@@ -175,14 +169,17 @@ impl PsionicService {
             }
         }
 
-        info!("Successfully imported {} total psionics from {}", total_imported, source);
+        info!(
+            "Successfully imported {} total psionics from {}",
+            total_imported, source
+        );
         Ok(total_imported)
     }
 
     fn import_psionics_from_file(
         conn: &mut SqliteConnection,
         file_path: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
         debug!("Reading psionic file: {:?}", file_path);
 
@@ -190,15 +187,21 @@ impl PsionicService {
         let psionic_data: PsionicData = serde_json::from_str(&content)?;
 
         if let Some(psionics) = psionic_data.psionic {
-            let new_psionics: Vec<NewCatalogPsionic> = psionics.iter().map(|psionic| {
-                let mut new_psionic = NewCatalogPsionic::from(psionic);
-                if new_psionic.source.is_empty() {
-                    new_psionic.source = source.to_string();
-                }
-                new_psionic
-            }).collect();
+            let new_psionics: Vec<NewCatalogPsionic> = psionics
+                .iter()
+                .map(|psionic| {
+                    let mut new_psionic = NewCatalogPsionic::from(psionic);
+                    if new_psionic.source.is_empty() {
+                        new_psionic.source = source.to_string();
+                    }
+                    new_psionic
+                })
+                .collect();
 
-            debug!("Inserting {} psionics individually (SQLite limitation)", new_psionics.len());
+            debug!(
+                "Inserting {} psionics individually (SQLite limitation)",
+                new_psionics.len()
+            );
 
             for psionic in &new_psionics {
                 diesel::insert_into(catalog_psionics::table)
@@ -208,7 +211,10 @@ impl PsionicService {
                     .execute(conn)?;
             }
 
-            info!("Successfully imported {} psionics into database", new_psionics.len());
+            info!(
+                "Successfully imported {} psionics into database",
+                new_psionics.len()
+            );
             Ok(new_psionics.len())
         } else {
             Ok(0)
@@ -216,14 +222,12 @@ impl PsionicService {
     }
 
     /// Remove all psionics from a specific source
-    pub fn remove_psionics_from_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
+    pub fn remove_psionics_from_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
         info!("Removing psionics from source: {}", source);
 
-        let deleted = diesel::delete(catalog_psionics::table.filter(catalog_psionics::source.eq(source)))
-            .execute(conn)?;
+        let deleted =
+            diesel::delete(catalog_psionics::table.filter(catalog_psionics::source.eq(source)))
+                .execute(conn)?;
 
         info!("Removed {} psionics from source: {}", deleted, source);
         Ok(deleted)

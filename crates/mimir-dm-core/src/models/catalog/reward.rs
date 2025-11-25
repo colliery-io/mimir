@@ -1,35 +1,34 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_rewards;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reward {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     #[serde(rename = "type")]
     pub reward_type: Option<String>, // Blessing, Boon, Charm, etc.
-    
+
     pub entries: Option<Vec<serde_json::Value>>,
-    
+
     #[serde(rename = "prerequisite")]
     pub prerequisite: Option<Vec<serde_json::Value>>,
-    
+
     // For boons that grant spells
     #[serde(rename = "additionalSpells")]
     pub additional_spells: Option<Vec<serde_json::Value>>,
-    
+
     // Duration for temporary rewards
     pub duration: Option<String>,
-    
-    
+
     #[serde(rename = "basicRules")]
     pub basic_rules: Option<bool>,
-    
+
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
@@ -132,7 +131,7 @@ impl From<Reward> for NewCatalogReward {
     fn from(reward: Reward) -> Self {
         let summary = RewardSummary::from(&reward);
         let json = serde_json::to_string(&reward).unwrap_or_default();
-        
+
         Self {
             name: summary.name,
             reward_type: summary.reward_type,

@@ -1,9 +1,9 @@
 //! D&D 5e Race models for catalog
 
+use crate::schema::catalog_races;
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use diesel::prelude::*;
-use crate::schema::catalog_races;
 
 /// A player character race
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -158,7 +158,6 @@ pub struct Age {
     pub max: Option<i32>,
 }
 
-
 /// Sound clip reference
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SoundClip {
@@ -225,7 +224,9 @@ pub struct RaceSummary {
 
 impl From<&Race> for RaceSummary {
     fn from(race: &Race) -> Self {
-        let size = race.size.as_ref()
+        let size = race
+            .size
+            .as_ref()
             .and_then(|s| s.first())
             .map(|s| match s.as_str() {
                 "T" => "Tiny",
@@ -238,19 +239,17 @@ impl From<&Race> for RaceSummary {
             })
             .unwrap_or("Medium")
             .to_string();
-        
+
         let speed = match &race.speed {
             Some(serde_json::Value::Number(n)) => n.as_i64().unwrap_or(30) as i32,
             Some(serde_json::Value::Object(obj)) => {
-                obj.get("walk")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(30) as i32
-            },
-            _ => 30
+                obj.get("walk").and_then(|v| v.as_i64()).unwrap_or(30) as i32
+            }
+            _ => 30,
         };
-        
+
         let ability_bonuses = format_ability_bonuses(race.ability.as_ref());
-        
+
         Self {
             name: race.name.clone(),
             source: race.source.clone(),
@@ -267,25 +266,23 @@ impl From<&Race> for RaceSummary {
 impl From<&Subrace> for RaceSummary {
     fn from(subrace: &Subrace) -> Self {
         let ability_bonuses = format_ability_bonuses(subrace.ability.as_ref());
-        
+
         let speed = match &subrace.speed {
             Some(serde_json::Value::Number(n)) => n.as_i64().unwrap_or(30) as i32,
             Some(serde_json::Value::Object(obj)) => {
-                obj.get("walk")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(30) as i32
-            },
-            _ => 30
+                obj.get("walk").and_then(|v| v.as_i64()).unwrap_or(30) as i32
+            }
+            _ => 30,
         };
-        
+
         // Format subrace name as "Subrace, Race" for better sorting
         let name = match &subrace.name {
             Some(n) if !n.is_empty() => {
                 format!("{}, {}", n, subrace.race_name)
-            },
-            _ => format!("{} (Base)", subrace.race_name)
+            }
+            _ => format!("{} (Base)", subrace.race_name),
         };
-        
+
         Self {
             name,
             source: subrace.source.clone(),
@@ -302,11 +299,12 @@ impl From<&Subrace> for RaceSummary {
 fn format_ability_bonuses(ability: Option<&Vec<serde_json::Value>>) -> String {
     match ability {
         Some(scores) => {
-            scores.iter()
+            scores
+                .iter()
                 .filter_map(|val| {
                     if let serde_json::Value::Object(obj) = val {
                         let mut parts = Vec::new();
-                        
+
                         // Check each ability score
                         if let Some(v) = obj.get("str").and_then(|v| v.as_i64()) {
                             parts.push(format!("STR +{}", v));
@@ -326,14 +324,16 @@ fn format_ability_bonuses(ability: Option<&Vec<serde_json::Value>>) -> String {
                         if let Some(v) = obj.get("cha").and_then(|v| v.as_i64()) {
                             parts.push(format!("CHA +{}", v));
                         }
-                        
+
                         // Handle choose option
                         if let Some(choose) = obj.get("choose") {
                             if let Some(choose_obj) = choose.as_object() {
-                                let count = choose_obj.get("count")
+                                let count = choose_obj
+                                    .get("count")
                                     .and_then(|v| v.as_i64())
                                     .unwrap_or(1);
-                                let from = choose_obj.get("from")
+                                let from = choose_obj
+                                    .get("from")
                                     .and_then(|v| v.as_array())
                                     .map(|arr| {
                                         arr.iter()
@@ -345,7 +345,7 @@ fn format_ability_bonuses(ability: Option<&Vec<serde_json::Value>>) -> String {
                                 parts.push(format!("Choose {} from {}", count, from));
                             }
                         }
-                        
+
                         if !parts.is_empty() {
                             Some(parts.join(", "))
                         } else {
@@ -423,7 +423,7 @@ impl From<&CatalogRace> for RaceSummary {
 impl From<&Race> for NewCatalogRace {
     fn from(race: &Race) -> Self {
         let race_summary = RaceSummary::from(race);
-        
+
         NewCatalogRace {
             name: race.name.clone(),
             size: Some(race_summary.size),
@@ -439,7 +439,7 @@ impl From<&Race> for NewCatalogRace {
 impl From<&Subrace> for NewCatalogRace {
     fn from(subrace: &Subrace) -> Self {
         let race_summary = RaceSummary::from(subrace);
-        
+
         NewCatalogRace {
             name: race_summary.name, // Already formatted as "Subrace, Race"
             size: Some(race_summary.size),

@@ -36,15 +36,15 @@ pub async fn is_dev_mode() -> Result<bool, String> {
 /// Returns error response if not in development mode or deletion fails.
 #[tauri::command]
 pub async fn remove_dev_test_book(
-    app_paths: State<'_, Arc<AppPaths>>
+    app_paths: State<'_, Arc<AppPaths>>,
 ) -> Result<ApiResponse<()>, String> {
     if !is_dev_build() {
         return Ok(ApiResponse::error("Not in development mode".to_string()));
     }
-    
+
     let books_dir = app_paths.data_dir.join("books");
     let test_books = get_embedded_test_books();
-    
+
     // Remove all test book directories
     for book in &test_books {
         let book_dir = books_dir.join(&book.name);
@@ -54,6 +54,6 @@ pub async fn remove_dev_test_book(
             info!("Removed dev test book: {}", book.name);
         }
     }
-    
+
     Ok(ApiResponse::success(()))
 }

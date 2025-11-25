@@ -30,7 +30,7 @@ pub struct AppInfo {
 /// `ApiResponse` containing `AppInfo` with all relevant paths.
 #[tauri::command]
 pub async fn get_app_info(
-    app_paths: State<'_, Arc<AppPaths>>
+    app_paths: State<'_, Arc<AppPaths>>,
 ) -> Result<ApiResponse<AppInfo>, String> {
     let app_info = AppInfo {
         database_path: app_paths.database_path_str(),
@@ -65,17 +65,20 @@ pub async fn greet(name: String) -> String {
 #[tauri::command]
 pub async fn get_default_campaigns_directory() -> Result<ApiResponse<String>, String> {
     use directories::UserDirs;
-    
+
     match UserDirs::new() {
         Some(user_dirs) => {
-            let documents_dir = user_dirs.document_dir()
+            let documents_dir = user_dirs
+                .document_dir()
                 .unwrap_or_else(|| user_dirs.home_dir())
                 .join("Mimir Campaigns");
-            
-            Ok(ApiResponse::success(documents_dir.to_string_lossy().to_string()))
+
+            Ok(ApiResponse::success(
+                documents_dir.to_string_lossy().to_string(),
+            ))
         }
-        None => {
-            Ok(ApiResponse::error("Could not determine user directories".to_string()))
-        }
+        None => Ok(ApiResponse::error(
+            "Could not determine user directories".to_string(),
+        )),
     }
 }

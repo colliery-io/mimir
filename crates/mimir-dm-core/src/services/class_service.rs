@@ -3,17 +3,16 @@
 //! Provides database-backed class and subclass search, retrieval, and import functionality.
 //! Handles the complex class hierarchy including base classes, subclasses, and class features.
 
-use diesel::prelude::*;
 use crate::error::Result;
 use crate::models::catalog::class::{
-    CatalogClass, CatalogSubclass,
-    ClassSummary, ClassFilters, Class, Subclass, ClassFluff, SubclassFluff,
-    ClassData, ClassFluffData, ClassFeatureData,
-    NewCatalogClass, NewCatalogSubclass, NewCatalogClassFeature, NewCatalogSubclassFeature
+    CatalogClass, CatalogSubclass, Class, ClassData, ClassFeatureData, ClassFilters, ClassFluff,
+    ClassFluffData, ClassSummary, NewCatalogClass, NewCatalogClassFeature, NewCatalogSubclass,
+    NewCatalogSubclassFeature, Subclass, SubclassFluff,
 };
+use diesel::prelude::*;
 use std::fs;
 use std::path::Path;
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 /// Service for searching and managing character classes and subclasses.
 pub struct ClassService<'a> {
@@ -63,7 +62,7 @@ impl<'a> ClassService<'a> {
                         (Some(_), None) => std::cmp::Ordering::Greater,
                         (Some(a_sub), Some(b_sub)) => a_sub.cmp(b_sub),
                     }
-                },
+                }
                 other => other,
             }
         });
@@ -121,46 +120,53 @@ impl<'a> ClassService<'a> {
 
         // Join subclasses with their base classes
         let results = catalog_subclasses::table
-            .inner_join(catalog_classes::table.on(
-                catalog_subclasses::class_name.eq(catalog_classes::name)
-                    .and(catalog_subclasses::class_source.eq(catalog_classes::source))
-            ))
+            .inner_join(
+                catalog_classes::table.on(catalog_subclasses::class_name
+                    .eq(catalog_classes::name)
+                    .and(catalog_subclasses::class_source.eq(catalog_classes::source))),
+            )
             .select((CatalogSubclass::as_select(), CatalogClass::as_select()))
             .load::<(CatalogSubclass, CatalogClass)>(self.conn)?;
-        
+
         let mut subclass_summaries = Vec::new();
-        
+
         for (subclass, base_class) in results {
             // Apply filters
             let mut include = true;
-            
+
             // Filter by name (can match either class name or subclass name)
             if let Some(name_filter) = &filters.name {
                 if !name_filter.is_empty() {
-                    let matches_class = base_class.name.to_lowercase().contains(&name_filter.to_lowercase());
-                    let matches_subclass = subclass.name.to_lowercase().contains(&name_filter.to_lowercase());
+                    let matches_class = base_class
+                        .name
+                        .to_lowercase()
+                        .contains(&name_filter.to_lowercase());
+                    let matches_subclass = subclass
+                        .name
+                        .to_lowercase()
+                        .contains(&name_filter.to_lowercase());
                     if !matches_class && !matches_subclass {
                         include = false;
                     }
                 }
             }
-            
+
             // Filter by sources
             if let Some(source_list) = &filters.sources {
                 if !source_list.is_empty() && !source_list.contains(&subclass.source) {
                     include = false;
                 }
             }
-            
+
             // Filter by spellcasting (check both subclass and base class)
             if let Some(has_spell) = filters.has_spellcasting {
-                let has_spellcasting = subclass.spellcasting_ability.is_some() || 
-                                     base_class.spellcasting_ability.is_some();
+                let has_spellcasting = subclass.spellcasting_ability.is_some()
+                    || base_class.spellcasting_ability.is_some();
                 if has_spell != has_spellcasting {
                     include = false;
                 }
             }
-            
+
             // Filter by primary abilities (use base class primary ability)
             if let Some(abilities) = &filters.primary_abilities {
                 if !abilities.is_empty() {
@@ -173,12 +179,12 @@ impl<'a> ClassService<'a> {
                     }
                 }
             }
-            
+
             if include {
                 subclass_summaries.push(ClassSummary::from_subclass(&subclass, &base_class));
             }
         }
-        
+
         Ok(subclass_summaries)
     }
 
@@ -194,7 +200,11 @@ impl<'a> ClassService<'a> {
     /// * `Ok(Some(Class))` - The full class data with fluff if found
     /// * `Ok(None)` - If no matching class exists
     /// * `Err(DbError)` - If the database query fails
-    pub fn get_class_by_name_and_source(&mut self, class_name: &str, class_source: &str) -> Result<Option<Class>> {
+    pub fn get_class_by_name_and_source(
+        &mut self,
+        class_name: &str,
+        class_source: &str,
+    ) -> Result<Option<Class>> {
         use crate::schema::catalog_classes::dsl::*;
 
         let catalog_class = catalog_classes
@@ -210,14 +220,14 @@ impl<'a> ClassService<'a> {
 
                 // Add fluff data if available
                 if let Some(fluff_json_str) = &class_record.fluff_json {
-                    if let Ok(class_fluff) = serde_json::from_str::<ClassFluff>(&fluff_json_str) {
+                    if let Ok(class_fluff) = serde_json::from_str::<ClassFluff>(fluff_json_str) {
                         parsed_class.fluff = Some(class_fluff);
                     }
                 }
 
                 Ok(Some(parsed_class))
             }
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -234,7 +244,12 @@ impl<'a> ClassService<'a> {
     /// * `Ok(Some(Subclass))` - The full subclass data if found
     /// * `Ok(None)` - If no matching subclass exists
     /// * `Err(DbError)` - If the database query fails
-    pub fn get_subclass_by_name(&mut self, subclass_name: &str, _class_name: &str, _class_source: &str) -> Result<Option<Subclass>> {
+    pub fn get_subclass_by_name(
+        &mut self,
+        subclass_name: &str,
+        _class_name: &str,
+        _class_source: &str,
+    ) -> Result<Option<Subclass>> {
         use crate::schema::catalog_subclasses::dsl::*;
 
         let subclass_record = catalog_subclasses
@@ -247,22 +262,27 @@ impl<'a> ClassService<'a> {
 
         match subclass_record {
             Some(record) => {
-                let mut parsed_subclass: Subclass = serde_json::from_str(&record.full_subclass_json)?;
-                
+                let mut parsed_subclass: Subclass =
+                    serde_json::from_str(&record.full_subclass_json)?;
+
                 // Add fluff data - first try subclass-specific fluff, then fall back to parent class fluff
                 let mut fluff_loaded = false;
                 if let Some(fluff_json_str) = &record.fluff_json {
-                    if let Ok(subclass_fluff) = serde_json::from_str::<SubclassFluff>(&fluff_json_str) {
+                    if let Ok(subclass_fluff) =
+                        serde_json::from_str::<SubclassFluff>(fluff_json_str)
+                    {
                         parsed_subclass.fluff = Some(subclass_fluff);
                         fluff_loaded = true;
                     }
                 }
-                
+
                 // If no subclass fluff, try to get parent class fluff
                 if !fluff_loaded {
-                    if let Ok(Some(parent_class)) = self.get_class_by_name_and_source(&record.class_name, &record.class_source) {
+                    if let Ok(Some(parent_class)) =
+                        self.get_class_by_name_and_source(&record.class_name, &record.class_source)
+                    {
                         if let Some(class_fluff) = parent_class.fluff {
-                            // Convert ClassFluff to SubclassFluff structure  
+                            // Convert ClassFluff to SubclassFluff structure
                             let subclass_fluff = SubclassFluff {
                                 entries: class_fluff.entries,
                                 images: class_fluff.images,
@@ -276,13 +296,13 @@ impl<'a> ClassService<'a> {
                         }
                     }
                 }
-                
+
                 // Fetch introductory subclass feature description
                 self.populate_subclass_intro_description(&mut parsed_subclass, &record)?;
-                
+
                 Ok(Some(parsed_subclass))
             }
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -295,9 +315,13 @@ impl<'a> ClassService<'a> {
     /// # Returns
     /// * `Ok(Vec<Subclass>)` - List of subclasses for the class
     /// * `Err(DbError)` - If the database query fails
-    pub fn get_subclasses_for_class(&mut self, _class_name: &str, _class_source: &str) -> Result<Vec<Subclass>> {
+    pub fn get_subclasses_for_class(
+        &mut self,
+        _class_name: &str,
+        _class_source: &str,
+    ) -> Result<Vec<Subclass>> {
         use crate::schema::catalog_subclasses::dsl::*;
-        
+
         let subclass_records = catalog_subclasses
             .filter(crate::schema::catalog_subclasses::class_name.eq(class_name))
             .filter(crate::schema::catalog_subclasses::class_source.eq(class_source))
@@ -306,7 +330,8 @@ impl<'a> ClassService<'a> {
 
         let mut result = Vec::new();
         for subclass_record in subclass_records {
-            let parsed_subclass: Subclass = serde_json::from_str(&subclass_record.full_subclass_json)?;
+            let parsed_subclass: Subclass =
+                serde_json::from_str(&subclass_record.full_subclass_json)?;
             result.push(parsed_subclass);
         }
 
@@ -345,7 +370,7 @@ impl<'a> ClassService<'a> {
             .order_by(primary_ability)
             .load::<Option<String>>(self.conn)?
             .into_iter()
-            .filter_map(|ability| ability)
+            .flatten()
             .collect();
 
         Ok(abilities)
@@ -368,7 +393,11 @@ impl<'a> ClassService<'a> {
     }
 
     /// Populate subclass intro description from the introductory subclass feature
-    fn populate_subclass_intro_description(&mut self, subclass: &mut Subclass, record: &CatalogSubclass) -> Result<()> {
+    fn populate_subclass_intro_description(
+        &mut self,
+        subclass: &mut Subclass,
+        record: &CatalogSubclass,
+    ) -> Result<()> {
         use crate::schema::catalog_subclass_features::dsl::*;
 
         // Look for the introductory subclass feature (usually at level 3, with the same name as the subclass)
@@ -382,37 +411,49 @@ impl<'a> ClassService<'a> {
             .select(full_feature_json)
             .first::<String>(self.conn)
             .optional()?;
-        
+
         if let Some(feature_json) = intro_feature {
             if let Ok(feature_data) = serde_json::from_str::<serde_json::Value>(&feature_json) {
                 if let Some(entries) = feature_data.get("entries").and_then(|e| e.as_array()) {
                     // Extract the first few text entries as the intro description
                     let mut intro_text = Vec::new();
-                    
-                    for entry in entries.iter().take(2) { // Take first 2 entries
+
+                    for entry in entries.iter().take(2) {
+                        // Take first 2 entries
                         if let Some(text) = entry.as_str() {
                             intro_text.push(text.to_string());
                         }
                     }
-                    
+
                     if !intro_text.is_empty() {
                         subclass.intro_description = Some(intro_text.join(" "));
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Load class fluff data from corresponding fluff file
-    fn load_class_fluff_data(book_dir: &Path, source: &str) -> Option<std::collections::HashMap<String, ClassFluff>> {
+    fn load_class_fluff_data(
+        book_dir: &Path,
+        source: &str,
+    ) -> Option<std::collections::HashMap<String, ClassFluff>> {
         // Look for fluff files in class directory
         let search_paths = [
-            book_dir.join("class").join(format!("fluff-{}.json", source.to_lowercase())),
-            book_dir.join("classes").join(format!("fluff-{}.json", source.to_lowercase())),
-            book_dir.join("class").join(format!("fluff-class-{}.json", source.to_lowercase())),
-            book_dir.join("classes").join(format!("fluff-class-{}.json", source.to_lowercase())),
+            book_dir
+                .join("class")
+                .join(format!("fluff-{}.json", source.to_lowercase())),
+            book_dir
+                .join("classes")
+                .join(format!("fluff-{}.json", source.to_lowercase())),
+            book_dir
+                .join("class")
+                .join(format!("fluff-class-{}.json", source.to_lowercase())),
+            book_dir
+                .join("classes")
+                .join(format!("fluff-class-{}.json", source.to_lowercase())),
         ];
 
         for fluff_file in &search_paths {
@@ -422,26 +463,24 @@ impl<'a> ClassService<'a> {
 
             debug!("Loading class fluff data from: {:?}", fluff_file);
 
-            match fs::read_to_string(&fluff_file) {
-                Ok(fluff_content) => {
-                    match serde_json::from_str::<ClassFluffData>(&fluff_content) {
-                        Ok(fluff_data) => {
-                            let mut fluff_map = std::collections::HashMap::new();
+            match fs::read_to_string(fluff_file) {
+                Ok(fluff_content) => match serde_json::from_str::<ClassFluffData>(&fluff_content) {
+                    Ok(fluff_data) => {
+                        let mut fluff_map = std::collections::HashMap::new();
 
-                            if let Some(class_fluff) = fluff_data.class_fluff {
-                                for fluff in class_fluff {
-                                    fluff_map.insert(fluff.name.to_lowercase(), fluff);
-                                }
+                        if let Some(class_fluff) = fluff_data.class_fluff {
+                            for fluff in class_fluff {
+                                fluff_map.insert(fluff.name.to_lowercase(), fluff);
                             }
+                        }
 
-                            debug!("Loaded class fluff data for {} classes", fluff_map.len());
-                            return Some(fluff_map);
-                        }
-                        Err(e) => {
-                            warn!("Failed to parse class fluff file {:?}: {}", fluff_file, e);
-                        }
+                        debug!("Loaded class fluff data for {} classes", fluff_map.len());
+                        return Some(fluff_map);
                     }
-                }
+                    Err(e) => {
+                        warn!("Failed to parse class fluff file {:?}: {}", fluff_file, e);
+                    }
+                },
                 Err(e) => {
                     warn!("Failed to read class fluff file {:?}: {}", fluff_file, e);
                 }
@@ -453,13 +492,24 @@ impl<'a> ClassService<'a> {
     }
 
     /// Load subclass fluff data from corresponding fluff file
-    fn load_subclass_fluff_data(book_dir: &Path, source: &str) -> Option<std::collections::HashMap<String, SubclassFluff>> {
+    fn load_subclass_fluff_data(
+        book_dir: &Path,
+        source: &str,
+    ) -> Option<std::collections::HashMap<String, SubclassFluff>> {
         // Look for subclass fluff files in class directory
         let search_paths = [
-            book_dir.join("class").join(format!("subclass-fluff-{}.json", source.to_lowercase())),
-            book_dir.join("classes").join(format!("subclass-fluff-{}.json", source.to_lowercase())),
-            book_dir.join("class").join(format!("fluff-{}.json", source.to_lowercase())),
-            book_dir.join("classes").join(format!("fluff-{}.json", source.to_lowercase())),
+            book_dir
+                .join("class")
+                .join(format!("subclass-fluff-{}.json", source.to_lowercase())),
+            book_dir
+                .join("classes")
+                .join(format!("subclass-fluff-{}.json", source.to_lowercase())),
+            book_dir
+                .join("class")
+                .join(format!("fluff-{}.json", source.to_lowercase())),
+            book_dir
+                .join("classes")
+                .join(format!("fluff-{}.json", source.to_lowercase())),
         ];
 
         for fluff_file in &search_paths {
@@ -469,27 +519,35 @@ impl<'a> ClassService<'a> {
 
             debug!("Loading subclass fluff data from: {:?}", fluff_file);
 
-            match fs::read_to_string(&fluff_file) {
-                Ok(fluff_content) => {
-                    match serde_json::from_str::<ClassFluffData>(&fluff_content) {
-                        Ok(fluff_data) => {
-                            let mut fluff_map = std::collections::HashMap::new();
+            match fs::read_to_string(fluff_file) {
+                Ok(fluff_content) => match serde_json::from_str::<ClassFluffData>(&fluff_content) {
+                    Ok(fluff_data) => {
+                        let mut fluff_map = std::collections::HashMap::new();
 
-                            if let Some(subclass_fluff) = fluff_data.subclass_fluff {
-                                for fluff in subclass_fluff {
-                                    let key = format!("{}|{}", fluff.class_name.to_lowercase(), fluff.name.to_lowercase());
-                                    fluff_map.insert(key, fluff);
-                                }
+                        if let Some(subclass_fluff) = fluff_data.subclass_fluff {
+                            for fluff in subclass_fluff {
+                                let key = format!(
+                                    "{}|{}",
+                                    fluff.class_name.to_lowercase(),
+                                    fluff.name.to_lowercase()
+                                );
+                                fluff_map.insert(key, fluff);
                             }
+                        }
 
-                            debug!("Loaded subclass fluff data for {} subclasses", fluff_map.len());
-                            return Some(fluff_map);
-                        }
-                        Err(e) => {
-                            warn!("Failed to parse subclass fluff file {:?}: {}", fluff_file, e);
-                        }
+                        debug!(
+                            "Loaded subclass fluff data for {} subclasses",
+                            fluff_map.len()
+                        );
+                        return Some(fluff_map);
                     }
-                }
+                    Err(e) => {
+                        warn!(
+                            "Failed to parse subclass fluff file {:?}: {}",
+                            fluff_file, e
+                        );
+                    }
+                },
                 Err(e) => {
                     warn!("Failed to read subclass fluff file {:?}: {}", fluff_file, e);
                 }
@@ -516,9 +574,11 @@ impl<'a> ClassService<'a> {
     pub fn import_classes_from_book(
         conn: &mut SqliteConnection,
         book_dir: &Path,
-        source: &str
+        source: &str,
     ) -> Result<usize> {
-        use crate::schema::{catalog_classes, catalog_subclasses, catalog_class_features, catalog_subclass_features};
+        use crate::schema::{
+            catalog_class_features, catalog_classes, catalog_subclass_features, catalog_subclasses,
+        };
 
         info!("Importing classes from book: {}", source);
 
@@ -549,7 +609,7 @@ impl<'a> ClassService<'a> {
                 let path = entry.path();
 
                 // Skip if not a JSON file
-                if !path.extension().map_or(false, |ext| ext == "json") {
+                if path.extension().is_none_or(|ext| ext != "json") {
                     continue;
                 }
 
@@ -557,17 +617,18 @@ impl<'a> ClassService<'a> {
                 let filename_str = filename.to_string_lossy();
 
                 // Check if this might be a class file based on naming patterns
-                let is_main_class_file = search_dir.file_name()
+                let is_main_class_file = search_dir
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .map(|n| n == "class" || n == "classes")
-                    .unwrap_or(false) &&
-                    !filename_str.contains("fluff") &&
-                    !filename_str.contains("feature");
+                    .unwrap_or(false)
+                    && !filename_str.contains("fluff")
+                    && !filename_str.contains("feature");
 
-                let is_class_named_file = filename_str.contains("class") &&
-                                  !filename_str.contains("fluff") &&
-                                  !filename_str.contains("feature") &&
-                                  !filename_str.contains("subclass-feature");
+                let is_class_named_file = filename_str.contains("class")
+                    && !filename_str.contains("fluff")
+                    && !filename_str.contains("feature")
+                    && !filename_str.contains("subclass-feature");
 
                 let is_main_book_file = filename_str == format!("{}.json", source.to_lowercase());
 
@@ -585,10 +646,16 @@ impl<'a> ClassService<'a> {
                                 new_class.source = source.to_string();
 
                                 // Update source in JSON
-                                if let Ok(mut class_json) = serde_json::from_str::<serde_json::Value>(&new_class.full_class_json) {
+                                if let Ok(mut class_json) = serde_json::from_str::<serde_json::Value>(
+                                    &new_class.full_class_json,
+                                ) {
                                     if let Some(obj) = class_json.as_object_mut() {
-                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
-                                        if let Ok(updated_json) = serde_json::to_string(&class_json) {
+                                        obj.insert(
+                                            "source".to_string(),
+                                            serde_json::Value::String(source.to_string()),
+                                        );
+                                        if let Ok(updated_json) = serde_json::to_string(&class_json)
+                                        {
                                             new_class.full_class_json = updated_json;
                                         }
                                     }
@@ -597,7 +664,9 @@ impl<'a> ClassService<'a> {
                                 // Add fluff data if available
                                 if let Some(ref class_fluff_map) = class_fluff_data {
                                     let class_name_lower = class.name.to_lowercase();
-                                    if let Some(class_fluff) = class_fluff_map.get(&class_name_lower) {
+                                    if let Some(class_fluff) =
+                                        class_fluff_map.get(&class_name_lower)
+                                    {
                                         if let Ok(fluff_json) = serde_json::to_string(class_fluff) {
                                             new_class.fluff_json = Some(fluff_json);
                                         }
@@ -622,10 +691,19 @@ impl<'a> ClassService<'a> {
                                 new_subclass.source = source.to_string();
 
                                 // Update source in JSON
-                                if let Ok(mut subclass_json) = serde_json::from_str::<serde_json::Value>(&new_subclass.full_subclass_json) {
+                                if let Ok(mut subclass_json) =
+                                    serde_json::from_str::<serde_json::Value>(
+                                        &new_subclass.full_subclass_json,
+                                    )
+                                {
                                     if let Some(obj) = subclass_json.as_object_mut() {
-                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
-                                        if let Ok(updated_json) = serde_json::to_string(&subclass_json) {
+                                        obj.insert(
+                                            "source".to_string(),
+                                            serde_json::Value::String(source.to_string()),
+                                        );
+                                        if let Ok(updated_json) =
+                                            serde_json::to_string(&subclass_json)
+                                        {
                                             new_subclass.full_subclass_json = updated_json;
                                         }
                                     }
@@ -633,9 +711,17 @@ impl<'a> ClassService<'a> {
 
                                 // Add fluff data if available
                                 if let Some(ref subclass_fluff_map) = subclass_fluff_data {
-                                    let subclass_key = format!("{}|{}", subclass.class_name.to_lowercase(), subclass.name.to_lowercase());
-                                    if let Some(subclass_fluff) = subclass_fluff_map.get(&subclass_key) {
-                                        if let Ok(fluff_json) = serde_json::to_string(subclass_fluff) {
+                                    let subclass_key = format!(
+                                        "{}|{}",
+                                        subclass.class_name.to_lowercase(),
+                                        subclass.name.to_lowercase()
+                                    );
+                                    if let Some(subclass_fluff) =
+                                        subclass_fluff_map.get(&subclass_key)
+                                    {
+                                        if let Ok(fluff_json) =
+                                            serde_json::to_string(subclass_fluff)
+                                        {
                                             new_subclass.fluff_json = Some(fluff_json);
                                         }
                                     }
@@ -643,7 +729,11 @@ impl<'a> ClassService<'a> {
 
                                 diesel::insert_into(catalog_subclasses::table)
                                     .values(&new_subclass)
-                                    .on_conflict((catalog_subclasses::name, catalog_subclasses::class_name, catalog_subclasses::source))
+                                    .on_conflict((
+                                        catalog_subclasses::name,
+                                        catalog_subclasses::class_name,
+                                        catalog_subclasses::source,
+                                    ))
                                     .do_nothing()
                                     .execute(conn)?;
 
@@ -658,10 +748,19 @@ impl<'a> ClassService<'a> {
                                 new_feature.source = source.to_string();
 
                                 // Update source in JSON
-                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                if let Ok(mut feature_json) =
+                                    serde_json::from_str::<serde_json::Value>(
+                                        &new_feature.full_feature_json,
+                                    )
+                                {
                                     if let Some(obj) = feature_json.as_object_mut() {
-                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
-                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                        obj.insert(
+                                            "source".to_string(),
+                                            serde_json::Value::String(source.to_string()),
+                                        );
+                                        if let Ok(updated_json) =
+                                            serde_json::to_string(&feature_json)
+                                        {
                                             new_feature.full_feature_json = updated_json;
                                         }
                                     }
@@ -683,10 +782,19 @@ impl<'a> ClassService<'a> {
                                 new_feature.source = source.to_string();
 
                                 // Update source in JSON
-                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                if let Ok(mut feature_json) =
+                                    serde_json::from_str::<serde_json::Value>(
+                                        &new_feature.full_feature_json,
+                                    )
+                                {
                                     if let Some(obj) = feature_json.as_object_mut() {
-                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
-                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                        obj.insert(
+                                            "source".to_string(),
+                                            serde_json::Value::String(source.to_string()),
+                                        );
+                                        if let Ok(updated_json) =
+                                            serde_json::to_string(&feature_json)
+                                        {
                                             new_feature.full_feature_json = updated_json;
                                         }
                                     }
@@ -707,9 +815,14 @@ impl<'a> ClassService<'a> {
                             new_class.source = source.to_string();
 
                             // Update source in JSON
-                            if let Ok(mut class_json) = serde_json::from_str::<serde_json::Value>(&new_class.full_class_json) {
+                            if let Ok(mut class_json) = serde_json::from_str::<serde_json::Value>(
+                                &new_class.full_class_json,
+                            ) {
                                 if let Some(obj) = class_json.as_object_mut() {
-                                    obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
+                                    obj.insert(
+                                        "source".to_string(),
+                                        serde_json::Value::String(source.to_string()),
+                                    );
                                     if let Ok(updated_json) = serde_json::to_string(&class_json) {
                                         new_class.full_class_json = updated_json;
                                     }
@@ -729,11 +842,11 @@ impl<'a> ClassService<'a> {
                 }
 
                 // Check for separate feature files
-                let is_feature_file = filename_str.starts_with("features-") ||
-                                     filename_str.starts_with("class-features-") ||
-                                     (filename_str.contains("feature") &&
-                                      !filename_str.contains("fluff") &&
-                                      !filename_str.starts_with("subclass-features"));
+                let is_feature_file = filename_str.starts_with("features-")
+                    || filename_str.starts_with("class-features-")
+                    || (filename_str.contains("feature")
+                        && !filename_str.contains("fluff")
+                        && !filename_str.starts_with("subclass-features"));
 
                 let is_subclass_feature_file = filename_str.starts_with("subclass-features-");
 
@@ -749,10 +862,19 @@ impl<'a> ClassService<'a> {
                                 new_feature.source = source.to_string();
 
                                 // Update source in JSON
-                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                if let Ok(mut feature_json) =
+                                    serde_json::from_str::<serde_json::Value>(
+                                        &new_feature.full_feature_json,
+                                    )
+                                {
                                     if let Some(obj) = feature_json.as_object_mut() {
-                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
-                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                        obj.insert(
+                                            "source".to_string(),
+                                            serde_json::Value::String(source.to_string()),
+                                        );
+                                        if let Ok(updated_json) =
+                                            serde_json::to_string(&feature_json)
+                                        {
                                             new_feature.full_feature_json = updated_json;
                                         }
                                     }
@@ -781,10 +903,19 @@ impl<'a> ClassService<'a> {
                                 new_feature.source = source.to_string();
 
                                 // Update source in JSON
-                                if let Ok(mut feature_json) = serde_json::from_str::<serde_json::Value>(&new_feature.full_feature_json) {
+                                if let Ok(mut feature_json) =
+                                    serde_json::from_str::<serde_json::Value>(
+                                        &new_feature.full_feature_json,
+                                    )
+                                {
                                     if let Some(obj) = feature_json.as_object_mut() {
-                                        obj.insert("source".to_string(), serde_json::Value::String(source.to_string()));
-                                        if let Ok(updated_json) = serde_json::to_string(&feature_json) {
+                                        obj.insert(
+                                            "source".to_string(),
+                                            serde_json::Value::String(source.to_string()),
+                                        );
+                                        if let Ok(updated_json) =
+                                            serde_json::to_string(&feature_json)
+                                        {
                                             new_feature.full_feature_json = updated_json;
                                         }
                                     }
@@ -803,7 +934,10 @@ impl<'a> ClassService<'a> {
             }
         }
 
-        info!("Successfully imported {} total class-related items from source: {}", total_imported, source);
+        info!(
+            "Successfully imported {} total class-related items from source: {}",
+            total_imported, source
+        );
         Ok(total_imported)
     }
 
@@ -819,29 +953,40 @@ impl<'a> ClassService<'a> {
     /// # Returns
     /// * `Ok(usize)` - Total number of items deleted
     /// * `Err(DbError)` - If the database operations fail
-    pub fn remove_classes_from_source(
-        conn: &mut SqliteConnection,
-        source: &str
-    ) -> Result<usize> {
-        use crate::schema::{catalog_classes, catalog_subclasses, catalog_class_features, catalog_subclass_features};
+    pub fn remove_classes_from_source(conn: &mut SqliteConnection, source: &str) -> Result<usize> {
+        use crate::schema::{
+            catalog_class_features, catalog_classes, catalog_subclass_features, catalog_subclasses,
+        };
 
         info!("Removing classes from source: {}", source);
 
         // Delete in reverse dependency order
-        let subclass_features_deleted = diesel::delete(catalog_subclass_features::table.filter(catalog_subclass_features::source.eq(source)))
-            .execute(conn)?;
+        let subclass_features_deleted = diesel::delete(
+            catalog_subclass_features::table.filter(catalog_subclass_features::source.eq(source)),
+        )
+        .execute(conn)?;
 
-        let class_features_deleted = diesel::delete(catalog_class_features::table.filter(catalog_class_features::source.eq(source)))
-            .execute(conn)?;
+        let class_features_deleted = diesel::delete(
+            catalog_class_features::table.filter(catalog_class_features::source.eq(source)),
+        )
+        .execute(conn)?;
 
-        let subclasses_deleted = diesel::delete(catalog_subclasses::table.filter(catalog_subclasses::source.eq(source)))
-            .execute(conn)?;
+        let subclasses_deleted =
+            diesel::delete(catalog_subclasses::table.filter(catalog_subclasses::source.eq(source)))
+                .execute(conn)?;
 
-        let classes_deleted = diesel::delete(catalog_classes::table.filter(catalog_classes::source.eq(source)))
-            .execute(conn)?;
+        let classes_deleted =
+            diesel::delete(catalog_classes::table.filter(catalog_classes::source.eq(source)))
+                .execute(conn)?;
 
-        let total_deleted = classes_deleted + subclasses_deleted + class_features_deleted + subclass_features_deleted;
-        info!("Removed {} total class-related items from source: {}", total_deleted, source);
+        let total_deleted = classes_deleted
+            + subclasses_deleted
+            + class_features_deleted
+            + subclass_features_deleted;
+        info!(
+            "Removed {} total class-related items from source: {}",
+            total_deleted, source
+        );
         Ok(total_deleted)
     }
 }

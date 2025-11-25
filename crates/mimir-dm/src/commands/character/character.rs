@@ -4,21 +4,21 @@
 //! Includes support for character creation wizards, leveling up, spell management,
 //! inventory tracking, and character sheet rendering.
 
-use tauri::State;
-use mimir_dm_core::models::character::{Character, CharacterData, CharacterVersion};
+use crate::state::AppState;
+use mimir_dm_core::models::catalog::Spell;
 use mimir_dm_core::models::character::data::ClassLevel;
 use mimir_dm_core::models::character::data::{InventoryItem, Personality};
-use mimir_dm_core::services::CharacterService;
-use mimir_dm_core::services::character::creation::{CharacterBuilder, AbilityScoreMethod};
-use mimir_dm_core::services::character::level_up::{AsiOrFeat, LevelUpOptions, HpGainMethod};
+use mimir_dm_core::models::character::{Character, CharacterData, CharacterVersion};
+use mimir_dm_core::services::character::creation::{AbilityScoreMethod, CharacterBuilder};
+use mimir_dm_core::services::character::level_up::{AsiOrFeat, HpGainMethod, LevelUpOptions};
+use mimir_dm_core::services::character::renderer::{CharacterRenderer, MarkdownRenderer};
 use mimir_dm_core::services::character::spell_management::RestType;
-use mimir_dm_core::services::character::renderer::{MarkdownRenderer, CharacterRenderer};
-use crate::state::AppState;
-use mimir_dm_core::services::{SpellService, ItemService};
-use mimir_dm_core::models::catalog::Spell;
-use std::collections::HashMap;
-use tracing::error;
+use mimir_dm_core::services::CharacterService;
+use mimir_dm_core::services::{ItemService, SpellService};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tauri::State;
+use tracing::error;
 
 // Frontend-friendly types for JSON serialization
 #[derive(Debug, Serialize, Deserialize)]
@@ -124,7 +124,10 @@ pub async fn create_minimal_character(
     state: State<'_, AppState>,
 ) -> Result<Character, String> {
     use chrono::Utc;
-    use mimir_dm_core::models::character::data::{CharacterData, AbilityScores, Proficiencies, SpellData, Currency, Personality, EquippedItems};
+    use mimir_dm_core::models::character::data::{
+        AbilityScores, CharacterData, Currency, EquippedItems, Personality, Proficiencies,
+        SpellData,
+    };
 
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
@@ -180,7 +183,8 @@ pub async fn create_minimal_character(
     };
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.create_character(campaign_id, player_id, "", character_data)
+    char_service
+        .create_character(campaign_id, player_id, "", character_data)
         .map_err(|e| format!("Failed to create character: {}", e))
 }
 
@@ -215,19 +219,24 @@ pub async fn create_character(
     builder = builder.set_identity(request.character_name, request.player_id);
 
     // Set race
-    builder = builder.set_race(&request.race, &request.race_source, request.subrace)
+    builder = builder
+        .set_race(&request.race, &request.race_source, request.subrace)
         .map_err(|e| format!("Failed to set race: {}", e))?;
 
     // Set class
-    builder = builder.set_class(&request.class, &request.class_source, request.subclass)
+    builder = builder
+        .set_class(&request.class, &request.class_source, request.subclass)
         .map_err(|e| format!("Failed to set class: {}", e))?;
 
     // Set background
-    builder = builder.set_background(&request.background, &request.background_source)
+    builder = builder
+        .set_background(&request.background, &request.background_source)
         .map_err(|e| format!("Failed to set background: {}", e))?;
 
     // Set ability scores - both StandardArray and PointBuy require specifying assignment
-    let ability_scores = request.ability_scores.as_ref()
+    let ability_scores = request
+        .ability_scores
+        .as_ref()
         .ok_or_else(|| "Ability scores must be specified".to_string())?;
 
     let ability_method = match request.ability_score_method.as_str() {
@@ -255,9 +264,15 @@ pub async fn create_character(
             wisdom: ability_scores.wisdom,
             charisma: ability_scores.charisma,
         },
-        _ => return Err(format!("Invalid ability score method: {}", request.ability_score_method)),
+        _ => {
+            return Err(format!(
+                "Invalid ability score method: {}",
+                request.ability_score_method
+            ))
+        }
     };
-    builder = builder.set_ability_scores(ability_method)
+    builder = builder
+        .set_ability_scores(ability_method)
         .map_err(|e| format!("Failed to set ability scores: {}", e))?;
 
     // Set optional fields
@@ -294,7 +309,8 @@ pub async fn create_character(
     }
 
     // Build and validate
-    let mut character_data = builder.build()
+    let mut character_data = builder
+        .build()
         .map_err(|e| format!("Failed to build character: {}", e))?;
 
     // Set spells if provided
@@ -307,13 +323,14 @@ pub async fn create_character(
 
     // Persist to database using CharacterService
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.create_character(
-        None, // campaign_id - not assigned yet
-        request.player_id,
-        "", // base_directory - empty for unassigned characters
-        character_data.clone(),
-    )
-    .map_err(|e| format!("Failed to save character: {}", e))?;
+    char_service
+        .create_character(
+            None, // campaign_id - not assigned yet
+            request.player_id,
+            "", // base_directory - empty for unassigned characters
+            character_data.clone(),
+        )
+        .map_err(|e| format!("Failed to save character: {}", e))?;
 
     Ok(character_data)
 }
@@ -352,7 +369,8 @@ pub async fn store_character(
     let directory = base_directory.unwrap_or_default();
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.create_character(campaign_id, player_id, &directory, character_data)
+    char_service
+        .create_character(campaign_id, player_id, &directory, character_data)
         .map_err(|e| format!("Failed to store character: {}", e))
 }
 
@@ -380,7 +398,8 @@ pub async fn get_character(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.get_character(character_id)
+    char_service
+        .get_character(character_id)
         .map_err(|e| format!("Failed to get character: {}", e))
 }
 
@@ -402,7 +421,10 @@ pub async fn get_character(
 pub async fn get_character_spell_slots(
     character_id: i32,
     state: State<'_, AppState>,
-) -> Result<std::collections::HashMap<i32, mimir_dm_core::models::character::data::SpellSlots>, String> {
+) -> Result<
+    std::collections::HashMap<i32, mimir_dm_core::models::character::data::SpellSlots>,
+    String,
+> {
     use mimir_dm_core::services::character::calculate_spell_slots;
 
     let mut conn = state.db.get_connection().map_err(|e| {
@@ -412,7 +434,8 @@ pub async fn get_character_spell_slots(
 
     // Get character data
     let mut char_service = CharacterService::new(&mut conn);
-    let (_, char_data) = char_service.get_character(character_id)
+    let (_, char_data) = char_service
+        .get_character(character_id)
         .map_err(|e| format!("Failed to get character: {}", e))?;
 
     // Calculate spell slots from class rules
@@ -433,16 +456,15 @@ pub async fn get_character_spell_slots(
 /// # Errors
 /// Returns an error string if database operations fail.
 #[tauri::command]
-pub async fn list_all_characters(
-    state: State<'_, AppState>,
-) -> Result<Vec<Character>, String> {
+pub async fn list_all_characters(state: State<'_, AppState>) -> Result<Vec<Character>, String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.list_all_characters()
+    char_service
+        .list_all_characters()
         .map_err(|e| format!("Failed to list characters: {}", e))
 }
 
@@ -470,7 +492,8 @@ pub async fn list_characters_for_campaign(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.list_characters_for_campaign(campaign_id)
+    char_service
+        .list_characters_for_campaign(campaign_id)
         .map_err(|e| format!("Failed to list characters: {}", e))
 }
 
@@ -499,7 +522,8 @@ pub async fn get_character_versions(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.get_character_versions(character_id)
+    char_service
+        .get_character_versions(character_id)
         .map_err(|e| format!("Failed to get character versions: {}", e))
 }
 
@@ -529,7 +553,8 @@ pub async fn get_character_version(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.get_character_version(character_id, version)
+    char_service
+        .get_character_version(character_id, version)
         .map_err(|e| format!("Failed to get character version: {}", e))
 }
 
@@ -562,7 +587,8 @@ pub async fn update_character(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.update_character(character_id, character_data, snapshot_reason)
+    char_service
+        .update_character(character_id, character_data, snapshot_reason)
         .map_err(|e| format!("Failed to update character: {}", e))
 }
 
@@ -580,17 +606,15 @@ pub async fn update_character(
 /// # Errors
 /// Returns an error string if database operations fail.
 #[tauri::command]
-pub async fn delete_character(
-    character_id: i32,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn delete_character(character_id: i32, state: State<'_, AppState>) -> Result<(), String> {
     let mut conn = state.db.get_connection().map_err(|e| {
         error!("Failed to get database connection: {}", e);
         format!("Database connection failed: {}", e)
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.delete_character(character_id)
+    char_service
+        .delete_character(character_id)
         .map_err(|e| format!("Failed to delete character: {}", e))
 }
 
@@ -625,14 +649,16 @@ pub async fn assign_character_to_campaign(
     // Get campaign directory
     let campaign_directory = {
         let mut campaign_repo = CampaignRepository::new(&mut conn);
-        let campaign = campaign_repo.find_by_id(campaign_id)
+        let campaign = campaign_repo
+            .find_by_id(campaign_id)
             .map_err(|e| format!("Failed to find campaign: {}", e))?
             .ok_or_else(|| format!("Campaign with id {} not found", campaign_id))?;
         campaign.directory_path
     };
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.assign_to_campaign(character_id, campaign_id, &campaign_directory)
+    char_service
+        .assign_to_campaign(character_id, campaign_id, &campaign_directory)
         .map_err(|e| format!("Failed to assign character to campaign: {}", e))
 }
 
@@ -665,12 +691,12 @@ pub async fn level_up_character(
 
     // Parse ability score improvement if provided
     let asi_or_feat = if let Some(asi_json) = request.ability_score_improvement {
-        Some(serde_json::from_str::<AsiOrFeat>(&asi_json)
-            .map_err(|e| format!("Invalid ability score improvement: {}", e))?)
-    } else if let Some(feat_name) = request.feat {
-        Some(AsiOrFeat::Feat(feat_name))
+        Some(
+            serde_json::from_str::<AsiOrFeat>(&asi_json)
+                .map_err(|e| format!("Invalid ability score improvement: {}", e))?,
+        )
     } else {
-        None
+        request.feat.map(AsiOrFeat::Feat)
     };
 
     // Determine HP gain method
@@ -693,13 +719,15 @@ pub async fn level_up_character(
     };
 
     let mut char_service = CharacterService::new(&mut conn);
-    let result = char_service.level_up_character(character_id, options)
+    let result = char_service
+        .level_up_character(character_id, options)
         .map_err(|e| format!("Failed to level up character: {}", e))?;
 
     // Update spells if provided
     if request.new_known_spells.is_some() || request.new_cantrips.is_some() {
         // Get current character data
-        let (_, mut char_data) = char_service.get_character(character_id)
+        let (_, mut char_data) = char_service
+            .get_character(character_id)
             .map_err(|e| format!("Failed to get character for spell update: {}", e))?;
 
         // Update cantrips if provided
@@ -713,7 +741,8 @@ pub async fn level_up_character(
         }
 
         // Save the updated character
-        char_service.update_character(character_id, char_data, Some("Spell selection".to_string()))
+        char_service
+            .update_character(character_id, char_data, Some("Spell selection".to_string()))
             .map_err(|e| format!("Failed to update spells: {}", e))?;
     }
 
@@ -750,7 +779,8 @@ pub async fn add_spell_to_known(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.add_spell_to_known(character_id, &spell_name, &spell_source, is_cantrip)
+    char_service
+        .add_spell_to_known(character_id, &spell_name, &spell_source, is_cantrip)
         .map_err(|e| format!("Failed to add spell: {}", e))
 }
 
@@ -783,7 +813,8 @@ pub async fn prepare_spells(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.prepare_spells(character_id, spell_names, &spellcasting_ability)
+    char_service
+        .prepare_spells(character_id, spell_names, &spellcasting_ability)
         .map_err(|e| format!("Failed to prepare spells: {}", e))
 }
 
@@ -818,7 +849,8 @@ pub async fn cast_spell(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.cast_spell(character_id, &spell_name, spell_level, is_ritual)
+    char_service
+        .cast_spell(character_id, &spell_name, spell_level, is_ritual)
         .map_err(|e| format!("Failed to cast spell: {}", e))
 }
 
@@ -855,7 +887,8 @@ pub async fn take_rest(
     };
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.rest(character_id, rest)
+    char_service
+        .rest(character_id, rest)
         .map_err(|e| format!("Failed to rest: {}", e))
 }
 
@@ -892,7 +925,8 @@ pub async fn add_item_to_inventory(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.add_item(character_id, &item_name, &item_source, quantity, notes)
+    char_service
+        .add_item(character_id, &item_name, &item_source, quantity, notes)
         .map_err(|e| format!("Failed to add item: {}", e))
 }
 
@@ -925,7 +959,8 @@ pub async fn remove_item_from_inventory(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.remove_item(character_id, &item_name, quantity)
+    char_service
+        .remove_item(character_id, &item_name, quantity)
         .map_err(|e| format!("Failed to remove item: {}", e))
 }
 
@@ -955,14 +990,16 @@ pub async fn update_character_currency(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.update_currency(
-        character_id,
-        currency.copper.unwrap_or(0),
-        currency.silver.unwrap_or(0),
-        currency.electrum.unwrap_or(0),
-        currency.gold.unwrap_or(0),
-        currency.platinum.unwrap_or(0),
-    ).map_err(|e| format!("Failed to update currency: {}", e))
+    char_service
+        .update_currency(
+            character_id,
+            currency.copper.unwrap_or(0),
+            currency.silver.unwrap_or(0),
+            currency.electrum.unwrap_or(0),
+            currency.gold.unwrap_or(0),
+            currency.platinum.unwrap_or(0),
+        )
+        .map_err(|e| format!("Failed to update currency: {}", e))
 }
 
 /// Update character equipped items.
@@ -998,7 +1035,8 @@ pub async fn update_character_equipped(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    char_service.update_equipped(character_id, armor, shield, main_hand, off_hand)
+    char_service
+        .update_equipped(character_id, armor, shield, main_hand, off_hand)
         .map_err(|e| format!("Failed to update equipped items: {}", e))
 }
 
@@ -1027,7 +1065,8 @@ pub async fn render_character_sheet(
     })?;
 
     let mut char_service = CharacterService::new(&mut conn);
-    let (_character, char_data) = char_service.get_character(character_id)
+    let (_character, char_data) = char_service
+        .get_character(character_id)
         .map_err(|e| format!("Failed to get character: {}", e))?;
 
     // Fetch spell details for all character spells
@@ -1056,11 +1095,9 @@ pub async fn render_character_sheet(
         if let Ok(summaries) = SpellService::search_spells(&mut conn, filters) {
             if let Some(summary) = summaries.first() {
                 // Now get full details with the correct source
-                if let Ok(Some(spell)) = SpellService::get_spell_details(
-                    &mut conn,
-                    &summary.name,
-                    &summary.source,
-                ) {
+                if let Ok(Some(spell)) =
+                    SpellService::get_spell_details(&mut conn, &summary.name, &summary.source)
+                {
                     spell_details.insert(spell_name, spell);
                 }
             }
@@ -1100,10 +1137,6 @@ pub async fn render_character_sheet(
 /// # Errors
 /// Returns an error string if the file cannot be written.
 #[tauri::command]
-pub async fn write_text_file(
-    path: String,
-    contents: String,
-) -> Result<(), String> {
-    std::fs::write(&path, contents)
-        .map_err(|e| format!("Failed to write file: {}", e))
+pub async fn write_text_file(path: String, contents: String) -> Result<(), String> {
+    std::fs::write(&path, contents).map_err(|e| format!("Failed to write file: {}", e))
 }

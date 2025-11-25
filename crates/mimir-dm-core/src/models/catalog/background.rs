@@ -63,19 +63,21 @@ impl From<&Background> for BackgroundSummary {
     fn from(bg: &Background) -> Self {
         // Extract skills
         let skills = if !bg.skill_proficiencies.is_empty() {
-            bg.skill_proficiencies.iter()
+            bg.skill_proficiencies
+                .iter()
                 .filter_map(|s| {
                     if let Some(obj) = s.as_object() {
-                        let skill_names: Vec<String> = obj.keys()
+                        let skill_names: Vec<String> = obj
+                            .keys()
                             .filter(|k| *k != "any" && *k != "choose")
                             .map(|k| titlecase(k))
                             .collect();
                         if !skill_names.is_empty() {
                             Some(skill_names.join(", "))
-                        } else if let Some(any) = obj.get("any").and_then(|v| v.as_i64()) {
-                            Some(format!("Any {}", any))
                         } else {
-                            None
+                            obj.get("any")
+                                .and_then(|v| v.as_i64())
+                                .map(|any| format!("Any {}", any))
                         }
                     } else {
                         None
@@ -86,13 +88,15 @@ impl From<&Background> for BackgroundSummary {
         } else {
             "None".to_string()
         };
-        
+
         // Extract languages
         let languages = if !bg.language_proficiencies.is_empty() {
-            bg.language_proficiencies.iter()
+            bg.language_proficiencies
+                .iter()
                 .filter_map(|l| {
                     if let Some(obj) = l.as_object() {
-                        let lang_names: Vec<String> = obj.keys()
+                        let lang_names: Vec<String> = obj
+                            .keys()
                             .filter(|k| *k != "anyStandard" && *k != "choose" && *k != "any")
                             .map(|k| titlecase(k))
                             .collect();
@@ -100,10 +104,10 @@ impl From<&Background> for BackgroundSummary {
                             Some(lang_names.join(", "))
                         } else if let Some(any) = obj.get("anyStandard").and_then(|v| v.as_i64()) {
                             Some(format!("Any {} standard", any))
-                        } else if let Some(any) = obj.get("any").and_then(|v| v.as_i64()) {
-                            Some(format!("Any {}", any))
                         } else {
-                            None
+                            obj.get("any")
+                                .and_then(|v| v.as_i64())
+                                .map(|any| format!("Any {}", any))
                         }
                     } else {
                         None
@@ -114,22 +118,24 @@ impl From<&Background> for BackgroundSummary {
         } else {
             "None".to_string()
         };
-        
+
         // Extract tools
         let tools = if !bg.tool_proficiencies.is_empty() {
-            bg.tool_proficiencies.iter()
+            bg.tool_proficiencies
+                .iter()
                 .filter_map(|t| {
                     if let Some(obj) = t.as_object() {
-                        let tool_names: Vec<String> = obj.keys()
+                        let tool_names: Vec<String> = obj
+                            .keys()
                             .filter(|k| *k != "any" && *k != "choose")
                             .map(|k| titlecase(k))
                             .collect();
                         if !tool_names.is_empty() {
                             Some(tool_names.join(", "))
-                        } else if let Some(any) = obj.get("any").and_then(|v| v.as_i64()) {
-                            Some(format!("Any {}", any))
                         } else {
-                            None
+                            obj.get("any")
+                                .and_then(|v| v.as_i64())
+                                .map(|any| format!("Any {}", any))
                         }
                     } else {
                         None
@@ -140,9 +146,11 @@ impl From<&Background> for BackgroundSummary {
         } else {
             "None".to_string()
         };
-        
+
         // Extract feature name
-        let feature = bg.entries.iter()
+        let feature = bg
+            .entries
+            .iter()
             .filter_map(|e| {
                 if let Some(obj) = e.as_object() {
                     if let Some(name) = obj.get("name").and_then(|n| n.as_str()) {
@@ -155,7 +163,7 @@ impl From<&Background> for BackgroundSummary {
             })
             .next()
             .unwrap_or_else(|| "Special Feature".to_string());
-        
+
         Self {
             name: bg.name.clone(),
             source: bg.source.clone(),
@@ -176,8 +184,8 @@ fn titlecase(s: &str) -> String {
 }
 
 // Database models for catalog_backgrounds table
-use diesel::prelude::*;
 use crate::schema::catalog_backgrounds;
+use diesel::prelude::*;
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = catalog_backgrounds)]

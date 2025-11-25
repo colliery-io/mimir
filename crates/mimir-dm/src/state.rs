@@ -7,7 +7,7 @@
 use crate::app_init::AppPaths;
 use crate::commands::chat_sessions::SessionManager;
 use crate::services::context_service::ContextState;
-use crate::services::llm::{ConfirmationReceivers, CancellationTokens, LlmService};
+use crate::services::llm::{CancellationTokens, ConfirmationReceivers, LlmService};
 use mimir_dm_core::DatabaseService;
 use std::sync::Arc;
 
@@ -35,18 +35,23 @@ pub struct AppState {
     pub paths: Arc<AppPaths>,
 
     /// Context service for managing conversation context
+    #[allow(dead_code)]
     pub context: ContextState,
 
     /// Session manager for chat session persistence
+    #[allow(dead_code)]
     pub sessions: SessionManager,
 
     /// Receivers for LLM tool confirmations
+    #[allow(dead_code)]
     pub confirmations: ConfirmationReceivers,
 
     /// Cancellation tokens for LLM operations
+    #[allow(dead_code)]
     pub cancellations: CancellationTokens,
 
     /// LLM service (initialized asynchronously)
+    #[allow(dead_code)]
     pub llm: Arc<tokio::sync::Mutex<Option<LlmService>>>,
 }
 

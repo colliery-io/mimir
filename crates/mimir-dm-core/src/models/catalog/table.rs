@@ -1,42 +1,42 @@
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use crate::schema::catalog_tables;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
     pub name: String,
     pub source: String,
     pub page: Option<i32>,
-    
+
     #[serde(rename = "caption")]
     pub caption: Option<String>,
-    
+
     #[serde(rename = "colLabels")]
     pub col_labels: Option<Vec<String>>,
-    
+
     #[serde(rename = "colStyles")]
     pub col_styles: Option<Vec<String>>,
-    
+
     pub rows: Vec<Vec<serde_json::Value>>,
-    
+
     // Optional fields
     pub intro: Option<Vec<serde_json::Value>>,
     pub outro: Option<Vec<serde_json::Value>>,
-    
+
     #[serde(rename = "tableInclude")]
     pub table_include: Option<serde_json::Value>,
-    
+
     #[serde(rename = "footnotes")]
     pub footnotes: Option<Vec<serde_json::Value>>,
-    
+
     pub srd: Option<bool>,
-    
+
     #[serde(rename = "basicRules")]
     pub basic_rules: Option<bool>,
-    
+
     #[serde(rename = "hasFluff")]
     pub has_fluff: Option<bool>,
-    
+
     #[serde(rename = "hasFluffImages")]
     pub has_fluff_images: Option<bool>,
 }
@@ -58,9 +58,11 @@ impl From<&Table> for TableSummary {
             name: table.name.clone(),
             source: table.source.clone(),
             caption: table.caption.clone().unwrap_or_else(|| table.name.clone()),
-            columns: table.col_labels.as_ref().map(|c| c.len()).unwrap_or(
-                table.rows.first().map(|r| r.len()).unwrap_or(0)
-            ),
+            columns: table
+                .col_labels
+                .as_ref()
+                .map(|c| c.len())
+                .unwrap_or(table.rows.first().map(|r| r.len()).unwrap_or(0)),
             rows: table.rows.len(),
             category: categorize_table(&table.name),
         }
@@ -69,10 +71,13 @@ impl From<&Table> for TableSummary {
 
 fn categorize_table(name: &str) -> String {
     let name_lower = name.to_lowercase();
-    
+
     if name_lower.contains("madness") || name_lower.contains("insanity") {
         "Madness".to_string()
-    } else if name_lower.contains("treasure") || name_lower.contains("loot") || name_lower.contains("hoard") {
+    } else if name_lower.contains("treasure")
+        || name_lower.contains("loot")
+        || name_lower.contains("hoard")
+    {
         "Treasure".to_string()
     } else if name_lower.contains("encounter") || name_lower.contains("random") {
         "Encounters".to_string()
@@ -82,9 +87,15 @@ fn categorize_table(name: &str) -> String {
         "Wild Magic".to_string()
     } else if name_lower.contains("damage") || name_lower.contains("critical") {
         "Combat".to_string()
-    } else if name_lower.contains("npc") || name_lower.contains("name") || name_lower.contains("personality") {
+    } else if name_lower.contains("npc")
+        || name_lower.contains("name")
+        || name_lower.contains("personality")
+    {
         "NPCs".to_string()
-    } else if name_lower.contains("quest") || name_lower.contains("adventure") || name_lower.contains("plot") {
+    } else if name_lower.contains("quest")
+        || name_lower.contains("adventure")
+        || name_lower.contains("plot")
+    {
         "Adventures".to_string()
     } else if name_lower.contains("magic item") || name_lower.contains("artifact") {
         "Magic Items".to_string()
@@ -153,9 +164,11 @@ pub struct TableFilters {
 
 impl From<&Table> for NewCatalogTable {
     fn from(table: &Table) -> Self {
-        let columns = table.col_labels.as_ref().map(|c| c.len()).unwrap_or(
-            table.rows.first().map(|r| r.len()).unwrap_or(0)
-        );
+        let columns = table
+            .col_labels
+            .as_ref()
+            .map(|c| c.len())
+            .unwrap_or(table.rows.first().map(|r| r.len()).unwrap_or(0));
         NewCatalogTable {
             name: table.name.clone(),
             caption: table.caption.clone(),
@@ -174,7 +187,10 @@ impl From<&CatalogTable> for TableSummary {
         TableSummary {
             name: catalog_table.name.clone(),
             source: catalog_table.source.clone(),
-            caption: catalog_table.caption.clone().unwrap_or_else(|| catalog_table.name.clone()),
+            caption: catalog_table
+                .caption
+                .clone()
+                .unwrap_or_else(|| catalog_table.name.clone()),
             columns: catalog_table.columns_count as usize,
             rows: catalog_table.rows_count as usize,
             category: catalog_table.category.clone(),
