@@ -3,19 +3,14 @@
 //! This module contains all Tauri commands that expose LLM functionality
 //! to the frontend application.
 
-use crate::app_init::AppPaths;
 use crate::services::llm::chat_processor::ChatProcessor;
-use crate::services::llm::LlmService;
 use crate::services::provider_settings::ProviderSettings;
+use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tauri::State;
-use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use uuid::Uuid;
-
-use super::{CancellationTokens, ConfirmationReceivers};
 
 /// Chat message structure for Tauri commands
 #[derive(Clone, Serialize, Deserialize)]
@@ -35,10 +30,8 @@ pub struct ChatResponseWithUsage {
 
 /// Tauri command to check LLM status
 #[tauri::command]
-pub async fn check_llm_status(
-    service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
-) -> Result<bool, String> {
-    let service = service.lock().await;
+pub async fn check_llm_status(state: State<'_, AppState>) -> Result<bool, String> {
+    let service = state.llm.lock().await;
 
     if let Some(llm) = service.as_ref() {
         llm.check_service().await.map_err(|e| e.to_string())
@@ -49,10 +42,8 @@ pub async fn check_llm_status(
 
 /// Tauri command to get model info
 #[tauri::command]
-pub async fn get_llm_model_info(
-    service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
-) -> Result<String, String> {
-    let service = service.lock().await;
+pub async fn get_llm_model_info(state: State<'_, AppState>) -> Result<String, String> {
+    let service = state.llm.lock().await;
 
     if let Some(llm) = service.as_ref() {
         Ok(llm.model_name().to_string())
@@ -65,8 +56,7 @@ pub async fn get_llm_model_info(
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn send_chat_message(
-    service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
-    cancellation_tokens: tauri::State<'_, CancellationTokens>,
+    state: State<'_, AppState>,
     messages: Vec<ChatMessage>,
     max_tokens: Option<u32>,
     temperature: Option<f32>,
@@ -76,7 +66,7 @@ pub async fn send_chat_message(
     ollama_url: Option<String>,
     campaign_directory_path: Option<String>,
 ) -> Result<ChatResponseWithUsage, String> {
-    let service = service.lock().await;
+    let service = state.llm.lock().await;
 
     let llm = service
         .as_ref()
@@ -90,7 +80,7 @@ pub async fn send_chat_message(
     let cancellation_token = CancellationToken::new();
 
     {
-        let mut tokens = cancellation_tokens.lock().await;
+        let mut tokens = state.cancellations.lock().await;
         tokens.insert(session_id.clone(), cancellation_token.clone());
     }
 
@@ -121,7 +111,7 @@ pub async fn send_chat_message(
 
     // Clean up cancellation token
     {
-        let mut tokens = cancellation_tokens.lock().await;
+        let mut tokens = state.cancellations.lock().await;
         tokens.remove(&session_id);
     }
 
@@ -137,9 +127,9 @@ pub async fn send_chat_message(
 /// Tauri command to get model context info
 #[tauri::command]
 pub async fn get_model_context_info(
-    service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let service = service.lock().await;
+    let service = state.llm.lock().await;
 
     let llm = service
         .as_ref()
@@ -158,7 +148,7 @@ pub async fn get_model_context_info(
 /// Tauri command to confirm or reject a tool action
 #[tauri::command]
 pub async fn confirm_tool_action(
-    confirmation_receivers: tauri::State<'_, ConfirmationReceivers>,
+    state: State<'_, AppState>,
     confirmation_id: String,
     confirmed: bool,
 ) -> Result<(), String> {
@@ -172,7 +162,7 @@ pub async fn confirm_tool_action(
 
     // Find and remove the sender for this confirmation
     let sender = {
-        let mut receivers = confirmation_receivers.lock().await;
+        let mut receivers = state.confirmations.lock().await;
         info!("Current receivers in map: {}", receivers.len());
         for (key, _) in receivers.iter() {
             info!("  - Receiver ID: {}", key);
@@ -202,11 +192,11 @@ pub async fn confirm_tool_action(
 /// Tauri command to list available models from the current provider
 #[tauri::command]
 pub async fn list_available_models(
-    service: tauri::State<'_, Arc<Mutex<Option<LlmService>>>>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<serde_json::Value>, String> {
     use mimir_dm_llm::LlmProvider;
 
-    let service = service.lock().await;
+    let service = state.llm.lock().await;
 
     let llm = service
         .as_ref()
@@ -235,7 +225,7 @@ pub async fn list_available_models(
 /// Tauri command to cancel an ongoing chat message
 #[tauri::command]
 pub async fn cancel_chat_message(
-    cancellation_tokens: tauri::State<'_, CancellationTokens>,
+    state: State<'_, AppState>,
     session_id: Option<String>,
 ) -> Result<(), String> {
     info!(
@@ -243,7 +233,7 @@ pub async fn cancel_chat_message(
         session_id
     );
     if let Some(session_id) = session_id {
-        let mut tokens = cancellation_tokens.lock().await;
+        let mut tokens = state.cancellations.lock().await;
         info!(
             "Current active tokens: {:?}",
             tokens.keys().collect::<Vec<_>>()
@@ -271,12 +261,10 @@ pub async fn cancel_chat_message(
 
 /// Tauri command to get provider settings
 #[tauri::command]
-pub async fn get_provider_settings(
-    app_paths: State<'_, Arc<AppPaths>>,
-) -> Result<ProviderSettings, String> {
+pub async fn get_provider_settings(state: State<'_, AppState>) -> Result<ProviderSettings, String> {
     info!("Loading provider settings");
 
-    ProviderSettings::load(&app_paths.config_dir).map_err(|e| {
+    ProviderSettings::load(&state.paths.config_dir).map_err(|e| {
         error!("Failed to load provider settings: {}", e);
         format!("Failed to load provider settings: {}", e)
     })
@@ -285,7 +273,7 @@ pub async fn get_provider_settings(
 /// Tauri command to save provider settings
 #[tauri::command]
 pub async fn save_provider_settings(
-    app_paths: State<'_, Arc<AppPaths>>,
+    state: State<'_, AppState>,
     settings: ProviderSettings,
 ) -> Result<(), String> {
     info!("Saving provider settings: {:?}", settings.provider_type);
@@ -296,7 +284,7 @@ pub async fn save_provider_settings(
         format!("Invalid provider settings: {}", e)
     })?;
 
-    settings.save(&app_paths.config_dir).map_err(|e| {
+    settings.save(&state.paths.config_dir).map_err(|e| {
         error!("Failed to save provider settings: {}", e);
         format!("Failed to save provider settings: {}", e)
     })?;
@@ -308,20 +296,17 @@ pub async fn save_provider_settings(
 /// Tauri command to reload LLM service with new provider settings
 #[tauri::command]
 pub async fn reload_llm_service(
-    service: State<'_, Arc<Mutex<Option<LlmService>>>>,
+    state: State<'_, AppState>,
     app_handle: tauri::AppHandle,
-    db_service: State<'_, Arc<mimir_dm_core::DatabaseService>>,
-    confirmation_receivers: State<'_, ConfirmationReceivers>,
-    app_paths: State<'_, Arc<AppPaths>>,
 ) -> Result<(), String> {
     info!("Reloading LLM service with new provider settings");
 
     // Create new LLM service with updated settings
     let new_service = super::initialize_llm(
         app_handle,
-        db_service.inner().clone(),
-        confirmation_receivers.inner().clone(),
-        app_paths.inner().clone(),
+        state.db.clone(),
+        state.confirmations.clone(),
+        state.paths.clone(),
     )
     .await
     .map_err(|e| {
@@ -330,7 +315,7 @@ pub async fn reload_llm_service(
     })?;
 
     // Replace the old service with the new one
-    let mut service_guard = service.lock().await;
+    let mut service_guard = state.llm.lock().await;
     *service_guard = Some(new_service);
 
     info!("LLM service reloaded successfully");
