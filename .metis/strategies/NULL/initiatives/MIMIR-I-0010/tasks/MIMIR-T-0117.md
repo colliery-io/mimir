@@ -1,0 +1,84 @@
+---
+id: enable-deny-missing-docs-in-lib-rs
+level: task
+title: "Enable deny(missing_docs) in lib.rs files"
+short_code: "MIMIR-T-0117"
+created_at: 2025-11-25T01:48:54.432965+00:00
+updated_at: 2025-11-25T01:48:54.432965+00:00
+parent: MIMIR-I-0010
+blocked_by: []
+archived: false
+
+tags:
+  - "#task"
+  - "#phase/todo"
+
+
+exit_criteria_met: false
+strategy_id: NULL
+initiative_id: MIMIR-I-0010
+---
+
+# Enable deny(missing_docs) in lib.rs files
+
+## Parent Initiative
+
+[[MIMIR-I-0010]]
+
+## Objective
+
+Enable `#![deny(missing_docs)]` in library crate lib.rs files to enforce documentation requirements at compile time, ensuring all public APIs are documented.
+
+## Acceptance Criteria
+
+- [ ] `#![deny(missing_docs)]` added to `mimir-dm-core/src/lib.rs`
+- [ ] `#![deny(missing_docs)]` added to `mimir-dm-llm/src/lib.rs`
+- [ ] All public items have doc comments (no compiler errors)
+- [ ] CI builds pass with new lint
+- [ ] Consider `#![warn(missing_docs)]` for gradual adoption if needed
+
+## Implementation Notes
+
+### Technical Approach
+
+Add to each library crate's lib.rs:
+```rust
+//! Mimir DM Core - Core business logic and data access layer.
+//!
+//! This crate provides the service layer, database models, and business
+//! logic for the Mimir DM application.
+
+#![deny(missing_docs)]
+```
+
+This causes compilation to fail if any public item lacks documentation:
+- Public structs, enums, traits
+- Public functions and methods
+- Public modules
+- Public type aliases
+
+### Phased Approach
+If too many undocumented items exist:
+1. Start with `#![warn(missing_docs)]` to see scope
+2. Fix warnings incrementally
+3. Switch to `#![deny(missing_docs)]` when clean
+
+### Crates to Update
+- `crates/mimir-dm-core/src/lib.rs` - Core library
+- `crates/mimir-dm-llm/src/lib.rs` - LLM provider library
+- `crates/mimir-5etools-splitter/src/lib.rs` - Data parsing library
+
+Note: `mimir-dm` (the binary crate) doesn't need this since it's not a library.
+
+### Dependencies
+- MIMIR-T-0109 (Document service methods) should be completed first
+- MIMIR-T-0107 (Document Tauri commands) should be completed first
+
+### Risk Considerations
+- May require significant documentation effort before enabling
+- Use warn first to assess scope
+- Can exclude specific modules with `#[allow(missing_docs)]` temporarily
+
+## Status Updates
+
+*To be added during implementation*
