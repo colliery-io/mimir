@@ -29,6 +29,7 @@ pub mod catalog_monster;
 pub mod catalog_deity;
 pub mod catalog_vehicle;
 pub mod catalog_class;
+pub mod catalog_table;
 pub mod context;
 pub mod window_manager;
 pub mod chat_sessions;

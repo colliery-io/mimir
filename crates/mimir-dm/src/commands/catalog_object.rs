@@ -25,7 +25,8 @@ pub async fn search_objects(
         sizes,
     };
 
-    let results = ObjectService::search_objects(&mut conn, filters)?;
+    let results = ObjectService::search_objects(&mut conn, filters)
+        .map_err(|e| format!("Failed to search objects: {}", e))?;
 
     // Convert ObjectSummary to JSON values for frontend compatibility
     let json_results: Vec<serde_json::Value> = results
@@ -48,6 +49,7 @@ pub async fn get_object_details(
     })?;
 
     ObjectService::get_object_details(&mut conn, &name, &source)
+        .map_err(|e| format!("Failed to get object details: {}", e))
 }
 
 #[tauri::command]
@@ -60,6 +62,7 @@ pub async fn get_object_sources(
     })?;
 
     ObjectService::get_object_sources(&mut conn)
+        .map_err(|e| format!("Failed to get object sources: {}", e))
 }
 
 #[tauri::command]
@@ -72,6 +75,7 @@ pub async fn get_object_count(
     })?;
 
     ObjectService::get_object_count(&mut conn)
+        .map_err(|e| format!("Failed to get object count: {}", e))
 }
 
 #[tauri::command]
@@ -84,6 +88,7 @@ pub async fn get_object_types(
     })?;
 
     ObjectService::get_object_types(&mut conn)
+        .map_err(|e| format!("Failed to get object types: {}", e))
 }
 
 #[tauri::command]
@@ -96,4 +101,5 @@ pub async fn get_object_sizes(
     })?;
 
     ObjectService::get_object_sizes(&mut conn)
+        .map_err(|e| format!("Failed to get object sizes: {}", e))
 }

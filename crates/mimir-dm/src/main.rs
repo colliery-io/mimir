@@ -322,6 +322,12 @@ fn main() {
             commands::catalog_class::get_class_sources,
             commands::catalog_class::get_class_primary_abilities,
             commands::catalog_class::get_class_statistics,
+            // Table catalog commands
+            commands::catalog_table::search_tables,
+            commands::catalog_table::get_table,
+            commands::catalog_table::get_table_details,
+            commands::catalog_table::get_table_categories,
+            commands::catalog_table::get_table_sources,
             // Context commands
             update_context,
             get_full_context,

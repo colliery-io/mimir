@@ -22,7 +22,8 @@ pub async fn search_psionics(
         sources,
     };
 
-    let psionics = PsionicService::search_psionics(&mut conn, filters)?;
+    let psionics = PsionicService::search_psionics(&mut conn, filters)
+        .map_err(|e| format!("Failed to search psionics: {}", e))?;
     
     // Convert to JSON for frontend
     let json_psionics: Vec<serde_json::Value> = psionics
@@ -42,7 +43,8 @@ pub async fn get_psionic_details(
     let mut conn = db_service.get_connection()
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
-    let psionic = PsionicService::get_psionic_by_name_and_source(&mut conn, &name, &source)?;
+    let psionic = PsionicService::get_psionic_by_name_and_source(&mut conn, &name, &source)
+        .map_err(|e| format!("Failed to get psionic details: {}", e))?;
     
     Ok(psionic.map(|p| serde_json::to_value(p).unwrap_or_default()))
 }
@@ -55,6 +57,7 @@ pub async fn get_psionic_types(
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     PsionicService::get_all_psionic_types(&mut conn)
+        .map_err(|e| format!("Failed to get psionic types: {}", e))
 }
 
 #[tauri::command]
@@ -65,6 +68,7 @@ pub async fn get_psionic_orders(
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     PsionicService::get_all_psionic_orders(&mut conn)
+        .map_err(|e| format!("Failed to get psionic orders: {}", e))
 }
 
 #[tauri::command]
@@ -75,4 +79,5 @@ pub async fn get_psionic_sources(
         .map_err(|e| format!("Database connection failed: {}", e))?;
 
     PsionicService::get_all_psionic_sources(&mut conn)
+        .map_err(|e| format!("Failed to get psionic sources: {}", e))
 }
