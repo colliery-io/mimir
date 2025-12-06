@@ -4,14 +4,14 @@ level: task
 title: "Create backend commands for tables catalog"
 short_code: "MIMIR-T-0069"
 created_at: 2025-11-21T02:12:01.936343+00:00
-updated_at: 2025-11-21T02:12:01.936343+00:00
+updated_at: 2025-12-06T15:20:40.351816+00:00
 parent: MIMIR-I-0006
 blocked_by: []
 archived: true
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -64,6 +64,10 @@ initiative_id: MIMIR-I-0006
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
