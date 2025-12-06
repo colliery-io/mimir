@@ -4,14 +4,14 @@ level: task
 title: "Implement Playwright E2E testing for GUI"
 short_code: "MIMIR-T-0127"
 created_at: 2025-11-25T13:13:58.995142+00:00
-updated_at: 2025-11-25T13:13:58.995142+00:00
+updated_at: 2025-12-06T15:27:12.890283+00:00
 parent: MIMIR-I-0012
 blocked_by: []
 archived: true
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,6 +28,10 @@ initiative_id: MIMIR-I-0012
 ## Objective
 
 Implement automated end-to-end testing for the GUI using Playwright to enable regression testing, catch UI bugs before release, and provide confidence when refactoring frontend code. Tests should cover critical user journeys and run in CI.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -144,9 +148,14 @@ Playwright does not support testing Tauri applications on macOS. The WebDriver/a
 - Selenium/WebDriver: Same limitation
 - Tauri's built-in testing: Limited to unit tests
 
-**Decision:** Archive this task. GUI testing will need to rely on:
-1. Manual testing for now
-2. Component-level tests in Vue (Vitest)
-3. The Tauri command integration tests we just added
+### 2025-12-06: Won't Do
 
-This may be revisited if Tauri adds better E2E testing support or if we set up Linux CI runners.
+**Decision:** Closing as won't do. GUI E2E testing not feasible for Tauri on macOS.
+
+**Rationale:**
+- No viable automation framework for Tauri WebView on macOS
+- Setting up Linux CI runners adds complexity for marginal benefit
+- Current coverage is adequate via:
+  - Tauri command integration tests (MIMIR-T-0129)
+  - Manual testing for critical flows
+  - Vue component tests (Vitest) for UI logic

@@ -4,14 +4,14 @@ level: task
 title: "Add HTTP mocking for LLM tests"
 short_code: "MIMIR-T-0111"
 created_at: 2025-11-25T01:48:54.096499+00:00
-updated_at: 2025-11-25T01:48:54.096499+00:00
+updated_at: 2025-12-06T15:27:12.974442+00:00
 parent: MIMIR-I-0010
 blocked_by: []
 archived: true
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -64,6 +64,10 @@ initiative_id: MIMIR-I-0010
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -136,6 +140,15 @@ initiative_id: MIMIR-I-0010
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2025-12-06: Won't Do
+
+**Decision:** Closing as won't do. HTTP mocking for LLM tests not needed.
+
+**Rationale:**
+- Built `mimir-llm-eval` crate for real-world LLM testing against actual providers
+- Eval suite provides better coverage than mocked responses (tests actual model behavior)
+- OpenAI-compatible API is stable, but mocking adds maintenance burden
+- Rate limit retry with backoff handles provider throttling gracefully
+- Real provider tests catch issues mocks would miss (rate limits, API changes, model quirks)
