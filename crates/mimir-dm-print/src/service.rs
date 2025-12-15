@@ -635,4 +635,157 @@ This is a test document.
         assert!(pdf_bytes.len() > 5000, "Dragon stat-block PDF seems too small for complex creature");
         assert_eq!(&pdf_bytes[0..4], b"%PDF", "Dragon stat-block is not a valid PDF");
     }
+
+    #[test]
+    fn test_render_session_templates() {
+        let templates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+        let service = PrintService::new(templates_root);
+
+        // Sample NPC data
+        let sildar = serde_json::json!({
+            "name": "Sildar Hallwinter",
+            "race": "Human",
+            "occupation": "Knight",
+            "role": "Ally",
+            "alignment": "Lawful Good",
+            "location": "Phandalin",
+            "appearance": "Middle-aged man with a graying beard and worn armor",
+            "personality": "Honorable and direct, speaks plainly",
+            "mannerisms": "Strokes his beard when thinking",
+            "voice": "Deep and commanding",
+            "goal": "Find Iarno Albrek and establish order in Phandalin",
+            "motivation": "Duty to the Lords' Alliance",
+            "bond": "Fellow Alliance members",
+            "flaw": "Too trusting of authority figures",
+            "secret": "Member of the Lords' Alliance on a secret mission",
+            "key_info": "Knows location of Cragmaw Castle"
+        });
+
+        let gundren = serde_json::json!({
+            "name": "Gundren Rockseeker",
+            "race": "Dwarf",
+            "occupation": "Prospector",
+            "role": "Quest Giver",
+            "alignment": "Neutral Good",
+            "location": "Cragmaw Hideout (captured)",
+            "appearance": "Stocky dwarf with a braided brown beard",
+            "personality": "Enthusiastic and secretive about his discovery",
+            "goal": "Reach Wave Echo Cave and claim his inheritance",
+            "motivation": "Family legacy and wealth",
+            "flaw": "Greed can cloud his judgment"
+        });
+
+        // Test NPC card
+        let result = service.render_to_pdf("session/npc-card.typ", sildar.clone());
+        assert!(result.is_ok(), "NPC card render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "NPC card is not a valid PDF");
+
+        // Test multi-up NPC cards
+        let multiup_data = serde_json::json!({
+            "npcs": [sildar.clone(), gundren.clone(), sildar.clone(), gundren.clone()],
+            "show_cut_lines": true
+        });
+
+        let result = service.render_to_pdf("session/npc-cards-multiup.typ", multiup_data);
+        assert!(result.is_ok(), "Multi-up NPC cards render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Multi-up NPC cards is not a valid PDF");
+
+        // Test session prep sheet
+        let session_data = serde_json::json!({
+            "title": "The Goblin Ambush",
+            "module": "Lost Mine of Phandelver",
+            "session_number": 1,
+            "date": "2025-01-15",
+            "summary": "The party escorts a wagon from Neverwinter to Phandalin but is ambushed by goblins on the Triboar Trail.",
+            "npcs": [
+                {"name": "Sildar Hallwinter", "role": "Ally", "notes": "Captured by goblins, needs rescue"},
+                {"name": "Gundren Rockseeker", "role": "Quest Giver", "notes": "Hired the party, went ahead and was captured"}
+            ],
+            "locations": [
+                {"name": "Triboar Trail", "type": "Road", "notes": "Site of goblin ambush"},
+                {"name": "Cragmaw Hideout", "type": "Cave", "notes": "Goblin lair, Sildar is held here"}
+            ],
+            "encounters": [
+                {
+                    "name": "Goblin Ambush",
+                    "type": "Combat",
+                    "difficulty": "medium",
+                    "monsters": [{"name": "Goblin", "count": 4}],
+                    "notes": "Goblins hide behind dead horses"
+                },
+                {
+                    "name": "Cave Entrance",
+                    "type": "Combat",
+                    "difficulty": "easy",
+                    "monsters": [{"name": "Goblin", "count": 2}],
+                    "notes": "Guards stationed at cave mouth"
+                }
+            ],
+            "items": [
+                {"name": "Gundren's Map", "description": "Shows location of Wave Echo Cave"},
+                {"name": "Lionshield Coster Supplies", "description": "Trade goods bound for Phandalin"}
+            ],
+            "hooks": [
+                "Rescue Sildar from the goblins",
+                "Find out what happened to Gundren",
+                "Deliver the wagon to Barthen's Provisions"
+            ],
+            "secrets": [
+                "Gundren found the entrance to Wave Echo Cave",
+                "The Black Spider is behind the goblin attacks"
+            ],
+            "notes": [
+                "Remember to describe the dead horses on the trail",
+                "Goblins flee if half their number are killed"
+            ]
+        });
+
+        let result = service.render_to_pdf("session/prep.typ", session_data);
+        assert!(result.is_ok(), "Session prep render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert!(pdf_bytes.len() > 5000, "Session prep PDF seems too small");
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Session prep is not a valid PDF");
+
+        // Test handout template
+        let handout_data = serde_json::json!({
+            "title": "Letter from Gundren",
+            "subtitle": "A hastily written note",
+            "type": "letter",
+            "author": "Gundren Rockseeker",
+            "date": "15th of Mirtul",
+            "style": "aged",
+            "body": [
+                "My dear friends,",
+                "I write to you with urgent news. I have finally found what my brothers and I have been searching for - the entrance to Wave Echo Cave! This discovery will change everything.",
+                "Meet me in Phandalin as soon as you can. Bring the supplies and tell no one of this letter.",
+                "Your friend,",
+                "Gundren"
+            ],
+            "footer": "The ink is smudged and the paper appears worn from travel."
+        });
+
+        let result = service.render_to_pdf("session/handout.typ", handout_data);
+        assert!(result.is_ok(), "Handout render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Handout is not a valid PDF");
+
+        // Test magical style handout
+        let magical_handout = serde_json::json!({
+            "title": "Scroll of Fireball",
+            "type": "scroll",
+            "style": "magical",
+            "body": "The arcane words on this scroll glow faintly with an inner fire. Reading the incantation aloud will release a devastating explosion of flame.",
+            "sections": [
+                {"title": "Incantation", "content": "Ignis Magnus Explodere"},
+                {"title": "Warning", "content": "Stand clear of the target area. The caster is not immune to the flames."}
+            ]
+        });
+
+        let result = service.render_to_pdf("session/handout.typ", magical_handout);
+        assert!(result.is_ok(), "Magical handout render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Magical handout is not a valid PDF");
+    }
 }
