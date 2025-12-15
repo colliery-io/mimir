@@ -324,4 +324,100 @@ This is a test document.
         assert!(pdf_bytes.len() > 1000, "PDF seems too small for a multi-page document");
         assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
     }
+
+    #[test]
+    fn test_render_character_sheet() {
+        let templates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+        let service = PrintService::new(templates_root);
+
+        // Sample character data matching CharacterData structure
+        let data = serde_json::json!({
+            "character_name": "Thorin Ironforge",
+            "player_id": 1,
+            "level": 5,
+            "experience_points": 6500,
+            "version": 1,
+            "created_at": "2025-01-01",
+            "race": "Dwarf",
+            "subrace": "Mountain",
+            "classes": [{
+                "class_name": "Fighter",
+                "level": 5,
+                "subclass": "Champion",
+                "hit_dice_type": "d10",
+                "hit_dice_remaining": 5
+            }],
+            "background": "Soldier",
+            "alignment": "Lawful Good",
+            "abilities": {
+                "strength": 18,
+                "dexterity": 12,
+                "constitution": 16,
+                "intelligence": 10,
+                "wisdom": 13,
+                "charisma": 8
+            },
+            "max_hp": 44,
+            "current_hp": 44,
+            "speed": 25,
+            "proficiencies": {
+                "skills": ["Athletics", "Intimidation", "Perception"],
+                "saves": ["Strength", "Constitution"],
+                "armor": ["All armor", "Shields"],
+                "weapons": ["Simple weapons", "Martial weapons"],
+                "tools": ["Smith's tools"],
+                "languages": ["Common", "Dwarvish"]
+            },
+            "class_features": [
+                "Fighting Style (Defense)",
+                "Second Wind",
+                "Action Surge",
+                "Improved Critical"
+            ],
+            "feats": [],
+            "spells": {
+                "cantrips": [],
+                "prepared_spells": [],
+                "known_spells": [],
+                "spell_slots": {}
+            },
+            "inventory": [
+                {"name": "Rations", "quantity": 10, "weight": 20.0, "value": 5.0},
+                {"name": "Rope (50 ft)", "quantity": 1, "weight": 10.0, "value": 1.0}
+            ],
+            "currency": {
+                "copper": 15,
+                "silver": 30,
+                "gold": 50,
+                "platinum": 0
+            },
+            "equipped": {
+                "armor": "Chain Mail",
+                "shield": "Shield",
+                "main_hand": "Warhammer",
+                "off_hand": null
+            },
+            "personality": {
+                "traits": "I'm always polite and respectful.",
+                "ideals": "Responsibility. I do what I must and obey authority.",
+                "bonds": "I would still lay down my life for the people I served with.",
+                "flaws": "I made a terrible mistake in battle that cost lives."
+            }
+        });
+
+        let result = service.render_to_pdf("character/sheet.typ", data.clone());
+        assert!(result.is_ok(), "Character sheet render failed: {:?}", result.err());
+
+        let pdf_bytes = result.unwrap();
+        assert!(pdf_bytes.len() > 5000, "Character sheet PDF seems too small");
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
+
+        // Also test summary template
+        let result = service.render_to_pdf("character/summary.typ", data);
+        assert!(result.is_ok(), "Character summary render failed: {:?}", result.err());
+
+        let pdf_bytes = result.unwrap();
+        assert!(pdf_bytes.len() > 1000, "Character summary PDF seems too small");
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
+    }
 }
