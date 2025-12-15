@@ -1,0 +1,45 @@
+[package]
+name = "mimir-dm-print"
+version = "0.0.2"
+edition = "2021"
+description = "Print and PDF generation for Mimir using Typst"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/colliery-io/mimir"
+readme = "README.md"
+
+[dependencies]
+# Typst for document compilation
+typst = "0.12"
+typst-pdf = "0.12"
+typst-syntax = "0.12"
+typst-timing = "0.12"
+comemo = "0.4"
+ecow = "0.2"
+
+# Core dependencies
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+# Font handling
+fontdb = "0.21"
+
+# File path handling
+walkdir = { workspace = true }
+
+# Base64 encoding for Tauri commands
+base64 = { workspace = true }
+
+# Tauri integration
+tauri = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+default = []
+tauri-commands = ["tauri"]
