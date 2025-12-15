@@ -494,4 +494,145 @@ This is a test document.
         let pdf_bytes = result.unwrap();
         assert_eq!(&pdf_bytes[0..4], b"%PDF", "Multi-up cards is not a valid PDF");
     }
+
+    #[test]
+    fn test_render_monster_templates() {
+        let templates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+        let service = PrintService::new(templates_root);
+
+        // Sample monster data (matches Monster struct format)
+        let goblin = serde_json::json!({
+            "name": "Goblin",
+            "source": "MM",
+            "size": ["S"],
+            "creature_type": "humanoid",
+            "alignment": ["N", "E"],
+            "ac": [{"ac": 15, "from": ["leather armor", "shield"]}],
+            "hp": {"average": 7, "formula": "2d6"},
+            "speed": {"walk": 30},
+            "str": 8,
+            "dex": 14,
+            "con": 10,
+            "int": 10,
+            "wis": 8,
+            "cha": 8,
+            "skill": {"stealth": "+6"},
+            "senses": ["darkvision 60 ft."],
+            "passive": 9,
+            "languages": ["Common", "Goblin"],
+            "cr": "1/4",
+            "trait_entries": [{
+                "name": "Nimble Escape",
+                "entries": ["The goblin can take the Disengage or Hide action as a bonus action on each of its turns."]
+            }],
+            "action": [
+                {
+                    "name": "Scimitar",
+                    "entries": ["Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage."]
+                },
+                {
+                    "name": "Shortbow",
+                    "entries": ["Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage."]
+                }
+            ]
+        });
+
+        let dragon = serde_json::json!({
+            "name": "Adult Red Dragon",
+            "source": "MM",
+            "size": ["H"],
+            "creature_type": {"type": "dragon"},
+            "alignment": ["C", "E"],
+            "ac": [{"ac": 19, "from": ["natural armor"]}],
+            "hp": {"average": 256, "formula": "19d12 + 133"},
+            "speed": {"walk": 40, "climb": 40, "fly": 80},
+            "str": 27,
+            "dex": 10,
+            "con": 25,
+            "int": 16,
+            "wis": 13,
+            "cha": 21,
+            "save": {"dex": "+6", "con": "+13", "wis": "+7", "cha": "+11"},
+            "skill": {"perception": "+13", "stealth": "+6"},
+            "damage_immunities": ["fire"],
+            "senses": ["blindsight 60 ft.", "darkvision 120 ft."],
+            "passive": 23,
+            "languages": ["Common", "Draconic"],
+            "cr": "17",
+            "trait_entries": [{
+                "name": "Legendary Resistance (3/Day)",
+                "entries": ["If the dragon fails a saving throw, it can choose to succeed instead."]
+            }],
+            "action": [
+                {
+                    "name": "Multiattack",
+                    "entries": ["The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws."]
+                },
+                {
+                    "name": "Bite",
+                    "entries": ["Melee Weapon Attack: +14 to hit, reach 10 ft., one target. Hit: 19 (2d10 + 8) piercing damage plus 7 (2d6) fire damage."]
+                },
+                {
+                    "name": "Fire Breath (Recharge 5-6)",
+                    "entries": ["The dragon exhales fire in a 60-foot cone. Each creature in that area must make a DC 21 Dexterity saving throw, taking 63 (18d6) fire damage on a failed save, or half as much damage on a successful one."]
+                }
+            ],
+            "legendary": [
+                {
+                    "name": "Detect",
+                    "entries": ["The dragon makes a Wisdom (Perception) check."]
+                },
+                {
+                    "name": "Tail Attack",
+                    "entries": ["The dragon makes a tail attack."]
+                },
+                {
+                    "name": "Wing Attack (Costs 2 Actions)",
+                    "entries": ["The dragon beats its wings. Each creature within 10 feet must succeed on a DC 22 Dexterity saving throw or take 15 (2d6 + 8) bludgeoning damage and be knocked prone."]
+                }
+            ]
+        });
+
+        // Test single monster stat block
+        let result = service.render_to_pdf("monsters/stat-block.typ", goblin.clone());
+        assert!(result.is_ok(), "Monster stat-block render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Monster stat-block is not a valid PDF");
+
+        // Test monster card
+        let result = service.render_to_pdf("monsters/card.typ", goblin.clone());
+        assert!(result.is_ok(), "Monster card render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Monster card is not a valid PDF");
+
+        // Test encounter template
+        let encounter_data = serde_json::json!({
+            "title": "Goblin Ambush",
+            "monsters": [goblin.clone(), goblin.clone(), goblin.clone()],
+            "notes": "The goblins attack from hiding in the trees. They flee if two are killed."
+        });
+
+        let result = service.render_to_pdf("monsters/encounter.typ", encounter_data);
+        assert!(result.is_ok(), "Encounter render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Encounter is not a valid PDF");
+
+        // Test multi-up monster cards
+        let multiup_data = serde_json::json!({
+            "monsters": [goblin.clone(), goblin.clone(), dragon.clone()],
+            "show_cut_lines": true
+        });
+
+        let result = service.render_to_pdf("monsters/cards-multiup.typ", multiup_data);
+        assert!(result.is_ok(), "Multi-up monster cards render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Multi-up monster cards is not a valid PDF");
+
+        // Test dragon stat block (with legendary actions)
+        let result = service.render_to_pdf("monsters/stat-block.typ", dragon);
+        assert!(result.is_ok(), "Dragon stat-block render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert!(pdf_bytes.len() > 5000, "Dragon stat-block PDF seems too small for complex creature");
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Dragon stat-block is not a valid PDF");
+    }
 }
