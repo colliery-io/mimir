@@ -116,7 +116,7 @@
 #let shield-bonus = if has-shield { 2 } else { 0 }
 #let ac = base-ac + shield-bonus
 
-grid(
+#grid(
   columns: (2fr, 1fr),
   column-gutter: spacing.md,
 
@@ -179,7 +179,7 @@ grid(
 // PROFICIENCIES AND EQUIPMENT
 // =============================================================================
 
-grid(
+#grid(
   columns: (1fr, 1fr),
   column-gutter: spacing.md,
 
@@ -270,8 +270,8 @@ grid(
     v(spacing.sm)
 
     // Inventory summary
-    #let inventory = get(data, "inventory", default: ())
-    #if inventory.len() > 0 [
+    let inventory = get(data, "inventory", default: ())
+    if inventory.len() > 0 [
       #info-box(title: "Inventory")[
         #for item in inventory.slice(0, calc.min(8, inventory.len())) {
           let name = get(item, "name", default: "?")
@@ -293,14 +293,14 @@ grid(
 // FEATURES AND SPELLS
 // =============================================================================
 
-grid(
+#grid(
   columns: (1fr, 1fr),
   column-gutter: spacing.md,
 
   // Features & Traits
   {
-    #let class-features = get(data, "class_features", default: ())
-    #let feats = get(data, "feats", default: ())
+    let class-features = get(data, "class_features", default: ())
+    let feats = get(data, "feats", default: ())
 
     info-box(title: "Features & Traits")[
       #for feature in class-features {
@@ -321,13 +321,13 @@ grid(
 
   // Spells
   {
-    #let spells = get(data, "spells", default: ())
-    #let cantrips = get(spells, "cantrips", default: ())
-    #let prepared = get(spells, "prepared_spells", default: ())
-    #let known = get(spells, "known_spells", default: ())
-    #let slots = get(spells, "spell_slots", default: (:))
+    let spells = get(data, "spells", default: ())
+    let cantrips = get(spells, "cantrips", default: ())
+    let prepared = get(spells, "prepared_spells", default: ())
+    let known = get(spells, "known_spells", default: ())
+    let slots = get(spells, "spell_slots", default: (:))
 
-    #if cantrips.len() > 0 or prepared.len() > 0 or known.len() > 0 [
+    if cantrips.len() > 0 or prepared.len() > 0 or known.len() > 0 [
       #info-box(title: "Spellcasting")[
         // Spell slots
         #if slots.keys().len() > 0 [
