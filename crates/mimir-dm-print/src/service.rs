@@ -308,4 +308,20 @@ This is a test document.
         assert!(pdf_bytes.len() > 100, "PDF seems too small");
         assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
     }
+
+    #[test]
+    fn test_render_with_shared_components() {
+        // Use the actual templates directory from the crate
+        let templates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+
+        let service = PrintService::new(templates_root);
+        let data = serde_json::json!({});
+
+        let result = service.render_to_pdf("test/components-test.typ", data);
+        assert!(result.is_ok(), "Component test template failed: {:?}", result.err());
+
+        let pdf_bytes = result.unwrap();
+        assert!(pdf_bytes.len() > 1000, "PDF seems too small for a multi-page document");
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
+    }
 }

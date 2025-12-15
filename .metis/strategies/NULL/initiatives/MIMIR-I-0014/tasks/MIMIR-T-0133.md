@@ -4,14 +4,14 @@ level: task
 title: "Set up mimir-dm-print crate with Typst integration"
 short_code: "MIMIR-T-0133"
 created_at: 2025-12-15T02:16:30.101099+00:00
-updated_at: 2025-12-15T14:53:17.729679+00:00
+updated_at: 2025-12-15T14:54:50.548018+00:00
 parent: MIMIR-I-0014
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,6 +28,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Create the foundational `mimir-dm-print` crate with Typst compiler integration. This establishes the core infrastructure for all print/PDF generation features.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
