@@ -420,4 +420,78 @@ This is a test document.
         assert!(pdf_bytes.len() > 1000, "Character summary PDF seems too small");
         assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
     }
+
+    #[test]
+    fn test_render_spell_templates() {
+        let templates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+        let service = PrintService::new(templates_root);
+
+        // Sample spell data (simplified SpellSummary format)
+        let fireball = serde_json::json!({
+            "name": "Fireball",
+            "level": 3,
+            "school": "Evocation",
+            "source": "PHB",
+            "casting_time": "1 action",
+            "range": "150 feet",
+            "components": "V, S, M",
+            "concentration": false,
+            "ritual": false,
+            "description": "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a Dexterity saving throw. A target takes 8d6 fire damage on a failed save, or half as much damage on a successful one.",
+            "classes": ["Sorcerer", "Wizard"]
+        });
+
+        // Test single spell card
+        let result = service.render_to_pdf("spells/card.typ", fireball.clone());
+        assert!(result.is_ok(), "Spell card render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Spell card is not a valid PDF");
+
+        // Test spell list
+        let spell_list_data = serde_json::json!({
+            "title": "Wizard Spells",
+            "show_description": false,
+            "spells": [
+                {
+                    "name": "Fire Bolt",
+                    "level": 0,
+                    "school": "Evocation",
+                    "casting_time": "1 action",
+                    "range": "120 feet",
+                    "components": "V, S",
+                    "concentration": false,
+                    "ritual": false,
+                    "description": "You hurl a mote of fire at a creature or object within range."
+                },
+                {
+                    "name": "Magic Missile",
+                    "level": 1,
+                    "school": "Evocation",
+                    "casting_time": "1 action",
+                    "range": "120 feet",
+                    "components": "V, S",
+                    "concentration": false,
+                    "ritual": false,
+                    "description": "You create three glowing darts of magical force."
+                },
+                fireball.clone()
+            ]
+        });
+
+        let result = service.render_to_pdf("spells/list.typ", spell_list_data.clone());
+        assert!(result.is_ok(), "Spell list render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Spell list is not a valid PDF");
+
+        // Test multi-up cards
+        let multiup_data = serde_json::json!({
+            "spells": spell_list_data["spells"],
+            "show_cut_lines": true
+        });
+
+        let result = service.render_to_pdf("spells/cards-multiup.typ", multiup_data);
+        assert!(result.is_ok(), "Multi-up cards render failed: {:?}", result.err());
+        let pdf_bytes = result.unwrap();
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Multi-up cards is not a valid PDF");
+    }
 }

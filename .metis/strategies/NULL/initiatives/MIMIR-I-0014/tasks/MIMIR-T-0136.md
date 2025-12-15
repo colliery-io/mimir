@@ -4,14 +4,14 @@ level: task
 title: "Implement spell card and spell list templates"
 short_code: "MIMIR-T-0136"
 created_at: 2025-12-15T02:16:30.403164+00:00
-updated_at: 2025-12-15T02:16:30.403164+00:00
+updated_at: 2025-12-15T15:24:52.033335+00:00
 parent: MIMIR-I-0014
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Create Typst templates for spell cards (poker-size for card stock printing) and spell lists (table format), plus multi-up layout for printing multiple cards per page.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
