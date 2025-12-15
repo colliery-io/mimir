@@ -449,7 +449,15 @@ fn main() {
             update_character_currency,
             update_character_equipped,
             render_character_sheet,
-            write_text_file
+            write_text_file,
+            // Print commands
+            list_print_templates,
+            generate_pdf,
+            generate_character_sheet,
+            generate_spell_pdf,
+            generate_monster_pdf,
+            generate_session_pdf,
+            save_pdf
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| {

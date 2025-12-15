@@ -55,6 +55,9 @@
             </template>
             <template v-else>
               <button @click="startEditing" class="btn-secondary">Edit</button>
+              <button @click="printCharacter" class="btn-secondary" :disabled="isPrintingPdf">
+                {{ isPrintingPdf ? 'Generating...' : 'Print PDF' }}
+              </button>
               <button @click="exportCharacter" class="btn-secondary">Export</button>
               <button @click="showInventoryManager = true" class="btn-secondary">Inventory</button>
               <button @click="levelUp" class="btn-secondary">Level Up</button>
@@ -547,6 +550,16 @@
       @close="showInventoryManager = false"
       @updated="handleInventoryUpdated"
     />
+
+    <!-- PDF Preview Modal -->
+    <PdfPreviewModal
+      ref="pdfPreviewRef"
+      :visible="showPdfPreview"
+      :title="pdfPreviewTitle"
+      :default-file-name="pdfFileName"
+      @close="showPdfPreview = false"
+      @retry="printCharacter"
+    />
   </MainLayout>
 </template>
 
@@ -557,6 +570,8 @@ import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../../../shared/components/layout/MainLayout.vue'
 import LevelUpDialog from '../components/LevelUpDialog.vue'
 import InventoryManager from '../components/InventoryManager.vue'
+import { PdfPreviewModal } from '../../../components/print'
+import { PrintService } from '../../../services/PrintService'
 import { useCharacterStore } from '../../../stores/characters'
 import type { CharacterData } from '../../../types/character'
 
@@ -1252,6 +1267,43 @@ const showInventoryManager = ref(false)
 const handleInventoryUpdated = async () => {
   // Reload character data after inventory changes
   await characterStore.getCharacter(characterId.value)
+}
+
+// PDF printing
+const showPdfPreview = ref(false)
+const isPrintingPdf = ref(false)
+const pdfPreviewRef = ref<InstanceType<typeof PdfPreviewModal> | null>(null)
+
+const pdfPreviewTitle = computed(() => {
+  if (!data.value) return 'Character Sheet'
+  return `${data.value.character_name} - Character Sheet`
+})
+
+const pdfFileName = computed(() => {
+  if (!data.value) return 'character-sheet.pdf'
+  const charName = data.value.character_name.replace(/\s+/g, '_')
+  const classStr = data.value.classes
+    .map(c => `${c.class_name}${c.level}`)
+    .join('_')
+  return `${charName}_${classStr}.pdf`
+})
+
+const printCharacter = async () => {
+  if (!data.value) return
+
+  isPrintingPdf.value = true
+  showPdfPreview.value = true
+  pdfPreviewRef.value?.setLoading(true)
+
+  try {
+    const result = await PrintService.generateCharacterSheet(characterId.value, 'sheet')
+    pdfPreviewRef.value?.setPdfResult(result)
+  } catch (e) {
+    console.error('Failed to generate character PDF:', e)
+    pdfPreviewRef.value?.setError(e instanceof Error ? e.message : 'Failed to generate PDF')
+  } finally {
+    isPrintingPdf.value = false
+  }
 }
 
 // Edit mode functions
