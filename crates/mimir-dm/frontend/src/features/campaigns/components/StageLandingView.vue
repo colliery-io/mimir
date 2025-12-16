@@ -6,6 +6,17 @@
       :subtitle="stageInfo.subtitle"
     />
 
+    <!-- Campaign Actions -->
+    <div class="campaign-actions" v-if="documents.length > 0">
+      <button
+        class="btn btn-secondary"
+        @click="exportAllDocuments"
+        :disabled="exportingAll"
+      >
+        {{ exportingAll ? 'Exporting...' : 'Export All Documents as PDF' }}
+      </button>
+    </div>
+
     <!-- Next Steps (shown at top when ready, except for active/concluding stages) -->
     <StageTransitionCard
       v-if="nextStageAvailable && stage !== 'active' && stage !== 'concluding'"
@@ -80,6 +91,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ModuleService } from '@/services/ModuleService'
 import { boardConfigService } from '../../../services/boardConfigService'
+import { PrintService } from '../../../services/PrintService'
 import StageHeader from './StageLanding/StageHeader.vue'
 import StageTransitionCard from './StageLanding/StageTransitionCard.vue'
 import ModulesTable from './StageLanding/ModulesTable.vue'
@@ -106,6 +118,9 @@ const stageContent = ref<string>('')
 const modules = ref<any[]>([])
 const modulesLoading = ref(false)
 const showCreateModal = ref(false)
+
+// Export state
+const exportingAll = ref(false)
 
 // Get stage info from board configuration
 const stageInfo = computed(() => {
@@ -263,6 +278,28 @@ const getTotalDocuments = (): number => {
          (getTotalSessions() * 2) // Estimate 2 docs per session
 }
 
+// Export all documents as combined PDF
+const exportAllDocuments = async () => {
+  if (!props.campaign?.id) return
+
+  exportingAll.value = true
+
+  try {
+    const result = await PrintService.exportCampaignDocuments(props.campaign.id)
+
+    // Generate filename from campaign name
+    const filename = `${props.campaign.name || 'campaign'}_documents.pdf`
+      .replace(/[^a-z0-9\s\-_.]/gi, '')
+      .replace(/\s+/g, '_')
+
+    await PrintService.savePdf(result, filename)
+  } catch (e) {
+    console.error('Failed to export campaign documents:', e)
+  } finally {
+    exportingAll.value = false
+  }
+}
+
 const handleCreateModule = async (data: { name: string; type: string; sessions: number }) => {
   if (!props.campaign?.id) {
     console.log('Missing campaign ID')
@@ -313,4 +350,18 @@ onActivated(() => {
 })
 </script>
 
-<!-- Component styles have been moved to centralized CSS files -->
+<style scoped>
+.campaign-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-md);
+}
+
+.campaign-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+</style>

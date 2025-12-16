@@ -12,6 +12,14 @@
         <span v-if="saveStatus" class="save-status" :class="saveStatus">
           {{ saveStatusText }}
         </span>
+        <button
+          class="btn-toolbar"
+          @click="exportToPdf"
+          :disabled="exporting || !document?.id || document.id < 0"
+          title="Export document to PDF"
+        >
+          {{ exporting ? 'Exporting...' : 'Export PDF' }}
+        </button>
       </div>
     </div>
 
@@ -122,6 +130,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown-3'
 import { invoke } from '@tauri-apps/api/core'
 import { debounce } from '../../../shared/utils/debounce'
+import { PrintService } from '../../../services/PrintService'
 
 const props = defineProps<{
   document: any
@@ -138,6 +147,7 @@ const emit = defineEmits<{
 const showPreview = ref(false)
 const saveStatus = ref<'saving' | 'saved' | 'error' | null>(null)
 const pendingContent = ref<string | null>(null)
+const exporting = ref(false)
 
 // Initialize Tiptap editor with markdown support
 const editor = useEditor({
@@ -248,6 +258,44 @@ const saveDocument = async () => {
 
 // Debounced save function
 const debouncedSave = debounce(saveDocument, 1000)
+
+// Export document to PDF
+const exportToPdf = async () => {
+  if (!props.document?.id || props.document.id < 0) return
+
+  exporting.value = true
+
+  try {
+    // Save any pending changes first
+    await saveDocument()
+
+    // Export the document
+    const result = await PrintService.exportCampaignDocument(props.document.id)
+
+    // Generate filename from document title
+    const filename = `${props.document.title || 'document'}.pdf`
+      .replace(/[^a-z0-9\s\-_.]/gi, '')
+      .replace(/\s+/g, '_')
+
+    // Save the PDF
+    const savedPath = await PrintService.savePdf(result, filename)
+
+    if (savedPath) {
+      saveStatus.value = 'saved'
+      setTimeout(() => {
+        saveStatus.value = null
+      }, 2000)
+    }
+  } catch (e) {
+    console.error('Failed to export PDF:', e)
+    saveStatus.value = 'error'
+    setTimeout(() => {
+      saveStatus.value = null
+    }, 3000)
+  } finally {
+    exporting.value = false
+  }
+}
 
 // Toggle preview mode
 const togglePreview = () => {
