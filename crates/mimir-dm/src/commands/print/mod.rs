@@ -506,3 +506,175 @@ pub async fn save_pdf(pdf_base64: String, path: String) -> Result<ApiResponse<()
     info!("PDF saved successfully ({} bytes)", pdf_bytes.len());
     Ok(ApiResponse::success(()))
 }
+
+/// Export a single campaign document to PDF.
+///
+/// Reads the markdown document from disk, converts to Typst, and generates PDF.
+///
+/// # Parameters
+/// - `document_id` - Database ID of the document
+///
+/// # Returns
+/// PrintResult with base64-encoded PDF
+#[tauri::command]
+pub async fn export_campaign_document(
+    state: State<'_, AppState>,
+    document_id: i32,
+) -> Result<ApiResponse<PrintResult>, String> {
+    use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
+    use mimir_dm_core::dal::campaign::documents::DocumentRepository;
+
+    info!("Exporting campaign document {} to PDF", document_id);
+
+    // Get the document from the database
+    let mut conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let document = DocumentRepository::find_by_id(&mut conn, document_id)
+        .map_err(|e| format!("Failed to get document: {}", e))?;
+
+    // Get the campaign name
+    let mut campaign_repo = CampaignRepository::new(&mut conn);
+    let campaign = campaign_repo
+        .find_by_id(document.campaign_id)
+        .map_err(|e| format!("Failed to get campaign: {}", e))?
+        .ok_or_else(|| format!("Campaign {} not found", document.campaign_id))?;
+
+    // Create the print service and render
+    let service = create_print_service();
+    let file_path = std::path::PathBuf::from(&document.file_path);
+
+    match service.render_campaign_document(&file_path, Some(&campaign.name)) {
+        Ok(pdf_bytes) => {
+            let size_bytes = pdf_bytes.len();
+            let pdf_base64 = base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                &pdf_bytes,
+            );
+
+            info!(
+                "Campaign document PDF generated successfully ({} bytes)",
+                size_bytes
+            );
+
+            Ok(ApiResponse::success(PrintResult {
+                pdf_base64,
+                size_bytes,
+            }))
+        }
+        Err(e) => {
+            error!("Failed to generate campaign document PDF: {:?}", e);
+            Ok(ApiResponse::error(format!(
+                "Failed to generate PDF: {}",
+                e
+            )))
+        }
+    }
+}
+
+/// Export all campaign documents as a combined PDF.
+///
+/// Reads all markdown documents for the campaign, converts to Typst,
+/// and generates a single PDF with cover page and table of contents.
+///
+/// # Parameters
+/// - `campaign_id` - Database ID of the campaign
+///
+/// # Returns
+/// PrintResult with base64-encoded PDF
+#[tauri::command]
+pub async fn export_campaign_documents(
+    state: State<'_, AppState>,
+    campaign_id: i32,
+) -> Result<ApiResponse<PrintResult>, String> {
+    use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
+    use mimir_dm_core::services::DocumentService;
+
+    info!("Exporting all campaign {} documents to PDF", campaign_id);
+
+    // Get the campaign
+    let mut conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut campaign_repo = CampaignRepository::new(&mut conn);
+    let campaign = campaign_repo
+        .find_by_id(campaign_id)
+        .map_err(|e| format!("Failed to get campaign: {}", e))?
+        .ok_or_else(|| format!("Campaign {} not found", campaign_id))?;
+
+    // Get all documents for the campaign
+    let mut doc_conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut doc_service = DocumentService::new(&mut doc_conn);
+    let documents = doc_service
+        .get_campaign_documents(campaign_id)
+        .map_err(|e| format!("Failed to get documents: {}", e))?;
+
+    if documents.is_empty() {
+        return Ok(ApiResponse::error("No documents to export".to_string()));
+    }
+
+    // Collect file paths for documents that exist
+    let file_paths: Vec<std::path::PathBuf> = documents
+        .iter()
+        .filter_map(|doc| {
+            let path = std::path::PathBuf::from(&doc.file_path);
+            if path.exists() {
+                Some(path)
+            } else {
+                debug!("Skipping non-existent document file: {:?}", path);
+                None
+            }
+        })
+        .collect();
+
+    if file_paths.is_empty() {
+        return Ok(ApiResponse::error(
+            "No document files found on disk".to_string(),
+        ));
+    }
+
+    info!(
+        "Rendering {} documents for campaign '{}'",
+        file_paths.len(),
+        campaign.name
+    );
+
+    // Create the print service and render combined PDF
+    let service = create_print_service();
+
+    match service.render_campaign_combined(&file_paths, &campaign.name) {
+        Ok(pdf_bytes) => {
+            let size_bytes = pdf_bytes.len();
+            let pdf_base64 = base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                &pdf_bytes,
+            );
+
+            info!(
+                "Combined campaign PDF generated successfully ({} bytes, {} documents)",
+                size_bytes,
+                file_paths.len()
+            );
+
+            Ok(ApiResponse::success(PrintResult {
+                pdf_base64,
+                size_bytes,
+            }))
+        }
+        Err(e) => {
+            error!("Failed to generate combined campaign PDF: {:?}", e);
+            Ok(ApiResponse::error(format!(
+                "Failed to generate PDF: {}",
+                e
+            )))
+        }
+    }
+}

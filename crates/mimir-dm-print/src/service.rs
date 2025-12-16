@@ -7,6 +7,7 @@ use tracing::{debug, info, instrument};
 use typst::diag::{SourceDiagnostic, Severity};
 
 use crate::error::{PrintError, Result};
+use crate::markdown::{parse_campaign_document, ParsedDocument};
 use crate::world::MimirTypstWorld;
 
 /// Information about an available template
@@ -167,6 +168,135 @@ impl PrintService {
     /// Check if a template exists
     pub fn template_exists(&self, template_path: &str) -> bool {
         self.templates_root.join(template_path).exists()
+    }
+
+    /// Render a campaign document (markdown with YAML frontmatter) to PDF
+    ///
+    /// # Arguments
+    /// * `file_path` - Path to the markdown document file
+    /// * `campaign_name` - Name of the campaign (optional, used in header)
+    ///
+    /// # Returns
+    /// PDF file contents as bytes
+    #[instrument(skip(self), fields(file = %file_path.display()))]
+    pub fn render_campaign_document(
+        &self,
+        file_path: &PathBuf,
+        campaign_name: Option<&str>,
+    ) -> Result<Vec<u8>> {
+        info!("Rendering campaign document to PDF");
+
+        // Read the markdown file
+        let markdown = std::fs::read_to_string(file_path)?;
+
+        // Parse the document
+        let parsed = parse_campaign_document(&markdown)?;
+
+        // Build the data structure for the template
+        let data = self.build_campaign_document_data(&parsed, campaign_name)?;
+
+        // Render using the campaign document template
+        self.render_to_pdf("campaign/document.typ", data)
+    }
+
+    /// Render multiple campaign documents as a single combined PDF
+    ///
+    /// # Arguments
+    /// * `documents` - List of document file paths
+    /// * `campaign_name` - Name of the campaign
+    ///
+    /// # Returns
+    /// PDF file contents as bytes
+    #[instrument(skip(self, documents), fields(count = documents.len()))]
+    pub fn render_campaign_combined(
+        &self,
+        documents: &[PathBuf],
+        campaign_name: &str,
+    ) -> Result<Vec<u8>> {
+        info!("Rendering {} campaign documents to combined PDF", documents.len());
+
+        // Parse all documents
+        let mut parsed_docs = Vec::new();
+        for file_path in documents {
+            debug!("Reading document: {:?}", file_path);
+            let markdown = std::fs::read_to_string(file_path)?;
+            let parsed = parse_campaign_document(&markdown)?;
+            parsed_docs.push(parsed);
+        }
+
+        // Build the combined data structure
+        let data = self.build_campaign_combined_data(&parsed_docs, campaign_name)?;
+
+        // Render using the combined campaign template
+        self.render_to_pdf("campaign/combined.typ", data)
+    }
+
+    /// Build the data structure for a single campaign document template
+    fn build_campaign_document_data(
+        &self,
+        parsed: &ParsedDocument,
+        campaign_name: Option<&str>,
+    ) -> Result<serde_json::Value> {
+        // Extract title from frontmatter or use default
+        let title = parsed
+            .frontmatter
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Untitled Document");
+
+        // Extract document type from frontmatter or use default
+        let document_type = parsed
+            .frontmatter
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("document");
+
+        let mut data = serde_json::json!({
+            "title": title,
+            "document_type": document_type,
+            "content": parsed.typst_content,
+        });
+
+        if let Some(name) = campaign_name {
+            data["campaign_name"] = serde_json::Value::String(name.to_string());
+        }
+
+        Ok(data)
+    }
+
+    /// Build the data structure for the combined campaign template
+    fn build_campaign_combined_data(
+        &self,
+        documents: &[ParsedDocument],
+        campaign_name: &str,
+    ) -> Result<serde_json::Value> {
+        let docs: Vec<serde_json::Value> = documents
+            .iter()
+            .map(|parsed| {
+                let title = parsed
+                    .frontmatter
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Untitled Document");
+
+                let document_type = parsed
+                    .frontmatter
+                    .get("type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("document");
+
+                serde_json::json!({
+                    "title": title,
+                    "document_type": document_type,
+                    "content": parsed.typst_content,
+                })
+            })
+            .collect();
+
+        Ok(serde_json::json!({
+            "campaign_name": campaign_name,
+            "documents": docs,
+        }))
     }
 }
 
@@ -787,5 +917,104 @@ This is a test document.
         assert!(result.is_ok(), "Magical handout render failed: {:?}", result.err());
         let pdf_bytes = result.unwrap();
         assert_eq!(&pdf_bytes[0..4], b"%PDF", "Magical handout is not a valid PDF");
+    }
+
+    #[test]
+    fn test_render_campaign_document() {
+        let temp = TempDir::new().unwrap();
+        let templates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+        let service = PrintService::new(templates_root);
+
+        // Create a test markdown document
+        let markdown = r#"---
+title: Session 1 - The Beginning
+type: session_outline
+---
+
+# The Adventure Begins
+
+Our heroes gather at the **Yawning Portal** tavern in Waterdeep.
+
+## Key NPCs
+
+- *Durnan* - the barkeep
+- *Volothamp Geddarm* - famous explorer
+
+## Objectives
+
+1. Meet with Volo
+2. Accept the quest
+3. Head to the warehouse district
+"#;
+        let doc_path = temp.path().join("session_1.md");
+        fs::write(&doc_path, markdown).unwrap();
+
+        // Test single document render
+        let result = service.render_campaign_document(&doc_path, Some("Waterdeep Dragon Heist"));
+        assert!(result.is_ok(), "Campaign document render failed: {:?}", result.err());
+
+        let pdf_bytes = result.unwrap();
+        assert!(pdf_bytes.len() > 1000, "Campaign document PDF seems too small");
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
+    }
+
+    #[test]
+    fn test_render_campaign_combined() {
+        let temp = TempDir::new().unwrap();
+        let templates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+        let service = PrintService::new(templates_root);
+
+        // Create multiple test documents
+        let doc1 = r#"---
+title: Session 1 - The Beginning
+type: session_outline
+---
+
+# The Adventure Begins
+
+Our heroes meet at the tavern.
+"#;
+
+        let doc2 = r#"---
+title: Durnan
+type: npc_profile
+---
+
+# Durnan
+
+The gruff but fair barkeep of the Yawning Portal.
+
+## Personality
+
+- Taciturn
+- Protective of his establishment
+"#;
+
+        let doc3 = r#"---
+title: The Yawning Portal
+type: location_guide
+---
+
+# The Yawning Portal
+
+A famous tavern in Waterdeep built over the entrance to Undermountain.
+"#;
+
+        let doc1_path = temp.path().join("session_1.md");
+        let doc2_path = temp.path().join("npc_durnan.md");
+        let doc3_path = temp.path().join("location_yawning_portal.md");
+
+        fs::write(&doc1_path, doc1).unwrap();
+        fs::write(&doc2_path, doc2).unwrap();
+        fs::write(&doc3_path, doc3).unwrap();
+
+        // Test combined render
+        let documents = vec![doc1_path, doc2_path, doc3_path];
+        let result = service.render_campaign_combined(&documents, "Waterdeep Dragon Heist");
+        assert!(result.is_ok(), "Combined campaign render failed: {:?}", result.err());
+
+        let pdf_bytes = result.unwrap();
+        assert!(pdf_bytes.len() > 2000, "Combined PDF seems too small for 3 documents");
+        assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
     }
 }

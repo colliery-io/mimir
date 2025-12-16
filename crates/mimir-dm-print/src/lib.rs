@@ -36,10 +36,12 @@
 
 pub mod commands;
 pub mod error;
+pub mod markdown;
 pub mod service;
 pub mod world;
 
 pub use error::{PrintError, Result};
+pub use markdown::{markdown_to_typst, parse_campaign_document, ParsedDocument};
 pub use service::{PrintService, TemplateInfo};
 pub use world::MimirTypstWorld;
 

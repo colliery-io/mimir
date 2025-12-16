@@ -258,6 +258,38 @@ class PrintServiceClass {
   }
 
   /**
+   * Export a single campaign document to PDF
+   * @param documentId - The ID of the campaign document
+   */
+  async exportCampaignDocument(documentId: number): Promise<PrintResult> {
+    const response = await invoke<ApiResponse<PrintResult>>('export_campaign_document', {
+      documentId
+    })
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to export campaign document')
+    }
+
+    return response.data
+  }
+
+  /**
+   * Export all campaign documents as a combined PDF
+   * @param campaignId - The ID of the campaign
+   */
+  async exportCampaignDocuments(campaignId: number): Promise<PrintResult> {
+    const response = await invoke<ApiResponse<PrintResult>>('export_campaign_documents', {
+      campaignId
+    })
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to export campaign documents')
+    }
+
+    return response.data
+  }
+
+  /**
    * Convert base64 PDF to Blob for display/download
    */
   pdfToBlob(result: PrintResult): Blob {

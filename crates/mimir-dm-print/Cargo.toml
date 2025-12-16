@@ -23,7 +23,12 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 chrono = { workspace = true }
+
+# Markdown processing
+gray_matter = { workspace = true }
+pulldown-cmark = { workspace = true }
 
 # Font handling
 fontdb = "0.21"

@@ -458,7 +458,9 @@ fn main() {
             generate_spell_pdf,
             generate_monster_pdf,
             generate_session_pdf,
-            save_pdf
+            save_pdf,
+            export_campaign_document,
+            export_campaign_documents
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| {

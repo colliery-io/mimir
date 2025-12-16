@@ -57,6 +57,9 @@ tera = "1.19"
 # Frontmatter parsing
 gray_matter = "0.3"
 
+# Markdown parsing
+pulldown-cmark = "0.12"
+
 # Cryptography
 sha2 = "0.10"
 
