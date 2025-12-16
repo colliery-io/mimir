@@ -144,13 +144,20 @@ pub async fn generate_pdf(
 /// Generate a character sheet PDF.
 ///
 /// Convenience command for character sheet generation with proper data structure.
+/// When include_spell_cards is true (default), spell cards are appended to the PDF.
+/// Feature details are always fetched from the catalog.
 #[tauri::command]
 pub async fn generate_character_sheet(
     state: State<'_, AppState>,
     character_id: i32,
     template: Option<String>,
+    include_spell_cards: Option<bool>,
 ) -> Result<ApiResponse<PrintResult>, String> {
-    use mimir_dm_core::services::CharacterService;
+    use mimir_dm_core::models::catalog::class::{ClassFeature, SubclassFeature};
+    use mimir_dm_core::models::catalog::item::Item;
+    use mimir_dm_core::models::catalog::Spell;
+    use mimir_dm_core::services::{CharacterService, ClassService, ItemService, SpellService};
+    use std::collections::HashSet;
 
     info!("Generating character sheet for character {}", character_id);
 
@@ -165,12 +172,201 @@ pub async fn generate_character_sheet(
         .get_character(character_id)
         .map_err(|e| format!("Failed to get character: {}", e))?;
 
-    // Convert to JSON
-    let data = serde_json::to_value(&character_data)
+    // Determine if we should include spell cards (default to true)
+    let should_include_spells = include_spell_cards.unwrap_or(true);
+
+    // Collect all unique spell references from the character
+    let mut spell_details: Vec<Spell> = Vec::new();
+
+    if should_include_spells {
+        let mut seen_spells: HashSet<(String, String)> = HashSet::new();
+
+        // Helper closure to add spells
+        let mut add_spell_refs = |refs: &[mimir_dm_core::models::character::SpellReference]| {
+            for spell_ref in refs {
+                let key = (spell_ref.name.clone(), spell_ref.source.clone());
+                if !seen_spells.contains(&key) {
+                    seen_spells.insert(key);
+                }
+            }
+        };
+
+        // Collect from all spell lists
+        add_spell_refs(&character_data.spells.cantrips);
+        add_spell_refs(&character_data.spells.known_spells);
+        add_spell_refs(&character_data.spells.prepared_spells);
+
+        // Fetch full spell details from catalog
+        let mut spell_conn = state
+            .db
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        for (name, source) in seen_spells {
+            match SpellService::get_spell_details(&mut spell_conn, &name, &source) {
+                Ok(Some(spell)) => {
+                    debug!("Fetched spell details for: {} from {}", name, source);
+                    spell_details.push(spell);
+                }
+                Ok(None) => {
+                    debug!("Spell not found in catalog: {} from {}", name, source);
+                }
+                Err(e) => {
+                    error!("Failed to fetch spell {}: {}", name, e);
+                }
+            }
+        }
+
+        // Sort spells by level then name for consistent output
+        spell_details.sort_by(|a, b| {
+            a.level.cmp(&b.level).then_with(|| a.name.cmp(&b.name))
+        });
+
+        info!(
+            "Fetched {} spell details for character sheet",
+            spell_details.len()
+        );
+    }
+
+    // Fetch feature details from catalog
+    let mut class_feature_details: Vec<ClassFeature> = Vec::new();
+    let mut subclass_feature_details: Vec<SubclassFeature> = Vec::new();
+
+    {
+        let mut feature_conn = state
+            .db
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+        let mut class_service = ClassService::new(&mut feature_conn);
+
+        for feature_ref in &character_data.class_features {
+            if let Some(ref subclass_name) = feature_ref.subclass_name {
+                // Try to fetch as subclass feature
+                match class_service.get_subclass_feature(
+                    &feature_ref.name,
+                    &feature_ref.class_name,
+                    subclass_name,
+                    &feature_ref.source,
+                ) {
+                    Ok(Some(feature)) => {
+                        debug!(
+                            "Fetched subclass feature details for: {} ({} {})",
+                            feature_ref.name, feature_ref.class_name, subclass_name
+                        );
+                        subclass_feature_details.push(feature);
+                    }
+                    Ok(None) => {
+                        debug!(
+                            "Subclass feature not found in catalog: {} ({} {})",
+                            feature_ref.name, feature_ref.class_name, subclass_name
+                        );
+                    }
+                    Err(e) => {
+                        error!("Failed to fetch subclass feature {}: {}", feature_ref.name, e);
+                    }
+                }
+            } else {
+                // Fetch as class feature
+                match class_service.get_class_feature(
+                    &feature_ref.name,
+                    &feature_ref.class_name,
+                    &feature_ref.source,
+                ) {
+                    Ok(Some(feature)) => {
+                        debug!(
+                            "Fetched class feature details for: {} ({})",
+                            feature_ref.name, feature_ref.class_name
+                        );
+                        class_feature_details.push(feature);
+                    }
+                    Ok(None) => {
+                        debug!(
+                            "Class feature not found in catalog: {} ({})",
+                            feature_ref.name, feature_ref.class_name
+                        );
+                    }
+                    Err(e) => {
+                        error!("Failed to fetch class feature {}: {}", feature_ref.name, e);
+                    }
+                }
+            }
+        }
+
+        info!(
+            "Fetched {} class features and {} subclass features for character sheet",
+            class_feature_details.len(),
+            subclass_feature_details.len()
+        );
+    }
+
+    // Fetch item details from catalog for inventory items
+    let mut item_details: Vec<Item> = Vec::new();
+    {
+        let mut item_conn = state
+            .db
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+        let mut item_service = ItemService::new(&mut item_conn);
+
+        for inventory_item in &character_data.inventory {
+            let source = inventory_item.source.as_deref().unwrap_or("PHB");
+            match item_service.get_item_by_name_and_source(&inventory_item.name, source) {
+                Ok(Some(item)) => {
+                    debug!(
+                        "Fetched item details for: {} from {}",
+                        inventory_item.name, source
+                    );
+                    item_details.push(item);
+                }
+                Ok(None) => {
+                    debug!(
+                        "Item not found in catalog: {} from {}",
+                        inventory_item.name, source
+                    );
+                }
+                Err(e) => {
+                    error!("Failed to fetch item {}: {}", inventory_item.name, e);
+                }
+            }
+        }
+
+        info!(
+            "Fetched {} item details for character sheet",
+            item_details.len()
+        );
+    }
+
+    // Convert character to JSON
+    let character_json = serde_json::to_value(&character_data)
         .map_err(|e| format!("Failed to serialize character: {}", e))?;
 
-    // Use specified template or default
-    let template_id = template.unwrap_or_else(|| "character/sheet".to_string());
+    // Convert spells to JSON
+    let spells_json = serde_json::to_value(&spell_details)
+        .map_err(|e| format!("Failed to serialize spells: {}", e))?;
+
+    // Convert features to JSON
+    let class_features_json = serde_json::to_value(&class_feature_details)
+        .map_err(|e| format!("Failed to serialize class features: {}", e))?;
+    let subclass_features_json = serde_json::to_value(&subclass_feature_details)
+        .map_err(|e| format!("Failed to serialize subclass features: {}", e))?;
+
+    // Convert item details to JSON
+    let item_details_json = serde_json::to_value(&item_details)
+        .map_err(|e| format!("Failed to serialize item details: {}", e))?;
+
+    // Build combined data structure
+    let data = serde_json::json!({
+        "character": character_json,
+        "spells": spells_json,
+        "class_features_details": class_features_json,
+        "subclass_features_details": subclass_features_json,
+        "item_details": item_details_json,
+        "include_spell_cards": should_include_spells && !spell_details.is_empty()
+    });
+
+    // Always use the combined template which handles spells, equipment, and features
+    // The template conditionally shows sections based on what data is available
+    let template_id = template.unwrap_or_else(|| "character/sheet-with-spells".to_string());
 
     generate_pdf(template_id, data).await
 }

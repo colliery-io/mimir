@@ -355,6 +355,85 @@ impl<'a> ClassService<'a> {
         Ok(sources)
     }
 
+    /// Get a class feature by name and class.
+    ///
+    /// Returns the full feature data including entries (description).
+    ///
+    /// # Arguments
+    /// * `feature_name` - Name of the feature
+    /// * `class_name` - Name of the class
+    /// * `class_source` - Source book code (e.g., "PHB")
+    ///
+    /// # Returns
+    /// * `Ok(Some(ClassFeature))` - The full feature data if found
+    /// * `Ok(None)` - If no matching feature exists
+    pub fn get_class_feature(
+        &mut self,
+        feature_name: &str,
+        class_name_param: &str,
+        class_source_param: &str,
+    ) -> Result<Option<crate::models::catalog::class::ClassFeature>> {
+        use crate::schema::catalog_class_features::dsl::*;
+
+        let feature_record = catalog_class_features
+            .filter(name.eq(feature_name))
+            .filter(class_name.eq(class_name_param))
+            .filter(class_source.eq(class_source_param))
+            .select(full_feature_json)
+            .first::<String>(self.conn)
+            .optional()?;
+
+        match feature_record {
+            Some(json_str) => {
+                let feature: crate::models::catalog::class::ClassFeature =
+                    serde_json::from_str(&json_str)?;
+                Ok(Some(feature))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Get a subclass feature by name and subclass.
+    ///
+    /// Returns the full feature data including entries (description).
+    ///
+    /// # Arguments
+    /// * `feature_name` - Name of the feature
+    /// * `class_name` - Name of the class
+    /// * `subclass_short_name` - Short name of the subclass
+    /// * `source` - Source book code (e.g., "PHB")
+    ///
+    /// # Returns
+    /// * `Ok(Some(SubclassFeature))` - The full feature data if found
+    /// * `Ok(None)` - If no matching feature exists
+    pub fn get_subclass_feature(
+        &mut self,
+        feature_name: &str,
+        class_name_param: &str,
+        subclass_short_name_param: &str,
+        source_param: &str,
+    ) -> Result<Option<crate::models::catalog::class::SubclassFeature>> {
+        use crate::schema::catalog_subclass_features::dsl::*;
+
+        let feature_record = catalog_subclass_features
+            .filter(name.eq(feature_name))
+            .filter(class_name.eq(class_name_param))
+            .filter(subclass_short_name.eq(subclass_short_name_param))
+            .filter(source.eq(source_param))
+            .select(full_feature_json)
+            .first::<String>(self.conn)
+            .optional()?;
+
+        match feature_record {
+            Some(json_str) => {
+                let feature: crate::models::catalog::class::SubclassFeature =
+                    serde_json::from_str(&json_str)?;
+                Ok(Some(feature))
+            }
+            None => Ok(None),
+        }
+    }
+
     /// Get all distinct primary abilities used by classes.
     ///
     /// # Returns

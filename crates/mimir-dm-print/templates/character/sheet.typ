@@ -342,20 +342,20 @@
           #v(spacing.sm)
         ]
 
-        // Cantrips
+        // Cantrips (extract names from SpellReference objects)
         #if cantrips.len() > 0 [
           #label-text("Cantrips")
           #linebreak()
-          #text(size: sizes.sm)[#cantrips.join(", ")]
+          #text(size: sizes.sm)[#cantrips.map(s => if type(s) == dictionary { get(s, "name", default: "?") } else { s }).join(", ")]
           #v(spacing.sm)
         ]
 
-        // Prepared/Known spells
+        // Prepared/Known spells (extract names from SpellReference objects)
         #let spell-list = if prepared.len() > 0 { prepared } else { known }
         #if spell-list.len() > 0 [
           #label-text(if prepared.len() > 0 { "Prepared Spells" } else { "Known Spells" })
           #linebreak()
-          #text(size: sizes.sm)[#spell-list.join(", ")]
+          #text(size: sizes.sm)[#spell-list.map(s => if type(s) == dictionary { get(s, "name", default: "?") } else { s }).join(", ")]
         ]
       ]
     ] else [

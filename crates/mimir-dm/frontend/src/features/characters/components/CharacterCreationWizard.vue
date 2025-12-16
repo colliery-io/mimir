@@ -342,6 +342,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { usePlayerStore } from '../../../stores/players'
 import { useCampaignStore } from '../../../stores/campaigns'
 import SpellSelector from './SpellSelector.vue'
+import type { SpellReferenceInput } from '@/types/character'
 
 const props = defineProps<{
   visible: boolean
@@ -375,8 +376,8 @@ const creating = ref(false)
 const error = ref<string | null>(null)
 
 // Spell selection state
-const selectedSpells = ref<string[]>([])
-const selectedSpellsGrouped = ref<Record<number, string[]>>({})
+const selectedSpells = ref<SpellReferenceInput[]>([])
+const selectedSpellsGrouped = ref<Record<number, SpellReferenceInput[]>>({})
 
 // Ability score assignment methods
 const abilityScoreMethod = ref<'manual' | 'standard' | 'point-buy'>('standard')
@@ -531,11 +532,11 @@ const spellsAllowed = computed((): Record<number, number> => {
 })
 
 // Handle spell selection updates
-const handleSpellUpdate = (spells: string[]) => {
+const handleSpellUpdate = (spells: SpellReferenceInput[]) => {
   selectedSpells.value = spells
 }
 
-const handleSpellGroupedUpdate = (grouped: Record<number, string[]>) => {
+const handleSpellGroupedUpdate = (grouped: Record<number, SpellReferenceInput[]>) => {
   selectedSpellsGrouped.value = grouped
 }
 

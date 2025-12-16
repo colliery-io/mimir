@@ -139,14 +139,19 @@ class PrintServiceClass {
 
   /**
    * Generate a character sheet PDF
+   * @param characterId - The ID of the character
+   * @param template - Template variant to use ('sheet' or 'summary')
+   * @param includeSpellCards - Whether to include spell cards in the PDF (default: true)
    */
   async generateCharacterSheet(
     characterId: number,
-    template: 'sheet' | 'summary' = 'sheet'
+    template: 'sheet' | 'summary' = 'sheet',
+    includeSpellCards: boolean = true
   ): Promise<PrintResult> {
     const response = await invoke<ApiResponse<PrintResult>>('generate_character_sheet', {
       characterId,
-      template: `character/${template}`
+      template: includeSpellCards ? undefined : `character/${template}`,
+      includeSpellCards
     })
 
     if (!response.success || !response.data) {

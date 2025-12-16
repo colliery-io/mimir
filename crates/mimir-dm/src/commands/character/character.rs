@@ -8,13 +8,13 @@ use crate::state::AppState;
 use mimir_dm_core::models::catalog::Spell;
 use mimir_dm_core::models::character::data::ClassLevel;
 use mimir_dm_core::models::character::data::{InventoryItem, Personality};
-use mimir_dm_core::models::character::{Character, CharacterData, CharacterVersion};
+use mimir_dm_core::models::character::{Character, CharacterData, CharacterVersion, SpellReference};
 use mimir_dm_core::services::character::creation::{AbilityScoreMethod, CharacterBuilder};
 use mimir_dm_core::services::character::level_up::{AsiOrFeat, HpGainMethod, LevelUpOptions};
 use mimir_dm_core::services::character::renderer::{CharacterRenderer, MarkdownRenderer};
 use mimir_dm_core::services::character::spell_management::RestType;
 use mimir_dm_core::services::CharacterService;
-use mimir_dm_core::services::{ItemService, SpellService};
+use mimir_dm_core::services::{ClassService, ItemService, SpellService};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::State;
@@ -39,8 +39,8 @@ pub struct CreateCharacterRequest {
     pub personality: Option<PersonalityInput>,
     pub skill_proficiencies: Option<Vec<String>>,
     pub equipment: Option<Vec<InventoryItemInput>>,
-    pub cantrips: Option<Vec<String>>,
-    pub known_spells: Option<Vec<String>>,
+    pub cantrips: Option<Vec<SpellReferenceInput>>,
+    pub known_spells: Option<Vec<SpellReferenceInput>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -71,6 +71,18 @@ pub struct InventoryItemInput {
     pub notes: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpellReferenceInput {
+    pub name: String,
+    pub source: String,
+}
+
+impl From<SpellReferenceInput> for SpellReference {
+    fn from(input: SpellReferenceInput) -> Self {
+        SpellReference::new(input.name, input.source)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LevelUpRequest {
     pub class_name: String,
@@ -81,8 +93,8 @@ pub struct LevelUpRequest {
     pub ability_score_improvement: Option<String>, // JSON string with ASI data
     pub feat: Option<String>,
     pub new_spell_slots: Option<String>, // JSON string with spell slot updates
-    pub new_known_spells: Option<Vec<String>>, // Updated known spells list
-    pub new_cantrips: Option<Vec<String>>, // Updated cantrips list
+    pub new_known_spells: Option<Vec<SpellReferenceInput>>, // Updated known spells list
+    pub new_cantrips: Option<Vec<SpellReferenceInput>>, // Updated cantrips list
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -315,10 +327,10 @@ pub async fn create_character(
 
     // Set spells if provided
     if let Some(cantrips) = request.cantrips {
-        character_data.spells.cantrips = cantrips;
+        character_data.spells.cantrips = cantrips.into_iter().map(|s| s.into()).collect();
     }
     if let Some(known_spells) = request.known_spells {
-        character_data.spells.known_spells = known_spells;
+        character_data.spells.known_spells = known_spells.into_iter().map(|s| s.into()).collect();
     }
 
     // Persist to database using CharacterService
@@ -732,12 +744,12 @@ pub async fn level_up_character(
 
         // Update cantrips if provided
         if let Some(cantrips) = request.new_cantrips {
-            char_data.spells.cantrips = cantrips;
+            char_data.spells.cantrips = cantrips.into_iter().map(|s| s.into()).collect();
         }
 
         // Update known spells if provided
         if let Some(known) = request.new_known_spells {
-            char_data.spells.known_spells = known;
+            char_data.spells.known_spells = known.into_iter().map(|s| s.into()).collect();
         }
 
         // Save the updated character
@@ -803,7 +815,7 @@ pub async fn add_spell_to_known(
 #[tauri::command]
 pub async fn prepare_spells(
     character_id: i32,
-    spell_names: Vec<String>,
+    spells: Vec<SpellReferenceInput>,
     spellcasting_ability: String,
     state: State<'_, AppState>,
 ) -> Result<CharacterVersion, String> {
@@ -812,9 +824,10 @@ pub async fn prepare_spells(
         format!("Database connection failed: {}", e)
     })?;
 
+    let spell_refs: Vec<SpellReference> = spells.into_iter().map(|s| s.into()).collect();
     let mut char_service = CharacterService::new(&mut conn);
     char_service
-        .prepare_spells(character_id, spell_names, &spellcasting_ability)
+        .prepare_spells(character_id, spell_refs, &spellcasting_ability)
         .map_err(|e| format!("Failed to prepare spells: {}", e))
 }
 
@@ -1072,35 +1085,17 @@ pub async fn render_character_sheet(
     // Fetch spell details for all character spells
     let mut spell_details: HashMap<String, Spell> = HashMap::new();
 
-    // Collect all spell names
-    let mut all_spell_names = Vec::new();
-    all_spell_names.extend(char_data.spells.cantrips.iter().cloned());
-    all_spell_names.extend(char_data.spells.known_spells.iter().cloned());
+    // Collect all spell references
+    let mut all_spells: Vec<&SpellReference> = Vec::new();
+    all_spells.extend(char_data.spells.cantrips.iter());
+    all_spells.extend(char_data.spells.known_spells.iter());
 
-    // Fetch details for each spell from catalog
-    for spell_name in all_spell_names {
-        // Try to find the spell in the catalog (search by name, use first match)
-        use mimir_dm_core::models::catalog::SpellFilters;
-        let filters = SpellFilters {
-            query: Some(spell_name.clone()),
-            levels: vec![],
-            schools: vec![],
-            sources: vec![],
-            tags: vec![],
-            limit: Some(1),
-            offset: None,
-        };
-
-        // First search to find the spell's source
-        if let Ok(summaries) = SpellService::search_spells(&mut conn, filters) {
-            if let Some(summary) = summaries.first() {
-                // Now get full details with the correct source
-                if let Ok(Some(spell)) =
-                    SpellService::get_spell_details(&mut conn, &summary.name, &summary.source)
-                {
-                    spell_details.insert(spell_name, spell);
-                }
-            }
+    // Fetch details for each spell from catalog (now we have source info!)
+    for spell_ref in all_spells {
+        if let Ok(Some(spell)) =
+            SpellService::get_spell_details(&mut conn, &spell_ref.name, &spell_ref.source)
+        {
+            spell_details.insert(spell_ref.name.clone(), spell);
         }
     }
 
@@ -1139,4 +1134,155 @@ pub async fn render_character_sheet(
 #[tauri::command]
 pub async fn write_text_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|e| format!("Failed to write file: {}", e))
+}
+
+/// Input type for feature reference lookup
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureReferenceInput {
+    pub name: String,
+    pub class_name: String,
+    pub subclass_name: Option<String>,
+    pub source: String,
+    pub level: i32,
+}
+
+/// Feature details returned to frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureDetail {
+    pub name: String,
+    pub class_name: String,
+    pub subclass_name: Option<String>,
+    pub source: String,
+    pub level: i32,
+    pub description: String,
+}
+
+/// Helper to extract description text from entries array
+fn extract_description_from_entries(entries: &[serde_json::Value]) -> String {
+    let mut descriptions: Vec<String> = Vec::new();
+
+    for entry in entries {
+        match entry {
+            serde_json::Value::String(s) => {
+                descriptions.push(s.clone());
+            }
+            serde_json::Value::Object(obj) => {
+                // Handle structured entries like {"type": "entries", "entries": [...]}
+                if let Some(serde_json::Value::Array(sub_entries)) = obj.get("entries") {
+                    let sub_desc = extract_description_from_entries(sub_entries);
+                    if !sub_desc.is_empty() {
+                        descriptions.push(sub_desc);
+                    }
+                }
+                // Handle list entries
+                if let Some(serde_json::Value::Array(items)) = obj.get("items") {
+                    for item in items {
+                        if let serde_json::Value::String(s) = item {
+                            descriptions.push(format!("- {}", s));
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    descriptions.join("\n\n")
+}
+
+/// Get feature details from the catalog.
+///
+/// Fetches full feature details including descriptions for a list of feature references.
+///
+/// # Parameters
+/// - `features` - Array of feature references to look up
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// Array of feature details with descriptions.
+#[tauri::command]
+pub async fn get_feature_details(
+    features: Vec<FeatureReferenceInput>,
+    state: State<'_, AppState>,
+) -> Result<Vec<FeatureDetail>, String> {
+    let mut conn = state.db.get_connection().map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        format!("Database connection failed: {}", e)
+    })?;
+
+    let mut class_service = ClassService::new(&mut conn);
+    let mut details: Vec<FeatureDetail> = Vec::new();
+
+    for feature_ref in features {
+        if let Some(ref subclass_name) = feature_ref.subclass_name {
+            // Try to fetch as subclass feature
+            match class_service.get_subclass_feature(
+                &feature_ref.name,
+                &feature_ref.class_name,
+                subclass_name,
+                &feature_ref.source,
+            ) {
+                Ok(Some(feature)) => {
+                    let description = extract_description_from_entries(&feature.entries);
+                    details.push(FeatureDetail {
+                        name: feature.name,
+                        class_name: feature.class_name,
+                        subclass_name: feature.subclass_short_name,
+                        source: feature.source,
+                        level: feature.level as i32,
+                        description,
+                    });
+                }
+                Ok(None) => {
+                    // Feature not found in catalog, return with empty description
+                    details.push(FeatureDetail {
+                        name: feature_ref.name,
+                        class_name: feature_ref.class_name,
+                        subclass_name: feature_ref.subclass_name,
+                        source: feature_ref.source,
+                        level: feature_ref.level,
+                        description: String::new(),
+                    });
+                }
+                Err(e) => {
+                    error!("Failed to fetch subclass feature {}: {}", feature_ref.name, e);
+                }
+            }
+        } else {
+            // Fetch as class feature
+            match class_service.get_class_feature(
+                &feature_ref.name,
+                &feature_ref.class_name,
+                &feature_ref.source,
+            ) {
+                Ok(Some(feature)) => {
+                    let description = extract_description_from_entries(&feature.entries);
+                    details.push(FeatureDetail {
+                        name: feature.name,
+                        class_name: feature.class_name,
+                        subclass_name: None,
+                        source: feature.source,
+                        level: feature.level as i32,
+                        description,
+                    });
+                }
+                Ok(None) => {
+                    // Feature not found in catalog, return with empty description
+                    details.push(FeatureDetail {
+                        name: feature_ref.name,
+                        class_name: feature_ref.class_name,
+                        subclass_name: None,
+                        source: feature_ref.source,
+                        level: feature_ref.level,
+                        description: String::new(),
+                    });
+                }
+                Err(e) => {
+                    error!("Failed to fetch class feature {}: {}", feature_ref.name, e);
+                }
+            }
+        }
+    }
+
+    Ok(details)
 }

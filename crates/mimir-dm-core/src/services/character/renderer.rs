@@ -486,11 +486,11 @@ impl MarkdownRenderer {
         // Cantrips with full details
         if !spells.cantrips.is_empty() {
             output.push_str("### Cantrips\n\n");
-            for spell_name in &spells.cantrips {
-                if let Some(spell) = spell_details.get(spell_name) {
+            for spell_ref in &spells.cantrips {
+                if let Some(spell) = spell_details.get(&spell_ref.name) {
                     output.push_str(&self.render_spell_detail(spell));
                 } else {
-                    output.push_str(&format!("**{}**\n\n", spell_name));
+                    output.push_str(&format!("**{}** ({})\n\n", spell_ref.name, spell_ref.source));
                 }
             }
         }
@@ -500,10 +500,10 @@ impl MarkdownRenderer {
             output.push_str("### Known Spells\n\n");
 
             // Group spells by level
-            let mut spells_by_level: HashMap<u8, Vec<&str>> = HashMap::new();
-            for spell_name in &spells.known_spells {
-                let level = spell_details.get(spell_name).map(|s| s.level).unwrap_or(1);
-                spells_by_level.entry(level).or_default().push(spell_name);
+            let mut spells_by_level: HashMap<u8, Vec<&crate::models::character::SpellReference>> = HashMap::new();
+            for spell_ref in &spells.known_spells {
+                let level = spell_details.get(&spell_ref.name).map(|s| s.level).unwrap_or(1);
+                spells_by_level.entry(level).or_default().push(spell_ref);
             }
 
             // Sort and output by level
@@ -512,12 +512,12 @@ impl MarkdownRenderer {
 
             for level in levels {
                 output.push_str(&format!("#### {} Level\n\n", Self::ordinal(*level)));
-                if let Some(spell_names) = spells_by_level.get(level) {
-                    for spell_name in spell_names {
-                        if let Some(spell) = spell_details.get(*spell_name) {
+                if let Some(spell_refs) = spells_by_level.get(level) {
+                    for spell_ref in spell_refs {
+                        if let Some(spell) = spell_details.get(&spell_ref.name) {
                             output.push_str(&self.render_spell_detail(spell));
                         } else {
-                            output.push_str(&format!("**{}**\n\n", spell_name));
+                            output.push_str(&format!("**{}** ({})\n\n", spell_ref.name, spell_ref.source));
                         }
                     }
                 }
@@ -527,7 +527,8 @@ impl MarkdownRenderer {
         // Prepared spells (just list names since details are above)
         if !spells.prepared_spells.is_empty() {
             output.push_str("### Prepared Spells\n\n");
-            output.push_str(&format!("{}  \n\n", spells.prepared_spells.join(", ")));
+            let spell_names: Vec<_> = spells.prepared_spells.iter().map(|s| s.name.as_str()).collect();
+            output.push_str(&format!("{}  \n\n", spell_names.join(", ")));
         }
 
         output
@@ -893,7 +894,7 @@ mod tests {
     use crate::models::character::data::{ClassLevel, Currency};
     use crate::models::character::{
         AbilityScores, EquippedItems, InventoryItem, Personality, Proficiencies, SpellData,
-        SpellSlots,
+        SpellReference, SpellSlots,
     };
 
     fn create_sample_fighter() -> CharacterData {
@@ -1036,21 +1037,21 @@ mod tests {
             feats: Vec::new(),
             spells: SpellData {
                 cantrips: vec![
-                    "Fire Bolt".to_string(),
-                    "Mage Hand".to_string(),
-                    "Prestidigitation".to_string(),
+                    SpellReference::new("Fire Bolt", "PHB"),
+                    SpellReference::new("Mage Hand", "PHB"),
+                    SpellReference::new("Prestidigitation", "PHB"),
                 ],
                 known_spells: vec![
-                    "Magic Missile".to_string(),
-                    "Shield".to_string(),
-                    "Detect Magic".to_string(),
-                    "Fireball".to_string(),
-                    "Counterspell".to_string(),
+                    SpellReference::new("Magic Missile", "PHB"),
+                    SpellReference::new("Shield", "PHB"),
+                    SpellReference::new("Detect Magic", "PHB"),
+                    SpellReference::new("Fireball", "PHB"),
+                    SpellReference::new("Counterspell", "PHB"),
                 ],
                 prepared_spells: vec![
-                    "Magic Missile".to_string(),
-                    "Shield".to_string(),
-                    "Fireball".to_string(),
+                    SpellReference::new("Magic Missile", "PHB"),
+                    SpellReference::new("Shield", "PHB"),
+                    SpellReference::new("Fireball", "PHB"),
                 ],
                 spell_slots,
             },

@@ -14,10 +14,10 @@
         <div class="spell-grid">
           <div
             v-for="spell in spells"
-            :key="spell.name"
+            :key="`${spell.name}:${spell.source}`"
             class="spell-option"
             :class="{ selected: isSelected(spell.name) }"
-            @click="toggleSpell(spell.name, Number(level))"
+            @click="toggleSpell(spell, Number(level))"
           >
             <input type="checkbox" :checked="isSelected(spell.name)" />
             <span class="spell-name">{{ spell.name }}</span>
@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import type { SpellReferenceInput } from '@/types/character'
 
 interface SpellOption {
   name: string
@@ -49,17 +50,17 @@ const props = defineProps<{
   className: string
   maxSpellLevel: number
   spellsAllowed: Record<number, number>  // { 0: 2, 1: 4 } = 2 cantrips, 4 level 1 spells
-  initialSelection?: string[]
+  initialSelection?: SpellReferenceInput[]
 }>()
 
 const emit = defineEmits<{
-  'update:selected': [spells: string[]]
-  'update:selectedGrouped': [grouped: Record<number, string[]>]
+  'update:selected': [spells: SpellReferenceInput[]]
+  'update:selectedGrouped': [grouped: Record<number, SpellReferenceInput[]>]
 }>()
 
 const loading = ref(false)
 const availableSpells = ref<SpellOption[]>([])
-const selectedSpells = ref<string[]>([])
+const selectedSpells = ref<SpellReferenceInput[]>([])
 
 // Group spells by level
 const spellsByLevel = computed(() => {
@@ -86,27 +87,27 @@ const spellsByLevel = computed(() => {
 
 // Get count of selected spells at a specific level
 const getSelectedCount = (level: number): number => {
-  return selectedSpells.value.filter(name => {
-    const spell = availableSpells.value.find(s => s.name === name)
+  return selectedSpells.value.filter(ref => {
+    const spell = availableSpells.value.find(s => s.name === ref.name && s.source === ref.source)
     return spell && spell.level === level
   }).length
 }
 
 // Check if spell is selected
 const isSelected = (spellName: string): boolean => {
-  return selectedSpells.value.includes(spellName)
+  return selectedSpells.value.some(ref => ref.name === spellName)
 }
 
 // Get selected spells grouped by level
-const getSelectedGrouped = (): Record<number, string[]> => {
-  const grouped: Record<number, string[]> = {}
-  for (const name of selectedSpells.value) {
-    const spell = availableSpells.value.find(s => s.name === name)
+const getSelectedGrouped = (): Record<number, SpellReferenceInput[]> => {
+  const grouped: Record<number, SpellReferenceInput[]> = {}
+  for (const ref of selectedSpells.value) {
+    const spell = availableSpells.value.find(s => s.name === ref.name && s.source === ref.source)
     if (spell) {
       if (!grouped[spell.level]) {
         grouped[spell.level] = []
       }
-      grouped[spell.level].push(name)
+      grouped[spell.level].push(ref)
     }
   }
   return grouped
@@ -119,8 +120,10 @@ const emitSelection = () => {
 }
 
 // Toggle spell selection
-const toggleSpell = (spellName: string, level: number) => {
-  const index = selectedSpells.value.indexOf(spellName)
+const toggleSpell = (spell: SpellOption, level: number) => {
+  const index = selectedSpells.value.findIndex(
+    ref => ref.name === spell.name && ref.source === spell.source
+  )
 
   if (index === -1) {
     // Adding - check limit (unlimited if not defined)
@@ -129,7 +132,7 @@ const toggleSpell = (spellName: string, level: number) => {
     const hasLimit = allowed !== undefined
 
     if (!hasLimit || currentCount < allowed) {
-      selectedSpells.value.push(spellName)
+      selectedSpells.value.push({ name: spell.name, source: spell.source })
       emitSelection()
     }
   } else {

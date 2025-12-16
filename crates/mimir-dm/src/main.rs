@@ -450,6 +450,7 @@ fn main() {
             update_character_equipped,
             render_character_sheet,
             write_text_file,
+            get_feature_details,
             // Print commands
             list_print_templates,
             generate_pdf,

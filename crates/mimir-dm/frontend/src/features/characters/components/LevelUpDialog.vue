@@ -272,12 +272,12 @@
               <div class="review-section-header">Spells</div>
               <div v-if="selectedSpellsGrouped[0]?.length" class="review-item">
                 <span class="review-label">Cantrips:</span>
-                <span class="review-value">{{ selectedSpellsGrouped[0].join(', ') }}</span>
+                <span class="review-value">{{ selectedSpellsGrouped[0].map(s => s.name).join(', ') }}</span>
               </div>
               <template v-for="level in [1, 2, 3, 4, 5, 6, 7, 8, 9]" :key="level">
                 <div v-if="selectedSpellsGrouped[level]?.length" class="review-item">
                   <span class="review-label">Level {{ level }}:</span>
-                  <span class="review-value">{{ selectedSpellsGrouped[level].join(', ') }}</span>
+                  <span class="review-value">{{ selectedSpellsGrouped[level].map(s => s.name).join(', ') }}</span>
                 </div>
               </template>
             </div>
@@ -313,7 +313,7 @@ import { ref, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import SpellSelector from './SpellSelector.vue'
 import { useCharacterStore } from '../../../stores/characters'
-import type { CharacterData, LevelUpRequest } from '../../../types/character'
+import type { CharacterData, LevelUpRequest, SpellReferenceInput, SpellReference } from '../../../types/character'
 
 interface ClassDetails {
   cantripProgression?: number[]
@@ -426,8 +426,8 @@ const selectedFeat = ref('')
 
 // Spell state
 const classDetails = ref<ClassDetails | null>(null)
-const selectedSpells = ref<string[]>([])
-const selectedSpellsGrouped = ref<Record<number, string[]>>({})
+const selectedSpells = ref<SpellReferenceInput[]>([])
+const selectedSpellsGrouped = ref<Record<number, SpellReferenceInput[]>>({})
 
 // Submission state
 const isSubmitting = ref(false)
@@ -643,11 +643,11 @@ const loadClassDetails = async () => {
 }
 
 // Handle spell selection updates from SpellSelector
-const handleSpellUpdate = (spells: string[]) => {
+const handleSpellUpdate = (spells: SpellReferenceInput[]) => {
   selectedSpells.value = spells
 }
 
-const handleSpellGroupedUpdate = (grouped: Record<number, string[]>) => {
+const handleSpellGroupedUpdate = (grouped: Record<number, SpellReferenceInput[]>) => {
   selectedSpellsGrouped.value = grouped
 }
 
@@ -749,8 +749,8 @@ const confirmLevelUp = async () => {
     const subclass = existingClass?.subclass || null
 
     // Extract cantrips and known spells from selection
-    const cantrips = selectedSpellsGrouped.value[0] || []
-    const knownSpells: string[] = []
+    const cantrips: SpellReferenceInput[] = selectedSpellsGrouped.value[0] || []
+    const knownSpells: SpellReferenceInput[] = []
     for (const level in selectedSpellsGrouped.value) {
       if (parseInt(level) > 0) {
         knownSpells.push(...selectedSpellsGrouped.value[parseInt(level)])

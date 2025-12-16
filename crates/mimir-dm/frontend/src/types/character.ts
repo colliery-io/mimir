@@ -77,7 +77,7 @@ export interface CharacterData {
   current_hp: number
   speed: number
   proficiencies: Proficiencies
-  class_features: string[]
+  class_features: FeatureReference[]
   feats: string[]
   spells: SpellData
   inventory: InventoryItem[]
@@ -104,16 +104,43 @@ export interface Proficiencies {
   languages: string[]
 }
 
+export interface SpellReference {
+  name: string
+  source: string
+}
+
+export interface FeatureReference {
+  name: string
+  class_name: string
+  subclass_name: string | null
+  source: string
+  level: number
+}
+
+export interface FeatureDetail {
+  name: string
+  class_name: string
+  subclass_name: string | null
+  source: string
+  level: number
+  description: string
+}
+
 export interface SpellData {
-  known_spells: string[]
-  prepared_spells: string[]
-  cantrips: string[]
+  known_spells: SpellReference[]
+  prepared_spells: SpellReference[]
+  cantrips: SpellReference[]
   spell_slots: Record<number, SpellSlots>
 }
 
 export interface SpellSlots {
   max: number
   current: number
+}
+
+export interface SpellReferenceInput {
+  name: string
+  source: string
 }
 
 export interface InventoryItem {
@@ -168,6 +195,8 @@ export interface CreateCharacterRequest {
   personality: PersonalityInput | null
   skill_proficiencies: string[] | null
   equipment: InventoryItemInput[] | null
+  cantrips: SpellReferenceInput[] | null
+  known_spells: SpellReferenceInput[] | null
 }
 
 export interface AbilityScoresInput {
@@ -208,8 +237,8 @@ export interface LevelUpRequest {
   ability_score_improvement: string | null  // JSON string with ASI data
   feat: string | null
   new_spell_slots: string | null  // JSON string with spell slot updates
-  new_known_spells: string[] | null  // Updated known spells list
-  new_cantrips: string[] | null  // Updated cantrips list
+  new_known_spells: SpellReferenceInput[] | null  // Updated known spells list
+  new_cantrips: SpellReferenceInput[] | null  // Updated cantrips list
 }
 
 export interface AsiOrFeat {
@@ -286,7 +315,7 @@ export interface CharacterCommands {
   ): Promise<CharacterVersion>
   prepare_spells(
     character_id: number,
-    spell_keys: string[],
+    spells: SpellReferenceInput[],
     spellcasting_ability: string
   ): Promise<CharacterVersion>
   cast_spell(

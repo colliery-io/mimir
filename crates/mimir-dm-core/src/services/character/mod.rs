@@ -583,14 +583,19 @@ impl<'a> CharacterService<'a> {
         }
 
         // Add to appropriate list
-        let spell_key = format!("{}|{}", spell_name, spell_source);
+        let spell_ref = crate::models::character::SpellReference::new(spell_name, spell_source);
+
+        // Helper to check if spell already exists
+        let spell_exists = |list: &[crate::models::character::SpellReference]| {
+            list.iter().any(|s| s.name == spell_ref.name && s.source == spell_ref.source)
+        };
 
         if is_cantrip {
-            if !char_data.spells.cantrips.contains(&spell_key) {
-                char_data.spells.cantrips.push(spell_key);
+            if !spell_exists(&char_data.spells.cantrips) {
+                char_data.spells.cantrips.push(spell_ref);
             }
-        } else if !char_data.spells.known_spells.contains(&spell_key) {
-            char_data.spells.known_spells.push(spell_key);
+        } else if !spell_exists(&char_data.spells.known_spells) {
+            char_data.spells.known_spells.push(spell_ref);
         }
 
         // Create new version
@@ -604,10 +609,16 @@ impl<'a> CharacterService<'a> {
     pub fn prepare_spells(
         &mut self,
         character_id: i32,
-        spell_keys: Vec<String>,
+        spells: Vec<crate::models::character::SpellReference>,
         spellcasting_ability: &str,
     ) -> Result<CharacterVersion> {
         let (_character, mut char_data) = self.get_character(character_id)?;
+
+        // Helper to check if a spell is in a list
+        let spell_in_list = |spell: &crate::models::character::SpellReference,
+                            list: &[crate::models::character::SpellReference]| {
+            list.iter().any(|s| s.name == spell.name && s.source == spell.source)
+        };
 
         // Calculate maximum prepared spells
         // Formula: spellcasting ability modifier + character level
@@ -617,9 +628,9 @@ impl<'a> CharacterService<'a> {
         let max_prepared = (ability_mod + char_data.level).max(1);
 
         // Validate spell count (not including cantrips)
-        let non_cantrip_count = spell_keys
+        let non_cantrip_count = spells
             .iter()
-            .filter(|key| !char_data.spells.cantrips.contains(key))
+            .filter(|spell| !spell_in_list(spell, &char_data.spells.cantrips))
             .count();
 
         if non_cantrip_count > max_prepared as usize {
@@ -630,19 +641,19 @@ impl<'a> CharacterService<'a> {
         }
 
         // Validate all spells are known
-        for spell_key in &spell_keys {
-            if !char_data.spells.cantrips.contains(spell_key)
-                && !char_data.spells.known_spells.contains(spell_key)
+        for spell in &spells {
+            if !spell_in_list(spell, &char_data.spells.cantrips)
+                && !spell_in_list(spell, &char_data.spells.known_spells)
             {
                 return Err(DbError::InvalidData(format!(
-                    "Spell '{}' is not known by this character",
-                    spell_key
+                    "Spell '{}' from '{}' is not known by this character",
+                    spell.name, spell.source
                 )));
             }
         }
 
         // Update prepared spells
-        char_data.spells.prepared_spells = spell_keys;
+        char_data.spells.prepared_spells = spells;
 
         // Create new version
         let snapshot_reason = Some("Updated prepared spells".to_string());

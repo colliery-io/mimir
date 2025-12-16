@@ -86,10 +86,28 @@
   transmutation: "Tr",
 )
 
-/// Get spell school icon by name
+// Single-letter code to full school name mapping (for Rust enum serialization)
+#let spell-school-codes = (
+  a: "abjuration",
+  c: "conjuration",
+  d: "divination",
+  e: "enchantment",
+  v: "evocation",
+  i: "illusion",
+  n: "necromancy",
+  t: "transmutation",
+)
+
+/// Get spell school icon by name or single-letter code
 #let spell-school-icon(school, size: sizes.md) = {
-  let key = lower(school)
-  let abbrev = spell-school-icons.at(key, default: str(school).slice(0, 2))
+  let school-str = str(school)
+  // Handle single-letter codes from Rust enum
+  let key = if school-str.len() == 1 {
+    spell-school-codes.at(lower(school-str), default: school-str)
+  } else {
+    lower(school-str)
+  }
+  let abbrev = spell-school-icons.at(key, default: if school-str.len() >= 2 { school-str.slice(0, 2) } else { school-str })
   icon-box(abbrev, size: size)
 }
 

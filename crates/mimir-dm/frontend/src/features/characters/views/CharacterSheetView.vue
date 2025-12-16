@@ -59,7 +59,6 @@
                 {{ isPrintingPdf ? 'Generating...' : 'Print PDF' }}
               </button>
               <button @click="exportCharacter" class="btn-secondary">Export</button>
-              <button @click="showInventoryManager = true" class="btn-secondary">Inventory</button>
               <button @click="levelUp" class="btn-secondary">Level Up</button>
               <button @click="deleteCharacter" class="btn-danger">Delete</button>
             </template>
@@ -73,6 +72,12 @@
             :class="['tab-button', { active: activeTab === 'character' }]"
           >
             Character
+          </button>
+          <button
+            @click="activeTab = 'equipment'"
+            :class="['tab-button', { active: activeTab === 'equipment' }]"
+          >
+            Equipment
           </button>
           <button
             v-if="isSpellcaster"
@@ -209,8 +214,18 @@
             <!-- Class Features -->
             <section class="sheet-section" v-if="data.class_features.length">
               <h2 class="section-title">Features & Traits</h2>
+              <div v-if="loadingFeatureDetails" class="loading-indicator">Loading feature details...</div>
               <ul class="feature-list">
-                <li v-for="feature in data.class_features" :key="feature">{{ feature }}</li>
+                <li v-for="feature in data.class_features" :key="`${feature.name}-${feature.class_name}-${feature.level}`" class="feature-item">
+                  <div class="feature-header" @click="toggleFeature(feature)">
+                    <strong>{{ feature.name }}</strong>
+                    <span class="feature-source">({{ feature.subclass_name || feature.class_name }} Lv{{ feature.level }})</span>
+                    <span v-if="getFeatureDescription(feature)" class="expand-icon">{{ isFeatureExpanded(feature) ? '▼' : '▶' }}</span>
+                  </div>
+                  <div v-if="isFeatureExpanded(feature) && getFeatureDescription(feature)" class="feature-description">
+                    {{ getFeatureDescription(feature) }}
+                  </div>
+                </li>
               </ul>
             </section>
 
@@ -236,84 +251,6 @@
                 </div>
               </div>
               <p class="spell-note">See Spells tab for full spell list</p>
-            </section>
-
-            <!-- Equipment -->
-            <section class="sheet-section" v-if="hasEquipment || data.inventory.length">
-              <h2 class="section-title">Equipment</h2>
-
-              <!-- Equipped Items -->
-              <div v-if="hasEquipment" class="equipped-items">
-                <div v-if="data.equipped.armor" class="equipped-item">
-                  <span class="equipped-slot">Armor:</span> {{ data.equipped.armor }}
-                </div>
-                <div v-if="data.equipped.shield" class="equipped-item">
-                  <span class="equipped-slot">Shield:</span> {{ data.equipped.shield }}
-                </div>
-                <div v-if="data.equipped.main_hand" class="equipped-item">
-                  <span class="equipped-slot">Main Hand:</span> {{ data.equipped.main_hand }}
-                </div>
-                <div v-if="data.equipped.off_hand" class="equipped-item">
-                  <span class="equipped-slot">Off Hand:</span> {{ data.equipped.off_hand }}
-                </div>
-              </div>
-
-              <!-- Inventory -->
-              <div v-if="data.inventory.length" class="inventory-section">
-                <strong v-if="hasEquipment" class="inventory-label">Inventory:</strong>
-                <div class="item-list">
-                  <div
-                    v-for="item in data.inventory"
-                    :key="item.name"
-                    class="item-entry"
-                    :class="{ expanded: expandedItems.has(`${item.name}:${item.source || 'PHB'}`) }"
-                  >
-                    <div class="item-row" @click="toggleItemExpansion(item.name, item.source)">
-                      <span class="item-name">{{ item.name }}{{ item.quantity > 1 ? ` (${item.quantity})` : '' }}</span>
-                      <span class="expand-icon">{{ expandedItems.has(`${item.name}:${item.source || 'PHB'}`) ? '-' : '+' }}</span>
-                    </div>
-                    <div v-if="expandedItems.has(`${item.name}:${item.source || 'PHB'}`)" class="item-details">
-                      <!-- Custom notes (flavor text) - displayed prominently -->
-                      <div v-if="item.notes" class="item-notes">
-                        <strong>Notes:</strong> {{ item.notes }}
-                      </div>
-
-                      <div v-if="loadingItemDetails.has(`${item.name}:${item.source || 'PHB'}`)" class="loading-details">
-                        Loading...
-                      </div>
-                      <template v-else-if="itemDetails[`${item.name}:${item.source || 'PHB'}`]">
-                        <div class="item-meta">
-                          <span v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].type">{{ itemDetails[`${item.name}:${item.source || 'PHB'}`].type }}</span>
-                          <span v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].rarity" class="item-rarity">{{ itemDetails[`${item.name}:${item.source || 'PHB'}`].rarity }}</span>
-                        </div>
-                        <div class="item-properties">
-                          <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].ac"><strong>AC:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].ac }}</div>
-                          <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].dmg1"><strong>Damage:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].dmg1 }} {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].dmgType || '' }}</div>
-                          <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].range"><strong>Range:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].range }}</div>
-                          <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].weight"><strong>Weight:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].weight }} lb</div>
-                          <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].property?.length"><strong>Properties:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].property?.join(', ') }}</div>
-                        </div>
-                        <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].entries?.length" class="item-description">
-                          <p v-for="(entry, idx) in itemDetails[`${item.name}:${item.source || 'PHB'}`].entries" :key="idx">
-                            {{ formatItemEntry(entry) }}
-                          </p>
-                        </div>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Currency -->
-            <section class="sheet-section">
-              <h2 class="section-title">Currency</h2>
-              <div class="currency-grid">
-                <span class="currency-item"><strong>PP:</strong> {{ data.currency.platinum }}</span>
-                <span class="currency-item"><strong>GP:</strong> {{ data.currency.gold }}</span>
-                <span class="currency-item"><strong>SP:</strong> {{ data.currency.silver }}</span>
-                <span class="currency-item"><strong>CP:</strong> {{ data.currency.copper }}</span>
-              </div>
             </section>
 
             <!-- Personality -->
@@ -425,7 +362,7 @@
               </div>
               <div class="spell-list">
                 <div
-                  v-for="spellName in (isFullListCaster ? spellsByLevel[0]?.map(s => s.name) : data.spells.cantrips) || []"
+                  v-for="spellName in (isFullListCaster ? spellsByLevel[0]?.map(s => s.name) : data.spells.cantrips.map(s => s.name)) || []"
                   :key="spellName"
                   class="spell-item"
                   :class="{ expanded: expandedSpells.has(spellName) }"
@@ -528,6 +465,258 @@
             </template>
           </div>
         </div>
+
+        <!-- Equipment Tab Content -->
+        <div v-else-if="activeTab === 'equipment'" class="equipment-sheet">
+          <div class="equipment-content">
+            <!-- Currency Section -->
+            <section class="equipment-section currency-section">
+              <div class="section-header">
+                <h2 class="section-title">Currency</h2>
+                <button @click="showCurrencyEditor = !showCurrencyEditor" class="btn-edit-small">
+                  {{ showCurrencyEditor ? 'Done' : 'Edit' }}
+                </button>
+              </div>
+              <div v-if="!showCurrencyEditor" class="currency-display">
+                <div class="currency-item large">
+                  <span class="currency-icon">PP</span>
+                  <span class="currency-value">{{ data.currency.platinum }}</span>
+                </div>
+                <div class="currency-item large">
+                  <span class="currency-icon gold">GP</span>
+                  <span class="currency-value">{{ data.currency.gold }}</span>
+                </div>
+                <div class="currency-item">
+                  <span class="currency-icon silver">EP</span>
+                  <span class="currency-value">{{ data.currency.electrum }}</span>
+                </div>
+                <div class="currency-item">
+                  <span class="currency-icon silver">SP</span>
+                  <span class="currency-value">{{ data.currency.silver }}</span>
+                </div>
+                <div class="currency-item">
+                  <span class="currency-icon copper">CP</span>
+                  <span class="currency-value">{{ data.currency.copper }}</span>
+                </div>
+              </div>
+              <div v-else class="currency-editor">
+                <div class="currency-input-row">
+                  <label>PP</label>
+                  <input type="number" v-model.number="currencyEdit.platinum" min="0" />
+                </div>
+                <div class="currency-input-row">
+                  <label>GP</label>
+                  <input type="number" v-model.number="currencyEdit.gold" min="0" />
+                </div>
+                <div class="currency-input-row">
+                  <label>EP</label>
+                  <input type="number" v-model.number="currencyEdit.electrum" min="0" />
+                </div>
+                <div class="currency-input-row">
+                  <label>SP</label>
+                  <input type="number" v-model.number="currencyEdit.silver" min="0" />
+                </div>
+                <div class="currency-input-row">
+                  <label>CP</label>
+                  <input type="number" v-model.number="currencyEdit.copper" min="0" />
+                </div>
+                <button @click="saveCurrency" class="btn-primary btn-small">Save Currency</button>
+              </div>
+            </section>
+
+            <!-- Equipped Items Section -->
+            <section class="equipment-section">
+              <div class="section-header">
+                <h2 class="section-title">Equipped</h2>
+              </div>
+              <div class="equipped-slots">
+                <div class="equip-slot">
+                  <span class="slot-label">Armor</span>
+                  <select v-model="equippedItems.armor" @change="updateEquipped">
+                    <option :value="null">None</option>
+                    <option v-for="item in armorItems" :key="item.name" :value="item.name">
+                      {{ item.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="equip-slot">
+                  <span class="slot-label">Shield</span>
+                  <select v-model="equippedItems.shield" @change="updateEquipped">
+                    <option :value="null">None</option>
+                    <option v-for="item in shieldItems" :key="item.name" :value="item.name">
+                      {{ item.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="equip-slot">
+                  <span class="slot-label">Main Hand</span>
+                  <select v-model="equippedItems.main_hand" @change="updateEquipped">
+                    <option :value="null">None</option>
+                    <option v-for="item in weaponItems" :key="item.name" :value="item.name">
+                      {{ item.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="equip-slot">
+                  <span class="slot-label">Off Hand</span>
+                  <select v-model="equippedItems.off_hand" @change="updateEquipped">
+                    <option :value="null">None</option>
+                    <option v-for="item in offHandItems" :key="item.name" :value="item.name">
+                      {{ item.name }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <!-- Inventory Section -->
+            <section class="equipment-section inventory-section">
+              <div class="section-header">
+                <h2 class="section-title">Inventory</h2>
+                <button @click="showAddItem = true" class="btn-add">+ Add Item</button>
+              </div>
+
+              <!-- Add Item Form -->
+              <div v-if="showAddItem" class="add-item-form">
+                <div class="form-row">
+                  <select v-model="itemSourceFilter" class="input-source-filter" @change="searchItems(itemSearchQuery)">
+                    <option value="all">All Sources</option>
+                    <option v-for="source in availableItemSources" :key="source" :value="source">
+                      {{ source }}
+                    </option>
+                  </select>
+                  <div class="search-input-container">
+                    <input
+                      :value="itemSearchQuery"
+                      @input="onItemSearchInput"
+                      @blur="closeItemDropdown"
+                      @focus="itemSearchQuery.length >= 2 && (showItemDropdown = itemSearchResults.length > 0)"
+                      placeholder="Search items..."
+                      class="input-name"
+                      autocomplete="off"
+                    />
+                    <span v-if="isSearchingItems" class="search-spinner">...</span>
+                    <!-- Search Results Dropdown -->
+                    <div v-if="showItemDropdown" class="search-dropdown">
+                      <div
+                        v-for="item in itemSearchResults"
+                        :key="`${item.name}-${item.source}`"
+                        class="search-result-item"
+                        @mousedown.prevent="selectSearchItem(item)"
+                      >
+                        <span class="result-name">{{ item.name }}</span>
+                        <span class="result-meta">
+                          <span class="result-type">{{ item.typeName }}</span>
+                          <span v-if="item.rarity && item.rarity !== 'none'" class="result-rarity">{{ item.rarity }}</span>
+                          <span class="result-source">{{ item.source }}</span>
+                        </span>
+                      </div>
+                      <div v-if="itemSearchResults.length === 0" class="no-results">
+                        No items found
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <input
+                    v-model.number="newItem.quantity"
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    class="input-qty"
+                  />
+                  <input
+                    v-model="newItem.notes"
+                    placeholder="Notes (optional)"
+                    class="input-notes"
+                  />
+                </div>
+                <div class="form-actions">
+                  <button @click="addItem" class="btn-primary btn-small" :disabled="!newItem.name">Add</button>
+                  <button @click="cancelAddItem" class="btn-secondary btn-small">Cancel</button>
+                </div>
+              </div>
+
+              <!-- Inventory List -->
+              <div v-if="data.inventory.length === 0 && !showAddItem" class="empty-state">
+                No items in inventory. Click "+ Add Item" to add some.
+              </div>
+
+              <div v-else class="inventory-list">
+                <div
+                  v-for="item in data.inventory"
+                  :key="item.name"
+                  class="inventory-item"
+                  :class="{ expanded: expandedItems.has(`${item.name}:${item.source || 'PHB'}`) }"
+                >
+                  <div class="item-header" @click="toggleItemExpansion(item.name, item.source)">
+                    <div class="item-main">
+                      <span class="item-name">{{ item.name }}</span>
+                      <span class="item-qty">x{{ item.quantity }}</span>
+                    </div>
+                    <div class="item-actions">
+                      <button @click.stop="decrementItem(item)" class="btn-qty" title="Remove one">-</button>
+                      <button @click.stop="incrementItem(item)" class="btn-qty" title="Add one">+</button>
+                      <button @click.stop="removeItemCompletely(item)" class="btn-remove" title="Remove all">x</button>
+                    </div>
+                  </div>
+
+                  <div v-if="expandedItems.has(`${item.name}:${item.source || 'PHB'}`)" class="item-details">
+                    <div v-if="item.notes" class="item-notes">
+                      <strong>Notes:</strong> {{ item.notes }}
+                    </div>
+                    <div class="item-meta-row">
+                      <span v-if="item.weight"><strong>Weight:</strong> {{ item.weight }} lb</span>
+                      <span v-if="item.source"><strong>Source:</strong> {{ item.source }}</span>
+                    </div>
+
+                    <div v-if="loadingItemDetails.has(`${item.name}:${item.source || 'PHB'}`)" class="loading-details">
+                      Loading catalog details...
+                    </div>
+                    <template v-else-if="itemDetails[`${item.name}:${item.source || 'PHB'}`]">
+                      <div class="catalog-details">
+                        <div class="item-type-rarity">
+                          <span v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].type" class="item-type">
+                            {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].type }}
+                          </span>
+                          <span v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].rarity" class="item-rarity">
+                            {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].rarity }}
+                          </span>
+                        </div>
+                        <div class="item-stats">
+                          <span v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].ac">
+                            <strong>AC:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].ac }}
+                          </span>
+                          <span v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].dmg1">
+                            <strong>Damage:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].dmg1 }} {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].dmgType || '' }}
+                          </span>
+                          <span v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].range">
+                            <strong>Range:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].range }}
+                          </span>
+                        </div>
+                        <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].property?.length" class="item-properties">
+                          <strong>Properties:</strong> {{ itemDetails[`${item.name}:${item.source || 'PHB'}`].property?.join(', ') }}
+                        </div>
+                        <div v-if="itemDetails[`${item.name}:${item.source || 'PHB'}`].entries?.length" class="item-description">
+                          <p v-for="(entry, idx) in itemDetails[`${item.name}:${item.source || 'PHB'}`].entries" :key="idx">
+                            {{ formatItemEntry(entry) }}
+                          </p>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Total Weight -->
+              <div class="inventory-footer">
+                <span class="total-weight">
+                  <strong>Total Weight:</strong> {{ totalWeight.toFixed(1) }} lb
+                </span>
+              </div>
+            </section>
+          </div>
+        </div>
       </template>
     </div>
 
@@ -573,7 +762,7 @@ import InventoryManager from '../components/InventoryManager.vue'
 import { PdfPreviewModal } from '../../../components/print'
 import { PrintService } from '../../../services/PrintService'
 import { useCharacterStore } from '../../../stores/characters'
-import type { CharacterData } from '../../../types/character'
+import type { CharacterData, FeatureDetail, FeatureReference } from '../../../types/character'
 
 // Spell summary from catalog
 interface SpellSummary {
@@ -623,7 +812,7 @@ const router = useRouter()
 const characterStore = useCharacterStore()
 
 // Tab navigation
-const activeTab = ref<'character' | 'spells'>('character')
+const activeTab = ref<'character' | 'spells' | 'equipment'>('character')
 
 // Spell details cache and loading state
 const spellDetails = ref<Record<string, Spell>>({})
@@ -634,6 +823,11 @@ const expandedSpells = ref<Set<string>>(new Set())
 const itemDetails = ref<Record<string, ItemDetails>>({})
 const loadingItemDetails = ref<Set<string>>(new Set())
 const expandedItems = ref<Set<string>>(new Set())
+
+// Feature details cache and loading state
+const featureDetails = ref<Record<string, FeatureDetail>>({})
+const loadingFeatureDetails = ref(false)
+const expandedFeatures = ref<Set<string>>(new Set())
 
 // Edit mode
 const isEditing = ref(false)
@@ -656,6 +850,63 @@ const data = computed(() => character.value?.data as CharacterData)
 onMounted(async () => {
   await characterStore.getCharacter(characterId.value)
 })
+
+// Fetch feature details when character data is available
+const fetchFeatureDetails = async () => {
+  if (!data.value?.class_features?.length) return
+
+  loadingFeatureDetails.value = true
+  try {
+    const features = data.value.class_features.map((f: FeatureReference) => ({
+      name: f.name,
+      class_name: f.class_name,
+      subclass_name: f.subclass_name,
+      source: f.source,
+      level: f.level
+    }))
+
+    const details = await invoke<FeatureDetail[]>('get_feature_details', { features })
+
+    // Store in cache keyed by feature name
+    for (const detail of details) {
+      const key = `${detail.name}-${detail.class_name}-${detail.level}`
+      featureDetails.value[key] = detail
+    }
+  } catch (error) {
+    console.error('Failed to fetch feature details:', error)
+  } finally {
+    loadingFeatureDetails.value = false
+  }
+}
+
+// Watch for character data changes to fetch feature details
+watch(() => data.value?.class_features, (newFeatures) => {
+  if (newFeatures?.length) {
+    fetchFeatureDetails()
+  }
+}, { immediate: true })
+
+// Get feature description from cache
+const getFeatureDescription = (feature: FeatureReference): string | null => {
+  const key = `${feature.name}-${feature.class_name}-${feature.level}`
+  return featureDetails.value[key]?.description || null
+}
+
+// Toggle feature expansion
+const toggleFeature = (feature: FeatureReference) => {
+  const key = `${feature.name}-${feature.class_name}-${feature.level}`
+  if (expandedFeatures.value.has(key)) {
+    expandedFeatures.value.delete(key)
+  } else {
+    expandedFeatures.value.add(key)
+  }
+}
+
+// Check if feature is expanded
+const isFeatureExpanded = (feature: FeatureReference): boolean => {
+  const key = `${feature.name}-${feature.class_name}-${feature.level}`
+  return expandedFeatures.value.has(key)
+}
 
 // Ability score helpers
 const getModifier = (score: number): number => Math.floor((score - 10) / 2)
@@ -876,6 +1127,309 @@ const hasEquipment = computed(() => {
   const e = data.value.equipped
   return e.armor || e.shield || e.main_hand || e.off_hand
 })
+
+// Equipment Tab State
+const showCurrencyEditor = ref(false)
+const currencyEdit = ref({
+  platinum: 0,
+  gold: 0,
+  electrum: 0,
+  silver: 0,
+  copper: 0
+})
+
+const equippedItems = ref({
+  armor: null as string | null,
+  shield: null as string | null,
+  main_hand: null as string | null,
+  off_hand: null as string | null
+})
+
+const showAddItem = ref(false)
+const newItem = ref({
+  name: '',
+  source: 'PHB',
+  quantity: 1,
+  weight: 0,
+  notes: ''
+})
+
+// Item search state
+interface ItemSearchResult {
+  name: string
+  source: string
+  itemType: string
+  typeName: string
+  rarity: string
+  value: number | null
+  weight: number | null
+}
+
+const itemSearchQuery = ref('')
+const itemSearchResults = ref<ItemSearchResult[]>([])
+const isSearchingItems = ref(false)
+const showItemDropdown = ref(false)
+const itemSourceFilter = ref<string>('all')
+const availableItemSources = ref<string[]>([])
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+// Fetch available item sources on mount
+const fetchItemSources = async () => {
+  try {
+    const sources = await invoke<string[]>('get_item_sources')
+    availableItemSources.value = sources.sort()
+  } catch (error) {
+    console.error('Failed to fetch item sources:', error)
+  }
+}
+
+// Call on mount
+onMounted(async () => {
+  await characterStore.getCharacter(characterId.value)
+  fetchItemSources()
+})
+
+// Rarity order for sorting (common/plain items first)
+const rarityOrder: Record<string, number> = {
+  'none': 0,
+  'common': 1,
+  'uncommon': 2,
+  'rare': 3,
+  'very rare': 4,
+  'legendary': 5,
+  'artifact': 6
+}
+
+// Debounced item search
+const searchItems = async (query: string) => {
+  if (query.length < 2) {
+    itemSearchResults.value = []
+    showItemDropdown.value = false
+    return
+  }
+
+  isSearchingItems.value = true
+  try {
+    // Use source filter if not 'all'
+    const sourceFilter = itemSourceFilter.value === 'all' ? null : [itemSourceFilter.value]
+    const results = await invoke<ItemSearchResult[]>('search_items', {
+      name: query,
+      itemTypes: null,
+      rarities: null,
+      sources: sourceFilter,
+      minValue: null,
+      maxValue: null
+    })
+    // Sort by rarity (common first) then by name
+    const sorted = results.sort((a, b) => {
+      const rarityA = rarityOrder[a.rarity?.toLowerCase() || 'none'] ?? 0
+      const rarityB = rarityOrder[b.rarity?.toLowerCase() || 'none'] ?? 0
+      if (rarityA !== rarityB) return rarityA - rarityB
+      return a.name.localeCompare(b.name)
+    })
+    itemSearchResults.value = sorted
+    showItemDropdown.value = results.length > 0
+  } catch (error) {
+    console.error('Failed to search items:', error)
+    itemSearchResults.value = []
+  } finally {
+    isSearchingItems.value = false
+  }
+}
+
+const onItemSearchInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  itemSearchQuery.value = target.value
+  newItem.value.name = target.value
+
+  // Debounce search
+  if (searchTimeout) clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    searchItems(target.value)
+  }, 300)
+}
+
+const selectSearchItem = (item: ItemSearchResult) => {
+  newItem.value.name = item.name
+  newItem.value.source = item.source
+  newItem.value.weight = item.weight || 0
+  itemSearchQuery.value = item.name
+  showItemDropdown.value = false
+  itemSearchResults.value = []
+}
+
+const closeItemDropdown = () => {
+  // Delay to allow click on dropdown item
+  setTimeout(() => {
+    showItemDropdown.value = false
+  }, 200)
+}
+
+// Initialize equipment state when data loads
+watch(() => data.value, (newData) => {
+  if (newData) {
+    currencyEdit.value = { ...newData.currency }
+    equippedItems.value = { ...newData.equipped }
+  }
+}, { immediate: true })
+
+// Filter inventory by item type
+const armorItems = computed(() => {
+  if (!data.value) return []
+  return data.value.inventory.filter(item => {
+    const name = item.name.toLowerCase()
+    return name.includes('armor') || name.includes('mail') ||
+           name.includes('hide') || name.includes('leather') ||
+           name.includes('plate') || name.includes('robe')
+  })
+})
+
+const shieldItems = computed(() => {
+  if (!data.value) return []
+  return data.value.inventory.filter(item =>
+    item.name.toLowerCase().includes('shield')
+  )
+})
+
+const weaponItems = computed(() => {
+  if (!data.value) return []
+  return data.value.inventory.filter(item => {
+    const name = item.name.toLowerCase()
+    return name.includes('sword') || name.includes('axe') ||
+           name.includes('mace') || name.includes('hammer') ||
+           name.includes('dagger') || name.includes('bow') ||
+           name.includes('crossbow') || name.includes('spear') ||
+           name.includes('staff') || name.includes('quarterstaff') ||
+           name.includes('rapier') || name.includes('scimitar') ||
+           name.includes('flail') || name.includes('whip') ||
+           name.includes('trident') || name.includes('halberd') ||
+           name.includes('glaive') || name.includes('pike') ||
+           name.includes('javelin') || name.includes('club') ||
+           name.includes('wand') || name.includes('rod')
+  })
+})
+
+const offHandItems = computed(() => {
+  if (!data.value) return []
+  // Off-hand can be shields, light weapons, or wands
+  return data.value.inventory.filter(item => {
+    const name = item.name.toLowerCase()
+    return name.includes('shield') || name.includes('dagger') ||
+           name.includes('shortsword') || name.includes('handaxe') ||
+           name.includes('light hammer') || name.includes('sickle') ||
+           name.includes('wand') || name.includes('rod')
+  })
+})
+
+// Total weight
+const totalWeight = computed(() => {
+  if (!data.value) return 0
+  return data.value.inventory.reduce((sum, item) => sum + (item.weight * item.quantity), 0)
+})
+
+// Currency methods
+const saveCurrency = async () => {
+  try {
+    await invoke('update_character_currency', {
+      characterId: characterId.value,
+      update: currencyEdit.value
+    })
+    await characterStore.getCharacter(characterId.value)
+    showCurrencyEditor.value = false
+  } catch (error) {
+    console.error('Failed to update currency:', error)
+  }
+}
+
+// Equipped items methods
+const updateEquipped = async () => {
+  try {
+    await invoke('update_character_equipped', {
+      characterId: characterId.value,
+      armor: equippedItems.value.armor,
+      shield: equippedItems.value.shield,
+      mainHand: equippedItems.value.main_hand,
+      offHand: equippedItems.value.off_hand
+    })
+    await characterStore.getCharacter(characterId.value)
+  } catch (error) {
+    console.error('Failed to update equipped items:', error)
+  }
+}
+
+// Inventory methods
+const addItem = async () => {
+  if (!newItem.value.name) return
+
+  try {
+    await invoke('add_item_to_inventory', {
+      characterId: characterId.value,
+      itemName: newItem.value.name,
+      itemSource: newItem.value.source || 'PHB',
+      quantity: newItem.value.quantity || 1,
+      notes: newItem.value.notes || null
+    })
+    await characterStore.getCharacter(characterId.value)
+
+    // Reset form
+    newItem.value = { name: '', source: 'PHB', quantity: 1, weight: 0, notes: '' }
+    itemSearchQuery.value = ''
+    itemSearchResults.value = []
+    showItemDropdown.value = false
+    showAddItem.value = false
+  } catch (error) {
+    console.error('Failed to add item:', error)
+  }
+}
+
+const cancelAddItem = () => {
+  newItem.value = { name: '', source: 'PHB', quantity: 1, weight: 0, notes: '' }
+  itemSearchQuery.value = ''
+  itemSearchResults.value = []
+  showItemDropdown.value = false
+  showAddItem.value = false
+}
+
+const incrementItem = async (item: { name: string; source: string | null }) => {
+  try {
+    await invoke('add_item_to_inventory', {
+      characterId: characterId.value,
+      itemName: item.name,
+      itemSource: item.source || 'PHB',
+      quantity: 1,
+      notes: null
+    })
+    await characterStore.getCharacter(characterId.value)
+  } catch (error) {
+    console.error('Failed to add item:', error)
+  }
+}
+
+const decrementItem = async (item: { name: string }) => {
+  try {
+    await invoke('remove_item_from_inventory', {
+      characterId: characterId.value,
+      itemName: item.name,
+      quantity: 1
+    })
+    await characterStore.getCharacter(characterId.value)
+  } catch (error) {
+    console.error('Failed to remove item:', error)
+  }
+}
+
+const removeItemCompletely = async (item: { name: string; quantity: number }) => {
+  try {
+    await invoke('remove_item_from_inventory', {
+      characterId: characterId.value,
+      itemName: item.name,
+      quantity: item.quantity
+    })
+    await characterStore.getCharacter(characterId.value)
+  } catch (error) {
+    console.error('Failed to remove item:', error)
+  }
+}
 
 // Personality
 const hasPersonality = computed(() => {
@@ -1213,9 +1767,9 @@ const characterSpellNames = computed(() => {
   if (!data.value) return []
   const names = new Set<string>()
 
-  data.value.spells.cantrips.forEach(s => names.add(s))
-  data.value.spells.known_spells.forEach(s => names.add(s))
-  data.value.spells.prepared_spells.forEach(s => names.add(s))
+  data.value.spells.cantrips.forEach(s => names.add(s.name))
+  data.value.spells.known_spells.forEach(s => names.add(s.name))
+  data.value.spells.prepared_spells.forEach(s => names.add(s.name))
 
   return Array.from(names).sort()
 })
@@ -1227,14 +1781,14 @@ const spellsForSheet = computed(() => {
   const result: Record<number, string[]> = { 0: [] }
 
   // Add cantrips
-  result[0] = [...data.value.spells.cantrips].sort()
+  result[0] = data.value.spells.cantrips.map(s => s.name).sort()
 
   // For known spells casters, organize by fetched spell data
   // For now, put all known spells in a "Known" section
-  const knownSpells = [...data.value.spells.known_spells].sort()
+  const knownSpellNames = data.value.spells.known_spells.map(s => s.name).sort()
 
   // Try to organize by level using availableSpells data
-  for (const spellName of knownSpells) {
+  for (const spellName of knownSpellNames) {
     const spellInfo = availableSpells.value.find(s => s.name === spellName)
     const level = spellInfo?.level ?? 1
     if (!result[level]) result[level] = []
@@ -1816,6 +2370,50 @@ const deleteCharacter = async () => {
   color: var(--color-text);
 }
 
+.feature-item {
+  margin-bottom: var(--spacing-sm);
+}
+
+.feature-header {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.feature-header:hover {
+  color: var(--color-primary);
+}
+
+.feature-source {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.expand-icon {
+  font-size: 0.625rem;
+  color: var(--color-text-secondary);
+  margin-left: auto;
+}
+
+.feature-description {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}
+
+.loading-indicator {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  padding: var(--spacing-xs) 0;
+}
+
 .equipped-items {
   margin-bottom: var(--spacing-md);
 }
@@ -2313,5 +2911,461 @@ const deleteCharacter = async () => {
 
 .item-description p:last-child {
   margin-bottom: 0;
+}
+
+/* Equipment Tab */
+.equipment-sheet {
+  padding: var(--spacing-lg);
+}
+
+.equipment-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 800px;
+}
+
+.equipment-section {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+}
+
+.equipment-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.equipment-section .section-title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+/* Currency Section */
+.currency-display {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.currency-display .currency-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface-variant);
+  border-radius: var(--radius-md);
+  min-width: 60px;
+}
+
+.currency-display .currency-item.large {
+  min-width: 80px;
+}
+
+.currency-icon {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.currency-icon.gold {
+  color: #ffc107;
+}
+
+.currency-icon.silver {
+  color: #9e9e9e;
+}
+
+.currency-icon.copper {
+  color: #cd7f32;
+}
+
+.currency-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.currency-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: flex-end;
+}
+
+.currency-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.currency-input-row label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.currency-input-row input {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.btn-edit-small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.75rem;
+  background: var(--color-surface-variant);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.btn-edit-small:hover {
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+}
+
+/* Equipped Slots */
+.equipped-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.equip-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.slot-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.equip-slot select {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+/* Inventory Section */
+.btn-add {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-primary-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.btn-add:hover {
+  background: var(--color-primary-600);
+}
+
+.add-item-form {
+  background: var(--color-surface-variant);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.add-item-form .form-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.add-item-form input {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+.input-name {
+  flex: 2;
+}
+
+/* Search Input with Dropdown */
+.search-input-container {
+  position: relative;
+  flex: 2;
+}
+
+.search-input-container .input-name {
+  width: 100%;
+}
+
+.search-spinner {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.search-result-item {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: var(--color-surface-variant);
+}
+
+.result-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.result-meta {
+  display: flex;
+  gap: var(--spacing-sm);
+  font-size: 0.75rem;
+}
+
+.result-type {
+  color: var(--color-text-secondary);
+}
+
+.result-rarity {
+  color: var(--color-primary-500);
+  font-weight: 500;
+}
+
+.result-source {
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+.no-results {
+  padding: var(--spacing-md);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.input-qty {
+  width: 70px;
+}
+
+.input-source-filter {
+  width: 120px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.input-notes {
+  flex: 1;
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.875rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.inventory-item {
+  background: var(--color-surface-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.inventory-item .item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+}
+
+.inventory-item .item-header:hover {
+  background: var(--color-surface-elevated);
+}
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.inventory-item .item-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.item-qty {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.item-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.btn-qty {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.btn-qty:hover {
+  background: var(--color-primary-500);
+  color: white;
+  border-color: var(--color-primary-500);
+}
+
+.btn-remove {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-remove:hover {
+  background: var(--color-danger);
+  color: white;
+}
+
+.inventory-item .item-details {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.item-meta-row {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.catalog-details {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px dashed var(--color-border);
+}
+
+.item-type-rarity {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.item-type {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.item-rarity {
+  font-size: 0.75rem;
+  color: var(--color-primary-500);
+  font-weight: 500;
+}
+
+.item-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  font-size: 0.8rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.item-properties {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.inventory-footer {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.total-weight {
+  display: flex;
+  gap: var(--spacing-xs);
 }
 </style>

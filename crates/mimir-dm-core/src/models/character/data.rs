@@ -103,15 +103,220 @@ impl SpellSlots {
     }
 }
 
+/// Reference to a spell with source information for unambiguous lookup
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
+pub struct SpellReference {
+    /// Spell name as it appears in the source
+    pub name: String,
+    /// Source book code (e.g., "PHB", "XGE")
+    pub source: String,
+}
+
+// Custom deserializer to handle both old string format and new object format
+impl<'de> serde::Deserialize<'de> for SpellReference {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{self, MapAccess, Visitor};
+
+        struct SpellRefVisitor;
+
+        impl<'de> Visitor<'de> for SpellRefVisitor {
+            type Value = SpellReference;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a string or a spell reference object")
+            }
+
+            // Handle old format: just a string (spell name)
+            fn visit_str<E>(self, value: &str) -> std::result::Result<SpellReference, E>
+            where
+                E: de::Error,
+            {
+                Ok(SpellReference {
+                    name: value.to_string(),
+                    source: "PHB".to_string(), // Default source for legacy data
+                })
+            }
+
+            // Handle new format: object with name and source
+            fn visit_map<M>(self, mut map: M) -> std::result::Result<SpellReference, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut name: Option<String> = None;
+                let mut source: Option<String> = None;
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "name" => name = Some(map.next_value()?),
+                        "source" => source = Some(map.next_value()?),
+                        _ => { let _: serde::de::IgnoredAny = map.next_value()?; }
+                    }
+                }
+
+                Ok(SpellReference {
+                    name: name.ok_or_else(|| de::Error::missing_field("name"))?,
+                    source: source.unwrap_or_else(|| "PHB".to_string()),
+                })
+            }
+        }
+
+        deserializer.deserialize_any(SpellRefVisitor)
+    }
+}
+
+impl std::fmt::Display for SpellReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})", self.name, self.source)
+    }
+}
+
+impl SpellReference {
+    pub fn new(name: impl Into<String>, source: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            source: source.into(),
+        }
+    }
+}
+
+/// Reference to a class/subclass feature with source information for unambiguous lookup
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
+pub struct FeatureReference {
+    /// Feature name as it appears in the source
+    pub name: String,
+    /// Class name this feature belongs to
+    pub class_name: String,
+    /// Subclass short name (if this is a subclass feature)
+    #[serde(default)]
+    pub subclass_name: Option<String>,
+    /// Source book code (e.g., "PHB", "XGE")
+    pub source: String,
+    /// Level at which the feature was gained
+    pub level: i32,
+}
+
+// Custom deserializer to handle both old string format and new object format
+impl<'de> serde::Deserialize<'de> for FeatureReference {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{self, MapAccess, Visitor};
+
+        struct FeatureRefVisitor;
+
+        impl<'de> Visitor<'de> for FeatureRefVisitor {
+            type Value = FeatureReference;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a string or a feature reference object")
+            }
+
+            // Handle old format: just a string (feature name)
+            fn visit_str<E>(self, value: &str) -> std::result::Result<FeatureReference, E>
+            where
+                E: de::Error,
+            {
+                Ok(FeatureReference {
+                    name: value.to_string(),
+                    class_name: "Unknown".to_string(), // Default for legacy data
+                    subclass_name: None,
+                    source: "PHB".to_string(), // Default source for legacy data
+                    level: 1,
+                })
+            }
+
+            // Handle new format: object with all fields
+            fn visit_map<M>(self, mut map: M) -> std::result::Result<FeatureReference, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut name: Option<String> = None;
+                let mut class_name: Option<String> = None;
+                let mut subclass_name: Option<String> = None;
+                let mut source: Option<String> = None;
+                let mut level: Option<i32> = None;
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "name" => name = Some(map.next_value()?),
+                        "class_name" => class_name = Some(map.next_value()?),
+                        "subclass_name" => subclass_name = map.next_value()?,
+                        "source" => source = Some(map.next_value()?),
+                        "level" => level = Some(map.next_value()?),
+                        _ => { let _: serde::de::IgnoredAny = map.next_value()?; }
+                    }
+                }
+
+                Ok(FeatureReference {
+                    name: name.ok_or_else(|| de::Error::missing_field("name"))?,
+                    class_name: class_name.unwrap_or_else(|| "Unknown".to_string()),
+                    subclass_name,
+                    source: source.unwrap_or_else(|| "PHB".to_string()),
+                    level: level.unwrap_or(1),
+                })
+            }
+        }
+
+        deserializer.deserialize_any(FeatureRefVisitor)
+    }
+}
+
+impl std::fmt::Display for FeatureReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(ref subclass) = self.subclass_name {
+            write!(f, "{} ({} {} Lv{})", self.name, self.class_name, subclass, self.level)
+        } else {
+            write!(f, "{} ({} Lv{})", self.name, self.class_name, self.level)
+        }
+    }
+}
+
+impl FeatureReference {
+    pub fn new(
+        name: impl Into<String>,
+        class_name: impl Into<String>,
+        source: impl Into<String>,
+        level: i32,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            class_name: class_name.into(),
+            subclass_name: None,
+            source: source.into(),
+            level,
+        }
+    }
+
+    pub fn with_subclass(
+        name: impl Into<String>,
+        class_name: impl Into<String>,
+        subclass_name: impl Into<String>,
+        source: impl Into<String>,
+        level: i32,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            class_name: class_name.into(),
+            subclass_name: Some(subclass_name.into()),
+            source: source.into(),
+            level,
+        }
+    }
+}
+
 /// Spell data for spellcasting characters
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct SpellData {
     #[serde(default)]
-    pub known_spells: Vec<String>,
+    pub known_spells: Vec<SpellReference>,
     #[serde(default)]
-    pub prepared_spells: Vec<String>,
+    pub prepared_spells: Vec<SpellReference>,
     #[serde(default)]
-    pub cantrips: Vec<String>,
+    pub cantrips: Vec<SpellReference>,
     #[serde(default)]
     pub spell_slots: std::collections::HashMap<i32, SpellSlots>,
 }
@@ -210,7 +415,7 @@ pub struct CharacterData {
 
     // Class Features
     #[serde(default)]
-    pub class_features: Vec<String>,
+    pub class_features: Vec<FeatureReference>,
 
     // Feats
     #[serde(default)]
@@ -499,5 +704,49 @@ mod tests {
         let deserialized: CharacterData =
             serde_yaml::from_str(&yaml).expect("Failed to deserialize");
         assert_eq!(character, deserialized);
+    }
+
+    #[test]
+    fn test_spell_reference_backward_compatibility() {
+        // Test deserializing old format (string)
+        let old_format_yaml = r#"
+known_spells:
+  - "Fireball"
+  - "Magic Missile"
+cantrips:
+  - "Fire Bolt"
+prepared_spells: []
+spell_slots: {}
+"#;
+        let spell_data: SpellData = serde_yaml::from_str(old_format_yaml)
+            .expect("Failed to deserialize old format");
+
+        assert_eq!(spell_data.known_spells.len(), 2);
+        assert_eq!(spell_data.known_spells[0].name, "Fireball");
+        assert_eq!(spell_data.known_spells[0].source, "PHB"); // Default source
+        assert_eq!(spell_data.known_spells[1].name, "Magic Missile");
+        assert_eq!(spell_data.cantrips[0].name, "Fire Bolt");
+
+        // Test deserializing new format (object)
+        let new_format_yaml = r#"
+known_spells:
+  - name: "Fireball"
+    source: "PHB"
+  - name: "Holy Weapon"
+    source: "XGE"
+cantrips:
+  - name: "Fire Bolt"
+    source: "PHB"
+prepared_spells: []
+spell_slots: {}
+"#;
+        let spell_data: SpellData = serde_yaml::from_str(new_format_yaml)
+            .expect("Failed to deserialize new format");
+
+        assert_eq!(spell_data.known_spells.len(), 2);
+        assert_eq!(spell_data.known_spells[0].name, "Fireball");
+        assert_eq!(spell_data.known_spells[0].source, "PHB");
+        assert_eq!(spell_data.known_spells[1].name, "Holy Weapon");
+        assert_eq!(spell_data.known_spells[1].source, "XGE");
     }
 }
