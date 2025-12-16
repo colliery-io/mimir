@@ -7,7 +7,7 @@ created_at: 2025-12-16T03:23:40.654243+00:00
 updated_at: 2025-12-16T03:55:00.149682+00:00
 parent: MIMIR-I-0017
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0017
 ## Objective
 
 Create Typst templates for rendering campaign documents as styled PDFs. Includes a single-document template and a combined template for full campaign export with table of contents.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -7,7 +7,7 @@ created_at: 2025-12-16T03:23:40.787694+00:00
 updated_at: 2025-12-16T03:55:00.284649+00:00
 parent: MIMIR-I-0017
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0017
 ## Objective
 
 Extend the Rust PrintService in mimir-dm-print to add methods for rendering campaign documents to PDF, both individually and as a combined document.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

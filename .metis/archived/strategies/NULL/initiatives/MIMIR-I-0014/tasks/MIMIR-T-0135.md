@@ -7,7 +7,7 @@ created_at: 2025-12-15T02:16:30.296150+00:00
 updated_at: 2025-12-15T15:24:41.902535+00:00
 parent: MIMIR-I-0014
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Create Typst templates for character sheets (full and summary versions) plus the Rust data collector that fetches character data from the database and structures it for the templates.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

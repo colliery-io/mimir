@@ -7,7 +7,7 @@ created_at: 2025-12-15T02:16:30.403164+00:00
 updated_at: 2025-12-15T15:47:33.003143+00:00
 parent: MIMIR-I-0014
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Create Typst templates for spell cards (poker-size for card stock printing) and spell lists (table format), plus multi-up layout for printing multiple cards per page.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

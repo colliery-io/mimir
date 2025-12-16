@@ -7,7 +7,7 @@ created_at: 2025-12-15T02:16:37.372628+00:00
 updated_at: 2025-12-15T16:17:55.680719+00:00
 parent: MIMIR-I-0014
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Build the unified print UI experience: preview window for viewing PDFs before printing, print settings in app preferences, and consistent "Print" buttons/menus across all relevant views.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

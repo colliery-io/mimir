@@ -7,7 +7,7 @@ created_at: 2025-12-15T02:16:37.209348+00:00
 updated_at: 2025-12-15T15:53:27.489122+00:00
 parent: MIMIR-I-0014
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Create Typst templates for monster stat blocks (standard D&D format) and encounter sheets that compile multiple monsters onto a single page for DM reference during combat.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

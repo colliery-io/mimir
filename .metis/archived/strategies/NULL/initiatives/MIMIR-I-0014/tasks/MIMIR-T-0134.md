@@ -7,7 +7,7 @@ created_at: 2025-12-15T02:16:30.185038+00:00
 updated_at: 2025-12-15T15:05:45.746905+00:00
 parent: MIMIR-I-0014
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Build the shared Typst styles, reusable components, and icon library that all templates will use. This ensures consistent typography, spacing, and visual elements across all print outputs.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

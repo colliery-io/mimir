@@ -7,7 +7,7 @@ created_at: 2025-12-15T16:47:09.056708+00:00
 updated_at: 2025-12-15T19:39:40.329556+00:00
 parent: MIMIR-I-0014
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -107,6 +107,8 @@ pub struct SpellData {
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

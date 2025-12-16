@@ -7,7 +7,7 @@ created_at: 2025-12-16T03:23:40.933652+00:00
 updated_at: 2025-12-16T03:55:00.422027+00:00
 parent: MIMIR-I-0017
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0017
 ## Objective
 
 Wire up the complete export functionality from UI to backend: add Tauri commands, extend frontend PrintService, and add export buttons to DocumentEditor and CampaignBoardView.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

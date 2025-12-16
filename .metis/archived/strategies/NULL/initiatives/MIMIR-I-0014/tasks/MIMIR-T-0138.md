@@ -7,7 +7,7 @@ created_at: 2025-12-15T02:16:37.282602+00:00
 updated_at: 2025-12-15T15:58:58.800866+00:00
 parent: MIMIR-I-0014
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0014
 ## Objective
 
 Create Typst templates for session preparation sheets (DM reference for running a session) and NPC cards (quick reference during roleplay). Also includes generic handout template for player-facing documents.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

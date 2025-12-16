@@ -7,7 +7,7 @@ created_at: 2025-12-16T03:23:40.500983+00:00
 updated_at: 2025-12-16T03:54:38.244244+00:00
 parent: MIMIR-I-0017
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -30,6 +30,8 @@ initiative_id: MIMIR-I-0017
 ## Objective
 
 Create a Rust module that parses campaign markdown documents (with YAML frontmatter) and converts the markdown content to Typst markup for PDF rendering.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
