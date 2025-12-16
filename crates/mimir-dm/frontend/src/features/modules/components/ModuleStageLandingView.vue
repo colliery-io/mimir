@@ -27,6 +27,11 @@
       />
     </div>
 
+    <!-- Monster Tagging (for prep stages) -->
+    <div v-if="showMonsters" class="mt-8">
+      <ModuleMonsters :module-id="module.id" />
+    </div>
+
     <!-- Stage-Specific Content from Backend -->
     <div class="stage-content-section" v-if="stageContent">
       <div :class="`stage-${stage}`">
@@ -64,6 +69,7 @@ import type { Module, BoardConfig, Document } from '@/types'
 import StageHeader from './stage/StageHeader.vue'
 import StageTransitionCard from './stage/StageTransitionCard.vue'
 import SessionTable from './session/SessionTable.vue'
+import ModuleMonsters from './ModuleMonsters.vue'
 import { useModuleStage } from '../composables/useModuleStage'
 import { useSessionManagement } from '../composables/useSessionManagement'
 
@@ -108,6 +114,7 @@ const {
 // Stage content from backend configuration
 const stageContent = ref<string>('')
 const showSessions = computed(() => props.stage === 'active' || props.stage === 'ready' || props.stage === 'completed')
+const showMonsters = computed(() => props.stage !== 'completed')
 
 // Load stage-specific content from backend
 async function loadStageContent() {
