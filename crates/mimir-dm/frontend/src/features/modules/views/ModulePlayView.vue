@@ -581,8 +581,27 @@ onMounted(async () => {
 
 .document-content {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   min-height: 0;
+}
+
+/* Always show scrollbars */
+.document-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.document-content::-webkit-scrollbar-track {
+  background: var(--color-base-200);
+  border-radius: 4px;
+}
+
+.document-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.document-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }
 
 .loading-state {
@@ -728,6 +747,7 @@ onMounted(async () => {
   line-height: 1.6;
   background: var(--color-surface);
   color: var(--color-text);
+  overflow-y: scroll;
 }
 
 .notes-textarea:focus {
@@ -737,6 +757,25 @@ onMounted(async () => {
 .notes-textarea::placeholder {
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+/* Notes textarea scrollbar */
+.notes-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notes-textarea::-webkit-scrollbar-track {
+  background: var(--color-base-200);
+  border-radius: 4px;
+}
+
+.notes-textarea::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.notes-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }
 
 /* Adjust main area when notes expanded */
