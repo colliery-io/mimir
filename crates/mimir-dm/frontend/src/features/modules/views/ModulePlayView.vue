@@ -220,6 +220,12 @@ async function selectDocument(doc: Document) {
   await loadDocumentContent(doc)
 }
 
+// Strip YAML frontmatter from markdown content
+function stripFrontmatter(content: string): string {
+  const frontmatterRegex = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/
+  return content.replace(frontmatterRegex, '')
+}
+
 // Load document content
 async function loadDocumentContent(doc: Document) {
   if (!doc.file_path) return
@@ -231,7 +237,8 @@ async function loadDocumentContent(doc: Document) {
     })
 
     if (response.data && editor.value) {
-      editor.value.commands.setContent(response.data)
+      const content = stripFrontmatter(response.data)
+      editor.value.commands.setContent(content)
     }
   } catch (error) {
     console.error('Failed to load document content:', error)
