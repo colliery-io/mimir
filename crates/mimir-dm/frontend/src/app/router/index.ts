@@ -48,6 +48,12 @@ const routes: RouteRecordRaw[] = [
     props: true
   },
   {
+    path: '/modules/:id/play',
+    name: 'module-play',
+    component: () => import('../../features/modules/views/ModulePlayView.vue'),
+    props: true
+  },
+  {
     path: '/modules/:id/sessions',
     name: 'module-sessions',
     component: () => import('../../features/sessions/views/SessionListView.vue'),

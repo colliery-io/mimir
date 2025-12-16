@@ -4,15 +4,15 @@ level: task
 title: "Fix character module unit test compilation errors"
 short_code: "MIMIR-T-0149"
 created_at: 2025-12-16T17:21:34.239999+00:00
-updated_at: 2025-12-16T17:21:34.239999+00:00
+updated_at: 2025-12-16T17:32:47.676465+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -65,6 +65,12 @@ initiative_id: NULL
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
