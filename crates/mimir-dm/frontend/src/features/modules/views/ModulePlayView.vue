@@ -42,49 +42,70 @@
         </div>
       </aside>
 
-      <!-- Main Content Area -->
-      <main class="play-main">
-        <!-- Document Tabs -->
-        <div class="document-tabs" v-if="documents.length > 0">
-          <button
-            v-for="doc in documents"
-            :key="doc.id"
-            class="doc-tab"
-            :class="{ active: selectedDocument?.id === doc.id }"
-            @click="selectDocument(doc)"
-          >
-            {{ doc.title }}
+      <!-- Main Content Area with Notes Panel -->
+      <div class="main-wrapper">
+        <main class="play-main" :class="{ 'notes-expanded': !notesCollapsed }">
+          <!-- Document Tabs -->
+          <div class="document-tabs" v-if="documents.length > 0">
+            <button
+              v-for="doc in documents"
+              :key="doc.id"
+              class="doc-tab"
+              :class="{ active: selectedDocument?.id === doc.id }"
+              @click="selectDocument(doc)"
+            >
+              {{ doc.title }}
+            </button>
+          </div>
+
+          <!-- Document Viewer -->
+          <div class="content-panel document-panel" v-if="selectedDocument">
+            <div class="document-header">
+              <h2>{{ selectedDocument.title }}</h2>
+            </div>
+            <div class="document-content">
+              <div v-if="documentLoading" class="loading-state">
+                Loading document...
+              </div>
+              <div v-else-if="editor" class="prose-content">
+                <EditorContent :editor="editor" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Fallback when no documents -->
+          <div class="content-panel" v-else-if="!documentsLoading && documents.length === 0">
+            <h2>Module Narrative</h2>
+            <p class="placeholder-text">
+              No module documents found. Create documents in the module prep view.
+            </p>
+          </div>
+
+          <!-- Loading state -->
+          <div class="content-panel" v-else-if="documentsLoading">
+            <p class="placeholder-text">Loading documents...</p>
+          </div>
+        </main>
+
+        <!-- Collapsible Notes Panel -->
+        <aside class="notes-panel" :class="{ collapsed: notesCollapsed }">
+          <button class="notes-toggle" @click="toggleNotes">
+            <span class="notes-toggle-icon">{{ notesCollapsed ? '&#9650;' : '&#9660;' }}</span>
+            <span class="notes-toggle-label">Session Notes</span>
+            <span v-if="notesSaving" class="notes-saving">Saving...</span>
+            <span v-else-if="notesLastSaved" class="notes-saved">Saved</span>
           </button>
-        </div>
 
-        <!-- Document Viewer -->
-        <div class="content-panel document-panel" v-if="selectedDocument">
-          <div class="document-header">
-            <h2>{{ selectedDocument.title }}</h2>
+          <div class="notes-content" v-show="!notesCollapsed">
+            <textarea
+              v-model="notesContent"
+              class="notes-textarea"
+              placeholder="Type your session notes here... (auto-saves)"
+              @input="handleNotesInput"
+            ></textarea>
           </div>
-          <div class="document-content">
-            <div v-if="documentLoading" class="loading-state">
-              Loading document...
-            </div>
-            <div v-else-if="editor" class="prose-content">
-              <EditorContent :editor="editor" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Fallback when no documents -->
-        <div class="content-panel" v-else-if="!documentsLoading && documents.length === 0">
-          <h2>Module Narrative</h2>
-          <p class="placeholder-text">
-            No module documents found. Create documents in the module prep view.
-          </p>
-        </div>
-
-        <!-- Loading state -->
-        <div class="content-panel" v-else-if="documentsLoading">
-          <p class="placeholder-text">Loading documents...</p>
-        </div>
-      </main>
+        </aside>
+      </div>
     </div>
   </div>
 </template>
@@ -96,18 +117,27 @@ import { invoke } from '@tauri-apps/api/core'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown-3'
-import type { Module, Document } from '@/types'
+import type { Module, Document, Campaign } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 
 const moduleId = computed(() => parseInt(route.params.id as string))
 const module = ref<Module | null>(null)
+const campaign = ref<Campaign | null>(null)
 const documents = ref<Document[]>([])
 const selectedDocument = ref<Document | null>(null)
 const sidebarCollapsed = ref(false)
 const documentsLoading = ref(true)
 const documentLoading = ref(false)
+
+// Notes state
+const notesCollapsed = ref(true)
+const notesContent = ref('')
+const notesFilePath = ref('')
+const notesSaving = ref(false)
+const notesLastSaved = ref(false)
+let saveTimeout: ReturnType<typeof setTimeout> | null = null
 
 // TipTap editor for read-only document viewing
 const editor = useEditor({
@@ -130,13 +160,31 @@ const editor = useEditor({
   ]
 })
 
-// Load module data
+// Load module and campaign data
 async function loadModule() {
   try {
     const response = await invoke<{ data: Module }>('get_module', {
       id: moduleId.value
     })
     module.value = response.data
+
+    // Load campaign to get directory path
+    if (module.value?.campaign_id) {
+      const campaignResponse = await invoke<{ data: Campaign }>('get_campaign', {
+        id: module.value.campaign_id
+      })
+      campaign.value = campaignResponse.data
+
+      // Build notes file path
+      if (campaign.value?.directory_path && module.value) {
+        const moduleNumber = (module.value as any).module_number || 1
+        const paddedNumber = String(moduleNumber).padStart(2, '0')
+        notesFilePath.value = `${campaign.value.directory_path}/modules/module_${paddedNumber}/play-notes.md`
+
+        // Load existing notes
+        await loadNotes()
+      }
+    }
   } catch (error) {
     console.error('Failed to load module:', error)
   }
@@ -211,9 +259,74 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
+// Notes panel
+function toggleNotes() {
+  notesCollapsed.value = !notesCollapsed.value
+}
+
+// Load notes from file
+async function loadNotes() {
+  if (!notesFilePath.value) return
+
+  try {
+    const response = await invoke<{ data: string }>('read_document_file', {
+      filePath: notesFilePath.value
+    })
+    if (response.data) {
+      notesContent.value = response.data
+    }
+  } catch (error) {
+    // File might not exist yet, that's OK
+    console.log('Notes file not found, will create on first save')
+    notesContent.value = ''
+  }
+}
+
+// Save notes to file
+async function saveNotes() {
+  if (!notesFilePath.value) return
+
+  notesSaving.value = true
+  notesLastSaved.value = false
+
+  try {
+    await invoke('save_document_file', {
+      filePath: notesFilePath.value,
+      content: notesContent.value
+    })
+    notesLastSaved.value = true
+    // Clear the "Saved" indicator after 2 seconds
+    setTimeout(() => {
+      notesLastSaved.value = false
+    }, 2000)
+  } catch (error) {
+    console.error('Failed to save notes:', error)
+  } finally {
+    notesSaving.value = false
+  }
+}
+
+// Handle notes input with debounced auto-save
+function handleNotesInput() {
+  // Clear any pending save
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+
+  // Schedule save after 1 second of inactivity
+  saveTimeout = setTimeout(() => {
+    saveNotes()
+  }, 1000)
+}
+
 // Cleanup
 onBeforeUnmount(() => {
   editor.value?.destroy()
+  // Save any pending notes before unmount
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+    saveNotes()
+  }
 })
 
 onMounted(async () => {
@@ -316,6 +429,13 @@ onMounted(async () => {
 .play-content {
   flex: 1;
   display: flex;
+  overflow: hidden;
+}
+
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -525,5 +645,93 @@ onMounted(async () => {
 
 .prose-content :deep(em) {
   font-style: italic;
+}
+
+/* Notes Panel */
+.notes-panel {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  transition: height 0.3s ease;
+  height: 250px;
+  min-height: 40px;
+}
+
+.notes-panel.collapsed {
+  height: 40px;
+}
+
+.notes-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-base-300);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  text-align: left;
+  width: 100%;
+}
+
+.notes-toggle:hover {
+  background: var(--color-base-200);
+}
+
+.notes-toggle-icon {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.notes-toggle-label {
+  flex: 1;
+}
+
+.notes-saving {
+  font-size: 0.75rem;
+  color: var(--color-warning, #f59e0b);
+  font-style: italic;
+}
+
+.notes-saved {
+  font-size: 0.75rem;
+  color: var(--color-success, #10b981);
+}
+
+.notes-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.notes-textarea {
+  flex: 1;
+  padding: 1rem;
+  border: none;
+  resize: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.notes-textarea:focus {
+  outline: none;
+}
+
+.notes-textarea::placeholder {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Adjust main area when notes expanded */
+.play-main.notes-expanded {
+  flex: 1;
+  min-height: 0;
 }
 </style>
