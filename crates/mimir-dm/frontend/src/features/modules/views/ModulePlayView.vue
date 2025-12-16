@@ -44,20 +44,45 @@
 
       <!-- Main Content Area -->
       <main class="play-main">
-        <div class="content-panel session-notes-panel">
-          <h2>Session Notes</h2>
+        <!-- Document Tabs -->
+        <div class="document-tabs" v-if="documents.length > 0">
+          <button
+            v-for="doc in documents"
+            :key="doc.id"
+            class="doc-tab"
+            :class="{ active: selectedDocument?.id === doc.id }"
+            @click="selectDocument(doc)"
+          >
+            {{ doc.title }}
+          </button>
+        </div>
+
+        <!-- Document Viewer -->
+        <div class="content-panel document-panel" v-if="selectedDocument">
+          <div class="document-header">
+            <h2>{{ selectedDocument.title }}</h2>
+          </div>
+          <div class="document-content">
+            <div v-if="documentLoading" class="loading-state">
+              Loading document...
+            </div>
+            <div v-else-if="editor" class="prose-content">
+              <EditorContent :editor="editor" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Fallback when no documents -->
+        <div class="content-panel" v-else-if="!documentsLoading && documents.length === 0">
+          <h2>Module Narrative</h2>
           <p class="placeholder-text">
-            Session notes and quick reference content will appear here.
-            This area will integrate with the session document editor.
+            No module documents found. Create documents in the module prep view.
           </p>
         </div>
 
-        <div class="content-panel card-display-panel">
-          <h2>Active Content</h2>
-          <p class="placeholder-text">
-            Monster stat blocks, NPC cards, and other reference material
-            will be displayed here during play.
-          </p>
+        <!-- Loading state -->
+        <div class="content-panel" v-else-if="documentsLoading">
+          <p class="placeholder-text">Loading documents...</p>
         </div>
       </main>
     </div>
@@ -65,17 +90,45 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import type { Module } from '@/types'
+import { useEditor, EditorContent } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import { Markdown } from 'tiptap-markdown-3'
+import type { Module, Document } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 
 const moduleId = computed(() => parseInt(route.params.id as string))
 const module = ref<Module | null>(null)
+const documents = ref<Document[]>([])
+const selectedDocument = ref<Document | null>(null)
 const sidebarCollapsed = ref(false)
+const documentsLoading = ref(true)
+const documentLoading = ref(false)
+
+// TipTap editor for read-only document viewing
+const editor = useEditor({
+  content: '',
+  editable: false,
+  extensions: [
+    StarterKit.configure({
+      heading: {
+        levels: [1, 2, 3, 4, 5, 6]
+      }
+    }),
+    Markdown.configure({
+      html: true,
+      tightLists: true,
+      tightListClass: 'tight',
+      bulletListMarker: '-',
+      linkify: false,
+      breaks: false
+    })
+  ]
+})
 
 // Load module data
 async function loadModule() {
@@ -89,14 +142,65 @@ async function loadModule() {
   }
 }
 
+// Load module documents
+async function loadDocuments() {
+  documentsLoading.value = true
+  try {
+    const response = await invoke<{ data: Document[] }>('get_module_documents', {
+      request: {
+        module_id: moduleId.value
+      }
+    })
+    documents.value = response.data || []
+
+    // Auto-select the first document (usually module overview)
+    if (documents.value.length > 0) {
+      // Try to find module_overview first, otherwise use first document
+      const overview = documents.value.find(d => d.template_id === 'module_overview')
+      selectDocument(overview || documents.value[0])
+    }
+  } catch (error) {
+    console.error('Failed to load documents:', error)
+  } finally {
+    documentsLoading.value = false
+  }
+}
+
+// Select and load a document
+async function selectDocument(doc: Document) {
+  selectedDocument.value = doc
+  await loadDocumentContent(doc)
+}
+
+// Load document content
+async function loadDocumentContent(doc: Document) {
+  if (!doc.file_path) return
+
+  documentLoading.value = true
+  try {
+    const response = await invoke<{ data: string }>('read_document_file', {
+      filePath: doc.file_path
+    })
+
+    if (response.data && editor.value) {
+      editor.value.commands.setContent(response.data)
+    }
+  } catch (error) {
+    console.error('Failed to load document content:', error)
+    if (editor.value) {
+      editor.value.commands.setContent('*Failed to load document content*')
+    }
+  } finally {
+    documentLoading.value = false
+  }
+}
+
 // Navigation
 function navigateBack() {
   router.push({ name: 'module-board', params: { id: moduleId.value } })
 }
 
 function handleEndSession() {
-  // For now, just navigate back
-  // Later this could prompt to save session notes, update session status, etc.
   if (confirm('End this play session and return to module prep?')) {
     navigateBack()
   }
@@ -107,8 +211,14 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
-onMounted(() => {
-  loadModule()
+// Cleanup
+onBeforeUnmount(() => {
+  editor.value?.destroy()
+})
+
+onMounted(async () => {
+  await loadModule()
+  await loadDocuments()
 })
 </script>
 
@@ -275,14 +385,52 @@ onMounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
+/* Document Tabs */
+.document-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.doc-tab {
+  padding: 0.5rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: 0.375rem 0.375rem 0 0;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  transition: all 0.2s;
+}
+
+.doc-tab:hover {
+  background: var(--color-base-200);
+  color: var(--color-text);
+}
+
+.doc-tab.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-accent, #e67e22);
+  border-bottom: 2px solid var(--color-surface);
+  margin-bottom: -1px;
+  font-weight: 500;
+}
+
+/* Content Panel */
 .content-panel {
   background: var(--color-surface);
   border-radius: 0.5rem;
   padding: 1.5rem;
   border: 1px solid var(--color-border);
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-panel h2 {
@@ -292,18 +440,90 @@ onMounted(() => {
   color: var(--color-text);
 }
 
-.session-notes-panel {
-  flex: 1;
-  min-height: 200px;
+.document-panel {
+  border-top-left-radius: 0;
 }
 
-.card-display-panel {
-  flex: 2;
-  min-height: 300px;
+.document-header {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.document-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.loading-state {
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 .placeholder-text {
   color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Prose styling for document content */
+.prose-content {
+  line-height: 1.7;
+}
+
+.prose-content :deep(h1) {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.5rem 0 1rem 0;
+  color: var(--color-text);
+}
+
+.prose-content :deep(h2) {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.75rem 0;
+  color: var(--color-text);
+}
+
+.prose-content :deep(h3) {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem 0;
+  color: var(--color-text);
+}
+
+.prose-content :deep(p) {
+  margin: 0.75rem 0;
+}
+
+.prose-content :deep(ul),
+.prose-content :deep(ol) {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.prose-content :deep(li) {
+  margin: 0.25rem 0;
+}
+
+.prose-content :deep(blockquote) {
+  border-left: 3px solid var(--color-accent, #e67e22);
+  margin: 1rem 0;
+  padding-left: 1rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.prose-content :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}
+
+.prose-content :deep(strong) {
+  font-weight: 600;
+}
+
+.prose-content :deep(em) {
   font-style: italic;
 }
 </style>
