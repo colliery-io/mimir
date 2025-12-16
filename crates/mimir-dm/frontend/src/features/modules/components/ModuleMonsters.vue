@@ -36,7 +36,7 @@
           <div class="monster-info">
             <span class="monster-name">{{ monster.name }}</span>
             <span class="monster-meta">
-              CR {{ monster.cr }} | {{ monster.type }} | {{ monster.source }}
+              CR {{ monster.cr }} | {{ monster.creature_type }} | {{ monster.source }}
             </span>
           </div>
           <button
@@ -166,7 +166,9 @@ function debouncedSearch() {
 
     isSearching.value = true
     try {
+      console.log('Searching for:', searchQuery.value)
       const results = await searchMonsters({ query: searchQuery.value })
+      console.log('Search results:', results)
       searchResults.value = results.slice(0, 10) // Limit results
     } catch (error) {
       console.error('Search failed:', error)
