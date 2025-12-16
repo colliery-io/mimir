@@ -238,6 +238,15 @@ fn main() {
             find_modules_needing_next,
             increment_module_sessions,
             delete_module,
+            // Module monster commands
+            add_module_monster,
+            remove_module_monster,
+            update_module_monster,
+            list_module_monsters,
+            list_module_monsters_with_data,
+            list_module_monsters_by_encounter,
+            get_module_encounter_tags,
+            clear_module_monsters,
             // Session commands
             create_session,
             list_module_sessions,

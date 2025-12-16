@@ -45,6 +45,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    module_monsters (id) {
+        id -> Integer,
+        module_id -> Integer,
+        monster_name -> Text,
+        monster_source -> Text,
+        quantity -> Integer,
+        encounter_tag -> Nullable<Text>,
+        created_at -> Text,
+        updated_at -> Text,
+    }
+}
+
+diesel::table! {
     sessions (id) {
         id -> Integer,
         campaign_id -> Integer,
@@ -509,6 +522,7 @@ diesel::table! {
 }
 
 diesel::joinable!(modules -> campaigns (campaign_id));
+diesel::joinable!(module_monsters -> modules (module_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
 diesel::joinable!(workflow_cards -> campaigns (campaign_id));
@@ -528,6 +542,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     campaigns,
     campaign_players,
     modules,
+    module_monsters,
     sessions,
     workflow_cards,
     workflow_card_tags,
