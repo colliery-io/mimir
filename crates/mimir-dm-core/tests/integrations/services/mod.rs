@@ -9,6 +9,7 @@ mod deity;
 mod feat;
 mod item;
 mod language;
+mod module_monsters;
 mod modules;
 mod monster;
 mod object;

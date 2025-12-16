@@ -4,14 +4,14 @@ level: task
 title: "Add module_monsters table and service"
 short_code: "MIMIR-T-0145"
 created_at: 2025-12-16T16:23:42.202635+00:00
-updated_at: 2025-12-16T16:23:42.202635+00:00
+updated_at: 2025-12-16T16:45:12.549150+00:00
 parent: MIMIR-I-0018
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,6 +28,10 @@ initiative_id: MIMIR-I-0018
 ## Objective
 
 Create the backend infrastructure to associate monsters from the catalog with specific modules, enabling the Play Mode to display relevant monsters for each module.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
