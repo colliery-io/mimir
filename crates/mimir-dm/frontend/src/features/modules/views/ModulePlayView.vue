@@ -344,10 +344,11 @@ onMounted(async () => {
 
 <style scoped>
 .play-mode-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--color-base-200);
+  overflow: hidden;
 }
 
 /* Header Styles */
