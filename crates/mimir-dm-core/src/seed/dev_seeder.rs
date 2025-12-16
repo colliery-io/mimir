@@ -95,11 +95,29 @@ fn seed_campaign(
     campaigns_directory: &str,
 ) -> Result<crate::models::campaign::campaigns::Campaign> {
     let mut service = CampaignService::new(conn);
-    service.create_campaign(
+    let campaign = service.create_campaign(
         TEST_CAMPAIGN_NAME,
         Some("A classic D&D adventure for 4-5 characters of levels 1-5".to_string()),
         campaigns_directory,
-    )
+    )?;
+
+    // Transition through stages to create all stage documents
+    // concept -> session_zero -> integration -> active
+    info!("Transitioning campaign through stages to create all documents...");
+
+    let mut service = CampaignService::new(conn);
+    service.transition_campaign_stage(campaign.id, "session_zero")?;
+    info!("  -> session_zero (created session zero documents)");
+
+    let mut service = CampaignService::new(conn);
+    service.transition_campaign_stage(campaign.id, "integration")?;
+    info!("  -> integration (created integration documents)");
+
+    let mut service = CampaignService::new(conn);
+    let campaign = service.transition_campaign_stage(campaign.id, "active")?;
+    info!("  -> active (campaign ready for play)");
+
+    Ok(campaign)
 }
 
 /// Seed test modules

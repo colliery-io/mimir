@@ -76,16 +76,30 @@ impl SessionService {
         let notes_template = TemplateRepository::get_latest(conn, "session_notes")?;
         let notes_content = Self::render_template(&notes_template, session_number, module_number)?;
 
+        // Add YAML frontmatter with title and type
+        let notes_title = format!("Session {} Notes", session_number);
+        let notes_with_frontmatter = format!(
+            "---\ntitle: \"{}\"\ntype: session_notes\n---\n\n{}",
+            notes_title, notes_content
+        );
+
         let notes_path = session_dir.join("session-notes.md");
-        fs::write(&notes_path, notes_content)?;
+        fs::write(&notes_path, notes_with_frontmatter)?;
 
         // Create session outline from template
         let outline_template = TemplateRepository::get_latest(conn, "session_outline")?;
         let outline_content =
             Self::render_template(&outline_template, session_number, module_number)?;
 
+        // Add YAML frontmatter with title and type
+        let outline_title = format!("Session {} Outline", session_number);
+        let outline_with_frontmatter = format!(
+            "---\ntitle: \"{}\"\ntype: session_outline\n---\n\n{}",
+            outline_title, outline_content
+        );
+
         let outline_path = session_dir.join("session-outline.md");
-        fs::write(&outline_path, outline_content)?;
+        fs::write(&outline_path, outline_with_frontmatter)?;
 
         Ok(())
     }

@@ -439,8 +439,28 @@ impl<'a> CampaignService<'a> {
                 .render(&template.document_id, &context)
                 .map_err(|e| DbError::InvalidData(format!("Failed to render template: {}", e)))?;
 
-            // Write the rendered template content to the file
-            fs::write(full_path, rendered_content)?;
+            // Generate title from doc_type (e.g., "campaign_pitch" -> "Campaign Pitch")
+            let title: String = doc_type
+                .replace('_', " ")
+                .split_whitespace()
+                .map(|w| {
+                    let mut chars = w.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            // Add YAML frontmatter with title and type
+            let content_with_frontmatter = format!(
+                "---\ntitle: \"{}\"\ntype: {}\n---\n\n{}",
+                title, doc_type, rendered_content
+            );
+
+            // Write the rendered template content to the file with frontmatter
+            fs::write(full_path, content_with_frontmatter)?;
 
             let new_doc = NewDocument {
                 campaign_id: campaign.id,
@@ -508,8 +528,22 @@ impl<'a> CampaignService<'a> {
                 fs::create_dir_all(parent)?;
             }
 
+            // Generate title from doc_type (e.g., "campaign_pitch" -> "Campaign Pitch")
+            let title: String = doc_type
+                .replace('_', " ")
+                .split_whitespace()
+                .map(|w| {
+                    let mut chars = w.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+
             // Try to get the template from the database and render it
-            let content = match TemplateRepository::get_latest(self.conn, &template_id) {
+            let rendered_content = match TemplateRepository::get_latest(self.conn, &template_id) {
                 Ok(template) => {
                     // Render the template with its default context
                     let context = template.create_context();
@@ -525,24 +559,21 @@ impl<'a> CampaignService<'a> {
                 }
                 Err(_) => {
                     // If template doesn't exist, create a basic markdown file
-                    format!("# {}\n\n*This document will be created for the {} stage.*\n\n## Overview\n\n[Document content will be added here]\n", 
-                        doc_type.replace('_', " ").split_whitespace()
-                            .map(|w| {
-                                let mut chars = w.chars();
-                                match chars.next() {
-                                    None => String::new(),
-                                    Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" "),
+                    format!("# {}\n\n*This document will be created for the {} stage.*\n\n## Overview\n\n[Document content will be added here]\n",
+                        title,
                         stage
                     )
                 }
             };
 
-            // Write the content to the file
-            fs::write(full_path, content)?;
+            // Add YAML frontmatter with title and type
+            let content_with_frontmatter = format!(
+                "---\ntitle: \"{}\"\ntype: {}\n---\n\n{}",
+                title, doc_type, rendered_content
+            );
+
+            // Write the content to the file with frontmatter
+            fs::write(full_path, content_with_frontmatter)?;
 
             // Create database record
             let new_doc = NewDocument {
