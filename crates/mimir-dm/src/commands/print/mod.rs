@@ -578,6 +578,8 @@ pub async fn export_campaign_document(
 ///
 /// Reads all markdown documents for the campaign, converts to Typst,
 /// and generates a single PDF with cover page and table of contents.
+/// Documents are ordered according to the campaign construction flow:
+/// concept -> session_zero -> integration stages.
 ///
 /// # Parameters
 /// - `campaign_id` - Database ID of the campaign
@@ -613,7 +615,7 @@ pub async fn export_campaign_documents(
         .map_err(|e| format!("Database error: {}", e))?;
 
     let mut doc_service = DocumentService::new(&mut doc_conn);
-    let documents = doc_service
+    let mut documents = doc_service
         .get_campaign_documents(campaign_id)
         .map_err(|e| format!("Failed to get documents: {}", e))?;
 
@@ -621,7 +623,42 @@ pub async fn export_campaign_documents(
         return Ok(ApiResponse::error("No documents to export".to_string()));
     }
 
-    // Collect file paths for documents that exist
+    // Sort documents according to campaign construction flow
+    // Order: concept stage -> session_zero stage -> integration stage -> other
+    let document_order: Vec<&str> = vec![
+        // Concept stage
+        "campaign_pitch",
+        // Session Zero stage
+        "starting_scenario",
+        "world_primer",
+        "character_guidelines",
+        "table_expectations",
+        "character_integration",
+        // Integration stage
+        "campaign_bible",
+        "major_npc_tracker",
+    ];
+
+    // Helper to get document order index
+    let get_order = |template_id: &str| -> usize {
+        document_order
+            .iter()
+            .position(|&t| t == template_id)
+            .unwrap_or(usize::MAX)
+    };
+
+    documents.sort_by(|a, b| {
+        let a_order = get_order(&a.template_id);
+        let b_order = get_order(&b.template_id);
+
+        // Primary sort by document order, secondary by created_at for same-type docs
+        match a_order.cmp(&b_order) {
+            std::cmp::Ordering::Equal => a.created_at.cmp(&b.created_at),
+            other => other,
+        }
+    });
+
+    // Collect file paths for documents that exist (now in sorted order)
     let file_paths: Vec<std::path::PathBuf> = documents
         .iter()
         .filter_map(|doc| {
@@ -642,7 +679,7 @@ pub async fn export_campaign_documents(
     }
 
     info!(
-        "Rendering {} documents for campaign '{}'",
+        "Rendering {} documents for campaign '{}' in construction flow order",
         file_paths.len(),
         campaign.name
     );

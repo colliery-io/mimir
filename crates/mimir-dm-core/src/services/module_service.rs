@@ -149,14 +149,21 @@ impl<'a> ModuleService<'a> {
                 )
             })?;
 
-        let content = tera.render(&template.document_id, &context).map_err(|e| {
+        let template_content = tera.render(&template.document_id, &context).map_err(|e| {
             diesel::result::Error::QueryBuilderError(
                 format!("Failed to render template: {}", e).into(),
             )
         })?;
 
-        // Write the file
-        fs::write(&overview_file_path, content)?;
+        // Add YAML frontmatter with title and type
+        let title = format!("{} - Module Overview", name);
+        let content_with_frontmatter = format!(
+            "---\ntitle: \"{}\"\ntype: module_overview\n---\n\n{}",
+            title, template_content
+        );
+
+        // Write the file with frontmatter
+        fs::write(&overview_file_path, content_with_frontmatter)?;
 
         // Create database record for overview
         let overview_doc = NewDocument {
@@ -165,7 +172,7 @@ impl<'a> ModuleService<'a> {
             session_id: None,
             template_id: "module_overview".to_string(), // Always use module_overview as the template_id
             document_type: "module_overview".to_string(),
-            title: "Module Overview".to_string(),
+            title,
             file_path: overview_file_path.to_string_lossy().to_string(),
         };
 

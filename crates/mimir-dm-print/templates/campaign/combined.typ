@@ -128,22 +128,21 @@
 // TABLE OF CONTENTS
 // =============================================================================
 
-#let grouped = group-documents(documents)
-
 = Table of Contents
 
 #v(spacing.lg)
 
-#for (doc-type, docs) in grouped [
-  == #format-type(doc-type)
-  #v(spacing.sm)
+#for (i, doc) in documents.enumerate() [
+  #let doc-title = doc.at("title", default: "Untitled")
+  #let doc-type = doc.at("document_type", default: "document")
 
-  #for doc in docs [
-    #let doc-title = doc.at("title", default: "Untitled")
-    - #doc-title
-  ]
-
-  #v(spacing.md)
+  #grid(
+    columns: (1fr, auto),
+    gutter: spacing.sm,
+    [#str(i + 1). #doc-title],
+    text(size: sizes.sm, fill: colors.text-secondary)[#format-type(doc-type)]
+  )
+  #v(spacing.xs)
 ]
 
 #pagebreak()

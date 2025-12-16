@@ -215,7 +215,7 @@ impl PrintService {
     ) -> Result<Vec<u8>> {
         info!("Rendering {} campaign documents to combined PDF", documents.len());
 
-        // Parse all documents
+        // Parse all documents (title/type come from YAML frontmatter)
         let mut parsed_docs = Vec::new();
         for file_path in documents {
             debug!("Reading document: {:?}", file_path);
@@ -272,7 +272,9 @@ impl PrintService {
     ) -> Result<serde_json::Value> {
         let docs: Vec<serde_json::Value> = documents
             .iter()
-            .map(|parsed| {
+            .enumerate()
+            .map(|(idx, parsed)| {
+                // Extract title and type from YAML frontmatter
                 let title = parsed
                     .frontmatter
                     .get("title")
@@ -285,10 +287,30 @@ impl PrintService {
                     .and_then(|v| v.as_str())
                     .unwrap_or("document");
 
+                // Sanitize content to remove any dangerous Typst commands
+                let safe_content = sanitize_typst_content(&parsed.typst_content);
+
+                // Debug: log first 500 chars of first document's content
+                if idx == 0 {
+                    debug!(
+                        "First document '{}' typst content (first 500 chars): {}",
+                        title,
+                        &safe_content.chars().take(500).collect::<String>()
+                    );
+                }
+
+                // Debug: check if content contains any suspicious patterns
+                if safe_content.contains("#set") || safe_content.contains("#page") {
+                    tracing::warn!(
+                        "Document '{}' still contains #set or #page after sanitization!",
+                        title
+                    );
+                }
+
                 serde_json::json!({
                     "title": title,
                     "document_type": document_type,
-                    "content": parsed.typst_content,
+                    "content": safe_content,
                 })
             })
             .collect();
@@ -298,6 +320,78 @@ impl PrintService {
             "documents": docs,
         }))
     }
+}
+
+/// Sanitize Typst content to remove dangerous commands that could affect page layout
+///
+/// This removes commands like `#set page(...)` that could cause conflicts when
+/// the content is eval'd within a template.
+fn sanitize_typst_content(content: &str) -> String {
+    let mut result = String::with_capacity(content.len());
+    let chars: Vec<char> = content.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        // Check for #set page( or #page( patterns
+        if chars[i] == '#' {
+            // Look ahead for "set page(" or "page("
+            let remaining: String = chars[i..].iter().collect();
+
+            if remaining.starts_with("#set page(") || remaining.starts_with("#set  page(") {
+                // Skip "#set page" and find the opening paren
+                let paren_start = remaining.find('(').unwrap();
+                i += paren_start;
+                // Skip the balanced parentheses
+                i += skip_balanced(&chars[i..], '(', ')');
+                continue;
+            } else if remaining.starts_with("#page(") {
+                // Skip "#page" and find the opening paren
+                let paren_start = remaining.find('(').unwrap();
+                i += paren_start;
+                // Skip the balanced parentheses
+                i += skip_balanced(&chars[i..], '(', ')');
+                // Also skip following bracket if present (for #page(...)[...])
+                if i < len && chars[i] == '[' {
+                    i += skip_balanced(&chars[i..], '[', ']');
+                }
+                continue;
+            } else if remaining.starts_with("#pagebreak(") {
+                // Allow #pagebreak() - it's safe and commonly used
+                // Just output as-is
+            }
+        }
+
+        result.push(chars[i]);
+        i += 1;
+    }
+
+    result
+}
+
+/// Skip balanced brackets/parens, returning the number of characters consumed
+fn skip_balanced(chars: &[char], open: char, close: char) -> usize {
+    if chars.is_empty() || chars[0] != open {
+        return 0;
+    }
+
+    let mut depth = 0;
+    let mut i = 0;
+
+    while i < chars.len() {
+        if chars[i] == open {
+            depth += 1;
+        } else if chars[i] == close {
+            depth -= 1;
+            if depth == 0 {
+                return i + 1;
+            }
+        }
+        i += 1;
+    }
+
+    // Unbalanced - return whole remaining content
+    chars.len()
 }
 
 /// Format Typst diagnostics into a readable error message
@@ -1016,5 +1110,61 @@ A famous tavern in Waterdeep built over the entrance to Undermountain.
         let pdf_bytes = result.unwrap();
         assert!(pdf_bytes.len() > 2000, "Combined PDF seems too small for 3 documents");
         assert_eq!(&pdf_bytes[0..4], b"%PDF", "Output is not a valid PDF");
+    }
+
+    #[test]
+    fn test_sanitize_typst_content() {
+        // Test removing #set page commands
+        let content_with_set_page = r#"= Hello World
+
+#set page(header: [My Header])
+
+Some content here.
+
+#set page(footer: [My Footer], margin: 1in)
+
+More content."#;
+        let sanitized = sanitize_typst_content(content_with_set_page);
+        assert!(!sanitized.contains("#set page"), "Should remove #set page");
+        assert!(sanitized.contains("= Hello World"));
+        assert!(sanitized.contains("Some content here."));
+        assert!(sanitized.contains("More content."));
+
+        // Test content without page commands passes through unchanged
+        let clean_content = "= Normal Content\n\nJust text here.";
+        let sanitized_clean = sanitize_typst_content(clean_content);
+        assert_eq!(sanitized_clean, clean_content);
+
+        // Test removing #page function calls
+        let content_with_page_fn = r#"= Title
+
+#page(header: [Test])[
+  Some content in a page block
+]
+
+After the page."#;
+        let sanitized_fn = sanitize_typst_content(content_with_page_fn);
+        assert!(!sanitized_fn.contains("#page("), "Should remove #page function");
+
+        // Test nested brackets/parens are handled correctly
+        let content_with_nested = r#"= Title
+
+#set page(header: [text(fill: red)[Hello]], footer: [page #context counter(page).display()])
+
+After nested."#;
+        let sanitized_nested = sanitize_typst_content(content_with_nested);
+        assert!(!sanitized_nested.contains("#set page"), "Should handle nested brackets");
+        assert!(sanitized_nested.contains("After nested."));
+
+        // Test #pagebreak is preserved
+        let content_with_pagebreak = "= Title\n\n#pagebreak()\n\n= Next Section";
+        let sanitized_pagebreak = sanitize_typst_content(content_with_pagebreak);
+        assert!(sanitized_pagebreak.contains("#pagebreak()"), "Should preserve #pagebreak");
+
+        // Test other safe # commands are preserved
+        let content_with_safe = "= Title\n\n#table(columns: 2)[A][B]\n\n#link(\"url\")[text]";
+        let sanitized_safe = sanitize_typst_content(content_with_safe);
+        assert!(sanitized_safe.contains("#table"), "Should preserve #table");
+        assert!(sanitized_safe.contains("#link"), "Should preserve #link");
     }
 }

@@ -227,16 +227,13 @@ impl<'a> DocumentService<'a> {
                 crate::error::DbError::InvalidData(format!("Failed to add template: {}", e))
             })?;
 
-        let content = tera.render(&template.document_id, &context).map_err(|e| {
+        let template_content = tera.render(&template.document_id, &context).map_err(|e| {
             crate::error::DbError::InvalidData(format!("Failed to render template: {}", e))
         })?;
 
-        // Write file to disk
-        fs::write(&file_path, content)?;
-
-        // Generate title from template_id
+        // Generate title from template_id (e.g., "campaign_pitch" -> "Campaign Pitch")
         let title = template_id
-            .split('-')
+            .split('_')
             .map(|word| {
                 let mut chars = word.chars();
                 match chars.next() {
@@ -247,12 +244,24 @@ impl<'a> DocumentService<'a> {
             .collect::<Vec<_>>()
             .join(" ");
 
+        // Document type uses underscores (e.g., "campaign_pitch")
+        let document_type = template_id.replace('-', "_");
+
+        // Add YAML frontmatter with title and type
+        let content_with_frontmatter = format!(
+            "---\ntitle: \"{}\"\ntype: {}\n---\n\n{}",
+            title, document_type, template_content
+        );
+
+        // Write file to disk with frontmatter
+        fs::write(&file_path, content_with_frontmatter)?;
+
         let new_doc = NewDocument {
             campaign_id: campaign.id,
             module_id: None,
             session_id: None,
             template_id: template_id.to_string(),
-            document_type: template_id.replace('-', "_"),
+            document_type,
             title,
             file_path: file_path.to_string_lossy().to_string(),
         };

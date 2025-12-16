@@ -244,9 +244,14 @@ pub fn markdown_to_typst(markdown: &str) -> String {
                 table_row.clear();
             }
             Event::End(TagEnd::TableHead) => {
-                // Output header row with bold text
-                for cell in &table_row {
-                    output.push_str(&format!("  table.header[*{}*],\n", cell));
+                // Output header row wrapped in a single table.header() call
+                // Typst requires all header cells to be in one table.header()
+                if !table_row.is_empty() {
+                    let header_cells: Vec<String> = table_row
+                        .iter()
+                        .map(|cell| format!("[*{}*]", cell))
+                        .collect();
+                    output.push_str(&format!("  table.header({}),\n", header_cells.join(", ")));
                 }
                 table_header = false;
                 table_row.clear();
