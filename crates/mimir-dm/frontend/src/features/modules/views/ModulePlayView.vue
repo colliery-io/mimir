@@ -502,10 +502,11 @@ onMounted(async () => {
 .play-main {
   flex: 1;
   padding: 1.5rem;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-height: 0;
 }
 
 /* Document Tabs */
@@ -551,6 +552,7 @@ onMounted(async () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .content-panel h2 {
@@ -573,6 +575,7 @@ onMounted(async () => {
 .document-content {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .loading-state {
