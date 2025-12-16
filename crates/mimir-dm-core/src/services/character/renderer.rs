@@ -3,7 +3,7 @@
 //! Generates human-readable markdown character sheets from CharacterData.
 
 use crate::models::catalog::{Item, Spell};
-use crate::models::character::CharacterData;
+use crate::models::character::{CharacterData, FeatureReference};
 use std::collections::HashMap;
 
 /// Trait for rendering character sheets in various formats.
@@ -936,9 +936,27 @@ mod tests {
                 languages: vec!["Common".to_string(), "Dwarvish".to_string()],
             },
             class_features: vec![
-                "Fighting Style (Defense)".to_string(),
-                "Second Wind".to_string(),
-                "Action Surge".to_string(),
+                FeatureReference {
+                    name: "Fighting Style (Defense)".to_string(),
+                    class_name: "Fighter".to_string(),
+                    subclass_name: None,
+                    source: "PHB".to_string(),
+                    level: 1,
+                },
+                FeatureReference {
+                    name: "Second Wind".to_string(),
+                    class_name: "Fighter".to_string(),
+                    subclass_name: None,
+                    source: "PHB".to_string(),
+                    level: 1,
+                },
+                FeatureReference {
+                    name: "Action Surge".to_string(),
+                    class_name: "Fighter".to_string(),
+                    subclass_name: None,
+                    source: "PHB".to_string(),
+                    level: 2,
+                },
             ],
             feats: Vec::new(),
             spells: SpellData::default(),
@@ -1030,9 +1048,27 @@ mod tests {
                 ],
             },
             class_features: vec![
-                "Arcane Recovery".to_string(),
-                "Evocation Savant".to_string(),
-                "Sculpt Spells".to_string(),
+                FeatureReference {
+                    name: "Arcane Recovery".to_string(),
+                    class_name: "Wizard".to_string(),
+                    subclass_name: None,
+                    source: "PHB".to_string(),
+                    level: 1,
+                },
+                FeatureReference {
+                    name: "Evocation Savant".to_string(),
+                    class_name: "Wizard".to_string(),
+                    subclass_name: Some("Evocation".to_string()),
+                    source: "PHB".to_string(),
+                    level: 2,
+                },
+                FeatureReference {
+                    name: "Sculpt Spells".to_string(),
+                    class_name: "Wizard".to_string(),
+                    subclass_name: Some("Evocation".to_string()),
+                    source: "PHB".to_string(),
+                    level: 2,
+                },
             ],
             feats: Vec::new(),
             spells: SpellData {

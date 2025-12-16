@@ -663,8 +663,20 @@ mod tests {
                 languages: vec!["Common".to_string(), "Dwarvish".to_string()],
             },
             class_features: vec![
-                "Fighting Style (Defense)".to_string(),
-                "Second Wind".to_string(),
+                FeatureReference {
+                    name: "Fighting Style (Defense)".to_string(),
+                    class_name: "Fighter".to_string(),
+                    subclass_name: None,
+                    source: "PHB".to_string(),
+                    level: 1,
+                },
+                FeatureReference {
+                    name: "Second Wind".to_string(),
+                    class_name: "Fighter".to_string(),
+                    subclass_name: None,
+                    source: "PHB".to_string(),
+                    level: 1,
+                },
             ],
             feats: Vec::new(),
             spells: SpellData::default(),
