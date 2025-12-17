@@ -129,6 +129,17 @@ pub enum Verification {
 
     /// Check that no errors occurred
     NoErrors,
+
+    /// Use an LLM to judge the response against criteria
+    /// This enables semantic evaluation rather than strict text matching
+    LlmJudge {
+        /// The criteria the LLM should evaluate against
+        /// e.g., "Response confirms character creation and summarizes key stats"
+        criteria: String,
+        /// Optional additional context to provide to the judge
+        #[serde(default)]
+        context: Option<String>,
+    },
 }
 
 /// Expected character properties
@@ -510,11 +521,9 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 expected_tools: vec![],  // Should answer from context
                 setup: vec![],
                 verify: Some(vec![
-                    Verification::ResponseContains {
-                        text: "Iarno".to_string(),  // His real name
-                    },
-                    Verification::ResponseContains {
-                        text: "Redbrand".to_string(),  // His gang
+                    Verification::LlmJudge {
+                        criteria: "Response correctly identifies Glasstaff as Iarno Albrek, mentions his connection to the Redbrands gang, and provides relevant context about his role in the campaign.".to_string(),
+                        context: Some("Glasstaff is the alias of Iarno Albrek, the leader of the Redbrand ruffians in Lost Mine of Phandelver.".to_string()),
                     },
                     Verification::NoErrors,
                 ]),
@@ -529,8 +538,9 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 expected_tools: vec![],  // Should answer from context
                 setup: vec![],
                 verify: Some(vec![
-                    Verification::ResponseContains {
-                        text: "Gundren".to_string(),  // Finding Gundren
+                    Verification::LlmJudge {
+                        criteria: "Response provides a helpful summary of the party's current objectives, referencing the campaign context appropriately.".to_string(),
+                        context: None,
                     },
                     Verification::NoErrors,
                 ]),
@@ -545,8 +555,9 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 expected_tools: vec![],  // Could use list_characters or answer from context
                 setup: vec![],
                 verify: Some(vec![
-                    Verification::ResponseContains {
-                        text: "Helena".to_string(),  // The cleric
+                    Verification::LlmJudge {
+                        criteria: "Response correctly identifies the party's healer or healing-capable character based on the campaign context.".to_string(),
+                        context: None,
                     },
                     Verification::NoErrors,
                 ]),
@@ -569,8 +580,9 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 expected_tools: vec![],
                 setup: vec![],
                 verify: Some(vec![
-                    Verification::ResponseContains {
-                        text: "3".to_string(),  // They have 3 1st-level slots
+                    Verification::LlmJudge {
+                        criteria: "Response correctly lists the spell slots for a 5th level wizard: 4 first-level, 3 second-level, and 2 third-level slots.".to_string(),
+                        context: Some("A 5th level wizard has 4/3/2 spell slots (1st/2nd/3rd level).".to_string()),
                     },
                     Verification::NoErrors,
                 ]),
@@ -585,11 +597,9 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 expected_tools: vec![],
                 setup: vec![],
                 verify: Some(vec![
-                    Verification::ResponseContains {
-                        text: "action".to_string(),
-                    },
-                    Verification::ResponseContains {
-                        text: "bonus".to_string(),
+                    Verification::LlmJudge {
+                        criteria: "Response correctly explains D&D 5e action economy, mentioning action, bonus action, movement, free object interaction, and optionally reaction.".to_string(),
+                        context: None,
                     },
                     Verification::NoErrors,
                 ]),
@@ -604,8 +614,9 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 expected_tools: vec![],
                 setup: vec![],
                 verify: Some(vec![
-                    Verification::ResponseNotContains {
-                        text: "error".to_string(),
+                    Verification::LlmJudge {
+                        criteria: "Response accurately describes the stunned condition: incapacitated, can't move, can speak only falteringly, automatically fails Str/Dex saves, attacks against have advantage.".to_string(),
+                        context: None,
                     },
                     Verification::NoErrors,
                 ]),

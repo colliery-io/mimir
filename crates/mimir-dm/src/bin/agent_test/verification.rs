@@ -3,10 +3,13 @@
 // Re-export for use by other modules
 pub use mimir_dm::services::llm::chat_processor::ToolCallRecord;
 
+use mimir_dm::services::llm::LlmService;
 use mimir_dm_core::services::CharacterService;
 use mimir_dm_core::DatabaseService;
+use mimir_dm_llm::{LlmProvider, Message};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tracing::{info, warn};
 
 use crate::tasks::{CharacterExpectation, Verification};
 
@@ -21,11 +24,13 @@ pub struct VerificationResult {
 }
 
 /// Verification context containing execution results
-pub struct VerificationContext {
+pub struct VerificationContext<'a> {
     pub db_service: Arc<DatabaseService>,
     pub response_content: String,
     pub tools_called: Vec<ToolCallRecord>,
     pub had_errors: bool,
+    pub llm_service: Option<&'a LlmService>,
+    pub original_prompt: String,
 }
 
 /// Helper to find a character by name
@@ -53,19 +58,20 @@ fn find_character_by_name(
 }
 
 /// Run all verifications for a task
-pub fn run_verifications(
+pub async fn run_verifications(
     verifications: &[Verification],
-    context: &VerificationContext,
+    context: &VerificationContext<'_>,
 ) -> Vec<VerificationResult> {
-    verifications
-        .iter()
-        .map(|v| run_single_verification(v, context))
-        .collect()
+    let mut results = Vec::new();
+    for v in verifications {
+        results.push(run_single_verification(v, context).await);
+    }
+    results
 }
 
-fn run_single_verification(
+async fn run_single_verification(
     verification: &Verification,
-    context: &VerificationContext,
+    context: &VerificationContext<'_>,
 ) -> VerificationResult {
     match verification {
         Verification::CharacterExists { name, expect } => {
@@ -93,6 +99,9 @@ fn run_single_verification(
             expect_value,
         } => verify_sql_query(query, *expect_rows, expect_value.as_ref(), context),
         Verification::NoErrors => verify_no_errors(context),
+        Verification::LlmJudge { criteria, context: extra_context } => {
+            verify_llm_judge(criteria, extra_context.as_deref(), context).await
+        }
     }
 }
 
@@ -464,5 +473,122 @@ fn verify_no_errors(context: &VerificationContext) -> VerificationResult {
         },
         expected: None,
         actual: None,
+    }
+}
+
+/// Use an LLM to judge whether the response meets the criteria
+async fn verify_llm_judge(
+    criteria: &str,
+    extra_context: Option<&str>,
+    context: &VerificationContext<'_>,
+) -> VerificationResult {
+    let llm_service = match context.llm_service {
+        Some(svc) => svc,
+        None => {
+            return VerificationResult {
+                check_type: "llm_judge".to_string(),
+                passed: false,
+                message: Some("LLM service not available for judge verification".to_string()),
+                expected: None,
+                actual: None,
+            }
+        }
+    };
+
+    // Build the judge prompt
+    let judge_prompt = format!(
+        r#"You are an evaluation judge for an AI assistant test. Your job is to determine if the assistant's response meets the given criteria.
+
+## Original User Request
+{user_prompt}
+
+## Assistant's Response
+{response}
+
+## Tools Called
+{tools}
+
+## Evaluation Criteria
+{criteria}
+{extra}
+
+## Instructions
+Evaluate whether the assistant's response satisfies the criteria above. Consider:
+- Did the response address the user's request?
+- Were appropriate tools used (if any were needed)?
+- Is the response accurate and helpful?
+
+Respond with EXACTLY one of these two formats:
+PASS: <brief explanation of why it passes>
+FAIL: <brief explanation of why it fails>
+
+Your response must start with either "PASS:" or "FAIL:"."#,
+        user_prompt = context.original_prompt,
+        response = context.response_content,
+        tools = if context.tools_called.is_empty() {
+            "None".to_string()
+        } else {
+            context.tools_called.iter()
+                .map(|t| format!("- {} (success: {})", t.name, t.success))
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
+        criteria = criteria,
+        extra = extra_context.map(|c| format!("\n## Additional Context\n{}", c)).unwrap_or_default(),
+    );
+
+    info!("Running LLM judge with criteria: {}", criteria);
+
+    // Call the LLM
+    let messages = vec![Message {
+        role: "user".to_string(),
+        content: judge_prompt,
+        tool_call_id: None,
+    }];
+
+    // Use the provider directly for a simple completion (no tools needed for judging)
+    let result = llm_service.provider().chat(
+        messages,
+        None,           // No tools for judge
+        None,           // n (number of completions)
+        Some(0.1),      // Low temperature for consistency
+        Some(500),      // max_tokens - short response needed
+        None,           // stop sequences
+        None,           // extra_config
+        None,           // cancellation_token
+    ).await;
+
+    match result {
+        Ok(response) => {
+            let judge_response = response.content.trim();
+            info!("LLM judge response: {}", judge_response);
+
+            let passed = judge_response.to_uppercase().starts_with("PASS");
+            let explanation = if judge_response.to_uppercase().starts_with("PASS:") {
+                judge_response[5..].trim().to_string()
+            } else if judge_response.to_uppercase().starts_with("FAIL:") {
+                judge_response[5..].trim().to_string()
+            } else {
+                judge_response.to_string()
+            };
+
+            VerificationResult {
+                check_type: "llm_judge".to_string(),
+                passed,
+                message: Some(explanation),
+                expected: Some(criteria.to_string()),
+                actual: Some(format!("Judge verdict: {}", if passed { "PASS" } else { "FAIL" })),
+            }
+        }
+        Err(e) => {
+            warn!("LLM judge call failed: {}", e);
+            VerificationResult {
+                check_type: "llm_judge".to_string(),
+                passed: false,
+                message: Some(format!("LLM judge error: {}", e)),
+                expected: Some(criteria.to_string()),
+                actual: None,
+            }
+        }
     }
 }

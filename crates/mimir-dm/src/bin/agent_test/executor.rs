@@ -439,8 +439,10 @@ impl AgentTestExecutor {
                         response_content: response.content.clone(),
                         tools_called: response.tools_called.clone(),
                         had_errors,
+                        llm_service: Some(&self.llm_service),
+                        original_prompt: task.prompt.clone(),
                     };
-                    run_verifications(verifications, &context)
+                    run_verifications(verifications, &context).await
                 } else {
                     vec![]
                 };
@@ -579,8 +581,10 @@ impl AgentTestExecutor {
                             response_content: response.content,
                             tools_called: turn_tool_records,
                             had_errors,
+                            llm_service: Some(&self.llm_service),
+                            original_prompt: turn.prompt.clone(),
                         };
-                        run_verifications(verifications, &context)
+                        run_verifications(verifications, &context).await
                     } else {
                         vec![]
                     };
