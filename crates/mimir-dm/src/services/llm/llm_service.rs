@@ -182,8 +182,8 @@ impl LlmProvider for Provider {
 }
 
 /// Default model names for different providers (used when no model is configured)
-pub const DEFAULT_OLLAMA_MODEL: &str = "llama3.2";
-pub const DEFAULT_GROQ_MODEL: &str = "llama-3.3-70b-versatile";
+pub const DEFAULT_OLLAMA_MODEL: &str = "gpt-oss:20b";
+pub const DEFAULT_GROQ_MODEL: &str = "openai/gpt-oss-120b";
 pub const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress

@@ -153,15 +153,15 @@
                 class="form-input"
                 :value="getCurrentModel() || ''"
                 @input="setCurrentModel(($event.target as HTMLInputElement).value || undefined)"
-                :placeholder="providerSettings.provider_type === 'ollama' ? 'gpt-oss:20b' : 'gpt-oss-20b'"
+                :placeholder="providerSettings.provider_type === 'ollama' ? 'gpt-oss:20b' : 'openai/gpt-oss-120b'"
               />
               <p class="input-help">
                 <template v-if="providerSettings.provider_type === 'ollama'">
-                  Enter the name of an Ollama model (e.g., <code>gpt-oss:20b</code>, <code>llama3.2</code>, <code>qwen2.5:14b</code>).
+                  Enter the name of an Ollama model (e.g., <code>gpt-oss:20b</code>, <code>qwen3:8b</code>, <code>llama3.2</code>).
                   Leave empty to use the default.
                 </template>
                 <template v-else>
-                  Enter a Groq model name (e.g., <code>gpt-oss-20b</code>, <code>llama-3.3-70b-versatile</code>).
+                  Enter a Groq model name (e.g., <code>openai/gpt-oss-120b</code>, <code>llama-3.3-70b-versatile</code>).
                   Leave empty to use the default.
                 </template>
               </p>

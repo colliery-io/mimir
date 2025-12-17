@@ -148,6 +148,109 @@ fn limit_thinking_block_size(content: &str, max_thinking_chars: usize) -> String
     result
 }
 
+/// Context window management constants
+const DEFAULT_MAX_CONTEXT_TOKENS: usize = 128000;
+const CONTEXT_THRESHOLD: f32 = 0.8;
+const MIN_HISTORY_TURNS: usize = 3; // Always keep at least 3 user/assistant pairs
+
+/// Estimate token count for a string (conservative: ~4 chars per token)
+fn estimate_tokens(content: &str) -> usize {
+    content.len() / 4
+}
+
+/// Estimate total tokens in a message list
+fn estimate_conversation_tokens(messages: &[mimir_dm_llm::Message]) -> usize {
+    messages.iter().map(|m| estimate_tokens(&m.content) + 10).sum() // +10 for role/metadata overhead
+}
+
+/// Prune messages to fit within context window
+///
+/// Preserves:
+/// - System message (first message if role="system")
+/// - Messages from current request (marked by having tool_call_id or recent timestamps)
+/// - At least MIN_HISTORY_TURNS of user/assistant pairs
+///
+/// Returns the pruned message list and whether pruning occurred
+fn prune_messages_for_context(
+    messages: Vec<mimir_dm_llm::Message>,
+    max_tokens: usize,
+    messages_from_current_request: usize,
+) -> (Vec<mimir_dm_llm::Message>, bool) {
+    let threshold = (max_tokens as f32 * CONTEXT_THRESHOLD) as usize;
+    let current_tokens = estimate_conversation_tokens(&messages);
+
+    if current_tokens <= threshold {
+        return (messages, false);
+    }
+
+    info!(
+        "Context pruning triggered: {} estimated tokens exceeds {}% threshold ({})",
+        current_tokens,
+        (CONTEXT_THRESHOLD * 100.0) as u32,
+        threshold
+    );
+
+    let mut result = Vec::new();
+    let mut pruned = false;
+
+    // Separate system message if present
+    let (system_msg, history): (Option<&mimir_dm_llm::Message>, &[mimir_dm_llm::Message]) =
+        if !messages.is_empty() && messages[0].role == "system" {
+            (Some(&messages[0]), &messages[1..])
+        } else {
+            (None, &messages[..])
+        };
+
+    // Calculate how many messages to protect from current request
+    let protected_from_end = messages_from_current_request.max(MIN_HISTORY_TURNS * 2);
+
+    // Add system message first
+    if let Some(sys) = system_msg {
+        result.push(sys.clone());
+    }
+
+    // If we have more history than we need to protect, prune from the beginning
+    if history.len() > protected_from_end {
+        let to_skip = history.len() - protected_from_end;
+
+        // Add truncation marker
+        result.push(mimir_dm_llm::Message {
+            role: "system".to_string(),
+            content: format!(
+                "[Context note: {} earlier messages were truncated to manage context window. The conversation continues from the most recent {} messages.]",
+                to_skip,
+                protected_from_end
+            ),
+            tool_call_id: None,
+        });
+
+        // Add protected messages from end of history
+        for msg in history.iter().skip(to_skip) {
+            result.push(msg.clone());
+        }
+
+        pruned = true;
+        info!(
+            "Pruned {} messages, keeping {} recent messages",
+            to_skip,
+            protected_from_end
+        );
+    } else {
+        // Keep all history if it fits protection requirements
+        for msg in history {
+            result.push(msg.clone());
+        }
+    }
+
+    let new_tokens = estimate_conversation_tokens(&result);
+    info!(
+        "Context after pruning: {} estimated tokens (was {})",
+        new_tokens, current_tokens
+    );
+
+    (result, pruned)
+}
+
 /// Intermediate message from LLM (during multi-turn tool execution)
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IntermediateMessage {
@@ -331,11 +434,40 @@ impl<'a> ChatProcessor<'a> {
         let mut tool_call_count = 0;
         let mut final_response = None;
 
+        // Track initial message count to protect messages from current request
+        let initial_message_count = provider_messages.len();
+        let mut context_was_pruned = false;
+
         while tool_call_count < MAX_TOOL_ITERATIONS {
             // Check for cancellation
             if cancellation_token.is_cancelled() {
                 info!("Cancellation detected, stopping LLM execution loop");
                 return Err("Chat message was cancelled".to_string());
+            }
+
+            // Check and prune context if needed before each LLM call
+            let messages_from_current_request = provider_messages.len().saturating_sub(initial_message_count) + MIN_HISTORY_TURNS * 2;
+            let (pruned_messages, was_pruned) = prune_messages_for_context(
+                provider_messages.clone(),
+                DEFAULT_MAX_CONTEXT_TOKENS,
+                messages_from_current_request,
+            );
+
+            if was_pruned {
+                provider_messages = pruned_messages;
+                context_was_pruned = true;
+
+                // Log context pruning to chat logger
+                if let Some(ref logger) = chat_logger {
+                    logger.log_session_info(
+                        "context_pruned",
+                        json!({
+                            "iteration": tool_call_count,
+                            "message_count_after": provider_messages.len(),
+                            "estimated_tokens": estimate_conversation_tokens(&provider_messages)
+                        }),
+                    );
+                }
             }
 
             // Make LLM call
@@ -426,6 +558,8 @@ impl<'a> ChatProcessor<'a> {
                 json!({
                     "tool_iterations": tool_call_count,
                     "final_content_length": limited_content.len(),
+                    "context_was_pruned": context_was_pruned,
+                    "final_message_count": provider_messages.len(),
                     "token_usage": {
                         "prompt": usage.prompt_tokens,
                         "completion": usage.completion_tokens,

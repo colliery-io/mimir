@@ -20,7 +20,7 @@ pub enum ProviderType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaConfig {
     pub base_url: String,
-    /// Selected model name (e.g., "llama3.2", "mistral")
+    /// Selected model name (e.g., "gpt-oss:20b", "qwen3:8b", "llama3.2")
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
 }
@@ -244,7 +244,7 @@ mod tests {
             provider_type: ProviderType::Ollama,
             ollama_config: Some(OllamaConfig {
                 base_url: "http://localhost:11434".to_string(),
-                model: Some("llama3.2".to_string()),
+                model: Some("gpt-oss:20b".to_string()),
             }),
             groq_config: None,
             tool_confirmation_timeout_secs: 60,
@@ -259,7 +259,7 @@ mod tests {
         assert!(loaded.ollama_config.is_some());
         let ollama_config = loaded.ollama_config.unwrap();
         assert_eq!(ollama_config.base_url, "http://localhost:11434");
-        assert_eq!(ollama_config.model, Some("llama3.2".to_string()));
+        assert_eq!(ollama_config.model, Some("gpt-oss:20b".to_string()));
     }
 
     #[test]
