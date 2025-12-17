@@ -3,6 +3,9 @@
 //! This module contains services that orchestrate business logic,
 //! combining DAL operations with domain rules.
 
+/// Default query limit for catalog searches to prevent memory issues
+pub const DEFAULT_QUERY_LIMIT: i64 = 1000;
+
 pub mod action_service;
 pub mod background_service;
 pub mod campaign_service;

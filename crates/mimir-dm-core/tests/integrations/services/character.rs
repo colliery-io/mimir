@@ -7,10 +7,10 @@ use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let db_path = temp_dir.path().join("test.db");
     let mut conn = establish_connection(db_path.to_str().unwrap()).unwrap();
-    run_migrations(&mut conn).unwrap();
+    run_migrations(&mut conn).expect("Failed to run migrations");
 
     // Seed PHB class data for testing
     seed_test_class_data(&mut conn);

@@ -13,14 +13,14 @@ use tempfile::TempDir;
 
 fn setup_test_db() -> (SqliteConnection, TempDir) {
     // Create a temporary directory for test databases
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let db_path = temp_dir.path().join("test.db");
 
     // Create connection
     let mut conn = establish_connection(db_path.to_str().unwrap()).unwrap();
 
     // Run migrations and seed templates
-    run_migrations(&mut conn).unwrap();
+    run_migrations(&mut conn).expect("Failed to run migrations");
     seed_templates(&mut conn).unwrap();
 
     (conn, temp_dir)

@@ -311,20 +311,22 @@ async fn test_model_download_with_progress() {
         result
     );
 
-    // Verify we got progress updates
-    let updates = progress_updates.lock().unwrap();
-    assert!(
-        !updates.is_empty(),
-        "Should have received progress updates during download"
-    );
+    // Verify we got progress updates (scope the lock to avoid holding across await)
+    {
+        let updates = progress_updates.lock().unwrap();
+        assert!(
+            !updates.is_empty(),
+            "Should have received progress updates during download"
+        );
 
-    // Verify the last update indicates success
-    let last_update = updates.last().expect("Should have at least one update");
-    assert!(
-        last_update.0.contains("success") || last_update.0.contains("already exists"),
-        "Last update should indicate success, got: {}",
-        last_update.0
-    );
+        // Verify the last update indicates success
+        let last_update = updates.last().expect("Should have at least one update");
+        assert!(
+            last_update.0.contains("success") || last_update.0.contains("already exists"),
+            "Last update should indicate success, got: {}",
+            last_update.0
+        );
+    }
 
     // Verify model now exists
     let model_exists = provider

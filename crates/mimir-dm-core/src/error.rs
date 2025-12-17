@@ -1,9 +1,132 @@
-//! Database error types
+//! Error types for Mimir
+//!
+//! This module provides a unified error handling system:
+//! - `DbError` - Database-specific errors
+//! - `MimirError` - Unified error type that wraps domain errors
+//!
+//! ## Usage
+//!
+//! ### In services that use database operations
+//! ```ignore
+//! use mimir_dm_core::{MimirError, MimirResult};
+//!
+//! fn get_item(id: i32) -> MimirResult<Item> {
+//!     // DbError automatically converts to MimirError
+//!     let item = repo.find_by_id(id)?;
+//!     Ok(item)
+//! }
+//! ```
+//!
+//! ### Converting to String for Tauri commands
+//! ```ignore
+//! #[tauri::command]
+//! async fn get_item(id: i32) -> Result<Item, String> {
+//!     service.get_item(id).map_err(|e| e.to_string())
+//! }
+//! ```
+//!
+//! ### Wrapping other error types
+//! ```ignore
+//! // PrintError -> MimirError
+//! let result = print_service.render()
+//!     .map_err(|e| MimirError::Print(e.to_string()))?;
+//!
+//! // LlmError -> MimirError
+//! let response = llm_service.query()
+//!     .map_err(|e| MimirError::Llm(e.to_string()))?;
+//! ```
 
 use thiserror::Error;
 
 /// Result type alias for database operations
 pub type Result<T> = std::result::Result<T, DbError>;
+
+/// Result type alias using the unified MimirError
+pub type MimirResult<T> = std::result::Result<T, MimirError>;
+
+/// Unified error type for the Mimir application.
+///
+/// This enum wraps domain-specific errors and provides a consistent
+/// error handling interface across the application.
+#[derive(Error, Debug)]
+pub enum MimirError {
+    /// Database operation error
+    #[error("Database error: {0}")]
+    Database(#[from] DbError),
+
+    /// Print/PDF generation error (wrapped as string since PrintError is in another crate)
+    #[error("Print error: {0}")]
+    Print(String),
+
+    /// LLM operation error (wrapped as string since LlmError is in another crate)
+    #[error("LLM error: {0}")]
+    Llm(String),
+
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    Config(String),
+
+    /// Validation error
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    /// Not found error
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    /// Permission/authorization error
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    /// External service error
+    #[error("External service error: {0}")]
+    ExternalService(String),
+
+    /// Generic internal error
+    #[error("Internal error: {0}")]
+    Internal(String),
+
+    /// IO error
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    /// JSON error
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
+impl MimirError {
+    /// Create a validation error
+    pub fn validation(msg: impl Into<String>) -> Self {
+        MimirError::Validation(msg.into())
+    }
+
+    /// Create a not found error
+    pub fn not_found(msg: impl Into<String>) -> Self {
+        MimirError::NotFound(msg.into())
+    }
+
+    /// Create an internal error
+    pub fn internal(msg: impl Into<String>) -> Self {
+        MimirError::Internal(msg.into())
+    }
+
+    /// Check if this is a not found error
+    pub fn is_not_found(&self) -> bool {
+        match self {
+            MimirError::NotFound(_) => true,
+            MimirError::Database(db) => db.is_not_found(),
+            _ => false,
+        }
+    }
+}
+
+/// Convert MimirError to String for Tauri command responses
+impl From<MimirError> for String {
+    fn from(err: MimirError) -> String {
+        err.to_string()
+    }
+}
 
 /// Database error types
 #[derive(Error, Debug)]

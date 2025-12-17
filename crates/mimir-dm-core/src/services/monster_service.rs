@@ -99,7 +99,7 @@ impl<'a> MonsterService<'a> {
         }
 
         let monsters = query
-            .limit(1000) // Reasonable limit to prevent memory issues
+            .limit(super::DEFAULT_QUERY_LIMIT)
             .load::<CatalogMonster>(self.conn)?;
 
         Ok(monsters.iter().map(MonsterSummary::from).collect())

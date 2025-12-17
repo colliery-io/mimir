@@ -8,8 +8,8 @@ use mimir_dm_core::models::campaign::template_documents::{
 
 #[test]
 fn test_duplicate_content_prevents_new_version() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create first version
     let template_v1 = NewTemplateDocument {
@@ -58,8 +58,8 @@ fn test_duplicate_content_prevents_new_version() {
 
 #[test]
 fn test_different_content_creates_new_version() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create first version
     let template_v1 = NewTemplateDocument {
@@ -107,8 +107,8 @@ fn test_different_content_creates_new_version() {
 
 #[test]
 fn test_update_with_same_content_returns_existing() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create initial version
     let template = NewTemplateDocument {
@@ -155,8 +155,8 @@ fn test_update_with_same_content_returns_existing() {
 
 #[test]
 fn test_can_revert_to_old_content() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create v1
     let template_v1 = NewTemplateDocument {

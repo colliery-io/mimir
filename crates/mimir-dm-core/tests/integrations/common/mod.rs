@@ -1,7 +1,11 @@
 //! Common test utilities
+//!
+//! Provides reusable fixtures and helpers for integration tests.
 
 use diesel::prelude::*;
+use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
 use mimir_dm_core::error::Result;
+use mimir_dm_core::models::campaign::campaigns::{Campaign, NewCampaign};
 use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::{NamedTempFile, TempDir};
 
@@ -50,4 +54,46 @@ impl TestDatabase {
 
         Ok(())
     }
+}
+
+/// Create a test campaign with sensible defaults.
+///
+/// # Arguments
+/// * `conn` - Database connection
+/// * `name` - Campaign name
+/// * `directory` - Campaign directory path
+///
+/// # Returns
+/// The created campaign
+pub fn create_test_campaign(
+    conn: &mut SqliteConnection,
+    name: &str,
+    directory: &str,
+) -> Campaign {
+    let mut repo = CampaignRepository::new(conn);
+    repo.create(NewCampaign {
+        name: name.to_string(),
+        status: "concept".to_string(),
+        directory_path: directory.to_string(),
+    })
+    .expect("Failed to create test campaign")
+}
+
+/// Create a test campaign with a unique name and temp directory.
+///
+/// # Arguments
+/// * `conn` - Database connection
+/// * `temp_dir` - Temporary directory for campaign files
+///
+/// # Returns
+/// The created campaign
+pub fn create_test_campaign_in_dir(
+    conn: &mut SqliteConnection,
+    temp_dir: &TempDir,
+) -> Campaign {
+    create_test_campaign(
+        conn,
+        "Test Campaign",
+        temp_dir.path().to_str().expect("Invalid temp path"),
+    )
 }

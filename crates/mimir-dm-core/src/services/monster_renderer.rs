@@ -260,14 +260,10 @@ fn render_entry(entry: &Value) -> String {
 
     if let Some(entries) = entry.get("entries") {
         if let Some(arr) = entries.as_array() {
-            for (i, e) in arr.iter().enumerate() {
+            for e in arr.iter() {
                 if let Some(s) = e.as_str() {
                     let cleaned = clean_formatting_tags(s);
-                    if i == 0 && !name.is_empty() {
-                        md.push_str(&format!("{}\n\n", cleaned));
-                    } else {
-                        md.push_str(&format!("{}\n\n", cleaned));
-                    }
+                    md.push_str(&format!("{}\n\n", cleaned));
                 } else if let Some(obj) = e.as_object() {
                     // Handle nested entries like lists
                     if obj.get("type").and_then(|t| t.as_str()) == Some("list") {

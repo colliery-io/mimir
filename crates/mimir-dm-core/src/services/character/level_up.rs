@@ -387,62 +387,6 @@ impl MulticlassPrerequisites {
     }
 }
 
-// TODO: This function needs to be refactored to accept a database connection
-// so it can query class information from the database rather than using hardcoded data.
-// For now, spell slot calculation should be done in CharacterService which has access
-// to the database connection.
-/*
-/// Calculate spell slots for multiclass spellcasters
-pub fn calculate_spell_slots(class_levels: &HashMap<String, i32>) -> HashMap<i32, SpellSlots> {
-    let mut caster_level = 0;
-
-    for (class_name, level) in class_levels {
-        if let Ok(class_info) = ClassInfo::get(conn, class_name, source) {
-            match class_info.spellcasting_type {
-                Some(SpellcastingType::Full) => caster_level += level,
-                Some(SpellcastingType::Half) => caster_level += level / 2,
-                Some(SpellcastingType::Third) => caster_level += level / 3,
-                Some(SpellcastingType::Warlock) => {
-                    // Warlock uses unique pact magic - handle separately
-                    continue;
-                }
-                None => {}
-            }
-        }
-    }
-
-    // Standard spell slot progression table
-    let slots = match caster_level {
-        1 => vec![(1, 2)],
-        2 => vec![(1, 3)],
-        3 => vec![(1, 4), (2, 2)],
-        4 => vec![(1, 4), (2, 3)],
-        5 => vec![(1, 4), (2, 3), (3, 2)],
-        6 => vec![(1, 4), (2, 3), (3, 3)],
-        7 => vec![(1, 4), (2, 3), (3, 3), (4, 1)],
-        8 => vec![(1, 4), (2, 3), (3, 3), (4, 2)],
-        9 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 1)],
-        10 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2)],
-        11 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1)],
-        12 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1)],
-        13 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1)],
-        14 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1)],
-        15 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1), (8, 1)],
-        16 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1), (8, 1)],
-        17 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1), (8, 1), (9, 1)],
-        18 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 3), (6, 1), (7, 1), (8, 1), (9, 1)],
-        19 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 3), (6, 2), (7, 1), (8, 1), (9, 1)],
-        20 => vec![(1, 4), (2, 3), (3, 3), (4, 3), (5, 3), (6, 2), (7, 2), (8, 1), (9, 1)],
-        _ => vec![],
-    };
-
-    slots
-        .into_iter()
-        .map(|(level, max)| (level, SpellSlots::new(max)))
-        .collect()
-}
-*/
-
 #[cfg(test)]
 mod tests {
     use super::*;

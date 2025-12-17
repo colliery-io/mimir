@@ -706,16 +706,14 @@ impl<'a> CharacterService<'a> {
 
         match rest_type {
             RestType::Short => {
-                // Short rest restores warlock spell slots
-                // Check if character has warlock levels
+                // Short rest restores warlock pact magic slots
                 if char_data.has_class("Warlock") {
-                    // Restore all spell slots for warlock
                     for slots in char_data.spells.spell_slots.values_mut() {
                         slots.recover_all();
                     }
                 }
-                // Other classes may have features that restore on short rest (e.g., Arcane Recovery)
-                // TODO: Implement class-specific short rest features
+                // Note: Class-specific short rest features (Arcane Recovery, etc.) are listed
+                // on character sheets but actual resource tracking is handled at the table/VTT.
             }
             RestType::Long => {
                 // Long rest restores all spell slots for all classes

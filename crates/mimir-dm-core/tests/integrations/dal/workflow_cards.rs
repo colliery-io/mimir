@@ -11,11 +11,11 @@ use tempfile::TempDir;
 
 #[test]
 fn test_campaign_card_workflow() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create a campaign
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
         .create(NewCampaign {
@@ -66,11 +66,11 @@ fn test_campaign_card_workflow() {
 
 #[test]
 fn test_module_card_workflow() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create campaign and module
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
         .create(NewCampaign {
@@ -119,11 +119,11 @@ fn test_module_card_workflow() {
 
 #[test]
 fn test_card_tags() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create a campaign first
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
         .create(NewCampaign {
@@ -176,11 +176,11 @@ fn test_card_tags() {
 
 #[test]
 fn test_list_cards_by_board() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create campaign and module first
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
         .create(NewCampaign {

@@ -4,18 +4,18 @@ level: task
 title: "Create Install Script"
 short_code: "MIMIR-T-0132"
 created_at: 2025-12-06T16:17:57.333169+00:00
-updated_at: 2025-12-06T16:17:57.333169+00:00
+updated_at: 2025-12-17T17:05:06.445116+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#feature"
+  - "#phase/completed"
 
 
-  - "#feature"
 exit_criteria_met: false
 strategy_id: NULL
 initiative_id: NULL
@@ -43,6 +43,12 @@ curl -sSL https://raw.githubusercontent.com/colliery-io/mimir/main/scripts/insta
 - **User Value**: Users can install Mimir without needing Rust/Node toolchain or building from source
 - **Business Value**: Lower barrier to adoption, easier onboarding for new users
 - **Effort Estimate**: S-M (script itself is small, but requires release pipeline)
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -16,8 +16,8 @@ use mimir_dm_core::{
 
 #[test]
 fn test_create_document() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create a campaign first
     let mut campaign_repo = CampaignRepository::new(&mut conn);
@@ -69,8 +69,8 @@ fn test_create_document() {
 
 #[test]
 fn test_find_document_by_id() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create test data
     let mut campaign_repo = CampaignRepository::new(&mut conn);
@@ -122,8 +122,8 @@ fn test_find_document_by_id() {
 
 #[test]
 fn test_find_documents_by_campaign() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create two campaigns
     let mut campaign_repo = CampaignRepository::new(&mut conn);
@@ -207,8 +207,8 @@ fn test_find_documents_by_campaign() {
 
 #[test]
 fn test_find_documents_by_module() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create campaign and module
     let mut campaign_repo = CampaignRepository::new(&mut conn);
@@ -291,8 +291,8 @@ fn test_find_documents_by_module() {
 
 #[test]
 fn test_find_handouts() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
@@ -363,8 +363,8 @@ fn test_find_handouts() {
 
 #[test]
 fn test_update_document() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create test document
     let mut campaign_repo = CampaignRepository::new(&mut conn);
@@ -424,8 +424,8 @@ fn test_update_document() {
 
 #[test]
 fn test_mark_completed() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create test document
     let mut campaign_repo = CampaignRepository::new(&mut conn);
@@ -480,8 +480,8 @@ fn test_mark_completed() {
 
 #[test]
 fn test_find_incomplete_and_completed() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
@@ -559,8 +559,8 @@ fn test_find_incomplete_and_completed() {
 
 #[test]
 fn test_delete_document() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
@@ -614,8 +614,8 @@ fn test_delete_document() {
 
 #[test]
 fn test_document_level() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo
@@ -709,8 +709,8 @@ fn test_document_level() {
 
 #[test]
 fn test_exists_by_path() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut campaign_repo = CampaignRepository::new(&mut conn);
     let campaign = campaign_repo

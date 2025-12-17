@@ -397,12 +397,10 @@ pub async fn generate_spell_pdf(
             let mut data = serde_json::json!({
                 "spells": spells
             });
-            if let Some(opts) = options {
-                if let serde_json::Value::Object(opts_map) = opts {
-                    if let serde_json::Value::Object(ref mut data_map) = data {
-                        for (k, v) in opts_map {
-                            data_map.insert(k, v);
-                        }
+            if let Some(serde_json::Value::Object(opts_map)) = options {
+                if let serde_json::Value::Object(ref mut data_map) = data {
+                    for (k, v) in opts_map {
+                        data_map.insert(k, v);
                     }
                 }
             }
@@ -413,12 +411,10 @@ pub async fn generate_spell_pdf(
                 "spells": spells,
                 "show_cut_lines": true
             });
-            if let Some(opts) = options {
-                if let serde_json::Value::Object(opts_map) = opts {
-                    if let serde_json::Value::Object(ref mut data_map) = data {
-                        for (k, v) in opts_map {
-                            data_map.insert(k, v);
-                        }
+            if let Some(serde_json::Value::Object(opts_map)) = options {
+                if let serde_json::Value::Object(ref mut data_map) = data {
+                    for (k, v) in opts_map {
+                        data_map.insert(k, v);
                     }
                 }
             }
@@ -456,12 +452,10 @@ pub async fn generate_monster_pdf(
             let mut data = serde_json::json!({
                 "monsters": monsters
             });
-            if let Some(opts) = options {
-                if let serde_json::Value::Object(opts_map) = opts {
-                    if let serde_json::Value::Object(ref mut data_map) = data {
-                        for (k, v) in opts_map {
-                            data_map.insert(k, v);
-                        }
+            if let Some(serde_json::Value::Object(opts_map)) = options {
+                if let serde_json::Value::Object(ref mut data_map) = data {
+                    for (k, v) in opts_map {
+                        data_map.insert(k, v);
                     }
                 }
             }
@@ -673,7 +667,7 @@ fn strip_5etools_tags(text: &str) -> String {
     // Recharge: {@recharge 5} -> "(Recharge 5-6)"
     let recharge_re = Regex::new(r"\{@recharge\s*(\d*)\}").unwrap();
     result = recharge_re.replace_all(&result, |caps: &regex::Captures| {
-        if caps.get(1).map_or(true, |m| m.as_str().is_empty()) {
+        if caps.get(1).is_none_or(|m| m.as_str().is_empty()) {
             "(Recharge)".to_string()
         } else {
             format!("(Recharge {}-6)", &caps[1])
@@ -964,7 +958,7 @@ pub async fn export_campaign_documents(
         // Convert to JSON values
         let monster_json: Vec<serde_json::Value> = monsters_with_data
             .into_iter()
-            .filter_map(|m| {
+            .map(|m| {
                 if let Some(data) = m.monster_data {
                     let mut monster = data;
                     if let serde_json::Value::Object(ref mut obj) = monster {
@@ -980,14 +974,14 @@ pub async fn export_campaign_documents(
                         }
                     }
                     strip_5etools_tags_from_json(&mut monster);
-                    Some(monster)
+                    monster
                 } else {
-                    Some(serde_json::json!({
+                    serde_json::json!({
                         "name": m.monster_name,
                         "source": m.monster_source,
                         "quantity": m.quantity,
                         "encounter_tag": m.encounter_tag
-                    }))
+                    })
                 }
             })
             .collect();
@@ -1292,7 +1286,7 @@ pub async fn export_module_documents(
     // Convert to JSON values
     let monster_json: Vec<serde_json::Value> = monsters_with_data
         .into_iter()
-        .filter_map(|m| {
+        .map(|m| {
             if let Some(data) = m.monster_data {
                 let mut monster = data;
                 if let serde_json::Value::Object(ref mut obj) = monster {
@@ -1308,14 +1302,14 @@ pub async fn export_module_documents(
                     }
                 }
                 strip_5etools_tags_from_json(&mut monster);
-                Some(monster)
+                monster
             } else {
-                Some(serde_json::json!({
+                serde_json::json!({
                     "name": m.monster_name,
                     "source": m.monster_source,
                     "quantity": m.quantity,
                     "encounter_tag": m.encounter_tag
-                }))
+                })
             }
         })
         .collect();

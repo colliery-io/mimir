@@ -34,6 +34,7 @@
 //! std::fs::write("character_sheet.pdf", pdf_bytes)?;
 //! ```
 
+mod campaign;
 pub mod commands;
 pub mod error;
 pub mod markdown;

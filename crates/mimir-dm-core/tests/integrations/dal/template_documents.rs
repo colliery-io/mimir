@@ -8,8 +8,8 @@ use mimir_dm_core::models::campaign::template_documents::{
 
 #[test]
 fn test_create_template_with_auto_versioning() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create first version
     let template_v1 = NewTemplateDocument {
@@ -56,8 +56,8 @@ fn test_create_template_with_auto_versioning() {
 
 #[test]
 fn test_get_latest_template() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create three versions
     for i in 1..=3 {
@@ -86,8 +86,8 @@ fn test_get_latest_template() {
 
 #[test]
 fn test_get_specific_version() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create two versions
     for i in 1..=2 {
@@ -116,8 +116,8 @@ fn test_get_specific_version() {
 
 #[test]
 fn test_get_all_versions() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create three versions
     for i in 1..=3 {
@@ -153,8 +153,8 @@ fn test_get_all_versions() {
 
 #[test]
 fn test_get_by_level() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create templates at different levels
     let campaign_template = NewTemplateDocument {
@@ -200,8 +200,8 @@ fn test_get_by_level() {
 
 #[test]
 fn test_update_creates_new_version() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create initial version
     let template = NewTemplateDocument {
@@ -249,8 +249,8 @@ fn test_update_creates_new_version() {
 
 #[test]
 fn test_set_active_version() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create three versions
     for i in 1..=3 {
@@ -291,8 +291,8 @@ fn test_set_active_version() {
 
 #[test]
 fn test_delete_specific_version() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create two versions
     for i in 1..=2 {
@@ -328,8 +328,8 @@ fn test_delete_specific_version() {
 
 #[test]
 fn test_delete_all_versions() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     // Create three versions
     for i in 1..=3 {
@@ -360,8 +360,8 @@ fn test_delete_all_versions() {
 
 #[test]
 fn test_template_with_variables_and_defaults() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let variables_schema = serde_json::json!([
         {

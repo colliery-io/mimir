@@ -71,7 +71,7 @@ impl<'a> DeityService<'a> {
         }
 
         let deities = query
-            .limit(1000) // Reasonable limit to prevent memory issues
+            .limit(super::DEFAULT_QUERY_LIMIT)
             .load::<CatalogDeity>(self.conn)?;
 
         Ok(deities.iter().map(DeitySummary::from).collect())

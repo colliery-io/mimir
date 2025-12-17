@@ -7,7 +7,7 @@ use tempfile::TempDir;
 
 fn setup_test_db() -> mimir_dm_core::connection::DbConnection {
     let mut conn = establish_connection(":memory:").unwrap();
-    run_migrations(&mut conn).unwrap();
+    run_migrations(&mut conn).expect("Failed to run migrations");
 
     // Seed templates
     mimir_dm_core::seed::template_seeder::seed_templates(&mut conn).unwrap();
@@ -16,7 +16,7 @@ fn setup_test_db() -> mimir_dm_core::connection::DbConnection {
 }
 
 fn create_test_module(conn: &mut mimir_dm_core::connection::DbConnection) -> (i32, i32) {
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let dir_path = temp_dir.path().to_string_lossy().to_string();
 
     let mut campaign_service = CampaignService::new(conn);
@@ -430,7 +430,7 @@ fn test_monsters_isolated_between_modules() {
     let mut conn = setup_test_db();
 
     // Create two modules
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let dir_path = temp_dir.path().to_string_lossy().to_string();
 
     let mut campaign_service = CampaignService::new(&mut conn);

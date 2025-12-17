@@ -7,13 +7,13 @@ use tempfile::TempDir;
 
 #[test]
 fn test_campaign_lifecycle() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut repo = CampaignRepository::new(&mut conn);
 
     // Create a temporary directory for the campaign
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
 
     // Create a new campaign
     let new_campaign = NewCampaign {
@@ -42,13 +42,13 @@ fn test_campaign_lifecycle() {
 
 #[test]
 fn test_invalid_campaign_transitions() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut repo = CampaignRepository::new(&mut conn);
 
     // Create a temporary directory for the campaign
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
 
     // Create a new campaign
     let new_campaign = NewCampaign {
@@ -73,15 +73,15 @@ fn test_invalid_campaign_transitions() {
 
 #[test]
 fn test_list_active_campaigns() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
+    let test_db = TestDatabase::file_based().expect("Failed to create test database");
+    let mut conn = test_db.connection().expect("Failed to get database connection");
 
     let mut repo = CampaignRepository::new(&mut conn);
 
     // Create temporary directories for campaigns
-    let temp_dir1 = TempDir::new().unwrap();
-    let temp_dir2 = TempDir::new().unwrap();
-    let temp_dir3 = TempDir::new().unwrap();
+    let temp_dir1 = TempDir::new().expect("Failed to create temp directory");
+    let temp_dir2 = TempDir::new().expect("Failed to create temp directory");
+    let temp_dir3 = TempDir::new().expect("Failed to create temp directory");
 
     // Create multiple campaigns
     repo.create(NewCampaign {

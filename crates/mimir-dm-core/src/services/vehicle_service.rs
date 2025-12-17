@@ -71,7 +71,7 @@ impl<'a> VehicleService<'a> {
         }
 
         let vehicles = query
-            .limit(1000) // Reasonable limit to prevent memory issues
+            .limit(super::DEFAULT_QUERY_LIMIT)
             .load::<CatalogVehicle>(self.conn)?;
 
         Ok(vehicles.iter().map(VehicleSummary::from).collect())

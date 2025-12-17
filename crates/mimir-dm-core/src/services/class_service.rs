@@ -108,7 +108,7 @@ impl<'a> ClassService<'a> {
 
         let classes = query
             .select(CatalogClass::as_select())
-            .limit(1000)
+            .limit(super::DEFAULT_QUERY_LIMIT)
             .load::<CatalogClass>(self.conn)?;
 
         Ok(classes.iter().map(ClassSummary::from).collect())
@@ -229,6 +229,33 @@ impl<'a> ClassService<'a> {
             }
             None => Ok(None),
         }
+    }
+
+    /// Get caster progression for a class by name.
+    ///
+    /// Returns the first matching class's caster_progression value.
+    /// Used for spell slot calculations when source is unknown.
+    ///
+    /// # Arguments
+    /// * `class_name` - Name of the class (case-insensitive)
+    ///
+    /// # Returns
+    /// * `Ok(Some(String))` - Caster progression ("full", "1/2", "1/3", "pact") if found
+    /// * `Ok(None)` - If class not found or has no spellcasting
+    pub fn get_caster_progression_by_name(
+        &mut self,
+        class_name_param: &str,
+    ) -> Result<Option<String>> {
+        use crate::schema::catalog_classes::dsl::*;
+
+        // SQLite LIKE is case-insensitive for ASCII by default
+        let result = catalog_classes
+            .filter(name.like(class_name_param))
+            .select(caster_progression)
+            .first::<Option<String>>(self.conn)
+            .optional()?;
+
+        Ok(result.flatten())
     }
 
     /// Get a specific subclass by name, class name, and source.
@@ -432,6 +459,69 @@ impl<'a> ClassService<'a> {
             }
             None => Ok(None),
         }
+    }
+
+    /// Get all class features up to a given level.
+    ///
+    /// Returns feature names and levels for building FeatureReference entries.
+    ///
+    /// # Arguments
+    /// * `class_name_param` - Name of the class
+    /// * `class_source_param` - Source book code (e.g., "PHB")
+    /// * `max_level` - Maximum level to include (inclusive)
+    ///
+    /// # Returns
+    /// * `Ok(Vec<(String, i32, String)>)` - List of (feature_name, level, source) tuples
+    pub fn get_class_features_up_to_level(
+        &mut self,
+        class_name_param: &str,
+        class_source_param: &str,
+        max_level: i32,
+    ) -> Result<Vec<(String, i32, String)>> {
+        use crate::schema::catalog_class_features::dsl::*;
+
+        let features = catalog_class_features
+            .filter(class_name.eq(class_name_param))
+            .filter(class_source.eq(class_source_param))
+            .filter(level.le(max_level))
+            .select((name, level, source))
+            .order_by(level)
+            .load::<(String, i32, String)>(self.conn)?;
+
+        Ok(features)
+    }
+
+    /// Get all subclass features up to a given level.
+    ///
+    /// Returns feature names and levels for building FeatureReference entries.
+    ///
+    /// # Arguments
+    /// * `class_name_param` - Name of the class
+    /// * `subclass_short_name_param` - Short name of the subclass
+    /// * `source_param` - Source book code (e.g., "PHB")
+    /// * `max_level` - Maximum level to include (inclusive)
+    ///
+    /// # Returns
+    /// * `Ok(Vec<(String, i32, String)>)` - List of (feature_name, level, source) tuples
+    pub fn get_subclass_features_up_to_level(
+        &mut self,
+        class_name_param: &str,
+        subclass_short_name_param: &str,
+        source_param: &str,
+        max_level: i32,
+    ) -> Result<Vec<(String, i32, String)>> {
+        use crate::schema::catalog_subclass_features::dsl::*;
+
+        let features = catalog_subclass_features
+            .filter(class_name.eq(class_name_param))
+            .filter(subclass_short_name.eq(subclass_short_name_param))
+            .filter(subclass_source.eq(source_param))
+            .filter(level.le(max_level))
+            .select((name, level, source))
+            .order_by(level)
+            .load::<(String, i32, String)>(self.conn)?;
+
+        Ok(features)
     }
 
     /// Get all distinct primary abilities used by classes.

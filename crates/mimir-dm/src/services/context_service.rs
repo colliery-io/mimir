@@ -99,6 +99,12 @@ pub struct ContextService {
     context: Arc<Mutex<SharedContext>>,
 }
 
+impl Default for ContextService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextService {
     pub fn new() -> Self {
         Self {
@@ -307,6 +313,12 @@ impl ContextService {
 
 // Tauri state wrapper
 pub struct ContextState(pub Arc<ContextService>);
+
+impl Default for ContextState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ContextState {
     pub fn new() -> Self {

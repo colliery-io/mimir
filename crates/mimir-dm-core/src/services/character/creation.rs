@@ -9,10 +9,10 @@ use crate::connection::DbConnection;
 use crate::error::{DbError, Result};
 use crate::models::catalog::{Background, Race};
 use crate::models::character::data::{
-    AbilityScores, CharacterData, ClassLevel, Currency, EquippedItems, InventoryItem, Personality,
-    Proficiencies, SpellData,
+    AbilityScores, CharacterData, ClassLevel, Currency, EquippedItems, FeatureReference,
+    InventoryItem, Personality, Proficiencies, SpellData,
 };
-use crate::services::{BackgroundService, RaceService};
+use crate::services::{BackgroundService, ClassService, RaceService};
 use serde::{Deserialize, Serialize};
 
 /// Method for determining ability scores
@@ -356,6 +356,45 @@ impl<'a> CharacterBuilder<'a> {
         // Calculate starting HP: max hit die + CON modifier
         let max_hp = class_info.hit_die_value + base_abilities.con_modifier();
 
+        // Fetch class features for level 1
+        let mut class_features = Vec::new();
+        {
+            let mut class_service = ClassService::new(self.conn);
+            if let Ok(features) =
+                class_service.get_class_features_up_to_level(&class, &class_source, 1)
+            {
+                for (feature_name, feature_level, feature_source) in features {
+                    class_features.push(FeatureReference {
+                        name: feature_name,
+                        class_name: class.clone(),
+                        subclass_name: None,
+                        source: feature_source,
+                        level: feature_level,
+                    });
+                }
+            }
+
+            // Also fetch subclass features if a subclass is selected
+            if let Some(ref subclass_name) = self.subclass {
+                if let Ok(sub_features) = class_service.get_subclass_features_up_to_level(
+                    &class,
+                    subclass_name,
+                    &class_source,
+                    1,
+                ) {
+                    for (feature_name, feature_level, feature_source) in sub_features {
+                        class_features.push(FeatureReference {
+                            name: feature_name,
+                            class_name: class.clone(),
+                            subclass_name: Some(subclass_name.clone()),
+                            source: feature_source,
+                            level: feature_level,
+                        });
+                    }
+                }
+            }
+        }
+
         let mut character_data = CharacterData {
             character_name,
             player_id,
@@ -380,7 +419,7 @@ impl<'a> CharacterBuilder<'a> {
             current_hp: max_hp,
             speed,
             proficiencies: self.proficiencies,
-            class_features: Vec::new(), // TODO: Extract from class data
+            class_features,
             feats: Vec::new(),
             spells: SpellData::default(),
             inventory: self.starting_equipment,
@@ -944,7 +983,7 @@ mod tests {
         let mut conn = setup_test_db();
         insert_test_background(&mut conn);
 
-        let ability_scores = AbilityScoreMethod::StandardArray {
+        let _ability_scores = AbilityScoreMethod::StandardArray {
             strength: 15,
             dexterity: 14,
             constitution: 13,
@@ -969,7 +1008,7 @@ mod tests {
         insert_test_race(&mut conn);
         insert_test_class(&mut conn, "Fighter", 10);
 
-        let ability_scores = AbilityScoreMethod::StandardArray {
+        let _ability_scores = AbilityScoreMethod::StandardArray {
             strength: 15,
             dexterity: 14,
             constitution: 13,

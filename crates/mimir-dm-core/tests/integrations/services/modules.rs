@@ -9,7 +9,7 @@ use tempfile::TempDir;
 
 fn setup_test_db() -> mimir_dm_core::connection::DbConnection {
     let mut conn = establish_connection(":memory:").unwrap();
-    run_migrations(&mut conn).unwrap();
+    run_migrations(&mut conn).expect("Failed to run migrations");
 
     // Seed templates
     mimir_dm_core::seed::template_seeder::seed_templates(&mut conn).unwrap();
@@ -18,7 +18,7 @@ fn setup_test_db() -> mimir_dm_core::connection::DbConnection {
 }
 
 fn create_test_campaign(conn: &mut mimir_dm_core::connection::DbConnection) -> (i32, String) {
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let dir_path = temp_dir.path().to_string_lossy().to_string();
 
     let mut campaign_service = CampaignService::new(conn);
@@ -283,8 +283,8 @@ fn test_check_module_completion() {
     let documents = service.get_module_documents(module.id).unwrap();
     let doc_id = documents[0].id;
 
-    // Drop service temporarily to update document
-    drop(service);
+    // Release service to allow direct connection access
+    let _ = service;
 
     mimir_dm_core::dal::campaign::documents::DocumentRepository::update(
         &mut conn,

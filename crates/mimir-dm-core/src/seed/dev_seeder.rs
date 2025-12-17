@@ -20,6 +20,12 @@ use chrono::Utc;
 use std::collections::HashMap;
 use tracing::info;
 
+/// Monster entry for seeding: (name, source, quantity, encounter_tag)
+type MonsterSeedEntry<'a> = (&'a str, &'a str, i32, Option<&'a str>);
+
+/// Module monsters for seeding: (module_name, monsters)
+type ModuleMonstersSeed<'a> = (&'a str, Vec<MonsterSeedEntry<'a>>);
+
 /// Name of the test campaign used to check idempotency
 const TEST_CAMPAIGN_NAME: &str = "The Lost Mine of Phandelver";
 
@@ -271,7 +277,7 @@ fn seed_module_monsters(
 ) -> Result<()> {
     // Monster data for each module: (module_name, monsters)
     // Each monster: (name, source, quantity, encounter_tag)
-    let module_monsters: Vec<(&str, Vec<(&str, &str, i32, Option<&str>)>)> = vec![
+    let module_monsters: Vec<ModuleMonstersSeed> = vec![
         (
             "Goblin Ambush",
             vec![

@@ -1,3 +1,6 @@
+// Test utilities - not all are currently used but kept for future test development
+#![allow(dead_code)]
+
 use mimir_dm_llm::{
     config::{EndpointType, ModelConfig, RateLimit, RenewalPeriod},
     providers::ollama::OllamaProvider,

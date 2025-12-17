@@ -6,49 +6,53 @@ use crate::connection::DbConnection;
 use crate::error::DbError;
 use crate::models::catalog::Spell;
 use crate::models::character::data::{CharacterData, SpellSlots};
+use crate::services::ClassService;
 use std::collections::HashMap;
 
 type Result<T> = std::result::Result<T, DbError>;
 
 /// Calculate spell slots for a character based on class levels and multiclassing
 ///
-/// Uses PHB multiclass spellcaster rules to calculate total caster level
+/// Uses PHB multiclass spellcaster rules to calculate total caster level.
+/// Queries the database for caster progression when available.
 /// Returns HashMap of spell level to SpellSlots (max slots)
 pub fn calculate_spell_slots(
-    _conn: &mut DbConnection,
+    conn: &mut DbConnection,
     character: &CharacterData,
 ) -> Result<HashMap<i32, SpellSlots>> {
     // Calculate total caster level using multiclass rules
     let mut caster_level = 0;
+    let mut class_service = ClassService::new(conn);
 
     for class in &character.classes {
-        let class_name = class.class_name.to_lowercase();
+        let class_name = &class.class_name;
         let level = class.level;
 
-        // Full casters: contribute full level
-        if matches!(
-            class_name.as_str(),
-            "bard" | "cleric" | "druid" | "sorcerer" | "wizard"
-        ) {
-            caster_level += level;
-        }
-        // Half casters: contribute level / 2 (round down)
-        else if matches!(class_name.as_str(), "paladin" | "ranger") {
-            caster_level += level / 2;
-        }
-        // Third casters (subclass dependent, but check by subclass name patterns)
-        else if class_name == "fighter" || class_name == "rogue" {
-            // Eldritch Knight (Fighter) and Arcane Trickster (Rogue) are 1/3 casters
-            // Check subclass
-            if let Some(subclass) = &class.subclass {
-                let sub_lower = subclass.to_lowercase();
-                if sub_lower.contains("eldritch knight") || sub_lower.contains("arcane trickster") {
-                    caster_level += level / 3;
+        // Try to get caster progression from database first
+        let caster_prog = class_service
+            .get_caster_progression_by_name(class_name)
+            .ok()
+            .flatten();
+
+        match caster_prog.as_deref() {
+            Some("full") => caster_level += level,
+            Some("1/2" | "half") => caster_level += level / 2,
+            Some("1/3" | "third") => caster_level += level / 3,
+            Some("pact") => {
+                // Warlock pact magic doesn't contribute to multiclass spell slots
+            }
+            _ => {
+                // Fallback: check subclass for third-caster archetypes
+                if let Some(subclass) = &class.subclass {
+                    let sub_lower = subclass.to_lowercase();
+                    if sub_lower.contains("eldritch knight")
+                        || sub_lower.contains("arcane trickster")
+                    {
+                        caster_level += level / 3;
+                    }
                 }
             }
         }
-        // Warlock uses pact magic (separate system), doesn't contribute to multiclass slots
-        // Artificer would be half caster but round up - not implemented here
     }
 
     if caster_level == 0 {
@@ -133,8 +137,20 @@ pub fn validate_spell_for_class(
     spell: &Spell,
     class_name: &str,
 ) -> Result<bool> {
-    // Check if class is in the spell's class list
+    validate_spell_for_class_and_subclass(_conn, spell, class_name, None)
+}
+
+/// Validate if a spell is on a class or subclass spell list
+///
+/// Checks both the base class spell list and any subclass expanded spell lists.
+pub fn validate_spell_for_class_and_subclass(
+    _conn: &mut DbConnection,
+    spell: &Spell,
+    class_name: &str,
+    subclass_name: Option<&str>,
+) -> Result<bool> {
     if let Some(classes) = &spell.classes {
+        // Check base class spell list
         if let Some(class_list) = &classes.from_class_list {
             for class_ref in class_list {
                 if class_ref.name.eq_ignore_ascii_case(class_name) {
@@ -143,7 +159,24 @@ pub fn validate_spell_for_class(
             }
         }
 
-        // TODO: Check subclass spell lists when we have subclass support
+        // Check subclass spell lists
+        if let Some(subclass_list) = &classes.from_subclass {
+            for sub_ref in subclass_list {
+                // Match if class name matches
+                if sub_ref.class.name.eq_ignore_ascii_case(class_name) {
+                    // If no specific subclass requested, any subclass match counts
+                    if subclass_name.is_none() {
+                        return Ok(true);
+                    }
+                    // If specific subclass requested, check name match
+                    if let Some(sub_name) = subclass_name {
+                        if sub_ref.subclass.name.eq_ignore_ascii_case(sub_name) {
+                            return Ok(true);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(false)
@@ -209,6 +242,7 @@ mod tests {
                 crate::schema::catalog_classes::name.eq("Wizard"),
                 crate::schema::catalog_classes::source.eq("PHB"),
                 crate::schema::catalog_classes::hit_dice.eq("d6"),
+                crate::schema::catalog_classes::caster_progression.eq("full"),
                 crate::schema::catalog_classes::full_class_json.eq(wizard_json),
             ))
             .execute(&mut conn)

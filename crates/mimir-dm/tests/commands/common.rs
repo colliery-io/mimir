@@ -10,7 +10,7 @@ use mimir_dm::services::llm::{CancellationTokens, ConfirmationReceivers, LlmServ
 use mimir_dm::state::AppState;
 use mimir_dm_core::DatabaseService;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::Mutex;
@@ -118,14 +118,14 @@ pub fn create_test_paths(temp_dir: &TempDir) -> anyhow::Result<Arc<AppPaths>> {
 }
 
 /// Create a test log file and return its path
-pub fn create_test_log_file(logs_dir: &PathBuf, name: &str, content: &str) -> anyhow::Result<PathBuf> {
+pub fn create_test_log_file(logs_dir: &Path, name: &str, content: &str) -> anyhow::Result<PathBuf> {
     let log_path = logs_dir.join(name);
     std::fs::write(&log_path, content)?;
     Ok(log_path)
 }
 
 /// Create a test book directory with minimal content
-pub fn create_test_book(data_dir: &PathBuf, book_id: &str) -> anyhow::Result<PathBuf> {
+pub fn create_test_book(data_dir: &Path, book_id: &str) -> anyhow::Result<PathBuf> {
     let book_dir = data_dir.join("books").join(book_id);
     let book_content_dir = book_dir.join("book");
     std::fs::create_dir_all(&book_content_dir)?;

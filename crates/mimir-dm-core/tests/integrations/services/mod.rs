@@ -3,6 +3,7 @@ mod background;
 mod campaigns;
 mod character;
 mod class;
+mod document;
 mod condition;
 mod cult;
 mod deity;

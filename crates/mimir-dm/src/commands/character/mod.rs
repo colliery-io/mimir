@@ -6,6 +6,7 @@
 #[allow(clippy::module_inception)]
 pub mod character;
 pub mod player;
+mod types;
 
 pub use character::*;
 pub use player::*;

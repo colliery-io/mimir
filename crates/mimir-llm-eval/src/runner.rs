@@ -9,6 +9,12 @@ use mimir_dm_llm::traits::{LlmProvider, Message, Tool, ToolFunction};
 
 use crate::tasks::{Category, EvalResult, EvalTask, ModelSpec, TokenUsage, ToolCallResult};
 
+/// Progress callback for single-model evaluation: (current, total, task_id)
+type ProgressCallback<'a> = Option<&'a dyn Fn(usize, usize, &str)>;
+
+/// Progress callback for multi-model comparison: (model_name, current, total, task_id)
+type ComparisonProgressCallback<'a> = Option<&'a dyn Fn(&str, usize, usize, &str)>;
+
 /// Wrapper enum for providers since LlmProvider isn't dyn-compatible
 enum ProviderWrapper {
     Ollama(OllamaProvider),
@@ -362,7 +368,7 @@ tools to look up accurate information rather than relying on memory."#
         &self,
         tasks: &[EvalTask],
         spec: &ModelSpec,
-        progress_callback: Option<&dyn Fn(usize, usize, &str)>,
+        progress_callback: ProgressCallback<'_>,
     ) -> Vec<EvalResult> {
         let mut results = Vec::new();
         let total = tasks.len();
@@ -384,7 +390,7 @@ tools to look up accurate information rather than relying on memory."#
         &self,
         tasks: &[EvalTask],
         models: &[ModelSpec],
-        progress_callback: Option<&dyn Fn(&str, usize, usize, &str)>,
+        progress_callback: ComparisonProgressCallback<'_>,
     ) -> HashMap<String, Vec<EvalResult>> {
         let mut all_results = HashMap::new();
 

@@ -313,7 +313,7 @@ fn list_tasks(tasks_dir: PathBuf) -> Result<()> {
         || (tasks_dir.exists()
             && std::fs::read_dir(&tasks_dir)?
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
                 .count() == 0);
 
     if needs_tasks {
@@ -342,7 +342,7 @@ fn load_tasks(tasks_dir: &PathBuf, category: Option<&str>) -> Result<Vec<EvalTas
     let needs_tasks = !tasks_dir.exists()
         || std::fs::read_dir(tasks_dir)?
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
             .count() == 0;
 
     if needs_tasks {

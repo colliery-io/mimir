@@ -6,11 +6,22 @@ use mimir_dm_core::services::deity_service::DeityService;
 use mimir_dm_core::{establish_connection, run_migrations};
 use tempfile::TempDir;
 
+/// Test deity data: (name, title, pantheon, alignment_parts, domains, symbol, source)
+type DeityTestData<'a> = (
+    &'a str,
+    &'a str,
+    &'a str,
+    &'a [&'a str],
+    &'a str,
+    &'a str,
+    &'a str,
+);
+
 fn setup_test_db() -> (SqliteConnection, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let db_path = temp_dir.path().join("test.db");
     let mut conn = establish_connection(db_path.to_str().unwrap()).unwrap();
-    run_migrations(&mut conn).unwrap();
+    run_migrations(&mut conn).expect("Failed to run migrations");
     seed_test_deity_data(&mut conn);
     (conn, temp_dir)
 }
@@ -18,7 +29,7 @@ fn setup_test_db() -> (SqliteConnection, TempDir) {
 fn seed_test_deity_data(conn: &mut SqliteConnection) {
     // Deities with (name, title, pantheon, alignment_parts, domains, symbol, source)
     // alignment_parts is serialized as JSON array (e.g., ["N", "G"])
-    let deities: Vec<(&str, &str, &str, &[&str], &str, &str, &str)> = vec![
+    let deities: Vec<DeityTestData> = vec![
         (
             "Pelor",
             "The Shining One",

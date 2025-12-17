@@ -140,7 +140,7 @@ impl TaskSet {
         for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
+            if path.extension().is_some_and(|ext| ext == "json") {
                 task_sets.push(Self::from_file(&path)?);
             }
         }

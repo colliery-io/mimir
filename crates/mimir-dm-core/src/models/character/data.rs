@@ -4,8 +4,11 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Default humanoid walking speed in feet
+pub const DEFAULT_SPEED: i32 = 30;
+
 fn default_speed() -> i32 {
-    30
+    DEFAULT_SPEED
 }
 
 /// Ability scores with helper methods for modifiers
