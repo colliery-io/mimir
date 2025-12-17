@@ -550,6 +550,40 @@
     // Class features and feats
     #let class-features = get(npc, "class_features", default: ())
     #let feats = get(npc, "feats", default: ())
+    #let class-features-details = get(npc, "class_features_details", default: ())
+    #let subclass-features-details = get(npc, "subclass_features_details", default: ())
+
+    // Helper to find feature details by name
+    #let get-feature-description(feature-name) = {
+      // First check class features
+      let class-match = if type(class-features-details) == array {
+        class-features-details.find((f) => get(f, "name", default: "") == feature-name)
+      } else { none }
+
+      if class-match != none {
+        let entries = get(class-match, "entries", default: ())
+        if type(entries) == array and entries.len() > 0 {
+          // Extract first text entry as description
+          let first-entry = entries.at(0)
+          if type(first-entry) == str { first-entry }
+          else { none }
+        } else { none }
+      } else {
+        // Check subclass features
+        let subclass-match = if type(subclass-features-details) == array {
+          subclass-features-details.find((f) => get(f, "name", default: "") == feature-name)
+        } else { none }
+
+        if subclass-match != none {
+          let entries = get(subclass-match, "entries", default: ())
+          if type(entries) == array and entries.len() > 0 {
+            let first-entry = entries.at(0)
+            if type(first-entry) == str { first-entry }
+            else { none }
+          } else { none }
+        } else { none }
+      }
+    }
 
     // Spells
     #let spells = get(npc, "spells", default: ())
@@ -777,10 +811,25 @@
           )[
             #text(weight: "bold", size: sizes.sm)[Features & Traits]
             #v(spacing.xs)
-            #for feature in class-features {
-              text(size: sizes.sm)[- #if type(feature) == dictionary { get(feature, "name", default: "?") } else { feature }]
-              linebreak()
-            }
+            #if type(class-features) == array and class-features.len() > 0 [
+              #for feature in class-features [
+                #let feature-name = if type(feature) == dictionary { get(feature, "name", default: "?") } else { feature }
+                #let feature-class = if type(feature) == dictionary { get(feature, "class_name", default: "") } else { "" }
+                #let feature-subclass = if type(feature) == dictionary { get(feature, "subclass_name", default: none) } else { none }
+                #let feature-level = if type(feature) == dictionary { get(feature, "level", default: 0) } else { 0 }
+                #let feature-desc = get-feature-description(feature-name)
+
+                #text(size: sizes.sm, weight: "bold")[#feature-name]
+                #if feature-class != "" [
+                  #text(size: sizes.xs, fill: colors.text-secondary)[ (#if feature-subclass != none [#feature-subclass] else [#feature-class] Lv#feature-level)]
+                ]
+                #linebreak()
+                #if feature-desc != none [
+                  #text(size: sizes.xs)[#feature-desc]
+                  #v(spacing.xs)
+                ]
+              ]
+            ]
             #if feats.len() > 0 [
               #v(spacing.xs)
               *Feats:* #text(size: sizes.sm)[#feats.join(", ")]

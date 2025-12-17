@@ -601,6 +601,12 @@ fn seed_npcs(
     let character = service.create_character(campaign_id, None, true, base_directory, toblen)?;
     npcs.push(character);
 
+    // Iarno Albrek (Glasstaff) - Human Wizard, villain
+    let iarno = create_iarno(created_at);
+    let mut service = CharacterService::new(conn);
+    let character = service.create_character(campaign_id, None, true, base_directory, iarno)?;
+    npcs.push(character);
+
     Ok(npcs)
 }
 
@@ -1445,6 +1451,143 @@ fn create_toblen(created_at: &str) -> CharacterData {
     }
 }
 
+/// Create Iarno Albrek (Glasstaff) - Level 5 Human Wizard, Redbrand leader
+fn create_iarno(created_at: &str) -> CharacterData {
+    let mut spell_slots = HashMap::new();
+    spell_slots.insert(1, SpellSlots::new(4));
+    spell_slots.insert(2, SpellSlots::new(3));
+    spell_slots.insert(3, SpellSlots::new(2));
+
+    CharacterData {
+        character_name: "Iarno Albrek".to_string(),
+        player_id: None, // NPC
+        level: 5,
+        experience_points: 0,
+        version: 1,
+        snapshot_reason: Some("Dev seed NPC".to_string()),
+        created_at: created_at.to_string(),
+        race: "Human".to_string(),
+        subrace: None,
+        classes: vec![ClassLevel {
+            class_name: "Wizard".to_string(),
+            level: 5,
+            subclass: Some("School of Enchantment".to_string()),
+            hit_dice_type: "d6".to_string(),
+            hit_dice_remaining: 5,
+        }],
+        background: "Sage".to_string(),
+        alignment: Some("Lawful Evil".to_string()),
+        abilities: AbilityScores {
+            strength: 9,
+            dexterity: 14,
+            constitution: 11,
+            intelligence: 17,
+            wisdom: 12,
+            charisma: 11,
+        },
+        max_hp: 22,
+        current_hp: 22,
+        speed: 30,
+        proficiencies: Proficiencies {
+            skills: vec![
+                "Arcana".to_string(),
+                "History".to_string(),
+                "Deception".to_string(),
+                "Insight".to_string(),
+            ],
+            saves: vec!["Intelligence".to_string(), "Wisdom".to_string()],
+            armor: vec![],
+            weapons: vec![
+                "Daggers".to_string(),
+                "Darts".to_string(),
+                "Slings".to_string(),
+                "Quarterstaffs".to_string(),
+                "Light Crossbows".to_string(),
+            ],
+            tools: vec![],
+            languages: vec![
+                "Common".to_string(),
+                "Elvish".to_string(),
+                "Draconic".to_string(),
+            ],
+        },
+        class_features: vec![
+            FeatureReference::new("Spellcasting", "Wizard", "PHB", 1),
+            FeatureReference::new("Arcane Recovery", "Wizard", "PHB", 1),
+            FeatureReference::with_subclass(
+                "Hypnotic Gaze",
+                "Wizard",
+                "School of Enchantment",
+                "PHB",
+                2,
+            ),
+        ],
+        feats: vec![],
+        spells: SpellData {
+            cantrips: vec![
+                SpellReference::new("Fire Bolt", "PHB"),
+                SpellReference::new("Light", "PHB"),
+                SpellReference::new("Mage Hand", "PHB"),
+                SpellReference::new("Prestidigitation", "PHB"),
+            ],
+            known_spells: vec![],
+            prepared_spells: vec![
+                SpellReference::new("Charm Person", "PHB"),
+                SpellReference::new("Hold Person", "PHB"),
+                SpellReference::new("Magic Missile", "PHB"),
+                SpellReference::new("Mage Armor", "PHB"),
+                SpellReference::new("Misty Step", "PHB"),
+                SpellReference::new("Suggestion", "PHB"),
+            ],
+            spell_slots,
+        },
+        inventory: vec![
+            InventoryItem {
+                name: "Staff of Defense".to_string(),
+                source: Some("DMG".to_string()),
+                quantity: 1,
+                weight: 4.0,
+                value: 0.0,
+                notes: Some(
+                    "Glass staff that can cast Shield (1 charge) and Mage Armor (2 charges)"
+                        .to_string(),
+                ),
+            },
+            InventoryItem {
+                name: "Spellbook".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 3.0,
+                value: 50.0,
+                notes: Some("Contains all prepared spells plus Detect Magic, Identify, Sleep, Scorching Ray".to_string()),
+            },
+        ],
+        currency: Currency {
+            copper: 0,
+            silver: 0,
+            electrum: 0,
+            gold: 180,
+            platinum: 0,
+        },
+        equipped: EquippedItems {
+            armor: None,
+            shield: None,
+            main_hand: Some("Staff of Defense".to_string()),
+            off_hand: None,
+        },
+        personality: Personality {
+            traits: Some("I speak in a calm, measured tone that belies my ambition and cruelty.".to_string()),
+            ideals: Some("Power. Knowledge is the path to power and domination.".to_string()),
+            bonds: Some("I am loyal to the Black Spider who promises me arcane secrets.".to_string()),
+            flaws: Some("I underestimate my enemies and overestimate my own cunning.".to_string()),
+        },
+        npc_role: Some("Antagonist".to_string()),
+        npc_location: Some("Tresendar Manor, Phandalin".to_string()),
+        npc_faction: Some("Redbrands".to_string()),
+        npc_notes: Some("Iarno Albrek, also known as 'Glasstaff', is a former member of the Lords' Alliance who was sent to establish order in Phandalin. Instead, he secretly became the leader of the Redbrands, a gang of ruffians, working for the mysterious Black Spider. He carries a distinctive glass staff and is a capable enchanter.".to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1482,11 +1625,11 @@ mod tests {
         assert!(player_names.contains(&"Charlie"));
         assert!(player_names.contains(&"Diana"));
 
-        // Verify characters created (4 PCs + 3 NPCs = 7 total)
+        // Verify characters created (4 PCs + 4 NPCs = 8 total)
         use crate::dal::character::CharacterRepository;
         let mut char_repo = CharacterRepository::new(&mut conn);
         let characters = char_repo.list_all().unwrap();
-        assert_eq!(characters.len(), 7);
+        assert_eq!(characters.len(), 8);
 
         // Verify PCs
         let char_names: Vec<&str> = characters
@@ -1502,6 +1645,7 @@ mod tests {
         assert!(char_names.contains(&"Sildar Hallwinter"));
         assert!(char_names.contains(&"Gundren Rockseeker"));
         assert!(char_names.contains(&"Toblen Stonehill"));
+        assert!(char_names.contains(&"Iarno Albrek"));
 
         // Verify character levels
         let thorin = characters

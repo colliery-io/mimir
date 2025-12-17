@@ -753,7 +753,8 @@ pub async fn export_campaign_documents(
 ) -> Result<ApiResponse<PrintResult>, String> {
     use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
     use mimir_dm_core::dal::campaign::documents::DocumentRepository;
-    use mimir_dm_core::services::{CharacterService, DocumentService, ModuleMonsterService, ModuleService};
+    use mimir_dm_core::models::catalog::class::{ClassFeature, SubclassFeature};
+    use mimir_dm_core::services::{CharacterService, ClassService, DocumentService, ModuleMonsterService, ModuleService};
     use mimir_dm_print::markdown::parse_campaign_document;
 
     info!("Exporting all campaign {} documents to PDF", campaign_id);
@@ -1022,9 +1023,58 @@ pub async fn export_campaign_documents(
         let mut npc_service = CharacterService::new(&mut npc_data_conn);
         match npc_service.get_character(npc.id) {
             Ok((_character, character_data)) => {
+                // Fetch feature details from catalog
+                let mut class_feature_details: Vec<ClassFeature> = Vec::new();
+                let mut subclass_feature_details: Vec<SubclassFeature> = Vec::new();
+
+                {
+                    let mut feature_conn = state
+                        .db
+                        .get_connection()
+                        .map_err(|e| format!("Database error: {}", e))?;
+                    let mut class_service = ClassService::new(&mut feature_conn);
+
+                    for feature_ref in &character_data.class_features {
+                        if let Some(ref subclass_name) = feature_ref.subclass_name {
+                            // Try to fetch as subclass feature
+                            if let Ok(Some(feature)) = class_service.get_subclass_feature(
+                                &feature_ref.name,
+                                &feature_ref.class_name,
+                                subclass_name,
+                                &feature_ref.source,
+                            ) {
+                                subclass_feature_details.push(feature);
+                            }
+                        } else {
+                            // Fetch as class feature
+                            if let Ok(Some(feature)) = class_service.get_class_feature(
+                                &feature_ref.name,
+                                &feature_ref.class_name,
+                                &feature_ref.source,
+                            ) {
+                                class_feature_details.push(feature);
+                            }
+                        }
+                    }
+                }
+
+                // Convert to JSON
                 let npc_json = serde_json::to_value(&character_data)
                     .map_err(|e| format!("Failed to serialize NPC {}: {}", npc.character_name, e))?;
-                npcs_json.push(npc_json);
+
+                let class_features_json = serde_json::to_value(&class_feature_details)
+                    .map_err(|e| format!("Failed to serialize class features: {}", e))?;
+                let subclass_features_json = serde_json::to_value(&subclass_feature_details)
+                    .map_err(|e| format!("Failed to serialize subclass features: {}", e))?;
+
+                // Merge feature details into NPC data
+                let mut npc_data = npc_json;
+                if let serde_json::Value::Object(ref mut map) = npc_data {
+                    map.insert("class_features_details".to_string(), class_features_json);
+                    map.insert("subclass_features_details".to_string(), subclass_features_json);
+                }
+
+                npcs_json.push(npc_data);
             }
             Err(e) => {
                 debug!("Failed to get NPC data for {}: {}", npc.character_name, e);
