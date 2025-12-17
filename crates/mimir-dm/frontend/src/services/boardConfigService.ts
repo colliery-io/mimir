@@ -119,12 +119,13 @@ class BoardConfigurationService {
       ]
     },
     'major_npc_tracker': {
-      title: 'Major NPC Tracker',
-      description: 'Important non-player characters and their relationships',
+      title: 'Major NPC Tracker (Deprecated)',
+      description: 'Important non-player characters and their relationships. Consider using the Character Wizard to create NPCs with full character sheets instead.',
       tips: [
-        'Include motivations and goals',
-        'Track relationships between NPCs',
-        'Note how NPCs connect to player characters'
+        'TIP: Use the Character Wizard to create NPCs with full character sheets',
+        'NPCs created via the wizard can have ability scores, skills, and equipment',
+        'Legacy: Include motivations and goals for narrative-only NPCs',
+        'Legacy: Track relationships between NPCs'
       ]
     },
     'safety_tools': {

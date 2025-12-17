@@ -72,8 +72,9 @@
             <br><em>Example: "Incorporate player-created NPCs, locations they mentioned, backstory elements..."</em>
           </li>
           <li>
-            <strong>Major NPC Tracker:</strong> Document all NPCs from player backstories and Session Zero
+            <strong>NPCs:</strong> Create important NPCs using the Character Wizard (for full character sheets) or document narrative NPCs
             <br><em>Example: "The merchant who cheated Tom's rogue, Marcus's old commander, Lisa's temple contacts..."</em>
+            <br><small>Tip: Use Characters → Create Character → NPC for NPCs that need stats and equipment</small>
           </li>
           <li>
             <strong>First Module Hooks:</strong> Create personal stakes for each character
