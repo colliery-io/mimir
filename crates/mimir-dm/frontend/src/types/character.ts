@@ -24,7 +24,7 @@ export interface Player {
 export interface Character {
   id: number
   campaign_id: number | null
-  player_id: number
+  player_id: number | null  // Nullable for NPCs
   character_name: string
   is_npc: number
   directory_path: string
@@ -61,7 +61,7 @@ export interface ClassLevel {
 
 export interface CharacterData {
   character_name: string
-  player_id: number
+  player_id: number | null  // Nullable for NPCs
   level: number
   experience_points: number
   version: number
@@ -84,6 +84,11 @@ export interface CharacterData {
   currency: Currency
   equipped: EquippedItems
   personality: Personality
+  // NPC-specific fields
+  npc_role: string | null
+  npc_location: string | null
+  npc_faction: string | null
+  npc_notes: string | null
 }
 
 export interface AbilityScores {
@@ -180,7 +185,7 @@ export interface Personality {
 
 export interface CreateCharacterRequest {
   character_name: string
-  player_id: number
+  player_id: number | null  // Nullable for NPCs
   race: string
   race_source: string
   subrace: string | null
@@ -197,6 +202,12 @@ export interface CreateCharacterRequest {
   equipment: InventoryItemInput[] | null
   cantrips: SpellReferenceInput[] | null
   known_spells: SpellReferenceInput[] | null
+  // NPC-specific fields
+  is_npc: boolean | null
+  npc_role: string | null
+  npc_location: string | null
+  npc_faction: string | null
+  npc_notes: string | null
 }
 
 export interface AbilityScoresInput {

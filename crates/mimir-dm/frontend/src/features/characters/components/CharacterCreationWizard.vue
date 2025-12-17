@@ -19,17 +19,80 @@
       </div>
 
       <div class="wizard-body">
-        <!-- Step 1: Player Selection -->
+        <!-- Step 1: Character Type & Player Selection -->
         <div v-if="steps[currentStep] === 'Player'" class="wizard-step">
-          <h3>Select Player</h3>
-          <p class="step-description">Who will be playing this character?</p>
+          <h3>Character Type</h3>
+          <p class="step-description">Is this a player character or an NPC?</p>
 
-          <select v-model="formData.player_id" class="form-select" required>
-            <option :value="null">-- Select a Player --</option>
-            <option v-for="player in players" :key="player.id" :value="player.id">
-              {{ player.name }}
-            </option>
-          </select>
+          <div class="character-type-toggle">
+            <button
+              type="button"
+              class="type-toggle-btn"
+              :class="{ active: !formData.is_npc }"
+              @click="setCharacterType(false)"
+            >
+              Player Character
+            </button>
+            <button
+              type="button"
+              class="type-toggle-btn"
+              :class="{ active: formData.is_npc }"
+              @click="setCharacterType(true)"
+            >
+              NPC
+            </button>
+          </div>
+
+          <!-- Player selection (for PCs only) -->
+          <div v-if="!formData.is_npc" class="form-group">
+            <label>Player</label>
+            <select v-model="formData.player_id" class="form-select" required>
+              <option :value="null">-- Select a Player --</option>
+              <option v-for="player in players" :key="player.id" :value="player.id">
+                {{ player.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- NPC fields (for NPCs only) -->
+          <div v-else class="npc-fields">
+            <div class="form-group">
+              <label>Role <span class="optional-label">(optional)</span></label>
+              <input
+                v-model="formData.npc_role"
+                type="text"
+                class="form-input"
+                placeholder="e.g., Tavern Owner, Town Guard, Villain"
+              />
+            </div>
+            <div class="form-group">
+              <label>Location <span class="optional-label">(optional)</span></label>
+              <input
+                v-model="formData.npc_location"
+                type="text"
+                class="form-input"
+                placeholder="e.g., The Rusty Anchor Tavern, Waterdeep"
+              />
+            </div>
+            <div class="form-group">
+              <label>Faction <span class="optional-label">(optional)</span></label>
+              <input
+                v-model="formData.npc_faction"
+                type="text"
+                class="form-input"
+                placeholder="e.g., Zhentarim, Harpers, City Watch"
+              />
+            </div>
+            <div class="form-group">
+              <label>Notes <span class="optional-label">(optional)</span></label>
+              <textarea
+                v-model="formData.npc_notes"
+                class="form-textarea"
+                rows="3"
+                placeholder="Additional notes about this NPC..."
+              ></textarea>
+            </div>
+          </div>
         </div>
 
         <!-- Step 2: Basic Info -->
@@ -248,9 +311,28 @@
 
           <div class="review-section">
             <div class="review-item">
+              <span class="review-label">Type:</span>
+              <span class="review-value">{{ formData.is_npc ? 'NPC' : 'Player Character' }}</span>
+            </div>
+            <div v-if="!formData.is_npc" class="review-item">
               <span class="review-label">Player:</span>
               <span class="review-value">{{ getPlayerName(formData.player_id) }}</span>
             </div>
+            <!-- NPC fields -->
+            <template v-if="formData.is_npc">
+              <div v-if="formData.npc_role" class="review-item">
+                <span class="review-label">Role:</span>
+                <span class="review-value">{{ formData.npc_role }}</span>
+              </div>
+              <div v-if="formData.npc_location" class="review-item">
+                <span class="review-label">Location:</span>
+                <span class="review-value">{{ formData.npc_location }}</span>
+              </div>
+              <div v-if="formData.npc_faction" class="review-item">
+                <span class="review-label">Faction:</span>
+                <span class="review-value">{{ formData.npc_faction }}</span>
+              </div>
+            </template>
             <div class="review-item">
               <span class="review-label">Character Name:</span>
               <span class="review-value">{{ formData.character_name }}</span>
@@ -299,6 +381,10 @@
             <div class="review-item">
               <span class="review-label">Campaign:</span>
               <span class="review-value">{{ getCampaignName(formData.campaign_id) }}</span>
+            </div>
+            <div v-if="formData.is_npc && formData.npc_notes" class="review-item">
+              <span class="review-label">Notes:</span>
+              <span class="review-value review-notes">{{ formData.npc_notes }}</span>
             </div>
           </div>
         </div>
@@ -403,7 +489,13 @@ const formData = ref({
     wisdom: 10,
     charisma: 10
   },
-  skills: [] as string[]
+  skills: [] as string[],
+  // NPC-specific fields
+  is_npc: false,
+  npc_role: '',
+  npc_location: '',
+  npc_faction: '',
+  npc_notes: ''
 })
 
 const players = computed(() => playerStore.players)
@@ -906,7 +998,8 @@ const canProceed = computed(() => {
 
   switch (currentStepName) {
     case 'Player':
-      return formData.value.player_id !== null
+      // NPCs don't need a player, PCs do
+      return formData.value.is_npc || formData.value.player_id !== null
     case 'Basic Info':
       return !!(
         formData.value.character_name &&
@@ -975,11 +1068,31 @@ const resetForm = () => {
       wisdom: 10,
       charisma: 10
     },
-    skills: []
+    skills: [],
+    is_npc: false,
+    npc_role: '',
+    npc_location: '',
+    npc_faction: '',
+    npc_notes: ''
   }
   selectedSpells.value = []
   selectedSpellsGrouped.value = {}
   error.value = null
+}
+
+const setCharacterType = (isNpc: boolean) => {
+  formData.value.is_npc = isNpc
+  // Clear player_id when switching to NPC
+  if (isNpc) {
+    formData.value.player_id = null
+  }
+  // Clear NPC fields when switching to PC
+  if (!isNpc) {
+    formData.value.npc_role = ''
+    formData.value.npc_location = ''
+    formData.value.npc_faction = ''
+    formData.value.npc_notes = ''
+  }
 }
 
 const nextStep = () => {
@@ -1009,8 +1122,9 @@ const getCampaignName = (campaignId: number | null): string => {
 }
 
 const createCharacter = async () => {
-  if (!formData.value.player_id) {
-    error.value = 'Player is required'
+  // PCs require a player, NPCs don't
+  if (!formData.value.is_npc && !formData.value.player_id) {
+    error.value = 'Player is required for player characters'
     return
   }
 
@@ -1032,7 +1146,7 @@ const createCharacter = async () => {
 
     const request = {
       character_name: formData.value.character_name,
-      player_id: formData.value.player_id,
+      player_id: formData.value.is_npc ? null : formData.value.player_id,
       race: formData.value.race,
       race_source: raceItem?.source || 'PHB',
       subrace: null,
@@ -1061,7 +1175,13 @@ const createCharacter = async () => {
         ? Object.entries(selectedSpellsGrouped.value)
             .filter(([level]) => parseInt(level) > 0)
             .flatMap(([, spells]) => spells)
-        : null
+        : null,
+      // NPC fields
+      is_npc: formData.value.is_npc || null,
+      npc_role: formData.value.is_npc && formData.value.npc_role ? formData.value.npc_role : null,
+      npc_location: formData.value.is_npc && formData.value.npc_location ? formData.value.npc_location : null,
+      npc_faction: formData.value.is_npc && formData.value.npc_faction ? formData.value.npc_faction : null,
+      npc_notes: formData.value.is_npc && formData.value.npc_notes ? formData.value.npc_notes : null
     }
 
     await invoke('create_character', { request })
@@ -1692,5 +1812,74 @@ watch(
   text-align: center;
   padding: 20px;
   color: var(--text-secondary);
+}
+
+/* Character Type Toggle */
+.character-type-toggle {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.type-toggle-btn {
+  flex: 1;
+  padding: 16px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.type-toggle-btn:hover {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.type-toggle-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
+/* NPC Fields */
+.npc-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.optional-label {
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Review notes styling */
+.review-notes {
+  white-space: pre-wrap;
+  font-style: italic;
 }
 </style>

@@ -140,7 +140,10 @@ const charactersByCampaign = computed(() => {
   return grouped
 })
 
-const getPlayerName = (playerId: number): string => {
+const getPlayerName = (playerId: number | null): string => {
+  if (playerId === null) {
+    return 'NPC'
+  }
   const player = playerStore.players.find(p => p.id === playerId)
   return player?.name || 'Unknown Player'
 }
