@@ -8,6 +8,31 @@
         </button>
       </div>
 
+      <!-- Filter Tabs -->
+      <div class="filter-tabs">
+        <button
+          class="filter-tab"
+          :class="{ active: characterFilter === 'all' }"
+          @click="characterFilter = 'all'"
+        >
+          All ({{ allCharactersCount }})
+        </button>
+        <button
+          class="filter-tab"
+          :class="{ active: characterFilter === 'pc' }"
+          @click="characterFilter = 'pc'"
+        >
+          Player Characters ({{ pcCount }})
+        </button>
+        <button
+          class="filter-tab"
+          :class="{ active: characterFilter === 'npc' }"
+          @click="characterFilter = 'npc'"
+        >
+          NPCs ({{ npcCount }})
+        </button>
+      </div>
+
       <div v-if="characterStore.loading" class="loading">
         Loading characters...
       </div>
@@ -33,9 +58,13 @@
               v-for="character in unassignedCharacters"
               :key="character.id"
               class="character-card"
+              :class="{ 'is-npc': character.is_npc }"
               @click="viewCharacter(character)"
             >
-              <h3 class="character-name">{{ character.character_name }}</h3>
+              <div class="character-header">
+                <h3 class="character-name">{{ character.character_name }}</h3>
+                <span v-if="character.is_npc" class="npc-badge">NPC</span>
+              </div>
               <div class="character-class-race">
                 Level {{ character.current_level }} {{ character.race || '' }} {{ character.class || '' }}
               </div>
@@ -69,9 +98,13 @@
               v-for="character in chars"
               :key="character.id"
               class="character-card"
+              :class="{ 'is-npc': character.is_npc }"
               @click="viewCharacter(character)"
             >
-              <h3 class="character-name">{{ character.character_name }}</h3>
+              <div class="character-header">
+                <h3 class="character-name">{{ character.character_name }}</h3>
+                <span v-if="character.is_npc" class="npc-badge">NPC</span>
+              </div>
               <div class="character-class-race">
                 Level {{ character.current_level }} {{ character.race || '' }} {{ character.class || '' }}
               </div>
@@ -118,7 +151,27 @@ onMounted(async () => {
   ])
 })
 
-const characters = computed(() => characterStore.characters)
+// Filter state
+type CharacterFilter = 'all' | 'pc' | 'npc'
+const characterFilter = ref<CharacterFilter>('all')
+
+// Counts for filter tabs
+const allCharactersCount = computed(() => characterStore.characters.length)
+const pcCount = computed(() => characterStore.characters.filter(c => !c.is_npc).length)
+const npcCount = computed(() => characterStore.characters.filter(c => c.is_npc).length)
+
+// Filtered characters based on selected filter
+const characters = computed(() => {
+  const all = characterStore.characters
+  switch (characterFilter.value) {
+    case 'pc':
+      return all.filter(c => !c.is_npc)
+    case 'npc':
+      return all.filter(c => c.is_npc)
+    default:
+      return all
+  }
+})
 
 const unassignedCharacters = computed(() =>
   characters.value.filter(c => c.campaign_id === null)
@@ -339,5 +392,68 @@ const assignToCampaign = async (characterId: number, event: Event) => {
   border: 1px solid var(--color-error) / 0.2;
   border-radius: var(--radius-md);
   color: var(--color-error);
+}
+
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.filter-tab {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-tab:hover {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+.filter-tab.active {
+  background-color: var(--color-primary-500);
+  color: var(--color-background);
+}
+
+/* Character Card Header */
+.character-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.character-header .character-name {
+  margin-bottom: 0;
+}
+
+/* NPC Badge */
+.npc-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: var(--color-warning, #f59e0b);
+  color: white;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* NPC card styling */
+.character-card.is-npc {
+  border-left: 3px solid var(--color-warning, #f59e0b);
 }
 </style>
