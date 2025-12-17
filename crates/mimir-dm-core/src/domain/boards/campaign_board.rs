@@ -57,7 +57,7 @@ impl BoardDefinition for CampaignBoard {
                 "table_expectations",
                 "character_integration",
             ],
-            "integration" => vec!["campaign_bible", "major_npc_tracker"],
+            "integration" => vec!["campaign_bible"],
             "active" => vec![], // No required documents
             "concluding" => vec![],
             "completed" => vec![],
@@ -305,11 +305,12 @@ impl BoardDefinition for CampaignBoard {
 <h4>Mining Session Zero</h4>
 <p>Catalog player contributions to weave into your module:</p>
 <ul>
-  <li><strong>NPCs Created</strong>: List every NPC mentioned in backstories or during Session Zero</li>
+  <li><strong>NPCs Created</strong>: Use the Character Wizard to create NPCs with full stats, or note simpler NPCs in the Campaign Bible</li>
   <li><strong>Locations Mentioned</strong>: Note places from character histories that could become scenes</li>
   <li><strong>Backstory Elements</strong>: Track rivals, mentors, debts, and obligations to reference</li>
   <li><strong>Stated Interests</strong>: Remember what excited players during discussion</li>
 </ul>
+<p class="tip"><strong>Tip:</strong> Go to Characters and click Create Character, then select NPC to create NPCs with ability scores, equipment, and backstory.</p>
 
 <h4>First Module Design Goals</h4>
 <ul>
@@ -331,7 +332,7 @@ impl BoardDefinition for CampaignBoard {
 </ul>
 
 <h4>Major NPC Development</h4>
-<p>For each significant NPC, define:</p>
+<p>For significant NPCs who may need stats in combat, create them using the Character Wizard (Characters > Create Character > NPC). For all NPCs, consider:</p>
 <ul>
   <li><strong>Appearance</strong>: One memorable physical trait</li>
   <li><strong>Voice</strong>: Speech pattern or verbal tic</li>
@@ -583,9 +584,8 @@ mod tests {
 
         // Integration stage
         let integration_docs = board.required_documents("integration");
-        assert_eq!(integration_docs.len(), 2);
+        assert_eq!(integration_docs.len(), 1);
         assert!(integration_docs.contains(&"campaign_bible"));
-        assert!(integration_docs.contains(&"major_npc_tracker"));
 
         // Active stage (no required documents)
         assert_eq!(board.required_documents("active").len(), 0);
