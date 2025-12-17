@@ -300,16 +300,128 @@ impl ToolRegistry {
     fn generate_tool_awareness_guidance(&self) -> String {
         let mut guidance = String::from("## TOOL AWARENESS\n\n");
 
-        guidance.push_str("### Available Tools\n");
-        let tool_names: Vec<&str> = self.tools.keys().map(|s| s.as_str()).collect();
-        guidance.push_str(&format!(
-            "You have access to these tools: {}\n\n",
-            tool_names.join(", ")
-        ));
+        // Comprehensive tool categories with descriptions
+        guidance.push_str("### Tool Categories and Usage\n\n");
 
-        guidance.push_str("### Tool Workflow Guidance\n");
+        // Character Management Tools
+        guidance.push_str("#### Character Management\n");
+        guidance.push_str("Use these tools to manage player characters (PCs) and NPCs:\n\n");
+        if self.has_tool("get_character") {
+            guidance.push_str("- **get_character**: Retrieve full character data by ID (stats, inventory, spells, equipment)\n");
+        }
+        if self.has_tool("list_campaign_characters") {
+            guidance.push_str("- **list_campaign_characters**: List all characters in a campaign (both PCs and NPCs)\n");
+        }
+        if self.has_tool("get_character_stats") {
+            guidance.push_str("- **get_character_stats**: Get character's ability scores, saves, skills, and derived values\n");
+        }
+        if self.has_tool("list_players") {
+            guidance.push_str("- **list_players**: List all players registered in the database\n");
+        }
+        if self.has_tool("create_character") {
+            guidance.push_str("- **create_character**: Create a new character (PC or NPC) with full stats and details\n");
+        }
+        if self.has_tool("update_character") {
+            guidance.push_str("- **update_character**: Update character attributes, background, or other details\n");
+        }
+        guidance.push_str("\n");
 
-        // Collect workflow guidance from each tool
+        // Combat & Health Tools
+        guidance.push_str("#### Combat & Health\n");
+        guidance.push_str("Use these for combat tracking and health management:\n\n");
+        if self.has_tool("update_character_hp") {
+            guidance.push_str("- **update_character_hp**: Apply damage or healing to a character (use negative for damage)\n");
+        }
+        if self.has_tool("take_rest") {
+            guidance.push_str("- **take_rest**: Apply short or long rest mechanics (restore HP, spell slots, hit dice)\n");
+        }
+        guidance.push_str("\n");
+
+        // Spellcasting Tools
+        guidance.push_str("#### Spellcasting\n");
+        guidance.push_str("Use these for spell management:\n\n");
+        if self.has_tool("check_spell_slots") {
+            guidance.push_str("- **check_spell_slots**: Check available spell slots for spellcasting characters\n");
+        }
+        if self.has_tool("cast_spell") {
+            guidance.push_str("- **cast_spell**: Cast a spell, consuming the appropriate spell slot\n");
+        }
+        guidance.push_str("\n");
+
+        // Inventory & Equipment Tools
+        guidance.push_str("#### Inventory & Equipment\n");
+        guidance.push_str("Use these to manage character possessions:\n\n");
+        if self.has_tool("add_inventory_item") {
+            guidance.push_str("- **add_inventory_item**: Add an item to a character's inventory\n");
+        }
+        if self.has_tool("remove_inventory_item") {
+            guidance.push_str("- **remove_inventory_item**: Remove an item from inventory\n");
+        }
+        if self.has_tool("update_equipped") {
+            guidance.push_str("- **update_equipped**: Change what items are equipped (armor, weapons, shield)\n");
+        }
+        if self.has_tool("update_currency") {
+            guidance.push_str("- **update_currency**: Add or remove gold, silver, copper, electrum, or platinum\n");
+        }
+        guidance.push_str("\n");
+
+        // D&D Catalog/Reference Tools
+        guidance.push_str("#### D&D Reference Catalog\n");
+        guidance.push_str("Use these to search the D&D 5e rules catalog:\n\n");
+        if self.has_tool("search_monsters") {
+            guidance.push_str("- **search_monsters**: Search monster catalog by name, CR, type, size, or alignment\n");
+        }
+        if self.has_tool("search_spells") {
+            guidance.push_str("- **search_spells**: Search spells by name, level, school, or class availability\n");
+        }
+        if self.has_tool("search_items") {
+            guidance.push_str("- **search_items**: Search equipment, weapons, armor, and magic items\n");
+        }
+        guidance.push_str("\n");
+
+        // Module/Adventure Tools
+        guidance.push_str("#### Adventure Modules\n");
+        guidance.push_str("Use these to manage adventure modules within campaigns:\n\n");
+        if self.has_tool("create_module") {
+            guidance.push_str("- **create_module**: Create a new adventure module from templates\n");
+        }
+        if self.has_tool("list_modules") {
+            guidance.push_str("- **list_modules**: List all modules for a campaign\n");
+        }
+        if self.has_tool("get_module") {
+            guidance.push_str("- **get_module**: Get details of a specific module\n");
+        }
+        if self.has_tool("update_module_status") {
+            guidance.push_str("- **update_module_status**: Update module progress status\n");
+        }
+        guidance.push_str("\n");
+
+        // File Tools
+        guidance.push_str("#### File Operations\n");
+        guidance.push_str("Use these to read/write campaign files (session notes, world building, etc.):\n\n");
+        if self.has_tool("read_file") {
+            guidance.push_str("- **read_file**: Read contents of a file in the campaign directory\n");
+        }
+        if self.has_tool("write_file") {
+            guidance.push_str("- **write_file**: Create or overwrite a file (use for new content)\n");
+        }
+        if self.has_tool("edit_file") {
+            guidance.push_str("- **edit_file**: Edit specific lines in an existing file (use for modifications)\n");
+        }
+        if self.has_tool("list_files") {
+            guidance.push_str("- **list_files**: List files in the campaign directory structure\n");
+        }
+        guidance.push_str("\n");
+
+        // Task Management
+        guidance.push_str("#### Task Management\n");
+        if self.has_tool("todo_write") {
+            guidance.push_str("- **todo_write**: Track tasks and progress for complex multi-step operations\n");
+        }
+        guidance.push_str("\n");
+
+        // Collect any additional workflow guidance from tools
+        guidance.push_str("### Tool-Specific Workflow Guidance\n\n");
         let mut has_guidance = false;
         for (name, tool) in &self.tools {
             if let Some(tool_guidance) = tool.workflow_guidance() {
@@ -317,12 +429,11 @@ impl ToolRegistry {
                 has_guidance = true;
             }
         }
-
         if !has_guidance {
-            guidance.push_str("- Tools are independent and can be used as needed\n");
-            guidance.push_str("- Follow tool descriptions for specific usage patterns\n\n");
+            guidance.push_str("Follow tool descriptions for specific usage patterns.\n\n");
         }
 
+        // ReAct Pattern
         guidance.push_str("### ReAct Pattern for Multi-Step Tasks\n\n");
         guidance.push_str("For tasks requiring multiple tool calls, use explicit reasoning:\n\n");
         guidance.push_str("1. **THOUGHT**: Analyze what needs to be done and plan your approach\n");
@@ -332,28 +443,33 @@ impl ToolRegistry {
         guidance.push_str("3. **OBSERVATION**: Examine tool results and determine next steps\n");
         guidance.push_str("4. **REPEAT**: Continue until task is complete\n\n");
 
-        guidance.push_str("Example:\n");
+        guidance.push_str("### Example Workflows\n\n");
+
+        guidance.push_str("**Combat HP Update:**\n");
         guidance.push_str("```\n");
-        guidance.push_str("<thought>\n");
-        guidance.push_str("User wants to add an NPC to the session. I need to:\n");
-        guidance.push_str("1. Read the current session NPCs file\n");
-        guidance.push_str("2. Add the new NPC with appropriate stats\n");
-        guidance.push_str("3. Save the updated file\n");
-        guidance.push_str("</thought>\n");
-        guidance.push_str("[executes read_file]\n");
-        guidance.push_str("<thought>\n");
-        guidance.push_str("Got the NPCs file. Now I'll add the blacksmith with:\n");
-        guidance.push_str("- Name, role, and personality\n");
-        guidance.push_str("- Key information and secrets\n");
-        guidance.push_str("</thought>\n");
-        guidance.push_str("[executes write_file with updated content]\n");
+        guidance.push_str("<thought>The goblin hit Thorin for 8 damage. I'll update his HP.</thought>\n");
+        guidance.push_str("[use update_character_hp with character_id and hp_change=-8]\n");
+        guidance.push_str("```\n\n");
+
+        guidance.push_str("**Looking up a Monster:**\n");
+        guidance.push_str("```\n");
+        guidance.push_str("<thought>DM needs stats for a CR 3 monster. I'll search the catalog.</thought>\n");
+        guidance.push_str("[use search_monsters with cr_min=3, cr_max=3]\n");
+        guidance.push_str("```\n\n");
+
+        guidance.push_str("**Adding Loot to Inventory:**\n");
+        guidance.push_str("```\n");
+        guidance.push_str("<thought>Party found a Longsword. I'll add it to the fighter's inventory.</thought>\n");
+        guidance.push_str("[use add_inventory_item with character_id, item_name=\"Longsword\", quantity=1]\n");
         guidance.push_str("```\n\n");
 
         guidance.push_str("### General Action Patterns\n");
-        guidance.push_str("- Take direct action when user requests clear operations\n");
-        guidance.push_str("- Use tools in logical sequence based on their guidance\n");
-        guidance.push_str("- Always complete requested actions rather than just explaining them\n");
-        guidance.push_str("- Show your reasoning in `<thought>` blocks for complex tasks\n");
+        guidance.push_str("- **Take direct action** when user requests clear operations\n");
+        guidance.push_str("- **Use tools in logical sequence** based on their guidance\n");
+        guidance.push_str("- **Always complete requested actions** rather than just explaining them\n");
+        guidance.push_str("- **Show reasoning** in `<thought>` blocks for complex tasks\n");
+        guidance.push_str("- **Use catalog search tools** to look up D&D rules, monsters, spells, and items\n");
+        guidance.push_str("- **Prefer character tools over file editing** for character data changes\n");
 
         guidance
     }
@@ -432,5 +548,110 @@ pub mod catalog_tools;
 // Module management tools
 pub mod module_tools;
 
+// Campaign summary tools (LLM-based story summarization)
+pub mod campaign_summary_tools;
+
 #[cfg(test)]
 mod character_tools_test;
+
+// Re-exports for convenience
+pub use catalog_tools::{SearchItemsTool, SearchMonstersTool, SearchSpellsTool};
+pub use character_tools::{
+    CheckSpellSlotsTool, GetCharacterStatsTool, GetCharacterTool, ListCampaignCharactersTool,
+    ListPlayersTool,
+};
+pub use character_write_tools::{
+    AddInventoryItemTool, CastSpellTool, CreateCharacterTool, RemoveInventoryItemTool,
+    TakeRestTool, UpdateCharacterHpTool, UpdateCharacterTool, UpdateCurrencyTool,
+    UpdateEquippedTool,
+};
+pub use module_tools::{CreateModuleTool, GetModuleTool, ListModulesTool, UpdateModuleStatusTool};
+
+use mimir_dm_core::DatabaseService;
+use mimir_dm_llm::{TodoListTool, TodoStateManager};
+
+/// Register all standard tools in the tool registry
+///
+/// This is the single source of truth for what tools are available.
+/// Both production and tests should use this function to ensure consistency.
+pub fn register_all_tools(
+    registry: &mut ToolRegistry,
+    db_service: Arc<DatabaseService>,
+    todo_state_manager: TodoStateManager,
+) {
+    info!("Registering all standard tools...");
+
+    // Task management
+    let todo_tool = TodoListTool::new(todo_state_manager);
+    registry.register(Arc::new(todo_tool));
+    info!("  - TodoListTool");
+
+    // Character read tools
+    registry.register(Arc::new(ListPlayersTool::new(db_service.clone())));
+    info!("  - ListPlayersTool");
+
+    registry.register(Arc::new(GetCharacterTool::new(db_service.clone())));
+    info!("  - GetCharacterTool");
+
+    registry.register(Arc::new(ListCampaignCharactersTool::new(db_service.clone())));
+    info!("  - ListCampaignCharactersTool");
+
+    registry.register(Arc::new(GetCharacterStatsTool::new(db_service.clone())));
+    info!("  - GetCharacterStatsTool");
+
+    registry.register(Arc::new(CheckSpellSlotsTool::new(db_service.clone())));
+    info!("  - CheckSpellSlotsTool");
+
+    // Character write tools
+    registry.register(Arc::new(CreateCharacterTool::new(db_service.clone())));
+    info!("  - CreateCharacterTool");
+
+    registry.register(Arc::new(UpdateCharacterHpTool::new(db_service.clone())));
+    info!("  - UpdateCharacterHpTool");
+
+    registry.register(Arc::new(AddInventoryItemTool::new(db_service.clone())));
+    info!("  - AddInventoryItemTool");
+
+    registry.register(Arc::new(RemoveInventoryItemTool::new(db_service.clone())));
+    info!("  - RemoveInventoryItemTool");
+
+    registry.register(Arc::new(UpdateCharacterTool::new(db_service.clone())));
+    info!("  - UpdateCharacterTool");
+
+    registry.register(Arc::new(CastSpellTool::new(db_service.clone())));
+    info!("  - CastSpellTool");
+
+    registry.register(Arc::new(TakeRestTool::new(db_service.clone())));
+    info!("  - TakeRestTool");
+
+    registry.register(Arc::new(UpdateEquippedTool::new(db_service.clone())));
+    info!("  - UpdateEquippedTool");
+
+    registry.register(Arc::new(UpdateCurrencyTool::new(db_service.clone())));
+    info!("  - UpdateCurrencyTool");
+
+    // Module management tools
+    registry.register(Arc::new(CreateModuleTool::new(db_service.clone())));
+    info!("  - CreateModuleTool");
+
+    registry.register(Arc::new(ListModulesTool::new(db_service.clone())));
+    info!("  - ListModulesTool");
+
+    registry.register(Arc::new(GetModuleTool::new(db_service.clone())));
+    info!("  - GetModuleTool");
+
+    registry.register(Arc::new(UpdateModuleStatusTool::new(db_service.clone())));
+    info!("  - UpdateModuleStatusTool");
+
+    // Catalog search tools
+    registry.register(Arc::new(SearchMonstersTool::new(db_service.clone())));
+    info!("  - SearchMonstersTool");
+
+    registry.register(Arc::new(SearchSpellsTool::new(db_service.clone())));
+    info!("  - SearchSpellsTool");
+
+    registry.register(Arc::new(SearchItemsTool::new(db_service)));
+    info!("  - SearchItemsTool");
+
+    info!("All tools registered successfully");
+}

@@ -65,6 +65,7 @@ pub async fn send_chat_message(
     _model_name: Option<String>,
     ollama_url: Option<String>,
     campaign_directory_path: Option<String>,
+    campaign_id: Option<i32>,
 ) -> Result<ChatResponseWithUsage, String> {
     let service = state.llm.lock().await;
 
@@ -105,6 +106,7 @@ pub async fn send_chat_message(
             &session_id,
             ollama_url.as_deref(),
             campaign_directory_path.as_deref(),
+            campaign_id,
             cancellation_token,
         )
         .await;

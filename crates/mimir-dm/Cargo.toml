@@ -5,6 +5,7 @@ edition = "2021"
 description = "Mimir D&D Campaign Assistant - Desktop Application"
 authors = ["Mimir Team"]
 license = "MIT OR Apache-2.0"
+default-run = "mimir"
 
 [lib]
 name = "mimir_dm"
@@ -13,6 +14,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "mimir"
 path = "src/main.rs"
+
+[[bin]]
+name = "agent-test"
+path = "src/bin/agent_test/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -54,6 +59,11 @@ similar = { workspace = true }
 reqwest = { workspace = true }
 paste = { workspace = true }
 regex = { workspace = true }
+
+# Agent test CLI dependencies
+clap = { workspace = true }
+colored = { workspace = true }
+indicatif = { workspace = true }
 
 [features]
 default = ["custom-protocol"]

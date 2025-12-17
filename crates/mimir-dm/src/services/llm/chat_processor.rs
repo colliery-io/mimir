@@ -4,6 +4,10 @@
 //! including tool execution loops, confirmations, and response generation.
 
 use anyhow::Result;
+use mimir_dm_core::services::{
+    CampaignService, CampaignSummaryService, CharacterService, ModuleService, PlayerService,
+};
+use mimir_dm_core::DatabaseService;
 use mimir_dm_llm::{
     traits::ActionDescription, EditFileTool, FileToolsConfig, ListFilesTool, LlmProvider,
     ReadFileTool, TodoListTool, WriteFileTool,
@@ -32,6 +36,213 @@ use crate::services::tools::module_tools::{
     CreateModuleTool, GetModuleTool, ListModulesTool, UpdateModuleStatusTool,
 };
 use crate::services::tools::ToolRegistry;
+
+// ============================================================================
+// Campaign Context Types - Rich database-backed context for LLM
+// ============================================================================
+
+/// Campaign context for JSON injection
+#[derive(Debug, Serialize)]
+struct CampaignContext {
+    id: i32,
+    name: String,
+    status: String,
+}
+
+/// Character context for JSON injection (party members)
+#[derive(Debug, Serialize)]
+struct CharacterContext {
+    id: i32,
+    name: String,
+    race: String,
+    class: String,
+    level: i32,
+    current_hp: i32,
+    max_hp: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    player_name: Option<String>,
+}
+
+/// NPC context for JSON injection
+#[derive(Debug, Serialize)]
+struct NpcContext {
+    id: i32,
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    race: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    class: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    location: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    faction: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    notes: Option<String>,
+}
+
+/// Module context for JSON injection
+#[derive(Debug, Serialize)]
+struct ModuleContext {
+    id: i32,
+    name: String,
+    status: String,
+    expected_sessions: i32,
+}
+
+/// Story/session context
+#[derive(Debug, Serialize)]
+struct StoryContext {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    story_summary: Option<String>,
+}
+
+/// Full application context matching the agent test pattern
+#[derive(Debug, Serialize)]
+struct ApplicationContext {
+    campaign: Option<CampaignContext>,
+    party: Vec<CharacterContext>,
+    npcs: Vec<NpcContext>,
+    modules: Vec<ModuleContext>,
+    story: StoryContext,
+}
+
+/// Build rich campaign context from database
+fn build_campaign_context(db_service: &Arc<DatabaseService>, campaign_id: i32) -> ApplicationContext {
+    let mut conn = match db_service.get_connection() {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Failed to get database connection for context: {}", e);
+            return ApplicationContext {
+                campaign: None,
+                party: Vec::new(),
+                npcs: Vec::new(),
+                modules: Vec::new(),
+                story: StoryContext { story_summary: None },
+            };
+        }
+    };
+
+    // Get campaign info
+    let campaign = {
+        let mut service = CampaignService::new(&mut conn);
+        service
+            .get_campaign(campaign_id)
+            .ok()
+            .flatten()
+            .map(|c| CampaignContext {
+                id: c.id,
+                name: c.name,
+                status: c.status,
+            })
+    };
+
+    // Get all characters for campaign
+    let characters = {
+        let mut service = CharacterService::new(&mut conn);
+        service
+            .list_characters_for_campaign(campaign_id)
+            .unwrap_or_default()
+    };
+
+    // Build party and NPC lists
+    let mut party_members = Vec::new();
+    let mut npc_list = Vec::new();
+
+    for c in characters {
+        let mut service = CharacterService::new(&mut conn);
+        if let Ok((_, data)) = service.get_character(c.id) {
+            // Get player name if this is a PC
+            let player_name = c.player_id.and_then(|pid| {
+                let mut player_service = PlayerService::new(&mut conn);
+                player_service.get_player(pid).ok().map(|p| p.name)
+            });
+
+            // Determine primary class from classes vec
+            let primary_class = data
+                .classes
+                .first()
+                .map(|cl| cl.class_name.clone())
+                .unwrap_or_else(|| "Unknown".to_string());
+
+            if c.is_npc == 0 {
+                // Player character
+                party_members.push(CharacterContext {
+                    id: c.id,
+                    name: c.character_name,
+                    race: data.race,
+                    class: primary_class,
+                    level: data.level,
+                    current_hp: data.current_hp,
+                    max_hp: data.max_hp,
+                    player_name,
+                });
+            } else {
+                // NPC - include story-relevant information
+                npc_list.push(NpcContext {
+                    id: c.id,
+                    name: c.character_name,
+                    race: Some(data.race),
+                    class: Some(primary_class),
+                    role: data.npc_role,
+                    location: data.npc_location,
+                    faction: data.npc_faction,
+                    notes: data.npc_notes,
+                });
+            }
+        }
+    }
+
+    // Get modules
+    let modules = {
+        let mut service = ModuleService::new(&mut conn);
+        service
+            .list_campaign_modules(campaign_id)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|m| ModuleContext {
+                id: m.id,
+                name: m.name,
+                status: m.status,
+                expected_sessions: m.expected_sessions,
+            })
+            .collect()
+    };
+
+    // Story context - fetch from cached campaign summary
+    let story = {
+        let campaign_dir = {
+            let mut service = CampaignService::new(&mut conn);
+            service
+                .get_campaign(campaign_id)
+                .ok()
+                .flatten()
+                .map(|c| c.directory_path)
+        };
+
+        let summary_text = campaign_dir.and_then(|dir| {
+            let mut service = CampaignSummaryService::new(&mut conn);
+            service
+                .get_summary_with_staleness_check(campaign_id, &dir)
+                .ok()
+                .and_then(|(maybe_summary, _, _)| maybe_summary)
+                .map(|s| s.summary)
+        });
+
+        StoryContext {
+            story_summary: summary_text,
+        }
+    };
+
+    ApplicationContext {
+        campaign,
+        party: party_members,
+        npcs: npc_list,
+        modules,
+        story,
+    }
+}
 
 // Model name is now retrieved from LlmService, not a constant
 
@@ -271,12 +482,23 @@ pub struct ToolResultMessage {
     pub session_id: Option<String>,
 }
 
+/// Record of a tool call made during processing
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ToolCallRecord {
+    pub name: String,
+    pub arguments: serde_json::Value,
+    pub result: String,
+    pub success: bool,
+}
+
 /// Chat response structure
 pub struct ChatResponse {
     pub content: String,
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
     pub total_tokens: u32,
+    /// Tools that were called during this chat (for testing/debugging)
+    pub tools_called: Vec<ToolCallRecord>,
 }
 
 /// Chat processor handles message processing and tool execution
@@ -380,6 +602,7 @@ impl<'a> ChatProcessor<'a> {
         session_id: &str,
         ollama_url: Option<&str>,
         campaign_directory_path: Option<&str>,
+        campaign_id: Option<i32>,
         cancellation_token: CancellationToken,
     ) -> Result<ChatResponse, String> {
         // Create chat logger
@@ -419,11 +642,12 @@ impl<'a> ChatProcessor<'a> {
             None
         };
 
-        // Inject system rules if tools are enabled
+        // Inject system rules and campaign context if tools are enabled
         if tools.is_some() {
             self.inject_system_rules(
                 &mut provider_messages,
                 campaign_directory_path,
+                campaign_id,
                 session_id,
                 &chat_logger,
             );
@@ -433,6 +657,7 @@ impl<'a> ChatProcessor<'a> {
         const MAX_TOOL_ITERATIONS: usize = 20;
         let mut tool_call_count = 0;
         let mut final_response = None;
+        let mut all_tool_calls: Vec<ToolCallRecord> = Vec::new();
 
         // Track initial message count to protect messages from current request
         let initial_message_count = provider_messages.len();
@@ -504,8 +729,8 @@ impl<'a> ChatProcessor<'a> {
                         tool_call_id: None,
                     });
 
-                    // Execute tool calls
-                    self.execute_tool_calls(
+                    // Execute tool calls and collect records
+                    let records = self.execute_tool_calls(
                         tool_calls,
                         &mut provider_messages,
                         campaign_directory_path,
@@ -514,6 +739,7 @@ impl<'a> ChatProcessor<'a> {
                         &chat_logger,
                     )
                     .await;
+                    all_tool_calls.extend(records);
 
                     continue;
                 }
@@ -574,6 +800,7 @@ impl<'a> ChatProcessor<'a> {
             prompt_tokens: usage.prompt_tokens,
             completion_tokens: usage.completion_tokens,
             total_tokens: usage.total_tokens,
+            tools_called: all_tool_calls,
         })
     }
 
@@ -593,11 +820,12 @@ impl<'a> ChatProcessor<'a> {
         }
     }
 
-    /// Inject system rules for tool guidance
+    /// Inject system rules for tool guidance and campaign context
     fn inject_system_rules(
         &self,
         provider_messages: &mut Vec<mimir_dm_llm::Message>,
         campaign_directory_path: Option<&str>,
+        campaign_id: Option<i32>,
         session_id: &str,
         chat_logger: &Option<Arc<crate::services::chat_logger::ChatLogger>>,
     ) {
@@ -611,8 +839,30 @@ impl<'a> ChatProcessor<'a> {
                 .generate_system_rules(Some(session_id))
         };
 
+        // Build campaign context from database if campaign_id is provided
+        let campaign_context = campaign_id.map(|id| {
+            info!("Building rich campaign context for campaign_id={}", id);
+            let context = build_campaign_context(&self.llm.db_service, id);
+            serde_json::to_string_pretty(&context).unwrap_or_else(|_| "{}".to_string())
+        });
+
+        // Combine system rules and campaign context
+        let mut content_parts: Vec<String> = Vec::new();
+
         if !system_rules.is_empty() {
-            let system_content = system_rules.join("\n\n");
+            content_parts.push(system_rules.join("\n\n"));
+        }
+
+        if let Some(context_json) = campaign_context {
+            content_parts.push(format!(
+                "Current Campaign Context:\n```json\n{}\n```",
+                context_json
+            ));
+            info!("Injected rich campaign context ({} chars)", context_json.len());
+        }
+
+        if !content_parts.is_empty() {
+            let system_content = content_parts.join("\n\n");
 
             info!(
                 "Generated {} system rules for LLM context",
@@ -916,7 +1166,7 @@ impl<'a> ChatProcessor<'a> {
         }
     }
 
-    /// Execute tool calls
+    /// Execute tool calls and return records of what was executed
     #[allow(clippy::too_many_arguments)]
     async fn execute_tool_calls(
         &self,
@@ -926,7 +1176,8 @@ impl<'a> ChatProcessor<'a> {
         session_id: &str,
         iteration: usize,
         chat_logger: &Option<Arc<crate::services::chat_logger::ChatLogger>>,
-    ) {
+    ) -> Vec<ToolCallRecord> {
+        let mut records = Vec::new();
         info!("=== Processing {} tool calls ===", tool_calls.len());
         for (idx, tool_call) in tool_calls.iter().enumerate() {
             let tool_name = &tool_call.function.name;
@@ -1055,6 +1306,14 @@ impl<'a> ChatProcessor<'a> {
             }
             debug_content!("Tool result content", tool_result, 200);
 
+            // Record this tool call for tracking/testing
+            records.push(ToolCallRecord {
+                name: tool_name.clone(),
+                arguments: tool_args.clone(),
+                result: tool_result.clone(),
+                success: !is_error,
+            });
+
             provider_messages.push(mimir_dm_llm::Message {
                 role: "tool".to_string(),
                 content: tool_result.clone(),
@@ -1078,6 +1337,8 @@ impl<'a> ChatProcessor<'a> {
                 .map(|m| m.content.len())
                 .unwrap_or(0)
         );
+
+        records
     }
 
     /// Check if tool requires confirmation

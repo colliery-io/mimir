@@ -1,0 +1,656 @@
+//! Task definitions for agent testing
+//!
+//! Extends the basic eval task format with verification rules
+
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+
+/// An agent task with verification rules
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentTask {
+    /// Unique task identifier
+    pub id: String,
+
+    /// Description of what the task tests
+    pub description: String,
+
+    /// The prompt to send to the agent (for single-turn tasks)
+    #[serde(default)]
+    pub prompt: String,
+
+    /// Multi-turn conversation (for multi-turn tasks)
+    /// Each turn contains a user prompt and optional verification
+    #[serde(default)]
+    pub turns: Vec<ConversationTurn>,
+
+    /// Expected tools to be called (optional - for checking tool selection)
+    #[serde(default)]
+    pub expected_tools: Vec<String>,
+
+    /// Setup actions to run before the task (e.g., create test data)
+    #[serde(default)]
+    pub setup: Vec<SetupAction>,
+
+    /// Verification rules to check after task completion (for single-turn)
+    #[serde(default)]
+    pub verify: Option<Vec<Verification>>,
+
+    /// Maximum time allowed for task completion (seconds)
+    #[serde(default = "default_timeout")]
+    pub timeout_secs: u64,
+
+    /// Tags for filtering/categorization
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
+/// A single turn in a multi-turn conversation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConversationTurn {
+    /// The user's message for this turn
+    pub prompt: String,
+
+    /// Optional verification to run after this turn
+    #[serde(default)]
+    pub verify: Option<Vec<Verification>>,
+
+    /// Expected tools for this turn
+    #[serde(default)]
+    pub expected_tools: Vec<String>,
+}
+
+fn default_timeout() -> u64 {
+    120
+}
+
+/// Setup action to run before a task
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SetupAction {
+    /// Create a character for testing
+    CreateCharacter {
+        name: String,
+        class: String,
+        level: i32,
+        race: Option<String>,
+    },
+    /// Create a campaign for testing
+    CreateCampaign { name: String },
+    /// Run a SQL statement
+    Sql { statement: String },
+}
+
+/// Verification rule to check after task completion
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Verification {
+    /// Check that a character exists with expected properties
+    CharacterExists {
+        name: String,
+        #[serde(default)]
+        expect: Option<CharacterExpectation>,
+    },
+
+    /// Check that a character was modified
+    CharacterModified {
+        name: String,
+        field: String,
+        expected_value: serde_json::Value,
+    },
+
+    /// Check that an item exists in character inventory
+    InventoryContains {
+        character_name: String,
+        item_name: String,
+        #[serde(default)]
+        quantity: Option<i32>,
+    },
+
+    /// Check that a tool was called with specific arguments
+    ToolCalled {
+        tool_name: String,
+        #[serde(default)]
+        with_args: Option<serde_json::Value>,
+    },
+
+    /// Check response contains certain text
+    ResponseContains { text: String },
+
+    /// Check response does NOT contain certain text
+    ResponseNotContains { text: String },
+
+    /// Custom SQL query returns expected result
+    SqlQuery {
+        query: String,
+        expect_rows: Option<i32>,
+        expect_value: Option<serde_json::Value>,
+    },
+
+    /// Check that no errors occurred
+    NoErrors,
+}
+
+/// Expected character properties
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CharacterExpectation {
+    pub class: Option<String>,
+    pub level: Option<i32>,
+    pub race: Option<String>,
+    pub current_hp: Option<i32>,
+    pub max_hp: Option<i32>,
+}
+
+/// A collection of tasks
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentTaskSet {
+    /// Name of this task set
+    pub name: String,
+    /// Description
+    pub description: String,
+    /// The tasks
+    pub tasks: Vec<AgentTask>,
+}
+
+impl AgentTaskSet {
+    /// Load from a JSON file
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+        let task_set: AgentTaskSet = serde_json::from_str(&content)?;
+        Ok(task_set)
+    }
+
+    /// Load all task sets from a directory
+    pub fn load_all(dir: &Path) -> Result<Vec<Self>> {
+        let mut task_sets = Vec::new();
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().is_some_and(|ext| ext == "json") {
+                match Self::from_file(&path) {
+                    Ok(ts) => task_sets.push(ts),
+                    Err(e) => {
+                        tracing::warn!("Failed to load task set {:?}: {}", path, e);
+                    }
+                }
+            }
+        }
+        Ok(task_sets)
+    }
+}
+
+/// Create default task definitions
+pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
+    // Character management tasks
+    let character_tasks = AgentTaskSet {
+        name: "Character Management".to_string(),
+        description: "Tasks testing character creation and modification".to_string(),
+        tasks: vec![
+            AgentTask {
+                id: "create_fighter".to_string(),
+                description: "Create a basic fighter character".to_string(),
+                prompt: "Create a level 3 human fighter named Gareth Stonewall. He should have 28 max HP.".to_string(),
+                turns: vec![],
+                expected_tools: vec!["create_character".to_string()],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::CharacterExists {
+                        name: "Gareth Stonewall".to_string(),
+                        expect: Some(CharacterExpectation {
+                            class: Some("Fighter".to_string()),
+                            level: Some(3),
+                            race: Some("Human".to_string()),
+                            max_hp: Some(28),
+                            ..Default::default()
+                        }),
+                    },
+                    Verification::ToolCalled {
+                        tool_name: "create_character".to_string(),
+                        with_args: None,
+                    },
+                ]),
+                timeout_secs: 60,
+                tags: vec!["character".to_string(), "creation".to_string()],
+            },
+            AgentTask {
+                id: "update_hp".to_string(),
+                description: "Update character HP after taking damage".to_string(),
+                prompt: "Bruenor just took 15 damage from a goblin attack. Update his HP.".to_string(),
+                turns: vec![],
+                expected_tools: vec!["update_character_hp".to_string()],
+                setup: vec![SetupAction::CreateCharacter {
+                    name: "Bruenor".to_string(),
+                    class: "Fighter".to_string(),
+                    level: 5,
+                    race: Some("Dwarf".to_string()),
+                }],
+                verify: Some(vec![
+                    Verification::ToolCalled {
+                        tool_name: "update_character_hp".to_string(),
+                        with_args: None,
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 60,
+                tags: vec!["character".to_string(), "hp".to_string()],
+            },
+            AgentTask {
+                id: "add_inventory".to_string(),
+                description: "Add an item to character inventory".to_string(),
+                prompt: "Add a Longsword to Tordek's inventory.".to_string(),
+                turns: vec![],
+                expected_tools: vec!["add_inventory_item".to_string()],
+                setup: vec![SetupAction::CreateCharacter {
+                    name: "Tordek".to_string(),
+                    class: "Fighter".to_string(),
+                    level: 4,
+                    race: Some("Dwarf".to_string()),
+                }],
+                verify: Some(vec![
+                    Verification::InventoryContains {
+                        character_name: "Tordek".to_string(),
+                        item_name: "Longsword".to_string(),
+                        quantity: Some(1),
+                    },
+                ]),
+                timeout_secs: 60,
+                tags: vec!["character".to_string(), "inventory".to_string()],
+            },
+        ],
+    };
+
+    // Catalog query tasks
+    let catalog_tasks = AgentTaskSet {
+        name: "Catalog Queries".to_string(),
+        description: "Tasks testing catalog search functionality".to_string(),
+        tasks: vec![
+            AgentTask {
+                id: "search_monsters_cr".to_string(),
+                description: "Search monsters by challenge rating".to_string(),
+                prompt: "Find me some CR 1 monsters that would be good for a forest encounter.".to_string(),
+                turns: vec![],
+                expected_tools: vec!["search_monsters".to_string()],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ToolCalled {
+                        tool_name: "search_monsters".to_string(),
+                        with_args: None,
+                    },
+                    Verification::ResponseContains {
+                        text: "CR".to_string(),
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 60,
+                tags: vec!["catalog".to_string(), "monsters".to_string()],
+            },
+            AgentTask {
+                id: "search_spells".to_string(),
+                description: "Search spells by level".to_string(),
+                prompt: "What 2nd level evocation spells are available?".to_string(),
+                turns: vec![],
+                expected_tools: vec!["search_spells".to_string()],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ToolCalled {
+                        tool_name: "search_spells".to_string(),
+                        with_args: None,
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 60,
+                tags: vec!["catalog".to_string(), "spells".to_string()],
+            },
+        ],
+    };
+
+    // Edge case tasks
+    let edge_cases = AgentTaskSet {
+        name: "Edge Cases".to_string(),
+        description: "Tasks testing boundary conditions and error handling".to_string(),
+        tasks: vec![
+            AgentTask {
+                id: "no_tool_greeting".to_string(),
+                description: "Simple greeting should not trigger tools".to_string(),
+                prompt: "Hello! How are you today?".to_string(),
+                turns: vec![],
+                expected_tools: vec![],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ResponseNotContains {
+                        text: "error".to_string(),
+                    },
+                ]),
+                timeout_secs: 30,
+                tags: vec!["edge_case".to_string()],
+            },
+            AgentTask {
+                id: "ambiguous_character".to_string(),
+                description: "Ambiguous request should ask for clarification".to_string(),
+                prompt: "Update the character.".to_string(),
+                turns: vec![],
+                expected_tools: vec![],
+                setup: vec![],
+                verify: Some(vec![Verification::NoErrors]),
+                timeout_secs: 30,
+                tags: vec!["edge_case".to_string()],
+            },
+        ],
+    };
+
+    // Multi-step tasks
+    let multi_step = AgentTaskSet {
+        name: "Multi-Step Tasks".to_string(),
+        description: "Tasks requiring multiple tool calls".to_string(),
+        tasks: vec![
+            AgentTask {
+                id: "create_and_equip".to_string(),
+                description: "Create character and add equipment".to_string(),
+                prompt: "Create a level 1 elf wizard named Lyra Starweaver and give her a quarterstaff and a spellbook.".to_string(),
+                turns: vec![],
+                expected_tools: vec![
+                    "create_character".to_string(),
+                    "add_inventory_item".to_string(),
+                ],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::CharacterExists {
+                        name: "Lyra Starweaver".to_string(),
+                        expect: Some(CharacterExpectation {
+                            class: Some("Wizard".to_string()),
+                            level: Some(1),
+                            ..Default::default()
+                        }),
+                    },
+                    Verification::InventoryContains {
+                        character_name: "Lyra Starweaver".to_string(),
+                        item_name: "Quarterstaff".to_string(),
+                        quantity: None,
+                    },
+                ]),
+                timeout_secs: 120,
+                tags: vec!["multi_step".to_string()],
+            },
+            // Multi-turn conversation test
+            AgentTask {
+                id: "multi_turn_character_flow".to_string(),
+                description: "Multi-turn: Create character then modify it".to_string(),
+                prompt: String::new(),  // Empty for multi-turn
+                turns: vec![
+                    ConversationTurn {
+                        prompt: "Create a level 2 half-orc barbarian named Grok the Mighty.".to_string(),
+                        verify: Some(vec![
+                            Verification::CharacterExists {
+                                name: "Grok".to_string(),
+                                expect: Some(CharacterExpectation {
+                                    class: Some("Barbarian".to_string()),
+                                    level: Some(2),
+                                    ..Default::default()
+                                }),
+                            },
+                        ]),
+                        expected_tools: vec!["create_character".to_string()],
+                    },
+                    ConversationTurn {
+                        prompt: "Give Grok a greataxe.".to_string(),
+                        verify: Some(vec![
+                            Verification::InventoryContains {
+                                character_name: "Grok".to_string(),
+                                item_name: "Greataxe".to_string(),
+                                quantity: None,
+                            },
+                        ]),
+                        expected_tools: vec!["add_inventory_item".to_string()],
+                    },
+                    ConversationTurn {
+                        prompt: "Grok takes 8 damage from a trap.".to_string(),
+                        verify: Some(vec![
+                            Verification::ToolCalled {
+                                tool_name: "update_character_hp".to_string(),
+                                with_args: None,
+                            },
+                        ]),
+                        expected_tools: vec!["update_character_hp".to_string()],
+                    },
+                ],
+                expected_tools: vec![],
+                setup: vec![],
+                verify: None,
+                timeout_secs: 180,
+                tags: vec!["multi_turn".to_string(), "character".to_string()],
+            },
+            // Multi-turn module planning
+            AgentTask {
+                id: "multi_turn_module_planning".to_string(),
+                description: "Multi-turn: Plan and discuss a module".to_string(),
+                prompt: String::new(),
+                turns: vec![
+                    ConversationTurn {
+                        prompt: "I want to create a mystery adventure for the party. Let's call it 'The Missing Merchant'. It should be about 3 sessions.".to_string(),
+                        verify: Some(vec![
+                            Verification::ToolCalled {
+                                tool_name: "create_module".to_string(),
+                                with_args: None,
+                            },
+                        ]),
+                        expected_tools: vec!["create_module".to_string()],
+                    },
+                    ConversationTurn {
+                        prompt: "What modules do we have now?".to_string(),
+                        verify: Some(vec![
+                            Verification::ToolCalled {
+                                tool_name: "list_modules".to_string(),
+                                with_args: None,
+                            },
+                        ]),
+                        expected_tools: vec!["list_modules".to_string()],
+                    },
+                ],
+                expected_tools: vec![],
+                setup: vec![],
+                verify: None,
+                timeout_secs: 120,
+                tags: vec!["multi_turn".to_string(), "module".to_string()],
+            },
+        ],
+    };
+
+    // Module/Adventure planning tasks
+    let module_tasks = AgentTaskSet {
+        name: "Module Planning".to_string(),
+        description: "Tasks testing adventure module creation and management".to_string(),
+        tasks: vec![
+            AgentTask {
+                id: "create_dungeon_module".to_string(),
+                description: "Create a new dungeon crawl adventure module".to_string(),
+                prompt: "I want to plan a dungeon crawl adventure called 'The Sunken Citadel'. It should take about 4 sessions.".to_string(),
+                turns: vec![],
+                expected_tools: vec!["create_module".to_string()],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ToolCalled {
+                        tool_name: "create_module".to_string(),
+                        with_args: None,
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 60,
+                tags: vec!["module".to_string(), "creation".to_string()],
+            },
+            AgentTask {
+                id: "list_campaign_modules".to_string(),
+                description: "List all modules in the campaign".to_string(),
+                prompt: "What adventure modules do we have planned for this campaign?".to_string(),
+                turns: vec![],
+                expected_tools: vec!["list_modules".to_string()],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ToolCalled {
+                        tool_name: "list_modules".to_string(),
+                        with_args: None,
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 60,
+                tags: vec!["module".to_string(), "query".to_string()],
+            },
+        ],
+    };
+
+    // Continuity and context questions
+    let continuity_tasks = AgentTaskSet {
+        name: "Campaign Continuity".to_string(),
+        description: "Tasks testing story continuity and campaign context awareness".to_string(),
+        tasks: vec![
+            AgentTask {
+                id: "npc_question".to_string(),
+                description: "Ask about an NPC from the campaign".to_string(),
+                prompt: "Who is Glasstaff and what do we know about him?".to_string(),
+                turns: vec![],
+                expected_tools: vec![],  // Should answer from context
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ResponseContains {
+                        text: "Iarno".to_string(),  // His real name
+                    },
+                    Verification::ResponseContains {
+                        text: "Redbrand".to_string(),  // His gang
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 30,
+                tags: vec!["continuity".to_string(), "npc".to_string()],
+            },
+            AgentTask {
+                id: "story_recap".to_string(),
+                description: "Ask for a story recap".to_string(),
+                prompt: "Can you remind me what the party's current objectives are?".to_string(),
+                turns: vec![],
+                expected_tools: vec![],  // Should answer from context
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ResponseContains {
+                        text: "Gundren".to_string(),  // Finding Gundren
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 30,
+                tags: vec!["continuity".to_string(), "story".to_string()],
+            },
+            AgentTask {
+                id: "party_status".to_string(),
+                description: "Ask about party composition".to_string(),
+                prompt: "Who is our party's main healer?".to_string(),
+                turns: vec![],
+                expected_tools: vec![],  // Could use list_characters or answer from context
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ResponseContains {
+                        text: "Helena".to_string(),  // The cleric
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 30,
+                tags: vec!["continuity".to_string(), "party".to_string()],
+            },
+        ],
+    };
+
+    // D&D Knowledge questions (no tools needed)
+    let knowledge_tasks = AgentTaskSet {
+        name: "D&D Knowledge".to_string(),
+        description: "Tasks testing D&D rules knowledge without requiring tools".to_string(),
+        tasks: vec![
+            AgentTask {
+                id: "spell_slots".to_string(),
+                description: "Ask about spell slot rules".to_string(),
+                prompt: "How many spell slots does a 5th level wizard have?".to_string(),
+                turns: vec![],
+                expected_tools: vec![],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ResponseContains {
+                        text: "3".to_string(),  // They have 3 1st-level slots
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 30,
+                tags: vec!["knowledge".to_string(), "spellcasting".to_string()],
+            },
+            AgentTask {
+                id: "action_economy".to_string(),
+                description: "Ask about combat actions".to_string(),
+                prompt: "What actions can a character take on their turn in combat?".to_string(),
+                turns: vec![],
+                expected_tools: vec![],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ResponseContains {
+                        text: "action".to_string(),
+                    },
+                    Verification::ResponseContains {
+                        text: "bonus".to_string(),
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 30,
+                tags: vec!["knowledge".to_string(), "combat".to_string()],
+            },
+            AgentTask {
+                id: "condition_rules".to_string(),
+                description: "Ask about a condition".to_string(),
+                prompt: "What does the stunned condition do?".to_string(),
+                turns: vec![],
+                expected_tools: vec![],
+                setup: vec![],
+                verify: Some(vec![
+                    Verification::ResponseNotContains {
+                        text: "error".to_string(),
+                    },
+                    Verification::NoErrors,
+                ]),
+                timeout_secs: 30,
+                tags: vec!["knowledge".to_string(), "conditions".to_string()],
+            },
+        ],
+    };
+
+    // Save task sets
+    std::fs::write(
+        output_dir.join("character_tasks.json"),
+        serde_json::to_string_pretty(&character_tasks)?,
+    )?;
+    std::fs::write(
+        output_dir.join("catalog_tasks.json"),
+        serde_json::to_string_pretty(&catalog_tasks)?,
+    )?;
+    std::fs::write(
+        output_dir.join("edge_cases.json"),
+        serde_json::to_string_pretty(&edge_cases)?,
+    )?;
+    std::fs::write(
+        output_dir.join("multi_step.json"),
+        serde_json::to_string_pretty(&multi_step)?,
+    )?;
+    std::fs::write(
+        output_dir.join("module_tasks.json"),
+        serde_json::to_string_pretty(&module_tasks)?,
+    )?;
+    std::fs::write(
+        output_dir.join("continuity_tasks.json"),
+        serde_json::to_string_pretty(&continuity_tasks)?,
+    )?;
+    std::fs::write(
+        output_dir.join("knowledge_tasks.json"),
+        serde_json::to_string_pretty(&knowledge_tasks)?,
+    )?;
+
+    let total_tasks = character_tasks.tasks.len() + catalog_tasks.tasks.len() +
+        edge_cases.tasks.len() + multi_step.tasks.len() +
+        module_tasks.tasks.len() + continuity_tasks.tasks.len() +
+        knowledge_tasks.tasks.len();
+
+    println!("Created 7 task files with {} total tasks", total_tasks);
+
+    Ok(())
+}

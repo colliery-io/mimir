@@ -15,7 +15,7 @@ use mimir_dm_llm::{
     providers::ollama::OllamaProvider,
     traits::ActionDescription,
     ChatResponse, CompletionResponse, EmbeddingResponse, LlmProvider, Message, ModelPullProgress,
-    RateLimitState, TodoListTool, TodoStateManager, Tool,
+    RateLimitState, TodoStateManager, Tool,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -30,9 +30,7 @@ use uuid::Uuid;
 
 use crate::app_init::AppPaths;
 use crate::services::chat_logger::ChatLogger;
-use crate::services::tools::character_tools::ListPlayersTool;
-use crate::services::tools::character_write_tools::CreateCharacterTool;
-use crate::services::tools::ToolRegistry;
+use crate::services::tools::{register_all_tools, ToolRegistry};
 use mimir_dm_core::DatabaseService;
 
 /// Provider enum that wraps concrete provider implementations
@@ -231,10 +229,14 @@ pub struct LlmService {
 
 impl LlmService {
     /// Create a new LLM service instance with shared confirmation receivers
+    ///
+    /// The `app_handle` is optional - when None, Tauri-specific features like
+    /// UI event emission and default todo storage configuration are skipped.
+    /// This allows using LlmService in non-Tauri contexts like tests.
     pub fn new(
         db_service: Arc<DatabaseService>,
         confirmation_receivers: ConfirmationReceivers,
-        app_handle: AppHandle,
+        app_handle: Option<AppHandle>,
         app_paths: Arc<AppPaths>,
     ) -> Result<Self> {
         // Load provider settings
@@ -255,35 +257,29 @@ impl LlmService {
         // Create todo state manager
         let todo_state_manager = TodoStateManager::new();
 
-        // Create tool registry - file tools will be added dynamically when campaign directory is provided
-        let mut tool_registry = ToolRegistry::new();
-        info!("Tool registry created - file tools will be configured per campaign");
+        // Configure default todo storage path
+        // Use app handle if available (production), otherwise fall back to app_paths (tests)
+        let todos_dir = if let Some(ref app) = app_handle {
+            app.path().app_data_dir().ok().map(|d| d.join("todos"))
+        } else {
+            Some(app_paths.data_dir.join("todos"))
+        };
 
-        // Configure default todo storage path using app handle
-        if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
-            let todos_dir = app_data_dir.join("todos");
+        if let Some(todos_dir) = todos_dir {
             if let Err(e) = todo_state_manager.configure_storage(todos_dir.clone()) {
-                warn!("Failed to configure default todo storage: {}", e);
+                warn!("Failed to configure todo storage: {}", e);
             } else {
-                info!("Configured default todo storage: {:?}", todos_dir);
+                info!("Configured todo storage: {:?}", todos_dir);
             }
         } else {
-            warn!("Could not determine app data directory for todos");
+            warn!("Could not determine directory for todos");
         }
 
-        // Register TodoListTool with configurable state manager
-        let todo_tool = TodoListTool::new(todo_state_manager.clone());
-        tool_registry.register(Arc::new(todo_tool));
-        info!("Registered TodoListTool with configurable state manager");
-
-        // Register character tools (work without campaign)
-        let list_players_tool = ListPlayersTool::new(db_service.clone());
-        tool_registry.register(Arc::new(list_players_tool));
-        info!("Registered ListPlayersTool");
-
-        let create_character_tool = CreateCharacterTool::new(db_service.clone());
-        tool_registry.register(Arc::new(create_character_tool));
-        info!("Registered CreateCharacterTool");
+        // Create tool registry and register all standard tools
+        // This is the single source of truth for available tools
+        let mut tool_registry = ToolRegistry::new();
+        register_all_tools(&mut tool_registry, db_service.clone(), todo_state_manager.clone());
+        info!("Tool registry initialized with all standard tools");
 
         Ok(Self {
             provider,
@@ -292,7 +288,7 @@ impl LlmService {
             tool_registry: Arc::new(tool_registry),
             db_service,
             confirmation_receivers,
-            app_handle: Some(app_handle),
+            app_handle,
             todo_state_manager,
             chat_loggers: Arc::new(Mutex::new(HashMap::new())),
             app_paths,
@@ -654,7 +650,7 @@ pub async fn initialize_llm(
 ) -> Result<LlmService> {
     info!("Initializing LLM service...");
 
-    let service = LlmService::new(db_service, confirmation_receivers, app_handle, app_paths)
+    let service = LlmService::new(db_service, confirmation_receivers, Some(app_handle), app_paths)
         .context("Failed to create LLM service")?;
 
     // Check and download model if needed
