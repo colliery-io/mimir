@@ -1,35 +1,75 @@
 <template>
   <div class="stage-landing">
     <!-- Module Header -->
-    <StageHeader 
-      :module="module" 
-      :stage-info="stageInfo" 
+    <StageHeader
+      :module="module"
+      :stage-info="stageInfo"
     />
 
-    <!-- Next Steps (shown at top when ready, except for ready/active stages) -->
+    <!-- Next Steps (for planning/prep stages) -->
     <StageTransitionCard
-      v-if="stage !== 'ready' && stage !== 'active'"
+      v-if="stage !== 'ready' && stage !== 'active' && stage !== 'completed'"
       :available="nextStageAvailable"
       :prompt="nextStagePrompt"
       :next-stage-name="nextStageName"
       @transition="transitionToNextStage"
     />
 
-    <!-- Sessions Management (for ready, active and completed stages - shown first) -->
-    <div v-if="showSessions" class="mt-8">
-      <SessionTable
-        :sessions="sessions"
-        :readonly="stage === 'completed'"
-        @create="handleCreateSession"
-        @open-document="handleOpenSessionDocument"
-        @transition="handleSessionTransition"
-        @delete="handleDeleteSession"
-      />
+    <!-- Play Mode Button (for ready stage) -->
+    <div v-if="stage === 'ready'" class="play-mode-section mt-8">
+      <div class="play-mode-card">
+        <div class="play-mode-content">
+          <h2>Ready to Play</h2>
+          <p>Your module is prepped and ready. Enter Play Mode to run your session with quick access to documents, monsters, and notes.</p>
+        </div>
+        <button class="play-mode-button" @click="enterPlayMode">
+          Enter Play Mode
+        </button>
+      </div>
+
+      <!-- Option to mark complete without playing -->
+      <div class="complete-option mt-4">
+        <button class="complete-button" @click="transitionToNextStage">
+          Mark Module Complete
+        </button>
+      </div>
     </div>
 
-    <!-- Monster Tagging (for prep stages) -->
+    <!-- Active Stage - Continue or Complete -->
+    <div v-if="stage === 'active'" class="play-mode-section mt-8">
+      <div class="play-mode-card active">
+        <div class="play-mode-content">
+          <h2>Module In Progress</h2>
+          <p>This module is currently being run. Continue in Play Mode or mark it complete when finished.</p>
+        </div>
+        <button class="play-mode-button" @click="enterPlayMode">
+          Continue Playing
+        </button>
+      </div>
+
+      <div class="complete-option mt-4">
+        <button class="complete-button" @click="transitionToNextStage">
+          Mark Module Complete
+        </button>
+      </div>
+    </div>
+
+    <!-- Completed Stage Summary -->
+    <div v-if="stage === 'completed'" class="completed-section mt-8">
+      <div class="completed-card">
+        <h2>Module Completed</h2>
+        <p>This module has been completed. You can still view its documents and monsters.</p>
+      </div>
+    </div>
+
+    <!-- Monster Tagging (for all stages except completed) -->
     <div v-if="showMonsters" class="mt-8">
-      <ModuleMonsters :module-id="module.id" />
+      <ModuleMonsters
+        :module-id="module.id"
+        :module-name="module.name"
+        :module-number="module.module_number"
+        :campaign-id="module.campaign_id"
+      />
     </div>
 
     <!-- Stage-Specific Content from Backend -->
@@ -39,21 +79,12 @@
       </div>
     </div>
 
-    <!-- Next Steps at bottom for ready/active stages -->
-    <StageTransitionCard
-      v-if="stage === 'ready' || stage === 'active'"
-      :available="nextStageAvailable"
-      :prompt="nextStagePrompt"
-      :next-stage-name="nextStageName"
-      @transition="transitionToNextStage"
-    />
-
-    <!-- Document Progress Indicator -->
-    <div v-if="documentProgress.total > 0" class="progress-section mt-6">
+    <!-- Document Progress Indicator (for prep stages) -->
+    <div v-if="documentProgress.total > 0 && stage !== 'ready' && stage !== 'active' && stage !== 'completed'" class="progress-section mt-6">
       <h3>Document Progress</h3>
       <div class="progress-bar">
-        <div 
-          class="progress-fill" 
+        <div
+          class="progress-fill"
           :style="{ width: `${documentProgress.percentage}%` }"
         ></div>
       </div>
@@ -63,15 +94,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, toRefs } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import type { Module, BoardConfig, Document } from '@/types'
 import StageHeader from './stage/StageHeader.vue'
 import StageTransitionCard from './stage/StageTransitionCard.vue'
-import SessionTable from './session/SessionTable.vue'
 import ModuleMonsters from './ModuleMonsters.vue'
 import { useModuleStage } from '../composables/useModuleStage'
-import { useSessionManagement } from '../composables/useSessionManagement'
 
 interface Props {
   module: Module
@@ -81,10 +111,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  'open-session-document': [document: any]
-}>()
+const router = useRouter()
 
 // Convert props to refs for composables
 const moduleRef = computed(() => props.module)
@@ -102,31 +129,26 @@ const {
   transitionToNextStage
 } = useModuleStage(moduleRef, stageRef, boardConfigRef, documentsRef)
 
-const {
-  sessions,
-  loadSessions,
-  createSession,
-  updateSession,
-  deleteSession,
-  transitionSession
-} = useSessionManagement(props.module?.id)
-
 // Stage content from backend configuration
 const stageContent = ref<string>('')
-const showSessions = computed(() => props.stage === 'active' || props.stage === 'ready' || props.stage === 'completed')
 const showMonsters = computed(() => props.stage !== 'completed')
+
+// Navigate to Play Mode
+function enterPlayMode() {
+  router.push({ name: 'module-play', params: { id: props.module.id } })
+}
 
 // Load stage-specific content from backend
 async function loadStageContent() {
   if (!props.boardConfig || !props.stage) return
-  
+
   try {
     // Get stage content from board config or fetch from backend
     const currentStageConfig = props.boardConfig.stages?.find((s: any) => s.key === props.stage)
-    
+
     // Get content from stage configuration
     const content = (currentStageConfig as any)?.content
-    
+
     if (content) {
       stageContent.value = content
     } else {
@@ -142,59 +164,9 @@ async function loadStageContent() {
   }
 }
 
-// Session handlers
-async function handleCreateSession() {
-  // Sessions are auto-numbered, no need for user input
-  await createSession({
-    status: 'planned'
-  })
-}
-
-async function handleOpenSessionDocument(session: any, docType: 'outline' | 'notes') {
-  // Build the file path for the session document
-  const fileName = docType === 'outline' ? 'session-outline.md' : 'session-notes.md'
-  const moduleNumber = (props.module as any).module_number || 1
-  const relativePath = `modules/module_${String(moduleNumber).padStart(2, '0')}/session_${String(session.session_number).padStart(3, '0')}/${fileName}`
-  
-  // Get campaign directory path
-  const campaignResponse = await invoke<{ data: any }>('get_campaign', { 
-    id: props.module.campaign_id 
-  })
-  
-  const fullPath = `${campaignResponse.data.directory_path}/${relativePath}`
-  
-  // Create a document object that matches what the editor expects
-  const sessionDocument = {
-    id: `session-${session.id}-${docType}`,
-    campaign_id: props.module.campaign_id,
-    module_id: props.module.id,
-    session_id: session.id,
-    template_id: `session_${docType === 'outline' ? 'outline' : 'notes'}`,
-    document_type: `session_${docType}`,
-    title: `Session ${session.session_number} ${docType === 'outline' ? 'Outline' : 'Notes'}`,
-    file_path: fullPath,
-    completed_at: null
-  }
-  
-  emit('open-session-document', sessionDocument)
-}
-
-async function handleSessionTransition(sessionId: number | string, newStatus: string) {
-  await transitionSession(sessionId, newStatus)
-}
-
-async function handleDeleteSession(sessionId: number | string) {
-  if (confirm('Are you sure you want to delete this session?')) {
-    await deleteSession(sessionId)
-  }
-}
-
 // Load data on mount
 onMounted(async () => {
   await loadStageContent()
-  if (showSessions.value) {
-    await loadSessions()
-  }
 })
 </script>
 
@@ -203,6 +175,109 @@ onMounted(async () => {
   padding: 1.5rem;
 }
 
+/* Play Mode Section */
+.play-mode-section {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.play-mode-card {
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+}
+
+.play-mode-card.active {
+  border-color: var(--color-accent, #e67e22);
+}
+
+.play-mode-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--color-text);
+}
+
+.play-mode-content p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.play-mode-button {
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.play-mode-button:hover {
+  background: var(--color-primary-dark, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.complete-option {
+  text-align: center;
+}
+
+.complete-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.complete-button:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+/* Completed Section */
+.completed-section {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.completed-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.completed-card h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--color-success, #10b981);
+}
+
+.completed-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* Progress Section */
 .progress-section {
   background: var(--color-surface);
   padding: 1.5rem;

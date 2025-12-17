@@ -290,6 +290,22 @@ class PrintServiceClass {
   }
 
   /**
+   * Export a single module's documents and monsters as PDF
+   * @param moduleId - The ID of the module
+   */
+  async exportModuleDocuments(moduleId: number): Promise<PrintResult> {
+    const response = await invoke<ApiResponse<PrintResult>>('export_module_documents', {
+      moduleId
+    })
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to export module documents')
+    }
+
+    return response.data
+  }
+
+  /**
    * Convert base64 PDF to Blob for display/download
    */
   pdfToBlob(result: PrintResult): Blob {

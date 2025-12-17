@@ -54,18 +54,6 @@ const routes: RouteRecordRaw[] = [
     props: true
   },
   {
-    path: '/modules/:id/sessions',
-    name: 'module-sessions',
-    component: () => import('../../features/sessions/views/SessionListView.vue'),
-    props: true
-  },
-  {
-    path: '/sessions/:id',
-    name: 'session-detail',
-    component: () => import('../../features/sessions/views/SessionDetailView.vue'),
-    props: true
-  },
-  {
     path: '/templates',
     name: 'templates',
     component: () => import('../../features/templates/views/TemplateListView.vue')

@@ -2,7 +2,16 @@
   <div class="document-sidebar">
     <div class="sidebar-header">
       <h3 v-if="['active', 'concluding', 'completed'].includes(campaignStage)">Campaign Documents</h3>
-      <h3 v-else>📋 Documents</h3>
+      <h3 v-else>Documents</h3>
+      <button
+        v-if="documents.length > 0"
+        class="export-btn"
+        @click="exportAllDocuments"
+        :disabled="exportingAll"
+        title="Export all documents as PDF"
+      >
+        {{ exportingAll ? '...' : 'PDF' }}
+      </button>
     </div>
 
     <!-- Document List Grouped by Stage -->
@@ -130,6 +139,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { DocumentService, type Document } from '@/services/DocumentService'
+import { PrintService } from '../../../services/PrintService'
 import { useThemeStore } from '../../../stores/theme'
 import { debugDocument } from '../../../shared/utils/debug'
 
@@ -143,6 +153,7 @@ import hyperLockedIcon from '../../../assets/images/hyper-locked.png'
 
 const props = defineProps<{
   campaignId: number
+  campaignName: string
   campaignStage: string
   boardConfig: any
 }>()
@@ -186,6 +197,7 @@ const documents = ref<Document[]>([])
 const selectedDocument = ref<Document | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const exportingAll = ref(false)
 
 // Theme store for icon selection
 const themeStore = useThemeStore()
@@ -416,6 +428,28 @@ const toggleDocumentCompletion = async (doc: any) => {
   }
 }
 
+// Export all documents as combined PDF
+const exportAllDocuments = async () => {
+  if (!props.campaignId) return
+
+  exportingAll.value = true
+
+  try {
+    const result = await PrintService.exportCampaignDocuments(props.campaignId)
+
+    // Generate filename from campaign name
+    const filename = `${props.campaignName || 'campaign'}_documents.pdf`
+      .replace(/[^a-z0-9\s\-_.]/gi, '')
+      .replace(/\s+/g, '_')
+
+    await PrintService.savePdf(result, filename)
+  } catch (e) {
+    console.error('Failed to export campaign documents:', e)
+  } finally {
+    exportingAll.value = false
+  }
+}
+
 // Watch for campaign or stage changes
 watch([() => props.campaignId, () => props.campaignStage], () => {
   loadDocuments()
@@ -426,4 +460,41 @@ onMounted(() => {
 })
 </script>
 
-<!-- Component styles have been moved to centralized CSS files -->
+<style scoped>
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.export-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>

@@ -574,12 +574,172 @@ pub async fn export_campaign_document(
     }
 }
 
+/// Document data for PDF export (parsed from markdown)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentExportData {
+    /// Document title
+    pub title: String,
+    /// Document type (e.g., "session_outline")
+    pub document_type: String,
+    /// Typst content (converted from markdown)
+    pub content: String,
+}
+
+/// Module data for PDF export
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModuleExportData {
+    /// Module name
+    pub name: String,
+    /// Module number
+    pub module_number: i32,
+    /// Documents belonging to this module
+    pub documents: Vec<DocumentExportData>,
+    /// Monsters in this module (full JSON data)
+    pub monsters: Vec<serde_json::Value>,
+}
+
+/// Strip 5etools tags from text content.
+///
+/// Converts tags like `{@item leather armor|phb}` to "leather armor",
+/// `{@atk mw}` to "Melee Weapon Attack", etc.
+fn strip_5etools_tags(text: &str) -> String {
+    use regex::Regex;
+
+    // Lazy static would be better, but for simplicity we'll create regex on each call
+    // This is called infrequently (only during PDF export)
+
+    let mut result = text.to_string();
+
+    // Pattern: {@tag content|source} or {@tag content}
+    // We need to handle nested tags and various formats
+
+    // Attack type tags
+    let atk_re = Regex::new(r"\{@atk\s+([^}]+)\}").unwrap();
+    result = atk_re.replace_all(&result, |caps: &regex::Captures| {
+        match caps[1].trim() {
+            "mw" => "Melee Weapon Attack:".to_string(),
+            "rw" => "Ranged Weapon Attack:".to_string(),
+            "ms" => "Melee Spell Attack:".to_string(),
+            "rs" => "Ranged Spell Attack:".to_string(),
+            "mw,rw" | "rw,mw" => "Melee or Ranged Weapon Attack:".to_string(),
+            other => other.to_string(),
+        }
+    }).to_string();
+
+    // Hit bonus: {@hit 4} -> "+4"
+    let hit_re = Regex::new(r"\{@hit\s+(\d+)\}").unwrap();
+    result = hit_re.replace_all(&result, "+$1").to_string();
+
+    // Damage: {@damage 1d6+2} -> "1d6+2"
+    let damage_re = Regex::new(r"\{@damage\s+([^}]+)\}").unwrap();
+    result = damage_re.replace_all(&result, "$1").to_string();
+
+    // DC: {@dc 13} -> "DC 13"
+    let dc_re = Regex::new(r"\{@dc\s+(\d+)\}").unwrap();
+    result = dc_re.replace_all(&result, "DC $1").to_string();
+
+    // Dice: {@dice 1d6} -> "1d6"
+    let dice_re = Regex::new(r"\{@dice\s+([^}]+)\}").unwrap();
+    result = dice_re.replace_all(&result, "$1").to_string();
+
+    // Condition: {@condition poisoned} -> "poisoned"
+    let condition_re = Regex::new(r"\{@condition\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = condition_re.replace_all(&result, "$1").to_string();
+
+    // Skill: {@skill Perception} -> "Perception"
+    let skill_re = Regex::new(r"\{@skill\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = skill_re.replace_all(&result, "$1").to_string();
+
+    // Item: {@item leather armor|phb} -> "leather armor"
+    let item_re = Regex::new(r"\{@item\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = item_re.replace_all(&result, "$1").to_string();
+
+    // Creature: {@creature goblin|mm} -> "goblin"
+    let creature_re = Regex::new(r"\{@creature\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = creature_re.replace_all(&result, "$1").to_string();
+
+    // Spell: {@spell fireball|phb} -> "fireball"
+    let spell_re = Regex::new(r"\{@spell\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = spell_re.replace_all(&result, "$1").to_string();
+
+    // Sense: {@sense darkvision} -> "darkvision"
+    let sense_re = Regex::new(r"\{@sense\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = sense_re.replace_all(&result, "$1").to_string();
+
+    // Status: {@status unconscious} -> "unconscious"
+    let status_re = Regex::new(r"\{@status\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = status_re.replace_all(&result, "$1").to_string();
+
+    // Recharge: {@recharge 5} -> "(Recharge 5-6)"
+    let recharge_re = Regex::new(r"\{@recharge\s*(\d*)\}").unwrap();
+    result = recharge_re.replace_all(&result, |caps: &regex::Captures| {
+        if caps.get(1).map_or(true, |m| m.as_str().is_empty()) {
+            "(Recharge)".to_string()
+        } else {
+            format!("(Recharge {}-6)", &caps[1])
+        }
+    }).to_string();
+
+    // h (hit points): {@h} -> "Hit: "
+    let h_re = Regex::new(r"\{@h\}").unwrap();
+    result = h_re.replace_all(&result, "Hit: ").to_string();
+
+    // Filter: {@filter ...} -> just the text before the pipe
+    let filter_re = Regex::new(r"\{@filter\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = filter_re.replace_all(&result, "$1").to_string();
+
+    // Quickref: {@quickref ...} -> just the display text
+    let quickref_re = Regex::new(r"\{@quickref\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = quickref_re.replace_all(&result, "$1").to_string();
+
+    // Action: {@action Dodge} -> "Dodge"
+    let action_re = Regex::new(r"\{@action\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = action_re.replace_all(&result, "$1").to_string();
+
+    // Chance: {@chance 50} -> "50%"
+    let chance_re = Regex::new(r"\{@chance\s+(\d+)(?:\|[^}]*)?\}").unwrap();
+    result = chance_re.replace_all(&result, "$1%").to_string();
+
+    // Scaledamage/scaledice: {@scaledamage 1d6|...} -> "1d6"
+    let scaledamage_re = Regex::new(r"\{@scaledamage\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = scaledamage_re.replace_all(&result, "$1").to_string();
+    let scaledice_re = Regex::new(r"\{@scaledice\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = scaledice_re.replace_all(&result, "$1").to_string();
+
+    // Generic fallback for any remaining {@tag content|source} patterns
+    // Extract just the content before the pipe
+    let generic_re = Regex::new(r"\{@\w+\s+([^|}]+)(?:\|[^}]*)?\}").unwrap();
+    result = generic_re.replace_all(&result, "$1").to_string();
+
+    result
+}
+
+/// Recursively process a JSON value and strip 5etools tags from all string values.
+fn strip_5etools_tags_from_json(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::String(s) => {
+            *s = strip_5etools_tags(s);
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr {
+                strip_5etools_tags_from_json(item);
+            }
+        }
+        serde_json::Value::Object(obj) => {
+            for (_, v) in obj {
+                strip_5etools_tags_from_json(v);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Export all campaign documents as a combined PDF.
 ///
 /// Reads all markdown documents for the campaign, converts to Typst,
 /// and generates a single PDF with cover page and table of contents.
-/// Documents are ordered according to the campaign construction flow:
-/// concept -> session_zero -> integration stages.
+/// Campaign-level documents appear first, then each module with its
+/// documents and monsters together.
 ///
 /// # Parameters
 /// - `campaign_id` - Database ID of the campaign
@@ -592,7 +752,9 @@ pub async fn export_campaign_documents(
     campaign_id: i32,
 ) -> Result<ApiResponse<PrintResult>, String> {
     use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
-    use mimir_dm_core::services::DocumentService;
+    use mimir_dm_core::dal::campaign::documents::DocumentRepository;
+    use mimir_dm_core::services::{DocumentService, ModuleMonsterService, ModuleService};
+    use mimir_dm_print::markdown::parse_campaign_document;
 
     info!("Exporting all campaign {} documents to PDF", campaign_id);
 
@@ -615,31 +777,28 @@ pub async fn export_campaign_documents(
         .map_err(|e| format!("Database error: {}", e))?;
 
     let mut doc_service = DocumentService::new(&mut doc_conn);
-    let mut documents = doc_service
+    let all_documents = doc_service
         .get_campaign_documents(campaign_id)
         .map_err(|e| format!("Failed to get documents: {}", e))?;
 
-    if documents.is_empty() {
-        return Ok(ApiResponse::error("No documents to export".to_string()));
-    }
+    // Separate campaign-level documents (no module_id) from module documents
+    let campaign_documents: Vec<_> = all_documents
+        .iter()
+        .filter(|d| d.module_id.is_none())
+        .collect();
 
-    // Sort documents according to campaign construction flow
-    // Order: concept stage -> session_zero stage -> integration stage -> other
+    // Sort campaign documents according to campaign construction flow
     let document_order: Vec<&str> = vec![
-        // Concept stage
         "campaign_pitch",
-        // Session Zero stage
         "starting_scenario",
         "world_primer",
         "character_guidelines",
         "table_expectations",
         "character_integration",
-        // Integration stage
         "campaign_bible",
         "major_npc_tracker",
     ];
 
-    // Helper to get document order index
     let get_order = |template_id: &str| -> usize {
         document_order
             .iter()
@@ -647,19 +806,18 @@ pub async fn export_campaign_documents(
             .unwrap_or(usize::MAX)
     };
 
-    documents.sort_by(|a, b| {
+    let mut sorted_campaign_docs = campaign_documents.clone();
+    sorted_campaign_docs.sort_by(|a, b| {
         let a_order = get_order(&a.template_id);
         let b_order = get_order(&b.template_id);
-
-        // Primary sort by document order, secondary by created_at for same-type docs
         match a_order.cmp(&b_order) {
             std::cmp::Ordering::Equal => a.created_at.cmp(&b.created_at),
             other => other,
         }
     });
 
-    // Collect file paths for documents that exist (now in sorted order)
-    let file_paths: Vec<std::path::PathBuf> = documents
+    // Collect file paths for campaign-level documents
+    let campaign_file_paths: Vec<std::path::PathBuf> = sorted_campaign_docs
         .iter()
         .filter_map(|doc| {
             let path = std::path::PathBuf::from(&doc.file_path);
@@ -672,22 +830,185 @@ pub async fn export_campaign_documents(
         })
         .collect();
 
-    if file_paths.is_empty() {
-        return Ok(ApiResponse::error(
-            "No document files found on disk".to_string(),
-        ));
+    // Get modules with their documents and monsters
+    let mut module_conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut module_service = ModuleService::new(&mut module_conn);
+    let modules = module_service
+        .list_campaign_modules(campaign_id)
+        .map_err(|e| format!("Failed to get modules: {}", e))?;
+
+    let mut module_export_data: Vec<ModuleExportData> = Vec::new();
+
+    for module in modules {
+        // Get module documents
+        let mut module_doc_conn = state
+            .db
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let module_docs = DocumentRepository::find_by_module(&mut module_doc_conn, module.id)
+            .map_err(|e| format!("Failed to get documents for module {}: {}", module.id, e))?;
+
+        // Parse module documents
+        let mut parsed_module_docs: Vec<DocumentExportData> = Vec::new();
+        for doc in module_docs {
+            let path = std::path::PathBuf::from(&doc.file_path);
+            if path.exists() {
+                match std::fs::read_to_string(&path) {
+                    Ok(markdown) => {
+                        match parse_campaign_document(&markdown) {
+                            Ok(parsed) => {
+                                let title = parsed
+                                    .frontmatter
+                                    .get("title")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or(&doc.title)
+                                    .to_string();
+
+                                let document_type = parsed
+                                    .frontmatter
+                                    .get("type")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or(&doc.document_type)
+                                    .to_string();
+
+                                parsed_module_docs.push(DocumentExportData {
+                                    title,
+                                    document_type,
+                                    content: parsed.typst_content,
+                                });
+                            }
+                            Err(e) => {
+                                debug!("Failed to parse document {}: {}", doc.title, e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!("Failed to read document file {:?}: {}", path, e);
+                    }
+                }
+            }
+        }
+
+        // Check for play-notes.md file (created during play mode)
+        let play_notes_path = std::path::PathBuf::from(&campaign.directory_path)
+            .join("modules")
+            .join(format!("module_{:02}", module.module_number))
+            .join("play-notes.md");
+
+        if play_notes_path.exists() {
+            match std::fs::read_to_string(&play_notes_path) {
+                Ok(markdown) => {
+                    // Try to parse as a document with frontmatter
+                    match parse_campaign_document(&markdown) {
+                        Ok(parsed) => {
+                            let title = parsed
+                                .frontmatter
+                                .get("title")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("Play Notes")
+                                .to_string();
+
+                            parsed_module_docs.push(DocumentExportData {
+                                title,
+                                document_type: "session_notes".to_string(),
+                                content: parsed.typst_content,
+                            });
+                            debug!("Added play-notes.md for module {}", module.module_number);
+                        }
+                        Err(_) => {
+                            // If no frontmatter, treat as raw markdown
+                            let typst_content = mimir_dm_print::markdown::markdown_to_typst(&markdown);
+                            parsed_module_docs.push(DocumentExportData {
+                                title: "Play Notes".to_string(),
+                                document_type: "session_notes".to_string(),
+                                content: typst_content,
+                            });
+                            debug!("Added raw play-notes.md for module {}", module.module_number);
+                        }
+                    }
+                }
+                Err(e) => {
+                    debug!("Failed to read play-notes.md: {}", e);
+                }
+            }
+        }
+
+        // Get module monsters
+        let mut monster_conn = state
+            .db
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let mut monster_service = ModuleMonsterService::new(&mut monster_conn);
+        let monsters_with_data = monster_service
+            .get_monsters_with_data(module.id)
+            .map_err(|e| format!("Failed to get monsters for module {}: {}", module.id, e))?;
+
+        // Convert to JSON values
+        let monster_json: Vec<serde_json::Value> = monsters_with_data
+            .into_iter()
+            .filter_map(|m| {
+                if let Some(data) = m.monster_data {
+                    let mut monster = data;
+                    if let serde_json::Value::Object(ref mut obj) = monster {
+                        obj.insert(
+                            "quantity".to_string(),
+                            serde_json::Value::Number(m.quantity.into()),
+                        );
+                        if let Some(tag) = &m.encounter_tag {
+                            obj.insert(
+                                "encounter_tag".to_string(),
+                                serde_json::Value::String(tag.clone()),
+                            );
+                        }
+                    }
+                    strip_5etools_tags_from_json(&mut monster);
+                    Some(monster)
+                } else {
+                    Some(serde_json::json!({
+                        "name": m.monster_name,
+                        "source": m.monster_source,
+                        "quantity": m.quantity,
+                        "encounter_tag": m.encounter_tag
+                    }))
+                }
+            })
+            .collect();
+
+        // Only include modules that have documents or monsters
+        if !parsed_module_docs.is_empty() || !monster_json.is_empty() {
+            module_export_data.push(ModuleExportData {
+                name: module.name.clone(),
+                module_number: module.module_number,
+                documents: parsed_module_docs,
+                monsters: monster_json,
+            });
+        }
     }
 
+    // Sort modules by module_number
+    module_export_data.sort_by_key(|m| m.module_number);
+
     info!(
-        "Rendering {} documents for campaign '{}' in construction flow order",
-        file_paths.len(),
+        "Rendering {} campaign documents and {} modules for campaign '{}'",
+        campaign_file_paths.len(),
+        module_export_data.len(),
         campaign.name
     );
 
     // Create the print service and render combined PDF
     let service = create_print_service();
 
-    match service.render_campaign_combined(&file_paths, &campaign.name) {
+    // Convert module data to JSON
+    let modules_json = serde_json::to_value(&module_export_data)
+        .map_err(|e| format!("Failed to serialize module data: {}", e))?;
+
+    match service.render_campaign_combined_with_monsters(&campaign_file_paths, &campaign.name, modules_json) {
         Ok(pdf_bytes) => {
             let size_bytes = pdf_bytes.len();
             let pdf_base64 = base64::Engine::encode(
@@ -696,9 +1017,10 @@ pub async fn export_campaign_documents(
             );
 
             info!(
-                "Combined campaign PDF generated successfully ({} bytes, {} documents)",
+                "Combined campaign PDF generated successfully ({} bytes, {} campaign docs, {} modules)",
                 size_bytes,
-                file_paths.len()
+                campaign_file_paths.len(),
+                module_export_data.len()
             );
 
             Ok(ApiResponse::success(PrintResult {
@@ -713,5 +1035,319 @@ pub async fn export_campaign_documents(
                 e
             )))
         }
+    }
+}
+
+/// Export a single module's documents and monsters as PDF.
+///
+/// # Parameters
+/// - `module_id` - Database ID of the module
+///
+/// # Returns
+/// PrintResult with base64-encoded PDF
+#[tauri::command]
+pub async fn export_module_documents(
+    state: State<'_, AppState>,
+    module_id: i32,
+) -> Result<ApiResponse<PrintResult>, String> {
+    use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
+    use mimir_dm_core::dal::campaign::documents::DocumentRepository;
+    use mimir_dm_core::services::{ModuleMonsterService, ModuleService};
+    use mimir_dm_print::markdown::parse_campaign_document;
+
+    info!("Exporting module {} documents to PDF", module_id);
+
+    // Get the module
+    let mut conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut module_service = ModuleService::new(&mut conn);
+    let module = module_service
+        .get_module(module_id)
+        .map_err(|e| format!("Failed to get module: {}", e))?
+        .ok_or_else(|| format!("Module {} not found", module_id))?;
+
+    // Get the campaign for directory path
+    let mut campaign_conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut campaign_repo = CampaignRepository::new(&mut campaign_conn);
+    let campaign = campaign_repo
+        .find_by_id(module.campaign_id)
+        .map_err(|e| format!("Failed to get campaign: {}", e))?
+        .ok_or_else(|| format!("Campaign {} not found", module.campaign_id))?;
+
+    // Get module documents
+    let mut doc_conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let module_docs = DocumentRepository::find_by_module(&mut doc_conn, module_id)
+        .map_err(|e| format!("Failed to get documents for module {}: {}", module_id, e))?;
+
+    // Parse module documents
+    let mut parsed_module_docs: Vec<DocumentExportData> = Vec::new();
+    for doc in module_docs {
+        let path = std::path::PathBuf::from(&doc.file_path);
+        if path.exists() {
+            match std::fs::read_to_string(&path) {
+                Ok(markdown) => {
+                    match parse_campaign_document(&markdown) {
+                        Ok(parsed) => {
+                            let title = parsed
+                                .frontmatter
+                                .get("title")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or(&doc.title)
+                                .to_string();
+
+                            let document_type = parsed
+                                .frontmatter
+                                .get("type")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or(&doc.document_type)
+                                .to_string();
+
+                            parsed_module_docs.push(DocumentExportData {
+                                title,
+                                document_type,
+                                content: parsed.typst_content,
+                            });
+                        }
+                        Err(e) => {
+                            debug!("Failed to parse document {}: {}", doc.title, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    debug!("Failed to read document file {:?}: {}", path, e);
+                }
+            }
+        }
+    }
+
+    // Check for play-notes.md file (created during play mode)
+    let play_notes_path = std::path::PathBuf::from(&campaign.directory_path)
+        .join("modules")
+        .join(format!("module_{:02}", module.module_number))
+        .join("play-notes.md");
+
+    if play_notes_path.exists() {
+        match std::fs::read_to_string(&play_notes_path) {
+            Ok(markdown) => {
+                // Try to parse as a document with frontmatter
+                match parse_campaign_document(&markdown) {
+                    Ok(parsed) => {
+                        let title = parsed
+                            .frontmatter
+                            .get("title")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Play Notes")
+                            .to_string();
+
+                        parsed_module_docs.push(DocumentExportData {
+                            title,
+                            document_type: "session_notes".to_string(),
+                            content: parsed.typst_content,
+                        });
+                        debug!("Added play-notes.md for module {}", module.module_number);
+                    }
+                    Err(_) => {
+                        // If no frontmatter, treat as raw markdown
+                        let typst_content = mimir_dm_print::markdown::markdown_to_typst(&markdown);
+                        parsed_module_docs.push(DocumentExportData {
+                            title: "Play Notes".to_string(),
+                            document_type: "session_notes".to_string(),
+                            content: typst_content,
+                        });
+                        debug!("Added raw play-notes.md for module {}", module.module_number);
+                    }
+                }
+            }
+            Err(e) => {
+                debug!("Failed to read play-notes.md: {}", e);
+            }
+        }
+    }
+
+    // Get module monsters
+    let mut monster_conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut monster_service = ModuleMonsterService::new(&mut monster_conn);
+    let monsters_with_data = monster_service
+        .get_monsters_with_data(module_id)
+        .map_err(|e| format!("Failed to get monsters for module {}: {}", module_id, e))?;
+
+    // Convert to JSON values
+    let monster_json: Vec<serde_json::Value> = monsters_with_data
+        .into_iter()
+        .filter_map(|m| {
+            if let Some(data) = m.monster_data {
+                let mut monster = data;
+                if let serde_json::Value::Object(ref mut obj) = monster {
+                    obj.insert(
+                        "quantity".to_string(),
+                        serde_json::Value::Number(m.quantity.into()),
+                    );
+                    if let Some(tag) = &m.encounter_tag {
+                        obj.insert(
+                            "encounter_tag".to_string(),
+                            serde_json::Value::String(tag.clone()),
+                        );
+                    }
+                }
+                strip_5etools_tags_from_json(&mut monster);
+                Some(monster)
+            } else {
+                Some(serde_json::json!({
+                    "name": m.monster_name,
+                    "source": m.monster_source,
+                    "quantity": m.quantity,
+                    "encounter_tag": m.encounter_tag
+                }))
+            }
+        })
+        .collect();
+
+    // Build module export data
+    let module_export = ModuleExportData {
+        name: module.name.clone(),
+        module_number: module.module_number,
+        documents: parsed_module_docs,
+        monsters: monster_json,
+    };
+
+    info!(
+        "Rendering module '{}' with {} documents and {} monsters",
+        module.name,
+        module_export.documents.len(),
+        module_export.monsters.len()
+    );
+
+    // Create the print service and render PDF
+    let service = create_print_service();
+
+    // Convert module data to JSON - pass as single-element array so template can reuse same logic
+    let modules_json = serde_json::to_value(vec![module_export])
+        .map_err(|e| format!("Failed to serialize module data: {}", e))?;
+
+    // Use the combined template with no campaign docs, just the module
+    match service.render_campaign_combined_with_monsters(&[], &module.name, modules_json) {
+        Ok(pdf_bytes) => {
+            let size_bytes = pdf_bytes.len();
+            let pdf_base64 = base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                &pdf_bytes,
+            );
+
+            info!(
+                "Module PDF generated successfully ({} bytes)",
+                size_bytes
+            );
+
+            Ok(ApiResponse::success(PrintResult {
+                pdf_base64,
+                size_bytes,
+            }))
+        }
+        Err(e) => {
+            error!("Failed to generate module PDF: {:?}", e);
+            Ok(ApiResponse::error(format!(
+                "Failed to generate PDF: {}",
+                e
+            )))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_5etools_attack_tags() {
+        assert_eq!(strip_5etools_tags("{@atk mw}"), "Melee Weapon Attack:");
+        assert_eq!(strip_5etools_tags("{@atk rw}"), "Ranged Weapon Attack:");
+        assert_eq!(strip_5etools_tags("{@atk ms}"), "Melee Spell Attack:");
+        assert_eq!(strip_5etools_tags("{@atk rs}"), "Ranged Spell Attack:");
+        assert_eq!(strip_5etools_tags("{@atk mw,rw}"), "Melee or Ranged Weapon Attack:");
+    }
+
+    #[test]
+    fn test_strip_5etools_hit_and_damage() {
+        assert_eq!(strip_5etools_tags("{@hit 4}"), "+4");
+        assert_eq!(strip_5etools_tags("{@hit 12}"), "+12");
+        assert_eq!(strip_5etools_tags("{@damage 1d6+2}"), "1d6+2");
+        assert_eq!(strip_5etools_tags("{@damage 2d8}"), "2d8");
+    }
+
+    #[test]
+    fn test_strip_5etools_dc_and_dice() {
+        assert_eq!(strip_5etools_tags("{@dc 13}"), "DC 13");
+        assert_eq!(strip_5etools_tags("{@dc 15}"), "DC 15");
+        assert_eq!(strip_5etools_tags("{@dice 1d6}"), "1d6");
+        assert_eq!(strip_5etools_tags("{@dice 2d10+5}"), "2d10+5");
+    }
+
+    #[test]
+    fn test_strip_5etools_condition_and_item() {
+        assert_eq!(strip_5etools_tags("{@condition poisoned}"), "poisoned");
+        assert_eq!(strip_5etools_tags("{@condition frightened|PHB}"), "frightened");
+        assert_eq!(strip_5etools_tags("{@item leather armor|phb}"), "leather armor");
+        assert_eq!(strip_5etools_tags("{@item longsword}"), "longsword");
+    }
+
+    #[test]
+    fn test_strip_5etools_creature_and_spell() {
+        assert_eq!(strip_5etools_tags("{@creature goblin|mm}"), "goblin");
+        assert_eq!(strip_5etools_tags("{@spell fireball|phb}"), "fireball");
+        assert_eq!(strip_5etools_tags("{@spell magic missile}"), "magic missile");
+    }
+
+    #[test]
+    fn test_strip_5etools_recharge() {
+        assert_eq!(strip_5etools_tags("{@recharge 5}"), "(Recharge 5-6)");
+        assert_eq!(strip_5etools_tags("{@recharge 6}"), "(Recharge 6-6)");
+        assert_eq!(strip_5etools_tags("{@recharge}"), "(Recharge)");
+    }
+
+    #[test]
+    fn test_strip_5etools_h_tag() {
+        assert_eq!(strip_5etools_tags("{@h}"), "Hit: ");
+    }
+
+    #[test]
+    fn test_strip_5etools_complex_text() {
+        let input = "{@atk mw} {@hit 4} to hit, reach 5 ft., one target. {@h}{@damage 1d6+2} slashing damage.";
+        let expected = "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 1d6+2 slashing damage.";
+        assert_eq!(strip_5etools_tags(input), expected);
+    }
+
+    #[test]
+    fn test_strip_5etools_ac_with_item() {
+        let input = "15 ({@item leather armor|phb}, {@item shield|phb})";
+        let expected = "15 (leather armor, shield)";
+        assert_eq!(strip_5etools_tags(input), expected);
+    }
+
+    #[test]
+    fn test_strip_5etools_skill_and_action() {
+        assert_eq!(strip_5etools_tags("{@skill Perception}"), "Perception");
+        assert_eq!(strip_5etools_tags("{@skill Stealth|PHB}"), "Stealth");
+        assert_eq!(strip_5etools_tags("{@action Dodge}"), "Dodge");
+    }
+
+    #[test]
+    fn test_strip_5etools_preserves_plain_text() {
+        let input = "The goblin can take the Disengage or Hide action as a bonus action.";
+        assert_eq!(strip_5etools_tags(input), input);
     }
 }

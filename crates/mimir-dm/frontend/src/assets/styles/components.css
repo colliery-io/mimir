@@ -134,8 +134,7 @@
    ======================================== */
 
 /* Select dropdowns */
-.select,
-.session-status-select {
+.select {
   padding: 4px 8px;
   border-radius: var(--radius-xs);
   font-size: 0.75rem;
@@ -148,45 +147,24 @@
   transition: all var(--transition-base);
 }
 
-.select:hover,
-.session-status-select:hover {
+.select:hover {
   border-color: var(--color-primary-400);
 }
 
-.select:focus,
-.session-status-select:focus {
+.select:focus {
   outline: none;
   border-color: var(--color-primary-500);
   box-shadow: 0 0 0 2px var(--color-primary-100);
 }
 
-/* Status-specific select styles */
-.session-status-select.status-next_week,
-.status-next_week {
-  background-color: var(--color-info-bg);
-  color: var(--color-info);
-}
-
-.session-status-select.status-prep_needed,
-.status-prep_needed {
-  background-color: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.session-status-select.status-in_prep,
-.status-in_prep {
-  background-color: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.session-status-select.status-ready,
+/* Status badge styles */
 .status-ready {
   background-color: var(--color-success-bg);
   color: var(--color-success);
 }
 
-.session-status-select.status-complete,
-.status-complete {
+.status-complete,
+.status-completed {
   background-color: var(--color-surface-variant);
   color: var(--color-text-secondary);
 }

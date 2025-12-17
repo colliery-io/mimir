@@ -13,7 +13,8 @@ use crate::models::character::{
     Personality, Proficiencies, SpellData, SpellReference, SpellSlots,
 };
 use crate::services::{
-    CampaignService, CharacterService, ModuleService, PlayerService, SessionService,
+    CampaignService, CharacterService, DocumentService, ModuleMonsterService, ModuleService,
+    PlayerService,
 };
 use chrono::Utc;
 use std::collections::HashMap;
@@ -29,24 +30,125 @@ pub fn is_already_seeded(conn: &mut DbConnection) -> Result<bool> {
     Ok(campaigns.iter().any(|c| c.name == TEST_CAMPAIGN_NAME))
 }
 
+/// Clear existing dev seed data to allow re-seeding
+fn clear_dev_seed_data(conn: &mut DbConnection) -> Result<()> {
+    use crate::dal::campaign::documents::DocumentRepository;
+    use crate::dal::campaign::module_monsters::ModuleMonsterRepository;
+    use crate::dal::campaign::modules::ModuleRepository;
+    use crate::dal::character::CharacterRepository;
+    use crate::dal::player::PlayerRepository;
+
+    // First, find the dev campaign
+    let campaign_info = {
+        let mut repo = CampaignRepository::new(conn);
+        let campaigns = repo.list()?;
+        campaigns
+            .into_iter()
+            .find(|c| c.name == TEST_CAMPAIGN_NAME)
+            .map(|c| (c.id, c.directory_path.clone()))
+    };
+
+    let Some((campaign_id, directory_path)) = campaign_info else {
+        return Ok(()); // No dev campaign exists, nothing to clear
+    };
+
+    info!(
+        "Clearing existing dev seed data for campaign id: {}",
+        campaign_id
+    );
+
+    // Get module IDs
+    let module_ids: Vec<i32> = {
+        let mut module_repo = ModuleRepository::new(conn);
+        module_repo
+            .list_by_campaign(campaign_id)?
+            .into_iter()
+            .map(|m| m.id)
+            .collect()
+    };
+
+    // 1. Delete module monsters
+    for module_id in &module_ids {
+        let mut monster_repo = ModuleMonsterRepository::new(conn);
+        monster_repo.delete_by_module(*module_id)?;
+    }
+
+    // 2. Delete documents
+    let doc_ids: Vec<i32> = DocumentRepository::find_by_campaign(conn, campaign_id)?
+        .into_iter()
+        .map(|d| d.id)
+        .collect();
+    for doc_id in doc_ids {
+        DocumentRepository::delete(conn, doc_id)?;
+    }
+
+    // 4. Delete characters for this campaign
+    let character_ids: Vec<i32> = {
+        let mut char_repo = CharacterRepository::new(conn);
+        char_repo
+            .list_for_campaign(campaign_id)?
+            .into_iter()
+            .map(|c| c.id)
+            .collect()
+    };
+    for character_id in character_ids {
+        let mut char_repo = CharacterRepository::new(conn);
+        char_repo.delete(character_id)?;
+    }
+
+    // 5. Delete modules
+    for module_id in module_ids {
+        let mut module_repo = ModuleRepository::new(conn);
+        module_repo.delete(module_id)?;
+    }
+
+    // 6. Delete players (they're created by dev seeder)
+    let dev_player_names = ["Alice", "Bob", "Charlie", "Diana"];
+    let player_ids: Vec<i32> = {
+        let mut player_repo = PlayerRepository::new(conn);
+        player_repo
+            .list()?
+            .into_iter()
+            .filter(|p| dev_player_names.contains(&p.name.as_str()))
+            .map(|p| p.id)
+            .collect()
+    };
+    for player_id in player_ids {
+        let mut player_repo = PlayerRepository::new(conn);
+        player_repo.delete(player_id)?;
+    }
+
+    // 7. Delete campaign
+    {
+        let mut repo = CampaignRepository::new(conn);
+        repo.delete(campaign_id)?;
+    }
+
+    // 8. Delete campaign directory
+    if std::path::Path::new(&directory_path).exists() {
+        if let Err(e) = std::fs::remove_dir_all(&directory_path) {
+            info!("Note: Could not remove campaign directory: {}", e);
+        }
+    }
+
+    info!("Cleared existing dev seed data");
+    Ok(())
+}
+
 /// Seed development data into the database
 ///
 /// Creates a test campaign with modules, sessions, players, and characters.
-/// This function is idempotent - it will not create duplicate data if called
-/// multiple times.
+/// This function always overwrites existing dev seed data to ensure fresh state.
 ///
 /// # Arguments
 /// * `conn` - Database connection
 /// * `campaigns_directory` - Base directory for campaign files
 ///
 /// # Returns
-/// * `Ok(bool)` - true if seeding was performed, false if data already existed
+/// * `Ok(bool)` - true if seeding was performed
 pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Result<bool> {
-    // Check idempotency
-    if is_already_seeded(conn)? {
-        info!("Dev seed data already exists, skipping");
-        return Ok(false);
-    }
+    // Always clear existing dev data first (overwrite mode)
+    clear_dev_seed_data(conn)?;
 
     info!("Seeding development data...");
 
@@ -61,21 +163,22 @@ pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Resu
     let modules = seed_modules(conn, campaign.id)?;
     info!("Created {} modules", modules.len());
 
-    // Create sessions for the first module
-    if let Some(module) = modules.first() {
-        let sessions = seed_sessions(
-            conn,
-            module.id,
-            campaign.id,
-            &campaign.directory_path,
-            module.module_number,
-        )?;
+    // Transition first module to "ready" stage
+    if let Some(first_module) = modules.first() {
+        transition_module_to_ready(conn, first_module.id)?;
         info!(
-            "Created {} sessions for module {}",
-            sessions.len(),
-            module.name
+            "Transitioned module '{}' to ready stage",
+            first_module.name
         );
     }
+
+    // Add monsters to modules
+    seed_module_monsters(conn, &modules)?;
+    info!("Added monsters to modules");
+
+    // Fill in document content for modules
+    seed_module_document_content(conn, &modules, &campaign.directory_path)?;
+    info!("Populated module document content");
 
     // Create players
     let players = seed_players(conn)?;
@@ -146,29 +249,234 @@ fn seed_modules(
     Ok(modules)
 }
 
-/// Seed test sessions
-fn seed_sessions(
-    conn: &mut DbConnection,
-    module_id: i32,
-    campaign_id: i32,
-    campaign_directory: &str,
-    module_number: i32,
-) -> Result<Vec<crate::models::campaign::sessions::Session>> {
-    let mut sessions = Vec::new();
+/// Transition a module through stages to "ready"
+fn transition_module_to_ready(conn: &mut DbConnection, module_id: i32) -> Result<()> {
+    // Module stages: planning -> development -> ready
+    let stages = ["development", "ready"];
 
-    // Create a couple of sessions
-    for _ in 0..2 {
-        let session = SessionService::create_session(
-            conn,
-            module_id,
-            campaign_id,
-            campaign_directory,
-            module_number,
-        )?;
-        sessions.push(session);
+    for stage in stages {
+        let mut service = ModuleService::new(conn);
+        service.transition_module_stage(module_id, stage)?;
     }
 
-    Ok(sessions)
+    Ok(())
+}
+
+/// Seed module monsters with encounter tags
+fn seed_module_monsters(
+    conn: &mut DbConnection,
+    modules: &[crate::models::campaign::modules::Module],
+) -> Result<()> {
+    // Monster data for each module: (module_name, monsters)
+    // Each monster: (name, source, quantity, encounter_tag)
+    let module_monsters: Vec<(&str, Vec<(&str, &str, i32, Option<&str>)>)> = vec![
+        (
+            "Goblin Ambush",
+            vec![
+                ("Goblin", "MM", 4, Some("Ambush - Road")),
+                ("Goblin", "MM", 2, Some("Ambush - Woods")),
+                ("Wolf", "MM", 2, Some("Ambush - Road")),
+            ],
+        ),
+        (
+            "Cragmaw Hideout",
+            vec![
+                ("Goblin", "MM", 6, Some("Cave Entrance")),
+                ("Goblin", "MM", 3, Some("Guard Post")),
+                ("Goblin", "MM", 4, Some("Main Chamber")),
+                ("Wolf", "MM", 2, Some("Kennel")),
+                ("Bugbear", "MM", 1, Some("Boss Chamber")),
+                ("Goblin", "MM", 2, Some("Boss Chamber")),
+            ],
+        ),
+    ];
+
+    for module in modules {
+        // Find matching monster data for this module
+        if let Some((_, monsters)) = module_monsters.iter().find(|(name, _)| *name == module.name) {
+            for (monster_name, source, quantity, encounter_tag) in monsters {
+                let mut service = ModuleMonsterService::new(conn);
+                service.add_monster(
+                    module.id,
+                    monster_name.to_string(),
+                    source.to_string(),
+                    *quantity,
+                    encounter_tag.map(String::from),
+                )?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Seed module document content with Lost Mine of Phandelver content
+fn seed_module_document_content(
+    conn: &mut DbConnection,
+    modules: &[crate::models::campaign::modules::Module],
+    campaign_directory: &str,
+) -> Result<()> {
+    use std::path::PathBuf;
+
+    let module_content: Vec<(&str, &str)> = vec![
+        (
+            "Goblin Ambush",
+            r#"---
+title: "Goblin Ambush - Module Overview"
+type: module_overview
+---
+
+# Goblin Ambush
+
+## Overview
+
+The party encounters a goblin ambush on the Triboar Trail while escorting supplies to Phandalin. This serves as the adventure's opening encounter and hook into the main plot.
+
+## Key Objectives
+
+- Survive the goblin ambush
+- Discover the captured dwarf Gundren Rockseeker was taken to Cragmaw Hideout
+- Follow the goblin trail to rescue Gundren's bodyguard Sildar Hallwinter
+
+## Encounters
+
+### The Ambush (Road)
+- **Trigger**: The party discovers two dead horses blocking the trail
+- **Enemies**: 4 Goblins hiding in the woods, 2 Wolves
+- **Tactics**: Goblins attack from cover, wolves rush melee targets
+- **Difficulty**: Medium for level 1 party
+
+### Secondary Ambush (Woods)
+- **Location**: If party pursues fleeing goblins
+- **Enemies**: 2 Goblins with snare traps
+- **Complication**: Pit trap (DC 10 Perception to spot)
+
+## Important NPCs
+
+- **Gundren Rockseeker** (mentioned) - Dwarf entrepreneur who hired the party
+- **Sildar Hallwinter** (mentioned) - Human warrior escorting Gundren
+
+## Treasure
+
+- 25 gp in a belt pouch on one of the horses
+- Empty map case (map was taken by goblins)
+- Trail supplies worth 50 gp
+
+## Hooks to Next Module
+
+- Goblin trail leads northeast to Cragmaw Hideout
+- One goblin can be captured and interrogated for information
+- Horse brands identify them as belonging to Gundren Rockseeker
+
+## DM Notes
+
+- This encounter establishes the threat level and introduces combat
+- Allow creative solutions - parley, stealth, or combat all work
+- Emphasize the mystery of who was taken and why
+"#,
+        ),
+        (
+            "Cragmaw Hideout",
+            r#"---
+title: "Cragmaw Hideout - Module Overview"
+type: module_overview
+---
+
+# Cragmaw Hideout
+
+## Overview
+
+A goblin lair hidden in a cave system where Sildar Hallwinter is being held prisoner. The hideout is controlled by Klarg, a bugbear working for the mysterious Black Spider.
+
+## Key Objectives
+
+- Rescue Sildar Hallwinter from the goblins
+- Learn about the Black Spider's involvement
+- Discover Gundren was taken to Cragmaw Castle
+- Recover stolen supplies and treasure
+
+## Dungeon Overview
+
+The hideout consists of several connected cave chambers:
+
+1. **Cave Entrance** - Thicket-hidden entrance with goblin guards
+2. **Kennel** - Wolves chained as guard animals
+3. **Guard Post** - Elevated platform with archer goblins
+4. **Twin Pools** - Water reservoir with flood trap potential
+5. **Main Chamber** - Goblin common area
+6. **Boss Chamber** - Klarg's lair with Sildar prisoner
+
+## Encounters
+
+### Cave Entrance
+- **Enemies**: 2 Goblin sentries
+- **Tactics**: One flees to warn others if spotted
+- **Hazard**: Stream makes stealthy approach difficult
+
+### Kennel
+- **Enemies**: 2 Wolves (chained)
+- **Note**: Wolves alert goblins with howling if agitated
+- **Opportunity**: Can be bypassed or fed to pacify
+
+### Guard Post
+- **Enemies**: 3 Goblins with shortbows
+- **Advantage**: Elevated position, half cover
+- **Tactics**: Fire at intruders, call for reinforcements
+
+### Main Chamber
+- **Enemies**: 6 Goblins led by Yeemik (goblin boss)
+- **Complication**: Yeemik threatens to kill Sildar
+- **Opportunity**: Negotiate - Yeemik wants Klarg dead
+
+### Boss Chamber
+- **Enemies**: Klarg (Bugbear), 2 Goblins, Wolf (pet)
+- **Treasure**: Stolen goods, Klarg's treasure chest
+- **Difficulty**: Deadly for level 1, hard for level 2
+
+## Important NPCs
+
+- **Sildar Hallwinter** - Captive, member of Lords' Alliance, knows about Wave Echo Cave
+- **Klarg** - Bugbear boss, vain and cruel, serves the Black Spider
+- **Yeemik** - Ambitious goblin, wants to overthrow Klarg
+
+## Treasure
+
+- 600 cp, 110 sp, 2 potions of healing
+- Jade statuette of a frog (40 gp)
+- Stolen Lionshield Coster supplies (50 gp reward)
+- Sildar's gear (longsword, chainmail)
+
+## Environmental Features
+
+- **Flood Trap**: Dam in Twin Pools can be released
+- **Chimney**: Natural shaft to Boss Chamber
+- **Fissure**: Connects Guard Post to Twin Pools
+
+## Hooks to Next Module
+
+- Sildar asks party to escort him to Phandalin
+- Information about Cragmaw Castle location
+- Mention of the Black Spider seeking Wave Echo Cave
+- Lionshield supplies can be returned for reward in Phandalin
+"#,
+        ),
+    ];
+
+    for module in modules {
+        if let Some((_, content)) = module_content.iter().find(|(name, _)| *name == module.name) {
+            // Build the file path for the module overview
+            let module_dir = PathBuf::from(campaign_directory)
+                .join("modules")
+                .join(format!("module_{:02}", module.module_number));
+            let overview_path = module_dir.join("module-overview.md");
+
+            // Write the content
+            let doc_service = DocumentService::new(conn);
+            doc_service.save_document_file(&overview_path.to_string_lossy(), content)?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Seed test players
@@ -927,7 +1235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_seed_dev_data_is_idempotent() {
+    fn test_seed_dev_data_overwrites_existing() {
         let mut conn = establish_connection(":memory:").unwrap();
         crate::run_migrations(&mut conn).unwrap();
         seed_templates(&mut conn).unwrap();
@@ -939,14 +1247,11 @@ mod tests {
         let first_result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
         assert!(first_result, "First seed should return true");
 
-        // Second seed should be skipped
+        // Second seed should overwrite (also returns true)
         let second_result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
-        assert!(
-            !second_result,
-            "Second seed should return false (idempotent)"
-        );
+        assert!(second_result, "Second seed should also return true (overwrite)");
 
-        // Verify still only one campaign
+        // Verify still only one campaign (old one was deleted and re-created)
         let mut repo = CampaignRepository::new(&mut conn);
         let campaigns = repo.list().unwrap();
         assert_eq!(campaigns.len(), 1, "Should still have only one campaign");

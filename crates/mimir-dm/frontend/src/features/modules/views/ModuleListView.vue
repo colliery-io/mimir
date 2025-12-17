@@ -68,8 +68,6 @@
           <tr>
             <th>Module</th>
             <th>Status</th>
-            <th>Sessions</th>
-            <th>Progress</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -82,15 +80,6 @@
               <span class="status-badge" :class="module.status">
                 {{ formatStatus(module.status) }}
               </span>
-            </td>
-            <td class="sessions-info">
-              {{ module.actual_sessions }} / {{ module.expected_sessions }}
-            </td>
-            <td class="progress-cell">
-              <div v-if="getProgress(module) > 0" class="progress-bar">
-                <div class="progress-fill" :style="{ width: getProgress(module) + '%' }"></div>
-              </div>
-              <span v-else class="no-progress">—</span>
             </td>
             <td class="actions-cell">
               <router-link :to="`/modules/${module.id}/board`" class="btn btn-primary btn-small">
@@ -202,11 +191,6 @@ const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString()
 }
 
-const getProgress = (module: Module): number => {
-  if (module.expected_sessions === 0) return 0
-  return Math.round((module.actual_sessions / module.expected_sessions) * 100)
-}
-
 // Watch for campaign ID changes in route
 watch(() => route.params.id, (newId, oldId) => {
   if (newId !== oldId && newId) {
@@ -292,20 +276,6 @@ onMounted(() => {
 
 .module-name strong {
   color: var(--color-text);
-}
-
-.sessions-info {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.progress-cell {
-  min-width: 150px;
-}
-
-.no-progress {
-  color: var(--color-text-secondary);
-  font-size: 1.25rem;
 }
 
 .actions-cell {

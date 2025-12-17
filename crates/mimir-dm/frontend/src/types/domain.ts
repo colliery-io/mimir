@@ -15,7 +15,6 @@ export interface Document {
   // Additional fields for compatibility with different components
   campaign_id?: number
   module_id?: number | null
-  session_id?: number | null
   template_id?: string
   document_type?: string
   parent_id?: string
@@ -84,10 +83,13 @@ export interface Module {
   id: number
   campaign_id: number
   name: string
+  module_number: number
   description?: string
   expected_sessions: number
   completed_sessions: number
+  actual_sessions?: number
   module_type: 'standard' | 'oneshot' | 'campaign'
+  status?: string
   phase: 'planning' | 'development' | 'ready' | 'active' | 'completed'
   documents?: Document[]
   created_at: string
@@ -105,23 +107,6 @@ export interface Campaign {
   modules?: Module[]
   created_at: string
   updated_at: string
-}
-
-// Session types
-export interface Session {
-  id: number | string
-  module_id?: number
-  campaign_id?: number
-  session_number?: number
-  name: string
-  date?: string
-  scheduled_date?: string
-  actual_date?: string
-  players?: string[]
-  notes?: string
-  status: 'planned' | 'active' | 'completed' | string
-  created_at: string
-  updated_at?: string
 }
 
 // Stage types for module/campaign progression

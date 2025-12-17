@@ -10,7 +10,10 @@ use crate::error::Result;
 use crate::models::campaign::module_monsters::{
     EncounterGroup, ModuleMonster, ModuleMonsterWithData, NewModuleMonster, UpdateModuleMonster,
 };
+use crate::services::monster_renderer::{render_monsters_file, MonsterData};
 use crate::services::MonsterService;
+use std::fs;
+use std::path::PathBuf;
 
 /// Service for managing monster associations with modules.
 pub struct ModuleMonsterService<'a> {
@@ -171,5 +174,61 @@ impl<'a> ModuleMonsterService<'a> {
     pub fn clear_module_monsters(&mut self, module_id: i32) -> Result<usize> {
         let mut repo = ModuleMonsterRepository::new(self.conn);
         repo.delete_by_module(module_id)
+    }
+
+    /// Sync module monsters to a markdown file on disk.
+    ///
+    /// Creates or updates a `monsters.md` file in the module directory containing
+    /// full stat blocks for all monsters, grouped by encounter tag.
+    ///
+    /// # Arguments
+    /// * `module_id` - The module to sync
+    /// * `campaign_directory` - The campaign's root directory path
+    /// * `module_number` - The module number (for directory naming)
+    /// * `module_name` - The module name (for the file header)
+    pub fn sync_monsters_to_file(
+        &mut self,
+        module_id: i32,
+        campaign_directory: &str,
+        module_number: i32,
+        module_name: &str,
+    ) -> Result<()> {
+        // Get all monsters grouped by encounter
+        let encounter_groups = self.get_monsters_grouped_by_encounter(module_id)?;
+
+        // Convert to the format needed by the renderer
+        let encounters: Vec<(Option<String>, Vec<MonsterData>)> = encounter_groups
+            .into_iter()
+            .map(|group| {
+                let monsters: Vec<MonsterData> = group
+                    .monsters
+                    .into_iter()
+                    .map(|m| MonsterData {
+                        name: m.monster_name,
+                        source: m.monster_source,
+                        quantity: m.quantity,
+                        full_data: m.monster_data,
+                    })
+                    .collect();
+                (group.encounter_tag, monsters)
+            })
+            .collect();
+
+        // Build the module directory path
+        let module_dir = PathBuf::from(campaign_directory)
+            .join("modules")
+            .join(format!("module_{:02}", module_number));
+
+        // Ensure directory exists
+        fs::create_dir_all(&module_dir)?;
+
+        // Render the markdown
+        let markdown = render_monsters_file(&encounters, module_name);
+
+        // Write to file
+        let file_path = module_dir.join("monsters.md");
+        fs::write(&file_path, markdown)?;
+
+        Ok(())
     }
 }

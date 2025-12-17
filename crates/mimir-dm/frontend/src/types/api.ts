@@ -36,10 +36,13 @@ export interface Module {
   id: number
   campaign_id: number
   name: string
+  module_number: number
   description?: string
   status: string
   sessions_planned: number
   sessions_completed: number
+  expected_sessions?: number
+  actual_sessions?: number
   created_at: string
 }
 

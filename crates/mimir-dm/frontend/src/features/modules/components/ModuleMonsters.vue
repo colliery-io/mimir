@@ -127,6 +127,9 @@ interface ModuleMonster {
 
 interface Props {
   moduleId: number
+  moduleName: string
+  moduleNumber: number
+  campaignId: number
 }
 
 const props = defineProps<Props>()
@@ -191,6 +194,32 @@ function isMonsterAdded(monster: MonsterSummary): boolean {
   )
 }
 
+// Sync monsters to file
+async function syncMonstersToFile() {
+  try {
+    // Get campaign directory
+    const campaignResponse = await invoke<{ data: { directory_path: string } }>('get_campaign', {
+      id: props.campaignId
+    })
+
+    if (!campaignResponse.data?.directory_path) {
+      console.error('Could not get campaign directory')
+      return
+    }
+
+    await invoke('sync_module_monsters_to_file', {
+      request: {
+        module_id: props.moduleId,
+        campaign_directory: campaignResponse.data.directory_path,
+        module_number: props.moduleNumber,
+        module_name: props.moduleName
+      }
+    })
+  } catch (error) {
+    console.error('Failed to sync monsters to file:', error)
+  }
+}
+
 // Add monster to module
 async function addMonster(monster: MonsterSummary) {
   try {
@@ -206,6 +235,7 @@ async function addMonster(monster: MonsterSummary) {
 
     if (response.data) {
       moduleMonsters.value.push(response.data)
+      await syncMonstersToFile()
     }
   } catch (error) {
     console.error('Failed to add monster:', error)
@@ -223,6 +253,7 @@ async function updateQuantity(monster: ModuleMonster, event: Event) {
       request: { quantity, encounter_tag: null }
     })
     monster.quantity = quantity
+    await syncMonstersToFile()
   } catch (error) {
     console.error('Failed to update quantity:', error)
   }
@@ -239,6 +270,7 @@ async function updateTag(monster: ModuleMonster, event: Event) {
       request: { quantity: null, encounter_tag: tag ? { Some: tag } : { None: null } }
     })
     monster.encounter_tag = tag
+    await syncMonstersToFile()
   } catch (error) {
     console.error('Failed to update tag:', error)
   }
@@ -251,6 +283,7 @@ async function removeMonster(monster: ModuleMonster) {
       monsterId: monster.id
     })
     moduleMonsters.value = moduleMonsters.value.filter(m => m.id !== monster.id)
+    await syncMonstersToFile()
   } catch (error) {
     console.error('Failed to remove monster:', error)
   }
@@ -460,6 +493,13 @@ onMounted(() => {
   border-radius: 0.25rem;
   font-size: 0.75rem;
   text-align: center;
+  background: var(--color-base-100);
+  color: var(--color-text);
+}
+
+.quantity-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .tag-input {
@@ -468,6 +508,17 @@ onMounted(() => {
   border: 1px solid var(--color-border);
   border-radius: 0.25rem;
   font-size: 0.75rem;
+  background: var(--color-base-100);
+  color: var(--color-text);
+}
+
+.tag-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.tag-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .remove-button {

@@ -257,20 +257,6 @@
   color: var(--color-text);
 }
 
-.sessions-info {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.progress-cell {
-  min-width: 150px;
-}
-
-.no-progress {
-  color: var(--color-text-secondary);
-  font-size: 1.25rem;
-}
-
 .actions-cell {
   text-align: right;
   white-space: nowrap;

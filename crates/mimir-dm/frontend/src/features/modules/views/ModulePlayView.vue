@@ -30,14 +30,105 @@
         </button>
 
         <div class="sidebar-content" v-show="!sidebarCollapsed">
-          <div class="sidebar-section">
-            <h3>Quick Access</h3>
-            <p class="placeholder-text">Monster cards and NPC info will appear here</p>
-          </div>
-
+          <!-- Encounters Section -->
           <div class="sidebar-section">
             <h3>Encounters</h3>
-            <p class="placeholder-text">Encounter groups will be listed here</p>
+            <div v-if="encountersLoading" class="loading-text">Loading...</div>
+            <div v-else-if="encounterGroups.length === 0" class="empty-text">No encounters tagged</div>
+            <div v-else class="encounter-list">
+              <div
+                v-for="group in encounterGroups"
+                :key="group.encounter_tag || 'untagged'"
+                class="encounter-group"
+                :class="{ active: selectedEncounter === group.encounter_tag }"
+                @click="selectEncounter(group)"
+              >
+                <div class="encounter-header">
+                  <span class="encounter-name">{{ group.encounter_tag || 'Untagged' }}</span>
+                  <span class="encounter-count">{{ group.monsters.length }}</span>
+                </div>
+                <div class="encounter-monsters" v-if="selectedEncounter === group.encounter_tag">
+                  <div
+                    v-for="monster in group.monsters"
+                    :key="monster.id"
+                    class="monster-item"
+                    @click.stop="selectMonster(monster)"
+                  >
+                    <span class="monster-qty">{{ monster.quantity }}x</span>
+                    <span class="monster-name">{{ monster.monster_name }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selected Monster Card -->
+          <div class="sidebar-section" v-if="selectedMonster">
+            <h3>Monster Details</h3>
+            <div class="monster-card">
+              <div class="monster-card-header">
+                <strong>{{ selectedMonster.monster_name }}</strong>
+                <span class="monster-source">{{ selectedMonster.monster_source }}</span>
+              </div>
+              <div v-if="selectedMonster.monster_data" class="monster-stats">
+                <div class="stat-row">
+                  <span class="stat-label">AC</span>
+                  <span class="stat-value">{{ formatAC(selectedMonster.monster_data) }}</span>
+                </div>
+                <div class="stat-row">
+                  <span class="stat-label">HP</span>
+                  <span class="stat-value">{{ formatHP(selectedMonster.monster_data) }}</span>
+                </div>
+                <div class="stat-row">
+                  <span class="stat-label">CR</span>
+                  <span class="stat-value">{{ selectedMonster.monster_data.cr || '?' }}</span>
+                </div>
+                <div class="ability-scores" v-if="selectedMonster.monster_data">
+                  <div class="ability">
+                    <span class="ability-name">STR</span>
+                    <span class="ability-value">{{ selectedMonster.monster_data.str || 10 }}</span>
+                  </div>
+                  <div class="ability">
+                    <span class="ability-name">DEX</span>
+                    <span class="ability-value">{{ selectedMonster.monster_data.dex || 10 }}</span>
+                  </div>
+                  <div class="ability">
+                    <span class="ability-name">CON</span>
+                    <span class="ability-value">{{ selectedMonster.monster_data.con || 10 }}</span>
+                  </div>
+                  <div class="ability">
+                    <span class="ability-name">INT</span>
+                    <span class="ability-value">{{ selectedMonster.monster_data.int || 10 }}</span>
+                  </div>
+                  <div class="ability">
+                    <span class="ability-name">WIS</span>
+                    <span class="ability-value">{{ selectedMonster.monster_data.wis || 10 }}</span>
+                  </div>
+                  <div class="ability">
+                    <span class="ability-name">CHA</span>
+                    <span class="ability-value">{{ selectedMonster.monster_data.cha || 10 }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="no-data-text">
+                Full stats not available
+              </div>
+            </div>
+          </div>
+
+          <!-- All Monsters Quick List -->
+          <div class="sidebar-section" v-if="!selectedMonster && allMonsters.length > 0">
+            <h3>All Monsters ({{ allMonsters.length }})</h3>
+            <div class="monster-quick-list">
+              <div
+                v-for="monster in allMonsters"
+                :key="monster.id"
+                class="monster-quick-item"
+                @click="selectMonster(monster)"
+              >
+                {{ monster.monster_name }}
+              </div>
+            </div>
           </div>
         </div>
       </aside>
@@ -130,6 +221,123 @@ const selectedDocument = ref<Document | null>(null)
 const sidebarCollapsed = ref(false)
 const documentsLoading = ref(true)
 const documentLoading = ref(false)
+
+// Monster/Encounter state
+interface MonsterWithData {
+  id: number
+  module_id: number
+  monster_name: string
+  monster_source: string
+  quantity: number
+  encounter_tag: string | null
+  monster_data: any | null
+}
+
+interface EncounterGroup {
+  encounter_tag: string | null
+  monsters: MonsterWithData[]
+}
+
+const encounterGroups = ref<EncounterGroup[]>([])
+const allMonsters = ref<MonsterWithData[]>([])
+const selectedEncounter = ref<string | null>(null)
+const selectedMonster = ref<MonsterWithData | null>(null)
+const encountersLoading = ref(true)
+
+// Load encounters/monsters for this module
+async function loadEncounters() {
+  encountersLoading.value = true
+  try {
+    const response = await invoke<{ data: MonsterWithData[] }>('list_module_monsters_with_data', {
+      moduleId: moduleId.value
+    })
+
+    const monsters = response.data || []
+    allMonsters.value = monsters
+
+    // Group monsters by encounter_tag
+    const groups = new Map<string | null, MonsterWithData[]>()
+    for (const monster of monsters) {
+      const tag = monster.encounter_tag
+      if (!groups.has(tag)) {
+        groups.set(tag, [])
+      }
+      groups.get(tag)!.push(monster)
+    }
+
+    // Convert to array, putting tagged encounters first
+    const groupArray: EncounterGroup[] = []
+    for (const [tag, groupMonsters] of groups) {
+      if (tag !== null) {
+        groupArray.push({ encounter_tag: tag, monsters: groupMonsters })
+      }
+    }
+    // Add untagged at the end if any
+    if (groups.has(null)) {
+      groupArray.push({ encounter_tag: null, monsters: groups.get(null)! })
+    }
+
+    encounterGroups.value = groupArray
+  } catch (error) {
+    console.error('Failed to load encounters:', error)
+    encounterGroups.value = []
+    allMonsters.value = []
+  } finally {
+    encountersLoading.value = false
+  }
+}
+
+// Select an encounter group to expand
+function selectEncounter(group: EncounterGroup) {
+  if (selectedEncounter.value === group.encounter_tag) {
+    // Toggle off if clicking same group
+    selectedEncounter.value = null
+    selectedMonster.value = null
+  } else {
+    selectedEncounter.value = group.encounter_tag
+    // Auto-select first monster in group
+    if (group.monsters.length > 0) {
+      selectedMonster.value = group.monsters[0]
+    }
+  }
+}
+
+// Select a monster to show details
+function selectMonster(monster: MonsterWithData) {
+  selectedMonster.value = monster
+}
+
+// Format AC from 5etools data format
+function formatAC(monsterData: any): string {
+  if (!monsterData?.ac) return '?'
+
+  const ac = monsterData.ac
+  if (Array.isArray(ac)) {
+    // 5etools format: ac is an array of AC objects or numbers
+    const first = ac[0]
+    if (typeof first === 'number') {
+      return String(first)
+    } else if (typeof first === 'object') {
+      const base = first.ac || first
+      const from = first.from ? ` (${first.from.join(', ')})` : ''
+      return `${base}${from}`
+    }
+  }
+  return String(ac)
+}
+
+// Format HP from 5etools data format
+function formatHP(monsterData: any): string {
+  if (!monsterData?.hp) return '?'
+
+  const hp = monsterData.hp
+  if (typeof hp === 'object') {
+    const avg = hp.average || hp.special || '?'
+    const formula = hp.formula ? ` (${hp.formula})` : ''
+    return `${avg}${formula}`
+  }
+  return String(hp)
+}
 
 // Notes state
 const notesCollapsed = ref(true)
@@ -338,7 +546,10 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   await loadModule()
-  await loadDocuments()
+  await Promise.all([
+    loadDocuments(),
+    loadEncounters()
+  ])
 })
 </script>
 
@@ -783,5 +994,190 @@ onMounted(async () => {
 .play-main.notes-expanded {
   flex: 1;
   min-height: 0;
+}
+
+/* Encounter List Styles */
+.loading-text,
+.empty-text {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.encounter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.encounter-group {
+  background: var(--color-base-200);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.encounter-group:hover {
+  background: var(--color-base-300);
+}
+
+.encounter-group.active {
+  background: var(--color-base-300);
+  border-left: 3px solid var(--color-accent, #e67e22);
+}
+
+.encounter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+}
+
+.encounter-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.encounter-count {
+  font-size: 0.75rem;
+  background: var(--color-surface);
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+}
+
+.encounter-monsters {
+  padding: 0.25rem 0.75rem 0.5rem 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.monster-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.monster-item:hover {
+  background: var(--color-surface);
+}
+
+.monster-qty {
+  font-weight: 600;
+  color: var(--color-accent, #e67e22);
+  min-width: 2rem;
+}
+
+.monster-name {
+  color: var(--color-text);
+}
+
+/* Monster Card Styles */
+.monster-card {
+  background: var(--color-base-200);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.monster-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.monster-card-header strong {
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.monster-source {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.monster-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.stat-label {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.stat-value {
+  color: var(--color-text);
+}
+
+/* Ability Scores Grid */
+.ability-scores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.ability {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.ability-name {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ability-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.no-data-text {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+/* Monster Quick List */
+.monster-quick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.monster-quick-item {
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.monster-quick-item:hover {
+  background: var(--color-base-200);
 }
 </style>

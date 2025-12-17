@@ -7,9 +7,10 @@
   >
     <!-- Document Sidebar -->
     <template #sidebar>
-      <DocumentSidebar 
+      <DocumentSidebar
         v-if="campaign && boardConfig"
         :campaign-id="campaign.id"
+        :campaign-name="campaign.name"
         :campaign-stage="campaign.status"
         :board-config="boardConfig"
         @select-document="handleSelectDocument"

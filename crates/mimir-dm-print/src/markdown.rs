@@ -233,7 +233,7 @@ pub fn markdown_to_typst(markdown: &str) -> String {
             // Tables
             Event::Start(Tag::Table(_)) => {
                 in_table = true;
-                output.push_str("#table(\n  columns: auto,\n");
+                // We'll output the table header later once we know the column count
             }
             Event::End(TagEnd::Table) => {
                 output.push_str(")\n\n");
@@ -244,6 +244,11 @@ pub fn markdown_to_typst(markdown: &str) -> String {
                 table_row.clear();
             }
             Event::End(TagEnd::TableHead) => {
+                // Now we know the column count, output the table start with proper columns
+                let column_count = table_row.len();
+                let cols = vec!["auto"; column_count].join(", ");
+                output.push_str(&format!("#table(\n  columns: ({}),\n", cols));
+
                 // Output header row wrapped in a single table.header() call
                 // Typst requires all header cells to be in one table.header()
                 if !table_row.is_empty() {

@@ -373,3 +373,120 @@
     body
   )
 }
+
+// =============================================================================
+// COMPACT MONSTER CARD (Inline format for documents)
+// =============================================================================
+
+/// Compact monster card for inline use in documents
+/// Shows key combat stats in a condensed format
+#let monster-card-inline(
+  name: "Monster",
+  size: "Medium",
+  type: "humanoid",
+  alignment: "neutral",
+  ac: "10",
+  hp: "10",
+  speed: "30 ft.",
+  str: 10,
+  dex: 10,
+  con: 10,
+  int: 10,
+  wis: 10,
+  cha: 10,
+  cr: "0",
+  quantity: 1,
+  encounter-tag: none,
+  actions: (),
+) = {
+  box(
+    width: 100%,
+    stroke: 1pt + colors.border,
+    radius: 4pt,
+    inset: 0pt,
+    {
+      // Header with name and CR
+      block(
+        width: 100%,
+        fill: colors.background-alt,
+        inset: (x: spacing.sm, y: spacing.xs),
+      )[
+        #grid(
+          columns: (1fr, auto),
+          [
+            #text(size: sizes.base, weight: "bold")[#name]
+            #if quantity > 1 [ #text(size: sizes.sm, fill: colors.text-secondary)[(x#quantity)]]
+            #linebreak()
+            #text(size: sizes.xs, fill: colors.text-secondary, style: "italic")[#size #type, #alignment]
+            #if encounter-tag != none [
+              #h(spacing.sm)
+              #text(size: sizes.xs, fill: colors.accent)[#encounter-tag]
+            ]
+          ],
+          align(right + horizon)[
+            #box(
+              fill: colors.background-alt,
+              stroke: 1pt + colors.border,
+              inset: spacing.xs,
+              radius: 2pt,
+            )[
+              #text(size: sizes.xs)[CR]
+              #text(size: sizes.sm, weight: "bold")[ #cr]
+            ]
+          ]
+        )
+      ]
+
+      // Combat stats row
+      block(
+        width: 100%,
+        inset: spacing.xs,
+        stroke: (bottom: 0.5pt + colors.border-light),
+      )[
+        #set text(size: sizes.sm)
+        #grid(
+          columns: (1fr, 1fr, 1fr),
+          column-gutter: spacing.sm,
+          [*AC* #ac],
+          [*HP* #hp],
+          [*Speed* #speed],
+        )
+      ]
+
+      // Ability scores (compact single row)
+      block(
+        width: 100%,
+        inset: (x: spacing.xs, y: spacing.xs),
+        stroke: (bottom: if actions.len() > 0 { 0.5pt + colors.border-light } else { none }),
+      )[
+        #set text(size: sizes.xs)
+        #grid(
+          columns: (1fr,) * 6,
+          align(center)[*STR* #ability-mod(str)],
+          align(center)[*DEX* #ability-mod(dex)],
+          align(center)[*CON* #ability-mod(con)],
+          align(center)[*INT* #ability-mod(int)],
+          align(center)[*WIS* #ability-mod(wis)],
+          align(center)[*CHA* #ability-mod(cha)],
+        )
+      ]
+
+      // Key actions (first 3, condensed)
+      if actions.len() > 0 {
+        block(
+          width: 100%,
+          inset: spacing.xs,
+        )[
+          #set text(size: sizes.xs)
+          #for (i, action) in actions.slice(0, calc.min(3, actions.len())).enumerate() {
+            if action.name != none [
+              #text(weight: "bold", style: "italic")[#action.name.]
+              #text(fill: colors.text-secondary)[ #action.description.codepoints().slice(0, calc.min(150, action.description.codepoints().len())).join("")#if action.description.codepoints().len() > 150 [...]]
+              #if i < calc.min(3, actions.len()) - 1 [ #linebreak() ]
+            ]
+          }
+        ]
+      }
+    }
+  )
+}

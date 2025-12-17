@@ -20,8 +20,6 @@
         <tr>
           <th>Module</th>
           <th>Status</th>
-          <th>Sessions</th>
-          <th v-if="showProgress">Progress</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -35,19 +33,25 @@
               {{ module.status }}
             </span>
           </td>
-          <td class="sessions-info">
-            {{ module.actual_sessions || 0 }} {{ showProgress ? `/ ${module.planned_sessions}` : 'sessions' }}
-          </td>
-          <td v-if="showProgress" class="progress-cell">
-            <span v-if="module.progress_percentage > 0" class="progress-percentage">
-              {{ module.progress_percentage }}%
-            </span>
-            <span v-else class="no-progress">—</span>
-          </td>
           <td class="actions-cell">
-            <router-link :to="`/modules/${module.id}/board`" class="btn btn-ghost btn-small">
-              View →
+            <router-link
+              :to="`/modules/${module.id}/play`"
+              class="btn btn-play btn-small"
+              :class="{ disabled: module.status !== 'ready' && module.status !== 'active' }"
+            >
+              Play
             </router-link>
+            <router-link :to="`/modules/${module.id}/board`" class="btn btn-ghost btn-small">
+              Open
+            </router-link>
+            <button
+              class="btn btn-pdf btn-small"
+              @click="exportModule(module)"
+              :disabled="exportingModuleId === module.id"
+              title="Export module as PDF"
+            >
+              {{ exportingModuleId === module.id ? '...' : 'PDF' }}
+            </button>
           </td>
         </tr>
       </tbody>
@@ -56,19 +60,107 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { ref } from 'vue'
+import { PrintService } from '../../../../services/PrintService'
+
+const props = withDefaults(defineProps<{
   modules: any[]
   loading: boolean
   title?: string
   emptyMessage?: string
-  showProgress?: boolean
 }>(), {
   title: 'Modules',
-  emptyMessage: 'No modules yet. Create your first module to get started!',
-  showProgress: true
+  emptyMessage: 'No modules yet. Create your first module to get started!'
 })
 
 defineEmits<{
   createModule: []
 }>()
+
+const exportingModuleId = ref<number | null>(null)
+
+const exportModule = async (module: any) => {
+  if (!module?.id) return
+
+  exportingModuleId.value = module.id
+
+  try {
+    const result = await PrintService.exportModuleDocuments(module.id)
+
+    const filename = `Module_${module.module_number}_${module.name || 'module'}.pdf`
+      .replace(/[^a-z0-9\s\-_.]/gi, '')
+      .replace(/\s+/g, '_')
+
+    await PrintService.savePdf(result, filename)
+  } catch (e) {
+    console.error('Failed to export module:', e)
+  } finally {
+    exportingModuleId.value = null
+  }
+}
 </script>
+
+<style scoped>
+.modules-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.modules-table th:nth-child(1) { width: 55%; } /* Module name */
+.modules-table th:nth-child(2) { width: 15%; } /* Status */
+.modules-table th:last-child { width: 30%; }   /* Actions */
+
+.modules-table td {
+  vertical-align: middle;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.actions-cell .btn {
+  min-width: 4rem;
+  height: 2rem;
+  line-height: 2rem;
+  padding: 0 0.75rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.btn-play {
+  background: var(--color-accent, #e67e22);
+  color: white;
+  border: none;
+  font-weight: 600;
+}
+
+.btn-play:hover:not(.disabled) {
+  background: var(--color-accent-dark, #d35400);
+}
+
+.btn-play.disabled {
+  background: var(--color-border, #ddd);
+  color: var(--color-text-secondary, #999);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-pdf {
+  background: var(--color-secondary, #95a5a6);
+  color: white;
+  border: none;
+}
+
+.btn-pdf:hover {
+  background: var(--color-secondary-dark, #7f8c8d);
+}
+
+.btn-pdf:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>

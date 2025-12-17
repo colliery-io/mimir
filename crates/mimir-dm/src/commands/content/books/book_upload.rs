@@ -154,13 +154,15 @@ pub async fn upload_book_archive(
         .map(|s| s.to_string())
         .unwrap_or_else(|| book_id.clone());
 
-    // Check if book already exists
+    // Check if book already exists on disk - if so, remove it to allow re-import
     let final_book_dir = books_dir.join(&book_id);
     if final_book_dir.exists() {
-        return Ok(ApiResponse::error(format!(
-            "Book '{}' already exists",
-            book_name
-        )));
+        info!(
+            "Book directory already exists at {:?}, removing for re-import",
+            final_book_dir
+        );
+        fs::remove_dir_all(&final_book_dir)
+            .map_err(|e| format!("Failed to remove existing book directory: {}", e))?;
     }
 
     // Create archives directory if it doesn't exist
@@ -176,6 +178,16 @@ pub async fn upload_book_archive(
 
     // Create database record first
     let archive_destination = archives_dir.join(format!("{}.tar.gz", book_id));
+
+    // Remove existing archive if present
+    if archive_destination.exists() {
+        info!(
+            "Archive already exists at {:?}, removing for re-import",
+            archive_destination
+        );
+        fs::remove_file(&archive_destination)
+            .map_err(|e| format!("Failed to remove existing archive: {}", e))?;
+    }
     let new_book = NewUploadedBook {
         id: book_id.clone(),
         name: book_name.clone(),

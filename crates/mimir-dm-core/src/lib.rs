@@ -24,7 +24,7 @@ pub use db::{DatabaseService, DbConnection, DbPool};
 pub use error::{DbError, Result};
 
 // Re-export campaign models
-pub use models::campaign::{Campaign, Document, Module, Session, TemplateDocument, WorkflowCard};
+pub use models::campaign::{Campaign, Document, Module, TemplateDocument, WorkflowCard};
 
 // Re-export DAL traits
 pub use dal::traits::{AsyncRepository, Repository};

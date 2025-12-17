@@ -2,7 +2,7 @@
 id: session_outline
 title: Session Outline
 type: session_outline
-level: session
+level: module
 purpose: Plan and track individual game sessions
 author: Mimir Team
 variables:

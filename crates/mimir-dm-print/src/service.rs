@@ -231,6 +231,43 @@ impl PrintService {
         self.render_to_pdf("campaign/combined.typ", data)
     }
 
+    /// Render multiple campaign documents with module monsters as a single combined PDF
+    ///
+    /// # Arguments
+    /// * `documents` - List of document file paths
+    /// * `campaign_name` - Name of the campaign
+    /// * `modules` - JSON array of module data with monsters
+    ///
+    /// # Returns
+    /// PDF file contents as bytes
+    #[instrument(skip(self, documents, modules), fields(count = documents.len()))]
+    pub fn render_campaign_combined_with_monsters(
+        &self,
+        documents: &[PathBuf],
+        campaign_name: &str,
+        modules: serde_json::Value,
+    ) -> Result<Vec<u8>> {
+        info!(
+            "Rendering {} campaign documents with modules to combined PDF",
+            documents.len()
+        );
+
+        // Parse all documents (title/type come from YAML frontmatter)
+        let mut parsed_docs = Vec::new();
+        for file_path in documents {
+            debug!("Reading document: {:?}", file_path);
+            let markdown = std::fs::read_to_string(file_path)?;
+            let parsed = parse_campaign_document(&markdown)?;
+            parsed_docs.push(parsed);
+        }
+
+        // Build the combined data structure with modules
+        let data = self.build_campaign_combined_data_with_monsters(&parsed_docs, campaign_name, modules)?;
+
+        // Render using the combined campaign template
+        self.render_to_pdf("campaign/combined.typ", data)
+    }
+
     /// Build the data structure for a single campaign document template
     fn build_campaign_document_data(
         &self,
@@ -318,6 +355,57 @@ impl PrintService {
         Ok(serde_json::json!({
             "campaign_name": campaign_name,
             "documents": docs,
+        }))
+    }
+
+    /// Build the data structure for the combined campaign template with module monsters
+    fn build_campaign_combined_data_with_monsters(
+        &self,
+        documents: &[ParsedDocument],
+        campaign_name: &str,
+        modules: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let docs: Vec<serde_json::Value> = documents
+            .iter()
+            .enumerate()
+            .map(|(idx, parsed)| {
+                // Extract title and type from YAML frontmatter
+                let title = parsed
+                    .frontmatter
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Untitled Document");
+
+                let document_type = parsed
+                    .frontmatter
+                    .get("type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("document");
+
+                // Sanitize content to remove any dangerous Typst commands
+                let safe_content = sanitize_typst_content(&parsed.typst_content);
+
+                // Debug: log first 500 chars of first document's content
+                if idx == 0 {
+                    debug!(
+                        "First document '{}' typst content (first 500 chars): {}",
+                        title,
+                        &safe_content.chars().take(500).collect::<String>()
+                    );
+                }
+
+                serde_json::json!({
+                    "title": title,
+                    "document_type": document_type,
+                    "content": safe_content,
+                })
+            })
+            .collect();
+
+        Ok(serde_json::json!({
+            "campaign_name": campaign_name,
+            "documents": docs,
+            "modules": modules,
         }))
     }
 }

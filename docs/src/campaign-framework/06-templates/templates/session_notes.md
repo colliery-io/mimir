@@ -2,7 +2,7 @@
 id: session_notes
 title: Session Notes
 type: session_notes
-level: session
+level: module
 purpose: Capture what happened during play for continuity
 author: Mimir Team
 variables:

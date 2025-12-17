@@ -1,14 +1,13 @@
 //! Board configuration and workflow management
 //!
 //! This module defines the structure and behavior of different board types
-//! (campaign, module, session) including their stages, transitions, and requirements.
+//! (campaign, module) including their stages, transitions, and requirements.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub mod campaign_board;
 pub mod module_board;
-pub mod session_board;
 
 /// Trait for defining board behavior
 pub trait BoardDefinition {
@@ -104,10 +103,6 @@ impl BoardRegistry {
             "module".to_string(),
             Box::new(module_board::ModuleBoard::new()) as Box<dyn BoardDefinition + Send + Sync>,
         );
-        boards.insert(
-            "session".to_string(),
-            Box::new(session_board::SessionBoard::new()) as Box<dyn BoardDefinition + Send + Sync>,
-        );
 
         Self { boards }
     }
@@ -136,7 +131,6 @@ mod tests {
         // Test that all expected board types are registered
         assert!(registry.get("campaign").is_some());
         assert!(registry.get("module").is_some());
-        assert!(registry.get("session").is_some());
     }
 
     #[test]
@@ -157,9 +151,6 @@ mod tests {
 
         let module_board = registry.get("module").unwrap();
         assert_eq!(module_board.board_type(), "module");
-
-        let session_board = registry.get("session").unwrap();
-        assert_eq!(session_board.board_type(), "session");
     }
 
     #[test]
@@ -169,14 +160,13 @@ mod tests {
         // Should have same behavior as new()
         assert!(registry.get("campaign").is_some());
         assert!(registry.get("module").is_some());
-        assert!(registry.get("session").is_some());
     }
 
     #[test]
     fn test_all_boards_have_stages() {
         let registry = BoardRegistry::new();
 
-        for board_type in ["campaign", "module", "session"] {
+        for board_type in ["campaign", "module"] {
             let board = registry
                 .get(board_type)
                 .unwrap_or_else(|| panic!("{} board should exist", board_type));
@@ -193,7 +183,7 @@ mod tests {
     fn test_all_boards_have_valid_progressions() {
         let registry = BoardRegistry::new();
 
-        for board_type in ["campaign", "module", "session"] {
+        for board_type in ["campaign", "module"] {
             let board = registry
                 .get(board_type)
                 .unwrap_or_else(|| panic!("{} board should exist", board_type));

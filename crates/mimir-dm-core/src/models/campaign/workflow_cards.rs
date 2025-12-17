@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 #[diesel(table_name = workflow_cards)]
 #[diesel(belongs_to(crate::models::campaign::campaigns::Campaign))]
 #[diesel(belongs_to(crate::models::campaign::modules::Module))]
-#[diesel(belongs_to(crate::models::campaign::sessions::Session))]
 pub struct WorkflowCard {
     pub id: String,
     pub board_type: String,

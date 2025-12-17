@@ -247,11 +247,7 @@ fn main() {
             list_module_monsters_by_encounter,
             get_module_encounter_tags,
             clear_module_monsters,
-            // Session commands
-            create_session,
-            list_module_sessions,
-            transition_session_status,
-            get_session_board_config,
+            sync_module_monsters_to_file,
             // Book library commands
             upload_book_archive,
             list_library_books,
@@ -469,7 +465,8 @@ fn main() {
             generate_session_pdf,
             save_pdf,
             export_campaign_document,
-            export_campaign_documents
+            export_campaign_documents,
+            export_module_documents
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| {

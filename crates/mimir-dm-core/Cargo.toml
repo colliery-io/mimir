@@ -27,6 +27,7 @@ rusqlite = { workspace = true }
 diesel = { workspace = true }
 diesel_migrations = { workspace = true }
 r2d2 = { workspace = true }
+regex = { workspace = true }
 sqlite-vec = { workspace = true }
 zerocopy = { workspace = true }
 async-trait = { workspace = true }

@@ -316,8 +316,8 @@ impl TemplateType {
             | Self::ModuleMystery
             | Self::ModulePolitical => DocumentLevel::Module,
 
-            // Session Templates
-            Self::SessionOutline | Self::ClueTracker => DocumentLevel::Session,
+            // Module Templates (session prep)
+            Self::SessionOutline | Self::ClueTracker => DocumentLevel::Module,
 
             // Handout Templates
             Self::CharacterIntegration

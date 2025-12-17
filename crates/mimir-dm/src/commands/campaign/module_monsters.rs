@@ -324,3 +324,55 @@ pub async fn clear_module_monsters(
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SyncMonstersRequest {
+    pub module_id: i32,
+    pub campaign_directory: String,
+    pub module_number: i32,
+    pub module_name: String,
+}
+
+/// Sync module monsters to a markdown file on disk.
+///
+/// Creates or updates a `monsters.md` file in the module directory containing
+/// full stat blocks for all monsters, grouped by encounter tag.
+///
+/// # Parameters
+/// - `request` - Contains module_id, campaign_directory, module_number, and module_name
+/// - `state` - Application state containing the database connection
+///
+/// # Returns
+/// `ApiResponse` with success or error status.
+#[tauri::command]
+pub async fn sync_module_monsters_to_file(
+    request: SyncMonstersRequest,
+    state: State<'_, AppState>,
+) -> Result<ApiResponse<()>, ApiError> {
+    info!(
+        "Syncing monsters to file for module {} in {}",
+        request.module_id, request.campaign_directory
+    );
+
+    let mut conn = state.db.get_connection()?;
+    let mut service = ModuleMonsterService::new(&mut conn);
+
+    match service.sync_monsters_to_file(
+        request.module_id,
+        &request.campaign_directory,
+        request.module_number,
+        &request.module_name,
+    ) {
+        Ok(()) => {
+            info!("Successfully synced monsters to file");
+            Ok(ApiResponse::success(()))
+        }
+        Err(e) => {
+            error!("Failed to sync monsters to file: {}", e);
+            Ok(ApiResponse::error(format!(
+                "Failed to sync monsters to file: {}",
+                e
+            )))
+        }
+    }
+}
