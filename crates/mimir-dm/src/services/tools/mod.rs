@@ -323,10 +323,37 @@ impl ToolRegistry {
             guidance.push_str("- Follow tool descriptions for specific usage patterns\n\n");
         }
 
+        guidance.push_str("### ReAct Pattern for Multi-Step Tasks\n\n");
+        guidance.push_str("For tasks requiring multiple tool calls, use explicit reasoning:\n\n");
+        guidance.push_str("1. **THOUGHT**: Analyze what needs to be done and plan your approach\n");
+        guidance.push_str("   - Use `<thought>` blocks to show your reasoning\n");
+        guidance.push_str("   - Break complex tasks into clear steps\n");
+        guidance.push_str("2. **ACTION**: Execute the appropriate tool(s)\n");
+        guidance.push_str("3. **OBSERVATION**: Examine tool results and determine next steps\n");
+        guidance.push_str("4. **REPEAT**: Continue until task is complete\n\n");
+
+        guidance.push_str("Example:\n");
+        guidance.push_str("```\n");
+        guidance.push_str("<thought>\n");
+        guidance.push_str("User wants to add an NPC to the session. I need to:\n");
+        guidance.push_str("1. Read the current session NPCs file\n");
+        guidance.push_str("2. Add the new NPC with appropriate stats\n");
+        guidance.push_str("3. Save the updated file\n");
+        guidance.push_str("</thought>\n");
+        guidance.push_str("[executes read_file]\n");
+        guidance.push_str("<thought>\n");
+        guidance.push_str("Got the NPCs file. Now I'll add the blacksmith with:\n");
+        guidance.push_str("- Name, role, and personality\n");
+        guidance.push_str("- Key information and secrets\n");
+        guidance.push_str("</thought>\n");
+        guidance.push_str("[executes write_file with updated content]\n");
+        guidance.push_str("```\n\n");
+
         guidance.push_str("### General Action Patterns\n");
         guidance.push_str("- Take direct action when user requests clear operations\n");
         guidance.push_str("- Use tools in logical sequence based on their guidance\n");
         guidance.push_str("- Always complete requested actions rather than just explaining them\n");
+        guidance.push_str("- Show your reasoning in `<thought>` blocks for complex tasks\n");
 
         guidance
     }
@@ -398,6 +425,12 @@ impl Default for ToolRegistry {
 // Character tools modules
 pub mod character_tools;
 pub mod character_write_tools;
+
+// Catalog query tools
+pub mod catalog_tools;
+
+// Module management tools
+pub mod module_tools;
 
 #[cfg(test)]
 mod character_tools_test;

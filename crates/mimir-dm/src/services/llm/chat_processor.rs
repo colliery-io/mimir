@@ -23,8 +23,13 @@ use crate::services::tools::character_tools::{
     ListPlayersTool,
 };
 use crate::services::tools::character_write_tools::{
-    AddInventoryItemTool, CastSpellTool, CreateCharacterTool, TakeRestTool, UpdateCharacterHpTool,
-    UpdateCharacterTool,
+    AddInventoryItemTool, CastSpellTool, CreateCharacterTool, RemoveInventoryItemTool,
+    TakeRestTool, UpdateCharacterHpTool, UpdateCharacterTool, UpdateCurrencyTool,
+    UpdateEquippedTool,
+};
+use crate::services::tools::catalog_tools::{SearchItemsTool, SearchMonstersTool, SearchSpellsTool};
+use crate::services::tools::module_tools::{
+    CreateModuleTool, GetModuleTool, ListModulesTool, UpdateModuleStatusTool,
 };
 use crate::services::tools::ToolRegistry;
 
@@ -53,10 +58,11 @@ macro_rules! debug_content {
 }
 
 /// Strip thinking blocks from content for logging (simple string replacement)
+/// Note: This preserves <thought> blocks which are part of ReAct reasoning and shown to users
 fn strip_thinking_blocks(content: &str) -> String {
     let mut result = content.to_string();
 
-    // Remove <thinking> blocks (simple approach)
+    // Remove <thinking> blocks (simple approach) - these are internal Claude thinking
     while let (Some(start), Some(end)) = (result.find("<thinking>"), result.find("</thinking>")) {
         if start < end {
             result = format!("{}{}", &result[..start], &result[end + 12..]);
@@ -65,7 +71,7 @@ fn strip_thinking_blocks(content: &str) -> String {
         }
     }
 
-    // Remove <think> blocks
+    // Remove <think> blocks - also internal thinking
     while let (Some(start), Some(end)) = (result.find("<think>"), result.find("</think>")) {
         if start < end {
             result = format!("{}{}", &result[..start], &result[end + 8..]);
@@ -73,6 +79,9 @@ fn strip_thinking_blocks(content: &str) -> String {
             break;
         }
     }
+
+    // NOTE: <thought> blocks are intentionally preserved - they are part of ReAct
+    // pattern reasoning and should be visible to users for transparency
 
     result.trim().to_string()
 }
@@ -223,6 +232,36 @@ impl<'a> ChatProcessor<'a> {
             self.llm.db_service.clone(),
         )));
         registry.register(Arc::new(TakeRestTool::new(self.llm.db_service.clone())));
+
+        // Equipment/inventory tools
+        registry.register(Arc::new(UpdateEquippedTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(RemoveInventoryItemTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(UpdateCurrencyTool::new(
+            self.llm.db_service.clone(),
+        )));
+
+        // Catalog query tools
+        registry.register(Arc::new(SearchMonstersTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(SearchItemsTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(SearchSpellsTool::new(
+            self.llm.db_service.clone(),
+        )));
+
+        // Module management tools
+        registry.register(Arc::new(CreateModuleTool::new(
+            self.llm.db_service.clone(),
+        )));
+        registry.register(Arc::new(ListModulesTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(GetModuleTool::new(self.llm.db_service.clone())));
+        registry.register(Arc::new(UpdateModuleStatusTool::new(
+            self.llm.db_service.clone(),
+        )));
 
         registry
     }

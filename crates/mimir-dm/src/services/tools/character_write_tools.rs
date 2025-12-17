@@ -1270,3 +1270,550 @@ Output:
         Ok(serde_json::to_string_pretty(&result)?)
     }
 }
+
+/// Tool for updating equipped items (armor, shield, weapons)
+pub struct UpdateEquippedTool {
+    db_service: Arc<DatabaseService>,
+}
+
+impl UpdateEquippedTool {
+    pub fn new(db_service: Arc<DatabaseService>) -> Self {
+        Self { db_service }
+    }
+}
+
+#[async_trait]
+impl ToolTrait for UpdateEquippedTool {
+    fn name(&self) -> &str {
+        "update_equipped"
+    }
+
+    fn description(&self) -> &str {
+        "Update a character's equipped items (armor, shield, weapons).
+
+Usage:
+- Provide character_id (required)
+- Provide any slots to update: armor, shield, main_hand, off_hand
+- Set to null/empty string to unequip a slot
+- Creates version snapshot for history tracking
+
+When to use:
+- Character equips new armor or weapons
+- Swapping weapons during combat
+- Unequipping items before rest
+- Setting up character loadout
+
+Output:
+- Updated equipped items confirmed
+- Character version snapshot created"
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "character_id": {
+                    "type": "integer",
+                    "description": "ID of the character"
+                },
+                "armor": {
+                    "type": ["string", "null"],
+                    "description": "Armor to equip (null to unequip)"
+                },
+                "shield": {
+                    "type": ["string", "null"],
+                    "description": "Shield to equip (null to unequip)"
+                },
+                "main_hand": {
+                    "type": ["string", "null"],
+                    "description": "Main hand weapon (null to unequip)"
+                },
+                "off_hand": {
+                    "type": ["string", "null"],
+                    "description": "Off hand item/weapon (null to unequip)"
+                }
+            },
+            "required": ["character_id"]
+        })
+    }
+
+    fn requires_confirmation(&self) -> bool {
+        true
+    }
+
+    fn describe_action(&self, arguments: &Value) -> Option<ActionDescription> {
+        let character_id = arguments.get("character_id")?.as_i64()?;
+
+        let mut items = vec![format!("Character ID: {}", character_id)];
+
+        if let Some(armor) = arguments.get("armor") {
+            let armor_str = armor.as_str().unwrap_or("(unequip)");
+            items.push(format!("Armor: {}", if armor_str.is_empty() { "(unequip)" } else { armor_str }));
+        }
+        if let Some(shield) = arguments.get("shield") {
+            let shield_str = shield.as_str().unwrap_or("(unequip)");
+            items.push(format!("Shield: {}", if shield_str.is_empty() { "(unequip)" } else { shield_str }));
+        }
+        if let Some(main_hand) = arguments.get("main_hand") {
+            let mh_str = main_hand.as_str().unwrap_or("(unequip)");
+            items.push(format!("Main hand: {}", if mh_str.is_empty() { "(unequip)" } else { mh_str }));
+        }
+        if let Some(off_hand) = arguments.get("off_hand") {
+            let oh_str = off_hand.as_str().unwrap_or("(unequip)");
+            items.push(format!("Off hand: {}", if oh_str.is_empty() { "(unequip)" } else { oh_str }));
+        }
+
+        Some(ActionDescription {
+            title: "Update Equipped Items".to_string(),
+            description: format!("Update equipped items for character {}", character_id),
+            changes: ChangeDetail::Generic { items },
+        })
+    }
+
+    async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
+        let character_id = arguments
+            .get("character_id")
+            .and_then(|v| v.as_i64())
+            .ok_or("Missing character_id")? as i32;
+
+        let mut conn = self
+            .db_service
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let mut char_service = CharacterService::new(&mut conn);
+        let (_character, mut char_data) = char_service
+            .get_character(character_id)
+            .map_err(|e| format!("Character not found: {}", e))?;
+
+        let mut changes = Vec::new();
+
+        // Update armor if provided
+        if arguments.get("armor").is_some() {
+            let armor = arguments
+                .get("armor")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            if char_data.equipped.armor != armor {
+                changes.push(format!("armor: {:?} -> {:?}", char_data.equipped.armor, armor));
+                char_data.equipped.armor = armor;
+            }
+        }
+
+        // Update shield if provided
+        if arguments.get("shield").is_some() {
+            let shield = arguments
+                .get("shield")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            if char_data.equipped.shield != shield {
+                changes.push(format!("shield: {:?} -> {:?}", char_data.equipped.shield, shield));
+                char_data.equipped.shield = shield;
+            }
+        }
+
+        // Update main_hand if provided
+        if arguments.get("main_hand").is_some() {
+            let main_hand = arguments
+                .get("main_hand")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            if char_data.equipped.main_hand != main_hand {
+                changes.push(format!("main_hand: {:?} -> {:?}", char_data.equipped.main_hand, main_hand));
+                char_data.equipped.main_hand = main_hand;
+            }
+        }
+
+        // Update off_hand if provided
+        if arguments.get("off_hand").is_some() {
+            let off_hand = arguments
+                .get("off_hand")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            if char_data.equipped.off_hand != off_hand {
+                changes.push(format!("off_hand: {:?} -> {:?}", char_data.equipped.off_hand, off_hand));
+                char_data.equipped.off_hand = off_hand;
+            }
+        }
+
+        if changes.is_empty() {
+            return Ok(json!({
+                "success": true,
+                "message": "No changes made"
+            }).to_string());
+        }
+
+        let snapshot_reason = format!("Equipment updated: {}", changes.join(", "));
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
+            .map_err(|e| format!("Failed to update character: {}", e))?;
+
+        let result = json!({
+            "success": true,
+            "character_id": character_id,
+            "character_name": char_data.character_name,
+            "equipped": {
+                "armor": char_data.equipped.armor,
+                "shield": char_data.equipped.shield,
+                "main_hand": char_data.equipped.main_hand,
+                "off_hand": char_data.equipped.off_hand
+            },
+            "message": format!("Updated equipment for {}", char_data.character_name)
+        });
+
+        debug!("Updated equipment for character {}", character_id);
+        Ok(serde_json::to_string_pretty(&result)?)
+    }
+}
+
+/// Tool for removing items from inventory
+pub struct RemoveInventoryItemTool {
+    db_service: Arc<DatabaseService>,
+}
+
+impl RemoveInventoryItemTool {
+    pub fn new(db_service: Arc<DatabaseService>) -> Self {
+        Self { db_service }
+    }
+}
+
+#[async_trait]
+impl ToolTrait for RemoveInventoryItemTool {
+    fn name(&self) -> &str {
+        "remove_inventory_item"
+    }
+
+    fn description(&self) -> &str {
+        "Remove an item from a character's inventory.
+
+Usage:
+- Provide character_id and item_name
+- Optionally provide quantity (default: removes all)
+- Creates version snapshot for history tracking
+
+When to use:
+- Character sells or trades items
+- Items are consumed or destroyed
+- Correcting inventory mistakes
+- Dropping items during gameplay
+
+Output:
+- Confirmation of removed items
+- Updated inventory state"
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "character_id": {
+                    "type": "integer",
+                    "description": "ID of the character"
+                },
+                "item_name": {
+                    "type": "string",
+                    "description": "Name of the item to remove"
+                },
+                "quantity": {
+                    "type": ["integer", "null"],
+                    "description": "Quantity to remove (default: all)"
+                }
+            },
+            "required": ["character_id", "item_name"]
+        })
+    }
+
+    fn requires_confirmation(&self) -> bool {
+        true
+    }
+
+    fn describe_action(&self, arguments: &Value) -> Option<ActionDescription> {
+        let character_id = arguments.get("character_id")?.as_i64()?;
+        let item_name = arguments.get("item_name")?.as_str()?;
+        let quantity = arguments.get("quantity").and_then(|v| v.as_i64());
+
+        let qty_str = quantity
+            .map(|q| q.to_string())
+            .unwrap_or_else(|| "all".to_string());
+
+        Some(ActionDescription {
+            title: "Remove Inventory Item".to_string(),
+            description: format!("Remove {} × {} from character {}", qty_str, item_name, character_id),
+            changes: ChangeDetail::Generic {
+                items: vec![
+                    format!("Character ID: {}", character_id),
+                    format!("Item: {}", item_name),
+                    format!("Quantity: {}", qty_str),
+                ],
+            },
+        })
+    }
+
+    async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
+        let character_id = arguments
+            .get("character_id")
+            .and_then(|v| v.as_i64())
+            .ok_or("Missing character_id")? as i32;
+
+        let item_name = arguments
+            .get("item_name")
+            .and_then(|v| v.as_str())
+            .ok_or("Missing item_name")?;
+
+        let quantity = arguments
+            .get("quantity")
+            .and_then(|v| v.as_i64())
+            .map(|q| q as i32);
+
+        let mut conn = self
+            .db_service
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let mut char_service = CharacterService::new(&mut conn);
+        let (_character, mut char_data) = char_service
+            .get_character(character_id)
+            .map_err(|e| format!("Character not found: {}", e))?;
+
+        // Find and remove the item
+        let item_index = char_data
+            .inventory
+            .iter()
+            .position(|i| i.name.eq_ignore_ascii_case(item_name));
+
+        let removed_qty = match item_index {
+            Some(idx) => {
+                let item = &mut char_data.inventory[idx];
+                let to_remove = quantity.unwrap_or(item.quantity);
+
+                if to_remove >= item.quantity {
+                    let removed = item.quantity;
+                    char_data.inventory.remove(idx);
+                    removed
+                } else {
+                    item.quantity -= to_remove;
+                    to_remove
+                }
+            }
+            None => {
+                return Err(format!("Item '{}' not found in inventory", item_name).into());
+            }
+        };
+
+        let snapshot_reason = format!("Removed {} × {} from inventory", removed_qty, item_name);
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
+            .map_err(|e| format!("Failed to update character: {}", e))?;
+
+        let result = json!({
+            "success": true,
+            "character_id": character_id,
+            "character_name": char_data.character_name,
+            "item_removed": item_name,
+            "quantity_removed": removed_qty,
+            "message": format!("Removed {} × {} from {}'s inventory", removed_qty, item_name, char_data.character_name)
+        });
+
+        debug!("Removed {} × {} from character {}", removed_qty, item_name, character_id);
+        Ok(serde_json::to_string_pretty(&result)?)
+    }
+}
+
+/// Tool for updating character currency
+pub struct UpdateCurrencyTool {
+    db_service: Arc<DatabaseService>,
+}
+
+impl UpdateCurrencyTool {
+    pub fn new(db_service: Arc<DatabaseService>) -> Self {
+        Self { db_service }
+    }
+}
+
+#[async_trait]
+impl ToolTrait for UpdateCurrencyTool {
+    fn name(&self) -> &str {
+        "update_currency"
+    }
+
+    fn description(&self) -> &str {
+        "Update a character's currency (gold, silver, copper, electrum, platinum).
+
+Usage:
+- Provide character_id (required)
+- Provide currency changes as positive (add) or negative (remove) values
+- Only provided currencies are modified; others remain unchanged
+- Creates version snapshot for history tracking
+
+When to use:
+- After selling items or receiving payment
+- Purchasing equipment or services
+- Splitting treasure among party
+- Tracking expenses during downtime
+
+Output:
+- Updated currency amounts
+- Character version snapshot created"
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "character_id": {
+                    "type": "integer",
+                    "description": "ID of the character"
+                },
+                "copper": {
+                    "type": ["integer", "null"],
+                    "description": "Copper to add (positive) or remove (negative)"
+                },
+                "silver": {
+                    "type": ["integer", "null"],
+                    "description": "Silver to add (positive) or remove (negative)"
+                },
+                "electrum": {
+                    "type": ["integer", "null"],
+                    "description": "Electrum to add (positive) or remove (negative)"
+                },
+                "gold": {
+                    "type": ["integer", "null"],
+                    "description": "Gold to add (positive) or remove (negative)"
+                },
+                "platinum": {
+                    "type": ["integer", "null"],
+                    "description": "Platinum to add (positive) or remove (negative)"
+                },
+                "reason": {
+                    "type": ["string", "null"],
+                    "description": "Reason for currency change"
+                }
+            },
+            "required": ["character_id"]
+        })
+    }
+
+    fn requires_confirmation(&self) -> bool {
+        true
+    }
+
+    fn describe_action(&self, arguments: &Value) -> Option<ActionDescription> {
+        let character_id = arguments.get("character_id")?.as_i64()?;
+
+        let mut items = vec![format!("Character ID: {}", character_id)];
+
+        if let Some(cp) = arguments.get("copper").and_then(|v| v.as_i64()) {
+            items.push(format!("Copper: {:+}", cp));
+        }
+        if let Some(sp) = arguments.get("silver").and_then(|v| v.as_i64()) {
+            items.push(format!("Silver: {:+}", sp));
+        }
+        if let Some(ep) = arguments.get("electrum").and_then(|v| v.as_i64()) {
+            items.push(format!("Electrum: {:+}", ep));
+        }
+        if let Some(gp) = arguments.get("gold").and_then(|v| v.as_i64()) {
+            items.push(format!("Gold: {:+}", gp));
+        }
+        if let Some(pp) = arguments.get("platinum").and_then(|v| v.as_i64()) {
+            items.push(format!("Platinum: {:+}", pp));
+        }
+
+        Some(ActionDescription {
+            title: "Update Currency".to_string(),
+            description: format!("Update currency for character {}", character_id),
+            changes: ChangeDetail::Generic { items },
+        })
+    }
+
+    async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
+        let character_id = arguments
+            .get("character_id")
+            .and_then(|v| v.as_i64())
+            .ok_or("Missing character_id")? as i32;
+
+        let reason = arguments
+            .get("reason")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Currency updated");
+
+        let mut conn = self
+            .db_service
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let mut char_service = CharacterService::new(&mut conn);
+        let (_character, mut char_data) = char_service
+            .get_character(character_id)
+            .map_err(|e| format!("Character not found: {}", e))?;
+
+        let mut changes = Vec::new();
+
+        // Update copper
+        if let Some(cp) = arguments.get("copper").and_then(|v| v.as_i64()) {
+            let new_val = (char_data.currency.copper + cp as i32).max(0);
+            changes.push(format!("copper: {} -> {}", char_data.currency.copper, new_val));
+            char_data.currency.copper = new_val;
+        }
+
+        // Update silver
+        if let Some(sp) = arguments.get("silver").and_then(|v| v.as_i64()) {
+            let new_val = (char_data.currency.silver + sp as i32).max(0);
+            changes.push(format!("silver: {} -> {}", char_data.currency.silver, new_val));
+            char_data.currency.silver = new_val;
+        }
+
+        // Update electrum
+        if let Some(ep) = arguments.get("electrum").and_then(|v| v.as_i64()) {
+            let new_val = (char_data.currency.electrum + ep as i32).max(0);
+            changes.push(format!("electrum: {} -> {}", char_data.currency.electrum, new_val));
+            char_data.currency.electrum = new_val;
+        }
+
+        // Update gold
+        if let Some(gp) = arguments.get("gold").and_then(|v| v.as_i64()) {
+            let new_val = (char_data.currency.gold + gp as i32).max(0);
+            changes.push(format!("gold: {} -> {}", char_data.currency.gold, new_val));
+            char_data.currency.gold = new_val;
+        }
+
+        // Update platinum
+        if let Some(pp) = arguments.get("platinum").and_then(|v| v.as_i64()) {
+            let new_val = (char_data.currency.platinum + pp as i32).max(0);
+            changes.push(format!("platinum: {} -> {}", char_data.currency.platinum, new_val));
+            char_data.currency.platinum = new_val;
+        }
+
+        if changes.is_empty() {
+            return Ok(json!({
+                "success": true,
+                "message": "No currency changes specified"
+            }).to_string());
+        }
+
+        let snapshot_reason = format!("{}: {}", reason, changes.join(", "));
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
+            .map_err(|e| format!("Failed to update character: {}", e))?;
+
+        let result = json!({
+            "success": true,
+            "character_id": character_id,
+            "character_name": char_data.character_name,
+            "currency": {
+                "copper": char_data.currency.copper,
+                "silver": char_data.currency.silver,
+                "electrum": char_data.currency.electrum,
+                "gold": char_data.currency.gold,
+                "platinum": char_data.currency.platinum
+            },
+            "message": format!("Updated currency for {}", char_data.character_name)
+        });
+
+        debug!("Updated currency for character {}", character_id);
+        Ok(serde_json::to_string_pretty(&result)?)
+    }
+}
