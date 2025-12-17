@@ -184,9 +184,11 @@ pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Resu
     let players = seed_players(conn)?;
     info!("Created {} test players", players.len());
 
-    // Create characters
+    // Create characters (PCs and NPCs)
     let characters = seed_characters(conn, Some(campaign.id), &campaign.directory_path, &players)?;
-    info!("Created {} test characters", characters.len());
+    let pc_count = characters.iter().filter(|c| !c.is_npc()).count();
+    let npc_count = characters.iter().filter(|c| c.is_npc()).count();
+    info!("Created {} test characters ({} PCs, {} NPCs)", characters.len(), pc_count, npc_count);
 
     info!("Dev seed data created successfully");
     Ok(true)
@@ -565,7 +567,41 @@ fn seed_characters(
         characters.push(character);
     }
 
+    // Create NPCs
+    let npc_characters = seed_npcs(conn, campaign_id, base_directory, &now)?;
+    characters.extend(npc_characters);
+
     Ok(characters)
+}
+
+/// Seed test NPCs
+fn seed_npcs(
+    conn: &mut DbConnection,
+    campaign_id: Option<i32>,
+    base_directory: &str,
+    created_at: &str,
+) -> Result<Vec<crate::models::character::Character>> {
+    let mut npcs = Vec::new();
+
+    // Sildar Hallwinter - Human Fighter, Lords' Alliance
+    let sildar = create_sildar(created_at);
+    let mut service = CharacterService::new(conn);
+    let character = service.create_character(campaign_id, None, true, base_directory, sildar)?;
+    npcs.push(character);
+
+    // Gundren Rockseeker - Dwarf quest giver
+    let gundren = create_gundren(created_at);
+    let mut service = CharacterService::new(conn);
+    let character = service.create_character(campaign_id, None, true, base_directory, gundren)?;
+    npcs.push(character);
+
+    // Toblen Stonehill - Innkeeper
+    let toblen = create_toblen(created_at);
+    let mut service = CharacterService::new(conn);
+    let character = service.create_character(campaign_id, None, true, base_directory, toblen)?;
+    npcs.push(character);
+
+    Ok(npcs)
 }
 
 /// Create Thorin Ironforge - Level 5 Dwarf Fighter
@@ -1179,6 +1215,236 @@ fn create_helena(player_id: i32, created_at: &str) -> CharacterData {
     }
 }
 
+/// Create Sildar Hallwinter - Human Fighter NPC (Lords' Alliance)
+fn create_sildar(created_at: &str) -> CharacterData {
+    CharacterData {
+        character_name: "Sildar Hallwinter".to_string(),
+        player_id: None, // NPC
+        level: 5,
+        experience_points: 0,
+        version: 1,
+        snapshot_reason: Some("Dev seed NPC".to_string()),
+        created_at: created_at.to_string(),
+        race: "Human".to_string(),
+        subrace: None,
+        classes: vec![ClassLevel {
+            class_name: "Fighter".to_string(),
+            level: 5,
+            subclass: None,
+            hit_dice_type: "d10".to_string(),
+            hit_dice_remaining: 5,
+        }],
+        background: "Soldier".to_string(),
+        alignment: Some("Lawful Good".to_string()),
+        abilities: AbilityScores {
+            strength: 14,
+            dexterity: 12,
+            constitution: 14,
+            intelligence: 10,
+            wisdom: 11,
+            charisma: 12,
+        },
+        max_hp: 42,
+        current_hp: 42,
+        speed: 30,
+        proficiencies: Proficiencies {
+            skills: vec![
+                "Athletics".to_string(),
+                "Intimidation".to_string(),
+                "Perception".to_string(),
+            ],
+            saves: vec!["Strength".to_string(), "Constitution".to_string()],
+            armor: vec!["All armor".to_string(), "Shields".to_string()],
+            weapons: vec!["Simple weapons".to_string(), "Martial weapons".to_string()],
+            tools: vec![],
+            languages: vec!["Common".to_string(), "Orc".to_string()],
+        },
+        class_features: vec![
+            FeatureReference::new("Fighting Style", "Fighter", "PHB", 1),
+            FeatureReference::new("Second Wind", "Fighter", "PHB", 1),
+            FeatureReference::new("Action Surge", "Fighter", "PHB", 2),
+            FeatureReference::new("Extra Attack", "Fighter", "PHB", 5),
+        ],
+        feats: vec![],
+        spells: SpellData::default(),
+        inventory: vec![
+            InventoryItem {
+                name: "Longsword".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 3.0,
+                value: 15.0,
+                notes: None,
+            },
+            InventoryItem {
+                name: "Chain Mail".to_string(),
+                source: Some("PHB".to_string()),
+                quantity: 1,
+                weight: 55.0,
+                value: 75.0,
+                notes: Some("AC 16".to_string()),
+            },
+        ],
+        currency: Currency {
+            copper: 0,
+            silver: 0,
+            electrum: 0,
+            gold: 50,
+            platinum: 0,
+        },
+        equipped: EquippedItems {
+            armor: Some("Chain Mail".to_string()),
+            shield: None,
+            main_hand: Some("Longsword".to_string()),
+            off_hand: None,
+        },
+        personality: Personality {
+            traits: Some("I am always calm, no matter what the situation.".to_string()),
+            ideals: Some("Honor. I don't lie or cheat. Let me be judged by my actions.".to_string()),
+            bonds: Some("My loyalty to the Lords' Alliance is unwavering.".to_string()),
+            flaws: Some("I have trouble trusting people outside my organization.".to_string()),
+        },
+        npc_role: Some("Lords' Alliance Agent".to_string()),
+        npc_location: Some("Phandalin".to_string()),
+        npc_faction: Some("Lords' Alliance".to_string()),
+        npc_notes: Some("Sildar was escorting Gundren Rockseeker to Phandalin when they were ambushed by goblins. He seeks to establish law and order in Phandalin and find his missing contact, Iarno Albrek.".to_string()),
+    }
+}
+
+/// Create Gundren Rockseeker - Dwarf NPC (Quest Giver)
+fn create_gundren(created_at: &str) -> CharacterData {
+    CharacterData {
+        character_name: "Gundren Rockseeker".to_string(),
+        player_id: None, // NPC
+        level: 3,
+        experience_points: 0,
+        version: 1,
+        snapshot_reason: Some("Dev seed NPC".to_string()),
+        created_at: created_at.to_string(),
+        race: "Dwarf".to_string(),
+        subrace: Some("Hill".to_string()),
+        classes: vec![ClassLevel {
+            class_name: "Expert".to_string(), // Using generic NPC class
+            level: 3,
+            subclass: None,
+            hit_dice_type: "d8".to_string(),
+            hit_dice_remaining: 3,
+        }],
+        background: "Guild Artisan".to_string(),
+        alignment: Some("Neutral Good".to_string()),
+        abilities: AbilityScores {
+            strength: 12,
+            dexterity: 10,
+            constitution: 14,
+            intelligence: 14,
+            wisdom: 12,
+            charisma: 13,
+        },
+        max_hp: 22,
+        current_hp: 22,
+        speed: 25,
+        proficiencies: Proficiencies {
+            skills: vec![
+                "History".to_string(),
+                "Persuasion".to_string(),
+                "Investigation".to_string(),
+            ],
+            saves: vec![],
+            armor: vec!["Light armor".to_string()],
+            weapons: vec!["Simple weapons".to_string()],
+            tools: vec!["Mason's tools".to_string(), "Mining tools".to_string()],
+            languages: vec!["Common".to_string(), "Dwarvish".to_string(), "Gnomish".to_string()],
+        },
+        class_features: vec![],
+        feats: vec![],
+        spells: SpellData::default(),
+        inventory: vec![],
+        currency: Currency {
+            copper: 0,
+            silver: 0,
+            electrum: 0,
+            gold: 100,
+            platinum: 5,
+        },
+        equipped: EquippedItems::default(),
+        personality: Personality {
+            traits: Some("I'm full of witty aphorisms and have a proverb for every occasion.".to_string()),
+            ideals: Some("Family. Blood runs thicker than water.".to_string()),
+            bonds: Some("I will rediscover Wave Echo Cave and restore it to my family's glory.".to_string()),
+            flaws: Some("I'm never satisfied with what I have - I always want more.".to_string()),
+        },
+        npc_role: Some("Quest Giver / Patron".to_string()),
+        npc_location: Some("Captured at Cragmaw Castle".to_string()),
+        npc_faction: Some("Rockseeker Clan".to_string()),
+        npc_notes: Some("Gundren and his brothers discovered the entrance to Wave Echo Cave, a legendary mine. He hired the party to escort supplies while he traveled ahead with Sildar, but was captured by goblins working for the Black Spider.".to_string()),
+    }
+}
+
+/// Create Toblen Stonehill - Human NPC (Innkeeper)
+fn create_toblen(created_at: &str) -> CharacterData {
+    CharacterData {
+        character_name: "Toblen Stonehill".to_string(),
+        player_id: None, // NPC
+        level: 1,
+        experience_points: 0,
+        version: 1,
+        snapshot_reason: Some("Dev seed NPC".to_string()),
+        created_at: created_at.to_string(),
+        race: "Human".to_string(),
+        subrace: None,
+        classes: vec![ClassLevel {
+            class_name: "Commoner".to_string(),
+            level: 1,
+            subclass: None,
+            hit_dice_type: "d8".to_string(),
+            hit_dice_remaining: 1,
+        }],
+        background: "Guild Artisan".to_string(),
+        alignment: Some("Lawful Good".to_string()),
+        abilities: AbilityScores {
+            strength: 10,
+            dexterity: 10,
+            constitution: 12,
+            intelligence: 11,
+            wisdom: 14,
+            charisma: 13,
+        },
+        max_hp: 8,
+        current_hp: 8,
+        speed: 30,
+        proficiencies: Proficiencies {
+            skills: vec!["Insight".to_string(), "Persuasion".to_string()],
+            saves: vec![],
+            armor: vec![],
+            weapons: vec![],
+            tools: vec!["Brewer's supplies".to_string(), "Cook's utensils".to_string()],
+            languages: vec!["Common".to_string()],
+        },
+        class_features: vec![],
+        feats: vec![],
+        spells: SpellData::default(),
+        inventory: vec![],
+        currency: Currency {
+            copper: 50,
+            silver: 30,
+            electrum: 0,
+            gold: 15,
+            platinum: 0,
+        },
+        equipped: EquippedItems::default(),
+        personality: Personality {
+            traits: Some("I'm friendly and welcoming to travelers and adventurers.".to_string()),
+            ideals: Some("Community. We have to take care of each other.".to_string()),
+            bonds: Some("I want Phandalin to prosper and be safe for my family.".to_string()),
+            flaws: Some("I'm afraid of the Redbrands but feel powerless against them.".to_string()),
+        },
+        npc_role: Some("Innkeeper".to_string()),
+        npc_location: Some("Stonehill Inn, Phandalin".to_string()),
+        npc_faction: None,
+        npc_notes: Some("Toblen is a friendly innkeeper who came to Phandalin to prospect but found success running the Stonehill Inn instead. He's a good source of local rumors and information about the Redbrands troubling the town.".to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1216,11 +1482,13 @@ mod tests {
         assert!(player_names.contains(&"Charlie"));
         assert!(player_names.contains(&"Diana"));
 
-        // Verify characters created
+        // Verify characters created (4 PCs + 3 NPCs = 7 total)
         use crate::dal::character::CharacterRepository;
         let mut char_repo = CharacterRepository::new(&mut conn);
         let characters = char_repo.list_all().unwrap();
-        assert_eq!(characters.len(), 4);
+        assert_eq!(characters.len(), 7);
+
+        // Verify PCs
         let char_names: Vec<&str> = characters
             .iter()
             .map(|c| c.character_name.as_str())
@@ -1230,12 +1498,18 @@ mod tests {
         assert!(char_names.contains(&"Finn Lightfoot"));
         assert!(char_names.contains(&"Sister Helena"));
 
+        // Verify NPCs
+        assert!(char_names.contains(&"Sildar Hallwinter"));
+        assert!(char_names.contains(&"Gundren Rockseeker"));
+        assert!(char_names.contains(&"Toblen Stonehill"));
+
         // Verify character levels
         let thorin = characters
             .iter()
             .find(|c| c.character_name == "Thorin Ironforge")
             .unwrap();
         assert_eq!(thorin.current_level, 5);
+        assert!(!thorin.is_npc()); // PC, not NPC
 
         let finn = characters
             .iter()
@@ -1248,6 +1522,20 @@ mod tests {
             .find(|c| c.character_name == "Sister Helena")
             .unwrap();
         assert_eq!(helena.current_level, 10);
+
+        // Verify NPCs are marked as such
+        let sildar = characters
+            .iter()
+            .find(|c| c.character_name == "Sildar Hallwinter")
+            .unwrap();
+        assert!(sildar.is_npc());
+        assert_eq!(sildar.player_id, None); // NPCs have no player
+
+        let gundren = characters
+            .iter()
+            .find(|c| c.character_name == "Gundren Rockseeker")
+            .unwrap();
+        assert!(gundren.is_npc());
     }
 
     #[test]

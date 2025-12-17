@@ -34,6 +34,13 @@ pub struct Character {
     pub race: Option<String>,
 }
 
+impl Character {
+    /// Returns true if this character is an NPC (non-player character)
+    pub fn is_npc(&self) -> bool {
+        self.is_npc != 0
+    }
+}
+
 /// New character for insertion
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = characters)]
