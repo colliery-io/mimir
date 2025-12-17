@@ -844,6 +844,39 @@ impl MarkdownRenderer {
         output.push('\n');
         output
     }
+
+    /// Renders NPC-specific information
+    fn render_npc_info(&self, character: &CharacterData) -> String {
+        // Only render if character has any NPC fields set
+        if character.npc_role.is_none()
+            && character.npc_location.is_none()
+            && character.npc_faction.is_none()
+            && character.npc_notes.is_none()
+        {
+            return String::new();
+        }
+
+        let mut output = String::from("## NPC Information\n\n");
+
+        if let Some(role) = &character.npc_role {
+            output.push_str(&format!("**Role:** {}  \n", role));
+        }
+
+        if let Some(location) = &character.npc_location {
+            output.push_str(&format!("**Location:** {}  \n", location));
+        }
+
+        if let Some(faction) = &character.npc_faction {
+            output.push_str(&format!("**Faction:** {}  \n", faction));
+        }
+
+        if let Some(notes) = &character.npc_notes {
+            output.push_str(&format!("\n**Notes:**  \n{}  \n", notes));
+        }
+
+        output.push('\n');
+        output
+    }
 }
 
 impl CharacterRenderer for MarkdownRenderer {
@@ -870,6 +903,8 @@ impl CharacterRenderer for MarkdownRenderer {
 
         output.push_str(&self.render_header(character));
         output.push_str(&self.render_metadata(character));
+        // Render NPC info after metadata if character has NPC fields
+        output.push_str(&self.render_npc_info(character));
         output.push_str(&self.render_ability_scores(character));
         output.push_str(&self.render_combat_stats(character));
         output.push_str(&self.render_attacks(character));
@@ -1246,5 +1281,75 @@ mod tests {
         // Should still have core sections
         assert!(markdown.contains("## Ability Scores"));
         assert!(markdown.contains("## Combat Stats"));
+    }
+
+    #[test]
+    fn test_render_npc_info() {
+        let renderer = MarkdownRenderer::new();
+
+        // Create an NPC character
+        let npc = CharacterData {
+            character_name: "Barkeep Marcus".to_string(),
+            player_id: None, // NPCs don't have a player
+            level: 1,
+            experience_points: 0,
+            version: 1,
+            snapshot_reason: None,
+            created_at: "2025-01-01".to_string(),
+            race: "Human".to_string(),
+            subrace: None,
+            classes: vec![ClassLevel {
+                class_name: "Commoner".to_string(),
+                level: 1,
+                subclass: None,
+                hit_dice_type: "d8".to_string(),
+                hit_dice_remaining: 1,
+            }],
+            background: "Guild Artisan".to_string(),
+            alignment: Some("Neutral Good".to_string()),
+            abilities: AbilityScores {
+                strength: 10,
+                dexterity: 10,
+                constitution: 12,
+                intelligence: 11,
+                wisdom: 14,
+                charisma: 13,
+            },
+            max_hp: 8,
+            current_hp: 8,
+            proficiencies: Proficiencies::default(),
+            class_features: Vec::new(),
+            feats: Vec::new(),
+            spells: SpellData::default(),
+            inventory: Vec::new(),
+            currency: Currency::default(),
+            speed: 30,
+            equipped: EquippedItems::default(),
+            personality: Personality::default(),
+            npc_role: Some("Tavern Owner".to_string()),
+            npc_location: Some("The Rusty Anchor, Waterdeep".to_string()),
+            npc_faction: Some("Innkeepers Guild".to_string()),
+            npc_notes: Some("Friendly and talkative. Knows local rumors.".to_string()),
+        };
+
+        let markdown = renderer.render(&npc);
+
+        // Check NPC info section
+        assert!(markdown.contains("## NPC Information"));
+        assert!(markdown.contains("**Role:** Tavern Owner"));
+        assert!(markdown.contains("**Location:** The Rusty Anchor, Waterdeep"));
+        assert!(markdown.contains("**Faction:** Innkeepers Guild"));
+        assert!(markdown.contains("**Notes:**"));
+        assert!(markdown.contains("Friendly and talkative"));
+    }
+
+    #[test]
+    fn test_npc_section_not_rendered_for_pc() {
+        let renderer = MarkdownRenderer::new();
+        let fighter = create_sample_fighter();
+        let markdown = renderer.render(&fighter);
+
+        // Should not have NPC section for player characters
+        assert!(!markdown.contains("## NPC Information"));
     }
 }
