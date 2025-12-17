@@ -7,7 +7,7 @@ created_at: 2025-11-25T13:13:48.174643+00:00
 updated_at: 2025-12-06T15:27:29.489800+00:00
 parent: 
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#initiative"

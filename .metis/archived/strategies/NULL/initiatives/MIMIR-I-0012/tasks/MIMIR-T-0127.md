@@ -37,6 +37,8 @@ Implement automated end-to-end testing for the GUI using Playwright to enable re
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 - [ ] Playwright configured for Tauri application testing
 - [ ] Test suite covers core user journeys (see below)
 - [ ] Tests run in CI pipeline on PR/push

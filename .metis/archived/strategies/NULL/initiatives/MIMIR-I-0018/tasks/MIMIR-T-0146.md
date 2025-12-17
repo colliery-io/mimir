@@ -7,7 +7,7 @@ created_at: 2025-12-16T16:23:42.351764+00:00
 updated_at: 2025-12-16T18:09:30.412997+00:00
 parent: MIMIR-I-0018
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -28,6 +28,8 @@ initiative_id: MIMIR-I-0018
 ## Objective
 
 Create the frontend route and basic layout structure for Play Mode, establishing the visual foundation that subsequent tasks will build upon.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

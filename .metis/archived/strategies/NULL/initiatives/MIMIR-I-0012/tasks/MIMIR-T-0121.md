@@ -7,7 +7,7 @@ created_at: 2025-11-25T13:13:58.687018+00:00
 updated_at: 2025-11-25T15:06:10.086372+00:00
 parent: MIMIR-I-0012
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -28,6 +28,8 @@ initiative_id: MIMIR-I-0012
 ## Objective
 
 Allow users to select and switch between different LLM models within a provider from the settings UI. Users running local models via Ollama may have multiple models available (e.g., qwen, llama, mistral) with different parameter sizes (7B, 20B, 70B, 120B), and need the ability to switch based on task complexity or hardware constraints.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

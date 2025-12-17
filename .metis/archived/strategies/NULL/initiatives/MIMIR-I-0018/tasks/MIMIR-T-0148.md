@@ -7,7 +7,7 @@ created_at: 2025-12-16T16:23:42.719662+00:00
 updated_at: 2025-12-16T16:23:42.719662+00:00
 parent: MIMIR-I-0018
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -28,6 +28,8 @@ initiative_id: MIMIR-I-0018
 ## Objective
 
 Build the Quick Access Sidebar for Play Mode that displays module monsters (grouped by encounter), NPCs, and locations for fast reference during gameplay.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

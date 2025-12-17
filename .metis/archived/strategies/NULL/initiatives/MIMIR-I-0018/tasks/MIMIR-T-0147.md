@@ -7,7 +7,7 @@ created_at: 2025-12-16T16:23:42.515366+00:00
 updated_at: 2025-12-16T16:23:42.515366+00:00
 parent: MIMIR-I-0018
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -28,6 +28,8 @@ initiative_id: MIMIR-I-0018
 ## Objective
 
 Create the UI in the module prep view that allows DMs to add monsters from the catalog to a module, with optional encounter grouping.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

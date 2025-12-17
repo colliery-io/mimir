@@ -7,7 +7,7 @@ created_at: 2025-11-25T13:13:58.772343+00:00
 updated_at: 2025-11-25T19:16:50.764349+00:00
 parent: MIMIR-I-0012
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -35,6 +35,8 @@ Create an evaluation suite for comparing different LLM models (Ollama local mode
 2. Which model produces the best D&D content (descriptions, encounters, NPCs)?
 3. Which smaller models are "good enough" for specific tasks?
 4. Are there tasks where a fast/small model works just as well as a large one?
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
