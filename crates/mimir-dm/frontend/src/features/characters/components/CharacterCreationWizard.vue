@@ -430,9 +430,14 @@ import { useCampaignStore } from '../../../stores/campaigns'
 import SpellSelector from './SpellSelector.vue'
 import type { SpellReferenceInput } from '@/types/character'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   visible: boolean
-}>()
+  campaignId?: number | null
+  startAsNpc?: boolean
+}>(), {
+  campaignId: null,
+  startAsNpc: false
+})
 
 const emit = defineEmits<{
   close: []
@@ -480,7 +485,7 @@ const formData = ref({
   race: '',
   class: '',
   background: '',
-  campaign_id: null as number | null,
+  campaign_id: props.campaignId as number | null,
   abilities: {
     strength: 10,
     dexterity: 10,
@@ -491,7 +496,7 @@ const formData = ref({
   },
   skills: [] as string[],
   // NPC-specific fields
-  is_npc: false,
+  is_npc: props.startAsNpc,
   npc_role: '',
   npc_location: '',
   npc_faction: '',
@@ -1059,7 +1064,7 @@ const resetForm = () => {
     race: '',
     class: '',
     background: '',
-    campaign_id: null,
+    campaign_id: props.campaignId ?? null,
     abilities: {
       strength: 10,
       dexterity: 10,
@@ -1069,7 +1074,7 @@ const resetForm = () => {
       charisma: 10
     },
     skills: [],
-    is_npc: false,
+    is_npc: props.startAsNpc,
     npc_role: '',
     npc_location: '',
     npc_faction: '',

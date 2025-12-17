@@ -19,6 +19,13 @@
       <div :class="`stage-${stage}`">
         <div class="activity-section" v-html="stageContent"></div>
       </div>
+
+      <!-- Campaign NPCs Section for Integration stage -->
+      <CampaignNPCs
+        v-if="stage === 'integration' && campaign?.id"
+        class="mt-4"
+        :campaign-id="campaign.id"
+      />
     </div>
 
     <!-- Module Management for Active and Concluding stages -->
@@ -38,6 +45,13 @@
         title="Active Modules"
         empty-message="No active modules."
         @create-module="showCreateModal = true"
+      />
+
+      <!-- Campaign NPCs Section -->
+      <CampaignNPCs
+        v-if="campaign?.id"
+        class="mt-4"
+        :campaign-id="campaign.id"
       />
 
       <!-- Show backend content after modules -->
@@ -83,6 +97,7 @@ import StageTransitionCard from './StageLanding/StageTransitionCard.vue'
 import ModulesTable from './StageLanding/ModulesTable.vue'
 import CreateModuleModal from './StageLanding/CreateModuleModal.vue'
 import StageGuidance from './StageLanding/StageGuidance.vue'
+import CampaignNPCs from './StageLanding/CampaignNPCs.vue'
 
 const props = defineProps<{
   stage: string
