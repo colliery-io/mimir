@@ -72,6 +72,14 @@
       />
     </div>
 
+    <!-- Campaign NPCs (for all stages) -->
+    <div v-if="module.campaign_id" class="mt-8">
+      <ModuleNPCs
+        :module-id="module.id"
+        :campaign-id="module.campaign_id"
+      />
+    </div>
+
     <!-- Stage-Specific Content from Backend -->
     <div class="stage-content-section" v-if="stageContent">
       <div :class="`stage-${stage}`">
@@ -101,6 +109,7 @@ import type { Module, BoardConfig, Document } from '@/types'
 import StageHeader from './stage/StageHeader.vue'
 import StageTransitionCard from './stage/StageTransitionCard.vue'
 import ModuleMonsters from './ModuleMonsters.vue'
+import ModuleNPCs from './ModuleNPCs.vue'
 import { useModuleStage } from '../composables/useModuleStage'
 
 interface Props {

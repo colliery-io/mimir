@@ -753,7 +753,7 @@ pub async fn export_campaign_documents(
 ) -> Result<ApiResponse<PrintResult>, String> {
     use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
     use mimir_dm_core::dal::campaign::documents::DocumentRepository;
-    use mimir_dm_core::services::{DocumentService, ModuleMonsterService, ModuleService};
+    use mimir_dm_core::services::{CharacterService, DocumentService, ModuleMonsterService, ModuleService};
     use mimir_dm_print::markdown::parse_campaign_document;
 
     info!("Exporting all campaign {} documents to PDF", campaign_id);
@@ -994,10 +994,49 @@ pub async fn export_campaign_documents(
     // Sort modules by module_number
     module_export_data.sort_by_key(|m| m.module_number);
 
+    // Fetch NPCs for the campaign
+    let mut npc_conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let mut char_service = CharacterService::new(&mut npc_conn);
+    let campaign_characters = char_service
+        .list_characters_for_campaign(campaign_id)
+        .map_err(|e| format!("Failed to get characters: {}", e))?;
+
+    // Filter to only NPCs and fetch their data
+    let npc_characters: Vec<_> = campaign_characters
+        .into_iter()
+        .filter(|c| c.is_npc())
+        .collect();
+
+    // Fetch character data for each NPC and convert to JSON
+    let mut npcs_json: Vec<serde_json::Value> = Vec::new();
+    for npc in npc_characters {
+        let mut npc_data_conn = state
+            .db
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let mut npc_service = CharacterService::new(&mut npc_data_conn);
+        match npc_service.get_character(npc.id) {
+            Ok((_character, character_data)) => {
+                let npc_json = serde_json::to_value(&character_data)
+                    .map_err(|e| format!("Failed to serialize NPC {}: {}", npc.character_name, e))?;
+                npcs_json.push(npc_json);
+            }
+            Err(e) => {
+                debug!("Failed to get NPC data for {}: {}", npc.character_name, e);
+            }
+        }
+    }
+
     info!(
-        "Rendering {} campaign documents and {} modules for campaign '{}'",
+        "Rendering {} campaign documents, {} modules, and {} NPCs for campaign '{}'",
         campaign_file_paths.len(),
         module_export_data.len(),
+        npcs_json.len(),
         campaign.name
     );
 
@@ -1008,7 +1047,10 @@ pub async fn export_campaign_documents(
     let modules_json = serde_json::to_value(&module_export_data)
         .map_err(|e| format!("Failed to serialize module data: {}", e))?;
 
-    match service.render_campaign_combined_with_monsters(&campaign_file_paths, &campaign.name, modules_json) {
+    // Convert NPCs to JSON value
+    let npcs_value = serde_json::Value::Array(npcs_json);
+
+    match service.render_campaign_combined_with_monsters_and_npcs(&campaign_file_paths, &campaign.name, modules_json, npcs_value) {
         Ok(pdf_bytes) => {
             let size_bytes = pdf_bytes.len();
             let pdf_base64 = base64::Engine::encode(

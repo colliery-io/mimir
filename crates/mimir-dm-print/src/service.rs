@@ -365,6 +365,22 @@ impl PrintService {
         campaign_name: &str,
         modules: serde_json::Value,
     ) -> Result<serde_json::Value> {
+        self.build_campaign_combined_data_with_monsters_and_npcs(
+            documents,
+            campaign_name,
+            modules,
+            serde_json::Value::Array(vec![]),
+        )
+    }
+
+    /// Build the data structure for the combined campaign template with module monsters and NPCs
+    fn build_campaign_combined_data_with_monsters_and_npcs(
+        &self,
+        documents: &[ParsedDocument],
+        campaign_name: &str,
+        modules: serde_json::Value,
+        npcs: serde_json::Value,
+    ) -> Result<serde_json::Value> {
         let docs: Vec<serde_json::Value> = documents
             .iter()
             .enumerate()
@@ -406,7 +422,53 @@ impl PrintService {
             "campaign_name": campaign_name,
             "documents": docs,
             "modules": modules,
+            "npcs": npcs,
         }))
+    }
+
+    /// Render multiple campaign documents with module monsters and NPCs as a single combined PDF
+    ///
+    /// # Arguments
+    /// * `documents` - List of document file paths
+    /// * `campaign_name` - Name of the campaign
+    /// * `modules` - JSON array of module data with monsters
+    /// * `npcs` - JSON array of NPC character data
+    ///
+    /// # Returns
+    /// PDF file contents as bytes
+    #[instrument(skip(self, documents, modules, npcs), fields(count = documents.len()))]
+    pub fn render_campaign_combined_with_monsters_and_npcs(
+        &self,
+        documents: &[PathBuf],
+        campaign_name: &str,
+        modules: serde_json::Value,
+        npcs: serde_json::Value,
+    ) -> Result<Vec<u8>> {
+        info!(
+            "Rendering {} campaign documents with modules and {} NPCs to combined PDF",
+            documents.len(),
+            npcs.as_array().map(|a| a.len()).unwrap_or(0)
+        );
+
+        // Parse all documents (title/type come from YAML frontmatter)
+        let mut parsed_docs = Vec::new();
+        for file_path in documents {
+            debug!("Reading document: {:?}", file_path);
+            let markdown = std::fs::read_to_string(file_path)?;
+            let parsed = parse_campaign_document(&markdown)?;
+            parsed_docs.push(parsed);
+        }
+
+        // Build the combined data structure with modules and NPCs
+        let data = self.build_campaign_combined_data_with_monsters_and_npcs(
+            &parsed_docs,
+            campaign_name,
+            modules,
+            npcs,
+        )?;
+
+        // Render using the combined campaign template
+        self.render_to_pdf("campaign/combined.typ", data)
     }
 }
 
