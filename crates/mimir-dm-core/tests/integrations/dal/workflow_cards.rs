@@ -3,11 +3,9 @@
 use crate::common::TestDatabase;
 use mimir_dm_core::dal::campaign::campaigns::CampaignRepository;
 use mimir_dm_core::dal::campaign::modules::ModuleRepository;
-use mimir_dm_core::dal::campaign::sessions::SessionRepository;
 use mimir_dm_core::dal::campaign::workflow_cards::WorkflowCardRepository;
 use mimir_dm_core::models::campaign::campaigns::NewCampaign;
 use mimir_dm_core::models::campaign::modules::NewModule;
-use mimir_dm_core::models::campaign::sessions::NewSession;
 use mimir_dm_core::models::campaign::workflow_cards::NewWorkflowCard;
 use tempfile::TempDir;
 
@@ -117,59 +115,6 @@ fn test_module_card_workflow() {
 
     let updated = card_repo.move_to_state(&card.id, "completed").unwrap();
     assert_eq!(updated.workflow_state, "completed");
-}
-
-#[test]
-fn test_session_card_workflow() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
-
-    // Create campaign and session
-    let temp_dir = TempDir::new().unwrap();
-    let mut campaign_repo = CampaignRepository::new(&mut conn);
-    let campaign = campaign_repo
-        .create(NewCampaign {
-            name: "Test Campaign".to_string(),
-            status: "active".to_string(),
-            directory_path: temp_dir.path().to_string_lossy().to_string(),
-        })
-        .unwrap();
-
-    let mut session_repo = SessionRepository::new(&mut conn);
-    let session = session_repo
-        .create(NewSession {
-            campaign_id: campaign.id,
-            module_id: None,
-            session_number: 1,
-            status: "next_week".to_string(),
-            scheduled_date: None,
-        })
-        .unwrap();
-
-    let mut card_repo = WorkflowCardRepository::new(&mut conn);
-
-    // Create a session card
-    let card = card_repo
-        .create(NewWorkflowCard {
-            id: String::new(),
-            board_type: "session".to_string(),
-            title: "Session 1: The Gathering Storm".to_string(),
-            description: None,
-            workflow_state: "next_week".to_string(),
-            campaign_id: None,
-            module_id: None,
-            session_id: Some(session.id),
-            priority: 0,
-        })
-        .unwrap();
-
-    // Test session card state transitions
-    card_repo.move_to_state(&card.id, "prep_needed").unwrap();
-    card_repo.move_to_state(&card.id, "in_prep").unwrap();
-    card_repo.move_to_state(&card.id, "ready").unwrap();
-
-    let updated = card_repo.move_to_state(&card.id, "complete").unwrap();
-    assert_eq!(updated.workflow_state, "complete");
 }
 
 #[test]

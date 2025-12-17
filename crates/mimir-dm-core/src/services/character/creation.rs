@@ -108,10 +108,10 @@ impl<'a> CharacterBuilder<'a> {
         }
     }
 
-    /// Set character name and player
-    pub fn set_identity(mut self, character_name: String, player_id: i32) -> Self {
+    /// Set character name and player (player_id is optional for NPCs)
+    pub fn set_identity(mut self, character_name: String, player_id: Option<i32>) -> Self {
         self.character_name = Some(character_name);
-        self.player_id = Some(player_id);
+        self.player_id = player_id;
         self
     }
 
@@ -256,9 +256,8 @@ impl<'a> CharacterBuilder<'a> {
             .character_name
             .ok_or_else(|| DbError::InvalidData("Character name is required".to_string()))?;
 
-        let player_id = self
-            .player_id
-            .ok_or_else(|| DbError::InvalidData("Player ID is required".to_string()))?;
+        // player_id is optional for NPCs
+        let player_id = self.player_id;
 
         let race_name = self
             .race_name
@@ -388,6 +387,11 @@ impl<'a> CharacterBuilder<'a> {
             currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: self.personality,
+            // NPC fields default to None
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         };
 
         // Initialize spell slots from class data
@@ -824,7 +828,7 @@ mod tests {
         };
 
         let character_data = CharacterBuilder::new(&mut conn)
-            .set_identity("Test Character".to_string(), 1)
+            .set_identity("Test Character".to_string(), Some(1))
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
             .set_class("Fighter", "PHB", None)
@@ -869,7 +873,7 @@ mod tests {
         };
 
         let character_data = CharacterBuilder::new(&mut conn)
-            .set_identity("Test Character 2".to_string(), 1)
+            .set_identity("Test Character 2".to_string(), Some(1))
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
             .set_class("Wizard", "PHB", None)
@@ -948,7 +952,7 @@ mod tests {
         };
 
         let result = CharacterBuilder::new(&mut conn)
-            .set_identity("Test Character".to_string(), 1)
+            .set_identity("Test Character".to_string(), Some(1))
             .set_race("Elf", "PHB", None);
 
         assert!(result.is_err());
@@ -973,7 +977,7 @@ mod tests {
         };
 
         let result = CharacterBuilder::new(&mut conn)
-            .set_identity("Test Character".to_string(), 1)
+            .set_identity("Test Character".to_string(), Some(1))
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
             .set_class("Fighter", "PHB", None)
@@ -1018,7 +1022,7 @@ mod tests {
 
         // Fighter with d10 hit die and CON 16 (+3 modifier)
         let fighter = CharacterBuilder::new(&mut conn)
-            .set_identity("Fighter Test".to_string(), 1)
+            .set_identity("Fighter Test".to_string(), Some(1))
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
             .set_class("Fighter", "PHB", None)
@@ -1034,7 +1038,7 @@ mod tests {
 
         // Wizard with d6 hit die and CON 16 (+3 modifier)
         let wizard = CharacterBuilder::new(&mut conn)
-            .set_identity("Wizard Test".to_string(), 1)
+            .set_identity("Wizard Test".to_string(), Some(1))
             .set_race("Human", "PHB", None)
             .expect("Failed to set race")
             .set_class("Wizard", "PHB", None)

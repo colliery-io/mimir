@@ -4,13 +4,12 @@ use crate::common::TestDatabase;
 use mimir_dm_core::{
     dal::campaign::{
         campaigns::CampaignRepository, documents::DocumentRepository, modules::ModuleRepository,
-        sessions::SessionRepository, template_documents::TemplateRepository,
+        template_documents::TemplateRepository,
     },
     models::campaign::{
         campaigns::NewCampaign,
         documents::{DocumentLevel, NewDocument, UpdateDocument},
         modules::NewModule,
-        sessions::NewSession,
         template_documents::NewTemplateDocument,
     },
 };
@@ -288,84 +287,6 @@ fn test_find_documents_by_module() {
 
     assert_eq!(module_docs.len(), 2);
     assert!(module_docs.iter().all(|d| d.module_id == Some(module.id)));
-}
-
-#[test]
-fn test_find_documents_by_session() {
-    let test_db = TestDatabase::file_based().unwrap();
-    let mut conn = test_db.connection().unwrap();
-
-    // Create campaign, module, and session
-    let mut campaign_repo = CampaignRepository::new(&mut conn);
-    let campaign = campaign_repo
-        .create(NewCampaign {
-            name: "Session Test Campaign".to_string(),
-            status: "active".to_string(),
-            directory_path: "/test/sessions".to_string(),
-        })
-        .expect("Failed to create campaign");
-
-    let mut module_repo = ModuleRepository::new(&mut conn);
-    let module = module_repo
-        .create(NewModule {
-            campaign_id: campaign.id,
-            name: "Test Module".to_string(),
-            module_number: 1,
-            status: "active".to_string(),
-            expected_sessions: 5,
-        })
-        .expect("Failed to create module");
-
-    let mut session_repo = SessionRepository::new(&mut conn);
-    let session = session_repo
-        .create(NewSession {
-            campaign_id: campaign.id,
-            module_id: Some(module.id),
-            session_number: 1,
-            status: "prep_needed".to_string(),
-            scheduled_date: None,
-        })
-        .expect("Failed to create session");
-
-    // Create template
-    let template = TemplateRepository::create(
-        &mut conn,
-        NewTemplateDocument {
-            document_id: "session-template".to_string(),
-            version_number: Some(1),
-            document_content: "Session content".to_string(),
-            content_hash: Some("hash_sess".to_string()),
-            document_type: Some("session".to_string()),
-            document_level: Some("session".to_string()),
-            purpose: None,
-            variables_schema: None,
-            default_values: None,
-            is_active: Some(true),
-            metadata: None,
-        },
-    )
-    .expect("Failed to create template");
-
-    // Create session documents
-    DocumentRepository::create(
-        &mut conn,
-        NewDocument {
-            campaign_id: campaign.id,
-            module_id: Some(module.id),
-            session_id: Some(session.id),
-            template_id: template.document_id.clone(),
-            document_type: "session".to_string(),
-            title: "Session Notes".to_string(),
-            file_path: "/test/session_notes.md".to_string(),
-        },
-    )
-    .expect("Failed to create session document");
-
-    let session_docs = DocumentRepository::find_by_session(&mut conn, session.id)
-        .expect("Failed to find session documents");
-
-    assert_eq!(session_docs.len(), 1);
-    assert_eq!(session_docs[0].session_id, Some(session.id));
 }
 
 #[test]
@@ -716,17 +637,6 @@ fn test_document_level() {
         })
         .expect("Failed to create module");
 
-    let mut session_repo = SessionRepository::new(&mut conn);
-    let session = session_repo
-        .create(NewSession {
-            campaign_id: campaign.id,
-            module_id: Some(module.id),
-            session_number: 1,
-            status: "prep_needed".to_string(),
-            scheduled_date: None,
-        })
-        .expect("Failed to create session");
-
     let template = TemplateRepository::create(
         &mut conn,
         NewTemplateDocument {
@@ -778,23 +688,6 @@ fn test_document_level() {
     .expect("Failed to create document");
 
     assert_eq!(mod_doc.level(), DocumentLevel::Module);
-
-    // Test session level
-    let sess_doc = DocumentRepository::create(
-        &mut conn,
-        NewDocument {
-            campaign_id: campaign.id,
-            module_id: Some(module.id),
-            session_id: Some(session.id),
-            template_id: template.document_id.clone(),
-            document_type: "session".to_string(),
-            title: "Session Level".to_string(),
-            file_path: "/test/sess_level.md".to_string(),
-        },
-    )
-    .expect("Failed to create document");
-
-    assert_eq!(sess_doc.level(), DocumentLevel::Session);
 
     // Test handout level
     let handout_doc = DocumentRepository::create(

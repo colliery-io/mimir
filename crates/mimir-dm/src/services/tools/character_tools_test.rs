@@ -106,7 +106,7 @@ mod tests {
         let mut conn = db_service.get_connection().unwrap();
 
         let mut char_data = CharacterBuilder::new(&mut conn)
-            .set_identity("Gandalf".to_string(), player_id)
+            .set_identity("Gandalf".to_string(), Some(player_id))
             .set_race("Human", "PHB", None)
             .unwrap()
             .set_class("Wizard", "PHB", None)
@@ -134,7 +134,8 @@ mod tests {
         let character = char_service
             .create_character(
                 Some(campaign_id),
-                player_id,
+                Some(player_id),
+                false,
                 temp_dir.path().to_str().unwrap(),
                 char_data,
             )
@@ -186,7 +187,7 @@ mod tests {
         for name in &["Frodo", "Sam", "Merry"] {
             let mut conn = db_service.get_connection().unwrap();
             let char_data = CharacterBuilder::new(&mut conn)
-                .set_identity(name.to_string(), player_id)
+                .set_identity(name.to_string(), Some(player_id))
                 .set_race("Human", "PHB", None)
                 .unwrap()
                 .set_class("Wizard", "PHB", None)
@@ -209,7 +210,8 @@ mod tests {
             char_service
                 .create_character(
                     Some(campaign_id),
-                    player_id,
+                    Some(player_id),
+                    false,
                     temp_dir.path().to_str().unwrap(),
                     char_data,
                 )

@@ -22,7 +22,7 @@ pub use data::{
 pub struct Character {
     pub id: i32,
     pub campaign_id: Option<i32>,
-    pub player_id: i32,
+    pub player_id: Option<i32>,
     pub character_name: String,
     pub is_npc: i32,
     pub current_level: i32,
@@ -39,7 +39,7 @@ pub struct Character {
 #[diesel(table_name = characters)]
 pub struct NewCharacter {
     pub campaign_id: Option<i32>,
-    pub player_id: i32,
+    pub player_id: Option<i32>,
     pub character_name: String,
     pub is_npc: Option<i32>,
     pub directory_path: String,

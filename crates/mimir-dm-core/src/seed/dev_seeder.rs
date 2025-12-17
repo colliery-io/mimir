@@ -534,7 +534,7 @@ fn seed_characters(
         let character_data = create_thorin(player_id, &now);
         let mut service = CharacterService::new(conn);
         let character =
-            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+            service.create_character(campaign_id, Some(player_id), false, base_directory, character_data)?;
         characters.push(character);
     }
 
@@ -543,7 +543,7 @@ fn seed_characters(
         let character_data = create_elara(player_id, &now);
         let mut service = CharacterService::new(conn);
         let character =
-            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+            service.create_character(campaign_id, Some(player_id), false, base_directory, character_data)?;
         characters.push(character);
     }
 
@@ -552,7 +552,7 @@ fn seed_characters(
         let character_data = create_finn(player_id, &now);
         let mut service = CharacterService::new(conn);
         let character =
-            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+            service.create_character(campaign_id, Some(player_id), false, base_directory, character_data)?;
         characters.push(character);
     }
 
@@ -561,7 +561,7 @@ fn seed_characters(
         let character_data = create_helena(player_id, &now);
         let mut service = CharacterService::new(conn);
         let character =
-            service.create_character(campaign_id, player_id, base_directory, character_data)?;
+            service.create_character(campaign_id, Some(player_id), false, base_directory, character_data)?;
         characters.push(character);
     }
 
@@ -572,7 +572,7 @@ fn seed_characters(
 fn create_thorin(player_id: i32, created_at: &str) -> CharacterData {
     CharacterData {
         character_name: "Thorin Ironforge".to_string(),
-        player_id,
+        player_id: Some(player_id),
         level: 5,
         experience_points: 6500,
         version: 1,
@@ -688,6 +688,10 @@ fn create_thorin(player_id: i32, created_at: &str) -> CharacterData {
             bonds: Some("I would still lay down my life for the people I served with.".to_string()),
             flaws: Some("I made a terrible mistake in battle that cost many lives, and I would do anything to keep that mistake secret.".to_string()),
         },
+        npc_role: None,
+        npc_location: None,
+        npc_faction: None,
+        npc_notes: None,
     }
 }
 
@@ -700,7 +704,7 @@ fn create_elara(player_id: i32, created_at: &str) -> CharacterData {
 
     CharacterData {
         character_name: "Elara Moonwhisper".to_string(),
-        player_id,
+        player_id: Some(player_id),
         level: 5,
         experience_points: 6500,
         version: 1,
@@ -844,6 +848,10 @@ fn create_elara(player_id: i32, created_at: &str) -> CharacterData {
             bonds: Some("I have an ancient text that holds terrible secrets that must not fall into the wrong hands.".to_string()),
             flaws: Some("I overlook obvious solutions in favor of complicated ones.".to_string()),
         },
+        npc_role: None,
+        npc_location: None,
+        npc_faction: None,
+        npc_notes: None,
     }
 }
 
@@ -851,7 +859,7 @@ fn create_elara(player_id: i32, created_at: &str) -> CharacterData {
 fn create_finn(player_id: i32, created_at: &str) -> CharacterData {
     CharacterData {
         character_name: "Finn Lightfoot".to_string(),
-        player_id,
+        player_id: Some(player_id),
         level: 1,
         experience_points: 0,
         version: 1,
@@ -970,6 +978,10 @@ fn create_finn(player_id: i32, created_at: &str) -> CharacterData {
                     .to_string(),
             ),
         },
+        npc_role: None,
+        npc_location: None,
+        npc_faction: None,
+        npc_notes: None,
     }
 }
 
@@ -984,7 +996,7 @@ fn create_helena(player_id: i32, created_at: &str) -> CharacterData {
 
     CharacterData {
         character_name: "Sister Helena".to_string(),
-        player_id,
+        player_id: Some(player_id),
         level: 10,
         experience_points: 64000,
         version: 1,
@@ -1160,6 +1172,10 @@ fn create_helena(player_id: i32, created_at: &str) -> CharacterData {
             bonds: Some("I will do anything to protect the temple where I served.".to_string()),
             flaws: Some("I put too much trust in those who wield power within my temple's hierarchy.".to_string()),
         },
+        npc_role: None,
+        npc_location: None,
+        npc_faction: None,
+        npc_notes: None,
     }
 }
 

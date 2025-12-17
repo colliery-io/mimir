@@ -24,7 +24,7 @@ use tracing::error;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateCharacterRequest {
     pub character_name: String,
-    pub player_id: i32,
+    pub player_id: Option<i32>,  // Optional for NPCs
     pub race: String,
     pub race_source: String,
     pub subrace: Option<String>,
@@ -41,6 +41,12 @@ pub struct CreateCharacterRequest {
     pub equipment: Option<Vec<InventoryItemInput>>,
     pub cantrips: Option<Vec<SpellReferenceInput>>,
     pub known_spells: Option<Vec<SpellReferenceInput>>,
+    // NPC fields
+    pub is_npc: Option<bool>,
+    pub npc_role: Option<String>,
+    pub npc_location: Option<String>,
+    pub npc_faction: Option<String>,
+    pub npc_notes: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -127,12 +133,13 @@ pub struct CurrencyUpdate {
 /// Returns an error string if database operations fail.
 #[tauri::command]
 pub async fn create_minimal_character(
-    player_id: i32,
+    player_id: Option<i32>,
     character_name: String,
     race: String,
     class: String,
     background: String,
     campaign_id: Option<i32>,
+    is_npc: Option<bool>,
     state: State<'_, AppState>,
 ) -> Result<Character, String> {
     use chrono::Utc;
@@ -192,11 +199,15 @@ pub async fn create_minimal_character(
         currency: Currency::default(),
         equipped: EquippedItems::default(),
         personality: Personality::default(),
+        npc_role: None,
+        npc_location: None,
+        npc_faction: None,
+        npc_notes: None,
     };
 
     let mut char_service = CharacterService::new(&mut conn);
     char_service
-        .create_character(campaign_id, player_id, "", character_data)
+        .create_character(campaign_id, player_id, is_npc.unwrap_or(false), "", character_data)
         .map_err(|e| format!("Failed to create character: {}", e))
 }
 
@@ -333,12 +344,21 @@ pub async fn create_character(
         character_data.spells.known_spells = known_spells.into_iter().map(|s| s.into()).collect();
     }
 
+    // Set NPC fields if this is an NPC
+    if request.is_npc.unwrap_or(false) {
+        character_data.npc_role = request.npc_role;
+        character_data.npc_location = request.npc_location;
+        character_data.npc_faction = request.npc_faction;
+        character_data.npc_notes = request.npc_notes;
+    }
+
     // Persist to database using CharacterService
     let mut char_service = CharacterService::new(&mut conn);
     char_service
         .create_character(
             None, // campaign_id - not assigned yet
             request.player_id,
+            request.is_npc.unwrap_or(false),
             "", // base_directory - empty for unassigned characters
             character_data.clone(),
         )
@@ -354,7 +374,8 @@ pub async fn create_character(
 ///
 /// # Parameters
 /// - `campaign_id` - Optional campaign to assign the character to
-/// - `player_id` - The ID of the player who owns this character
+/// - `player_id` - Optional ID of the player who owns this character (None for NPCs)
+/// - `is_npc` - Whether this is an NPC (true) or PC (false)
 /// - `base_directory` - Optional file directory for character files
 /// - `character_data` - The complete character data to store
 /// - `state` - Application state containing the database connection
@@ -367,7 +388,8 @@ pub async fn create_character(
 #[tauri::command]
 pub async fn store_character(
     campaign_id: Option<i32>,
-    player_id: i32,
+    player_id: Option<i32>,
+    is_npc: Option<bool>,
     base_directory: Option<String>,
     character_data: CharacterData,
     state: State<'_, AppState>,
@@ -382,7 +404,7 @@ pub async fn store_character(
 
     let mut char_service = CharacterService::new(&mut conn);
     char_service
-        .create_character(campaign_id, player_id, &directory, character_data)
+        .create_character(campaign_id, player_id, is_npc.unwrap_or(false), &directory, character_data)
         .map_err(|e| format!("Failed to store character: {}", e))
 }
 

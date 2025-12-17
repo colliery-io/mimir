@@ -384,7 +384,7 @@ pub struct ClassLevel {
 pub struct CharacterData {
     // Metadata
     pub character_name: String,
-    pub player_id: i32,
+    pub player_id: Option<i32>,
     pub level: i32,
     #[serde(default)]
     pub experience_points: i32,
@@ -440,6 +440,16 @@ pub struct CharacterData {
     // Personality
     #[serde(default)]
     pub personality: Personality,
+
+    // NPC-specific fields
+    #[serde(default)]
+    pub npc_role: Option<String>,
+    #[serde(default)]
+    pub npc_location: Option<String>,
+    #[serde(default)]
+    pub npc_faction: Option<String>,
+    #[serde(default)]
+    pub npc_notes: Option<String>,
 }
 
 impl CharacterData {
@@ -545,7 +555,7 @@ mod tests {
     fn test_proficiency_bonus_by_level() {
         let mut character = CharacterData {
             character_name: "Test".to_string(),
-            player_id: 1,
+            player_id: Some(1),
             level: 1,
             experience_points: 0,
             version: 1,
@@ -581,6 +591,10 @@ mod tests {
             currency: Currency::default(),
             equipped: EquippedItems::default(),
             personality: Personality::default(),
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         };
 
         character.level = 1;
@@ -626,7 +640,7 @@ mod tests {
     fn test_yaml_serialization() {
         let character = CharacterData {
             character_name: "Thorin".to_string(),
-            player_id: 1,
+            player_id: Some(1),
             level: 3,
             experience_points: 900,
             version: 1,
@@ -703,6 +717,10 @@ mod tests {
                 ),
                 flaws: Some("I obey authority without question.".to_string()),
             },
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         };
 
         // Test YAML serialization

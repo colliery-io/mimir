@@ -900,7 +900,7 @@ mod tests {
     fn create_sample_fighter() -> CharacterData {
         CharacterData {
             character_name: "Thorin Ironforge".to_string(),
-            player_id: 1,
+            player_id: Some(1),
             level: 3,
             experience_points: 900,
             version: 1,
@@ -994,6 +994,10 @@ mod tests {
                 ),
                 flaws: Some("I obey authority without question.".to_string()),
             },
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         }
     }
 
@@ -1004,7 +1008,7 @@ mod tests {
 
         CharacterData {
             character_name: "Elara Moonwhisper".to_string(),
-            player_id: 2,
+            player_id: Some(2),
             level: 3,
             experience_points: 900,
             version: 1,
@@ -1108,6 +1112,10 @@ mod tests {
                 off_hand: None,
             },
             personality: Personality::default(),
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         }
     }
 
@@ -1184,7 +1192,7 @@ mod tests {
         // Create minimal character with no spells, feats, or personality
         let minimal = CharacterData {
             character_name: "Test".to_string(),
-            player_id: 1,
+            player_id: Some(1),
             level: 1,
             experience_points: 0,
             version: 1,
@@ -1220,6 +1228,10 @@ mod tests {
             speed: 30, // Human speed
             equipped: EquippedItems::default(),
             personality: Personality::default(),
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         };
 
         let markdown = renderer.render(&minimal);

@@ -58,7 +58,8 @@ impl<'a> CharacterService<'a> {
     pub fn create_character(
         &mut self,
         campaign_id: Option<i32>,
-        player_id: i32,
+        player_id: Option<i32>,
+        is_npc: bool,
         base_directory: &str,
         character_data: CharacterData,
     ) -> Result<Character> {
@@ -107,7 +108,7 @@ impl<'a> CharacterService<'a> {
                 campaign_id,
                 player_id,
                 character_name: character_data.character_name.clone(),
-                is_npc: Some(0), // Default to PC
+                is_npc: Some(if is_npc { 1 } else { 0 }),
                 directory_path,
                 class: Some(character_data.primary_class_name().to_string()),
                 race: Some(character_data.race.clone()),
@@ -1054,7 +1055,7 @@ mod tests {
         use crate::models::character::data::ClassLevel;
         CharacterData {
             character_name: "Test Character".to_string(),
-            player_id: 1,
+            player_id: Some(1),
             level: 1,
             experience_points: 0,
             version: 1,
@@ -1107,6 +1108,10 @@ mod tests {
                 bonds: None,
                 flaws: None,
             },
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         }
     }
 
@@ -1121,15 +1126,15 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let character = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         assert_eq!(character.character_name, "Test Character");
         assert_eq!(character.campaign_id, Some(campaign_id));
-        assert_eq!(character.player_id, player_id);
+        assert_eq!(character.player_id, Some(player_id));
         assert_eq!(character.is_npc, 0);
         assert_eq!(character.current_level, 1);
         assert_eq!(character.current_version, 1);
@@ -1162,10 +1167,10 @@ mod tests {
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
         character_data.character_name = "".to_string();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let result =
-            service.create_character(Some(campaign_id), player_id, campaign_dir, character_data);
+            service.create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data);
         assert!(result.is_err());
     }
 
@@ -1180,10 +1185,10 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         let (character, data) = service
@@ -1217,12 +1222,13 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
             .create_character(
                 Some(campaign_id),
-                player_id,
+                Some(player_id),
+                false,
                 campaign_dir,
                 character_data.clone(),
             )
@@ -1272,10 +1278,10 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         let char_dir = Path::new(&created.directory_path);
@@ -1307,16 +1313,16 @@ mod tests {
         // Create multiple characters
         let mut char1 = create_test_character_data();
         char1.character_name = "Character 1".to_string();
-        char1.player_id = player_id;
+        char1.player_id = Some(player_id);
         service
-            .create_character(Some(campaign_id), player_id, campaign_dir, char1)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, char1)
             .unwrap();
 
         let mut char2 = create_test_character_data();
         char2.character_name = "Character 2".to_string();
-        char2.player_id = player_id;
+        char2.player_id = Some(player_id);
         service
-            .create_character(Some(campaign_id), player_id, campaign_dir, char2)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, char2)
             .unwrap();
 
         let characters = service
@@ -1337,12 +1343,13 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
             .create_character(
                 Some(campaign_id),
-                player_id,
+                Some(player_id),
+                false,
                 campaign_dir,
                 character_data.clone(),
             )
@@ -1374,12 +1381,13 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
             .create_character(
                 Some(campaign_id),
-                player_id,
+                Some(player_id),
+                false,
                 campaign_dir,
                 character_data.clone(),
             )
@@ -1415,10 +1423,10 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Try to get non-existent version
@@ -1437,10 +1445,10 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up with HP roll
@@ -1480,10 +1488,10 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up with average HP
@@ -1520,10 +1528,10 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up to 2, 3 (no ASI)
@@ -1578,10 +1586,10 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up to 4 with feat
@@ -1629,12 +1637,12 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
         // Set STR to 13 to meet Barbarian multiclass prerequisite
         character_data.abilities.strength = 16;
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Multiclass into Barbarian
@@ -1670,14 +1678,14 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
         // DEX is 14, but Monk requires DEX 13 AND WIS 13
         // WIS is only 12, so should fail
         character_data.abilities.dexterity = 14;
         character_data.abilities.wisdom = 12;
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Try to multiclass into Monk (should fail due to low WIS)
@@ -1705,12 +1713,12 @@ mod tests {
 
         let mut service = CharacterService::new(&mut conn);
         let mut character_data = create_test_character_data();
-        character_data.player_id = player_id;
+        character_data.player_id = Some(player_id);
         // Start with STR 19
         character_data.abilities.strength = 19;
 
         let created = service
-            .create_character(Some(campaign_id), player_id, campaign_dir, character_data)
+            .create_character(Some(campaign_id), Some(player_id), false, campaign_dir, character_data)
             .expect("Failed to create character");
 
         // Level up to 4 with +2 STR

@@ -882,7 +882,7 @@ Output:
 
         // Create character using builder
         let mut builder = CharacterBuilder::new(&mut conn)
-            .set_identity(character_name.clone(), player_id)
+            .set_identity(character_name.clone(), Some(player_id))
             .set_race(&race, &race_source, subrace)
             .map_err(|e| format!("Failed to set race: {}", e))?
             .set_class(&class, &class_source, subclass)
@@ -907,7 +907,7 @@ Output:
         // Store the character in the database
         let mut char_service = CharacterService::new(&mut conn);
         let character = char_service
-            .create_character(campaign_id, player_id, &base_directory, char_data.clone())
+            .create_character(campaign_id, Some(player_id), false, &base_directory, char_data.clone())
             .map_err(|e| format!("Failed to store character: {}", e))?;
 
         let result = json!({

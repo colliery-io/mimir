@@ -136,7 +136,7 @@ fn test_create_character_basic() {
     let player_id = create_test_player(&mut conn);
 
     let char_data = CharacterBuilder::new(&mut conn)
-        .set_identity("Gandalf".to_string(), player_id)
+        .set_identity("Gandalf".to_string(), Some(player_id))
         .set_race("Human", "PHB", None)
         .unwrap()
         .set_class("Wizard", "PHB", None)
@@ -164,14 +164,15 @@ fn test_create_character_basic() {
     let character = char_service
         .create_character(
             Some(campaign_id),
-            player_id,
+            Some(player_id),
+            false,
             temp_dir.path().to_str().unwrap(),
             char_data,
         )
         .unwrap();
 
     assert_eq!(character.character_name, "Gandalf");
-    assert_eq!(character.player_id, player_id);
+    assert_eq!(character.player_id, Some(player_id));
 }
 
 #[test]
@@ -182,7 +183,7 @@ fn test_get_character() {
 
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
-        .set_identity("Aragorn".to_string(), player_id)
+        .set_identity("Aragorn".to_string(), Some(player_id))
         .set_race("Human", "PHB", None)
         .unwrap()
         .set_class("Fighter", "PHB", None)
@@ -205,7 +206,8 @@ fn test_get_character() {
     let character = char_service
         .create_character(
             Some(campaign_id),
-            player_id,
+            Some(player_id),
+            false,
             temp_dir.path().to_str().unwrap(),
             char_data,
         )
@@ -229,7 +231,7 @@ fn test_list_characters_for_campaign() {
     for name in &["Frodo", "Sam", "Merry"] {
         let builder = CharacterBuilder::new(&mut conn);
         let char_data = builder
-            .set_identity(name.to_string(), player_id)
+            .set_identity(name.to_string(), Some(player_id))
             .set_race("Human", "PHB", None)
             .unwrap()
             .set_class("Wizard", "PHB", None)
@@ -252,7 +254,8 @@ fn test_list_characters_for_campaign() {
         char_service
             .create_character(
                 Some(campaign_id),
-                player_id,
+                Some(player_id),
+                false,
                 temp_dir.path().to_str().unwrap(),
                 char_data,
             )
@@ -274,7 +277,7 @@ fn test_character_versioning() {
 
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
-        .set_identity("Legolas".to_string(), player_id)
+        .set_identity("Legolas".to_string(), Some(player_id))
         .set_race("Human", "PHB", None)
         .unwrap()
         .set_class("Fighter", "PHB", None)
@@ -297,7 +300,8 @@ fn test_character_versioning() {
     let character = char_service
         .create_character(
             Some(campaign_id),
-            player_id,
+            Some(player_id),
+            false,
             temp_dir.path().to_str().unwrap(),
             char_data,
         )
@@ -336,7 +340,7 @@ fn test_delete_character() {
 
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
-        .set_identity("Boromir".to_string(), player_id)
+        .set_identity("Boromir".to_string(), Some(player_id))
         .set_race("Human", "PHB", None)
         .unwrap()
         .set_class("Fighter", "PHB", None)
@@ -359,7 +363,8 @@ fn test_delete_character() {
     let character = char_service
         .create_character(
             Some(campaign_id),
-            player_id,
+            Some(player_id),
+            false,
             temp_dir.path().to_str().unwrap(),
             char_data,
         )
@@ -381,7 +386,7 @@ fn test_update_character_data() {
 
     // Create character
     let char_data = CharacterBuilder::new(&mut conn)
-        .set_identity("Gimli".to_string(), player_id)
+        .set_identity("Gimli".to_string(), Some(player_id))
         .set_race("Human", "PHB", None)
         .unwrap()
         .set_class("Fighter", "PHB", None)
@@ -404,7 +409,8 @@ fn test_update_character_data() {
     let character = char_service
         .create_character(
             Some(campaign_id),
-            player_id,
+            Some(player_id),
+            false,
             temp_dir.path().to_str().unwrap(),
             char_data,
         )
@@ -432,7 +438,7 @@ fn test_proficiency_bonus_calculation() {
     let (mut conn, _temp_dir) = setup_test_db();
 
     let char_data = CharacterBuilder::new(&mut conn)
-        .set_identity("Test".to_string(), 1)
+        .set_identity("Test".to_string(), Some(1))
         .set_race("Human", "PHB", None)
         .unwrap()
         .set_class("Wizard", "PHB", None)

@@ -582,7 +582,7 @@ mod tests {
     fn test_retry_config_default() {
         let config = RetryConfig::default();
         assert_eq!(config.max_retries, 3);
-        assert_eq!(config.base_delay_ms, 1000);
-        assert_eq!(config.max_delay_ms, 30000);
+        assert_eq!(config.base_delay_ms, 30000); // 30 seconds - Groq free tier has aggressive rate limits
+        assert_eq!(config.max_delay_ms, 120000); // 2 minutes max
     }
 }

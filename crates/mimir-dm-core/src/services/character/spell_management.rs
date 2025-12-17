@@ -220,7 +220,7 @@ mod tests {
     fn create_test_wizard(level: i32) -> CharacterData {
         CharacterData {
             character_name: "Test Wizard".to_string(),
-            player_id: 1,
+            player_id: Some(1),
             level,
             experience_points: 0,
             version: 1,
@@ -256,6 +256,10 @@ mod tests {
             speed: 30, // Human speed
             equipped: EquippedItems::default(),
             personality: Personality::default(),
+            npc_role: None,
+            npc_location: None,
+            npc_faction: None,
+            npc_notes: None,
         }
     }
 
