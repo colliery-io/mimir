@@ -566,6 +566,7 @@ pub use character_write_tools::{
     UpdateEquippedTool,
 };
 pub use module_tools::{CreateModuleTool, GetModuleTool, ListModulesTool, UpdateModuleStatusTool};
+pub use campaign_summary_tools::{GetCampaignSummaryTool, InvalidateCampaignSummaryTool};
 
 use mimir_dm_core::DatabaseService;
 use mimir_dm_llm::{TodoListTool, TodoStateManager};
@@ -650,8 +651,16 @@ pub fn register_all_tools(
     registry.register(Arc::new(SearchSpellsTool::new(db_service.clone())));
     info!("  - SearchSpellsTool");
 
-    registry.register(Arc::new(SearchItemsTool::new(db_service)));
+    registry.register(Arc::new(SearchItemsTool::new(db_service.clone())));
     info!("  - SearchItemsTool");
+
+    // Campaign summary tools (read-only)
+    // Note: RegenerateCampaignSummaryTool requires LLM provider, registered separately
+    registry.register(Arc::new(GetCampaignSummaryTool::new(db_service.clone())));
+    info!("  - GetCampaignSummaryTool");
+
+    registry.register(Arc::new(InvalidateCampaignSummaryTool::new(db_service)));
+    info!("  - InvalidateCampaignSummaryTool");
 
     info!("All tools registered successfully");
 }

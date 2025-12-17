@@ -267,7 +267,7 @@ impl AgentTestExecutor {
                 })
             }
             "groq" => {
-                let model_name = model.unwrap_or_else(|| "llama-3.1-70b-versatile".to_string());
+                let model_name = model.unwrap_or_else(|| "qwen/qwen3-32b".to_string());
                 let key = api_key
                     .or_else(|| std::env::var("GROQ_API_KEY").ok())
                     .context("Groq requires API key (--api-key or GROQ_API_KEY env)")?;

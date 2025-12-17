@@ -6,6 +6,18 @@
       :subtitle="stageInfo.subtitle"
     />
 
+    <!-- Campaign Actions -->
+    <div class="campaign-actions" v-if="campaign?.id">
+      <button
+        class="btn btn-ghost btn-sm"
+        :disabled="invalidatingSummary"
+        @click="handleInvalidateSummary"
+        title="Clear cached AI summary. It will regenerate on next chat."
+      >
+        {{ invalidatingSummary ? 'Clearing...' : 'Refresh Story Summary' }}
+      </button>
+    </div>
+
     <!-- Next Steps (shown at top when ready, except for active/concluding stages) -->
     <StageTransitionCard
       v-if="nextStageAvailable && stage !== 'active' && stage !== 'concluding'"
@@ -90,6 +102,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { invoke } from '@tauri-apps/api/core'
 import { ModuleService } from '@/services/ModuleService'
 import { boardConfigService } from '../../../services/boardConfigService'
 import StageHeader from './StageLanding/StageHeader.vue'
@@ -119,6 +132,9 @@ const stageContent = ref<string>('')
 const modules = ref<any[]>([])
 const modulesLoading = ref(false)
 const showCreateModal = ref(false)
+
+// Summary invalidation state
+const invalidatingSummary = ref(false)
 
 // Get stage info from board configuration
 const stageInfo = computed(() => {
@@ -301,6 +317,29 @@ const handleCreateModule = async (data: { name: string; type: string; sessions: 
     }
   } catch (e) {
     console.error('Failed to create module:', e)
+  }
+}
+
+// Invalidate the cached campaign summary so it regenerates on next chat
+const handleInvalidateSummary = async () => {
+  if (!props.campaign?.id) return
+
+  invalidatingSummary.value = true
+  try {
+    const response = await invoke<{ success: boolean; data?: { message: string }; error?: string }>(
+      'invalidate_campaign_summary',
+      { campaignId: props.campaign.id }
+    )
+
+    if (response.success && response.data) {
+      console.log('Campaign summary invalidated:', response.data.message)
+    } else if (response.error) {
+      console.error('Failed to invalidate summary:', response.error)
+    }
+  } catch (e) {
+    console.error('Error invalidating campaign summary:', e)
+  } finally {
+    invalidatingSummary.value = false
   }
 }
 

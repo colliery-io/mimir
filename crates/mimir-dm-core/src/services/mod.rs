@@ -9,6 +9,7 @@ pub const DEFAULT_QUERY_LIMIT: i64 = 1000;
 pub mod action_service;
 pub mod background_service;
 pub mod campaign_service;
+pub mod campaign_summary_service;
 pub mod catalog_trait;
 pub mod character;
 pub mod class_service;
@@ -40,6 +41,10 @@ pub mod vehicle_service;
 pub use action_service::ActionService;
 pub use background_service::BackgroundService;
 pub use campaign_service::CampaignService;
+pub use campaign_summary_service::{
+    CampaignSummary, CampaignSummaryService, ModuleSummaryInfo, SessionNoteInfo,
+    SummarySourceMaterial, format_source_for_llm,
+};
 pub use catalog_trait::CatalogService;
 pub use character::{
     CharacterInventoryService, CharacterProgressionService, CharacterService, CharacterSpellService,

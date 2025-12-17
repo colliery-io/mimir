@@ -407,3 +407,62 @@ pub async fn list_archived_campaigns(
         }
     }
 }
+
+/// Response for campaign summary operations
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CampaignSummaryResponse {
+    pub invalidated: bool,
+    pub message: String,
+}
+
+/// Invalidate (clear) the cached campaign summary
+///
+/// This forces the summary to be regenerated the next time it's needed.
+/// Useful when the user knows the summary is out of date or wants a fresh generation.
+#[tauri::command]
+pub async fn invalidate_campaign_summary(
+    campaign_id: i32,
+    state: State<'_, AppState>,
+) -> Result<ApiResponse<CampaignSummaryResponse>, ApiError> {
+    info!("Invalidating campaign summary for campaign {}", campaign_id);
+
+    // Get campaign directory
+    let campaign_dir = {
+        let mut conn = state.db.get_connection()?;
+        let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+        match service.get_campaign(campaign_id)? {
+            Some(campaign) => campaign.directory_path,
+            None => {
+                return Ok(ApiResponse::error(format!(
+                    "Campaign {} not found",
+                    campaign_id
+                )));
+            }
+        }
+    };
+
+    // Invalidate the cache
+    let mut conn = state.db.get_connection()?;
+    let service = mimir_dm_core::services::CampaignSummaryService::new(&mut conn);
+
+    match service.invalidate_cache(&campaign_dir) {
+        Ok(()) => {
+            info!(
+                "Successfully invalidated campaign summary for campaign {}",
+                campaign_id
+            );
+            Ok(ApiResponse::success(CampaignSummaryResponse {
+                invalidated: true,
+                message: "Campaign summary cache cleared. It will be regenerated on next use."
+                    .to_string(),
+            }))
+        }
+        Err(e) => {
+            error!("Failed to invalidate campaign summary: {}", e);
+            Ok(ApiResponse::error(format!(
+                "Failed to invalidate campaign summary: {}",
+                e
+            )))
+        }
+    }
+}

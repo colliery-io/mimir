@@ -65,6 +65,8 @@ sha2 = "0.10"
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }
+colored = "2.0"
+indicatif = "0.17"
 
 # File handling
 walkdir = "2.5"

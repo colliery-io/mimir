@@ -7,6 +7,7 @@ use mimir_dm::services::llm::LlmService;
 use mimir_dm_core::services::CharacterService;
 use mimir_dm_core::DatabaseService;
 use mimir_dm_llm::{LlmProvider, Message};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -563,13 +564,17 @@ Your response must start with either "PASS:" or "FAIL:"."#,
             let judge_response = response.content.trim();
             info!("LLM judge response: {}", judge_response);
 
-            let passed = judge_response.to_uppercase().starts_with("PASS");
-            let explanation = if judge_response.to_uppercase().starts_with("PASS:") {
-                judge_response[5..].trim().to_string()
-            } else if judge_response.to_uppercase().starts_with("FAIL:") {
-                judge_response[5..].trim().to_string()
+            // Strip <think>...</think> tags (model thinking output)
+            let cleaned_response = strip_think_tags(judge_response);
+            let cleaned_upper = cleaned_response.to_uppercase();
+
+            let passed = cleaned_upper.starts_with("PASS");
+            let explanation = if cleaned_upper.starts_with("PASS:") {
+                cleaned_response[5..].trim().to_string()
+            } else if cleaned_upper.starts_with("FAIL:") {
+                cleaned_response[5..].trim().to_string()
             } else {
-                judge_response.to_string()
+                cleaned_response.to_string()
             };
 
             VerificationResult {
@@ -591,4 +596,12 @@ Your response must start with either "PASS:" or "FAIL:"."#,
             }
         }
     }
+}
+
+/// Strip <think>...</think> tags from model output
+/// These are used by some models for chain-of-thought reasoning
+fn strip_think_tags(text: &str) -> String {
+    // Use regex to remove <think>...</think> blocks
+    let re = Regex::new(r"(?s)<think>.*?</think>\s*").unwrap();
+    re.replace_all(text, "").trim().to_string()
 }

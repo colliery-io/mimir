@@ -3,7 +3,7 @@
 //! Provides Tauri commands for managing shared context between windows
 //! and preparing context data for LLM consumption.
 
-use crate::services::context_service::ContextState;
+use crate::state::AppState;
 use tauri::State;
 use tracing::debug;
 
@@ -23,13 +23,13 @@ pub async fn update_context(
     window_id: String,
     context_type: String,
     data: String,
-    state: State<'_, ContextState>,
+    state: State<'_, AppState>,
 ) -> Result<(), String> {
     debug!(
         "Updating context for window {}: type={}",
         window_id, context_type
     );
-    state.0.update_context(&context_type, &data)
+    state.context.0.update_context(&context_type, &data)
 }
 
 /// Get the complete shared context as a JSON string.
@@ -42,9 +42,9 @@ pub async fn update_context(
 /// # Errors
 /// Returns an error string if context retrieval fails.
 #[tauri::command]
-pub async fn get_full_context(state: State<'_, ContextState>) -> Result<String, String> {
+pub async fn get_full_context(state: State<'_, AppState>) -> Result<String, String> {
     debug!("Getting full context");
-    state.0.get_full_context()
+    state.context.0.get_full_context()
 }
 
 /// Register a new window in the context system.
@@ -63,10 +63,10 @@ pub async fn register_window(
     window_id: String,
     window_type: String,
     title: String,
-    state: State<'_, ContextState>,
+    state: State<'_, AppState>,
 ) -> Result<(), String> {
     debug!("Registering window: {} ({})", window_id, window_type);
-    state.0.register_window(&window_id, &window_type, &title)
+    state.context.0.register_window(&window_id, &window_type, &title)
 }
 
 /// Unregister a window from the context system.
@@ -81,10 +81,10 @@ pub async fn register_window(
 #[tauri::command]
 pub async fn unregister_window(
     window_id: String,
-    state: State<'_, ContextState>,
+    state: State<'_, AppState>,
 ) -> Result<(), String> {
     debug!("Unregistering window: {}", window_id);
-    state.0.unregister_window(&window_id)
+    state.context.0.unregister_window(&window_id)
 }
 
 /// Clear all shared context data.
@@ -94,9 +94,9 @@ pub async fn unregister_window(
 /// # Errors
 /// Returns an error string if clearing fails.
 #[tauri::command]
-pub async fn clear_shared_context(state: State<'_, ContextState>) -> Result<(), String> {
+pub async fn clear_shared_context(state: State<'_, AppState>) -> Result<(), String> {
     debug!("Clearing shared context");
-    state.0.clear_context()
+    state.context.0.clear_context()
 }
 
 /// Get context formatted for LLM consumption.
@@ -110,9 +110,9 @@ pub async fn clear_shared_context(state: State<'_, ContextState>) -> Result<(), 
 /// # Errors
 /// Returns an error string if context retrieval fails.
 #[tauri::command]
-pub async fn get_context_for_llm(state: State<'_, ContextState>) -> Result<String, String> {
+pub async fn get_context_for_llm(state: State<'_, AppState>) -> Result<String, String> {
     debug!("Getting context for LLM");
-    state.0.get_context_for_llm()
+    state.context.0.get_context_for_llm()
 }
 
 /// Update the context token usage statistics.
@@ -127,8 +127,8 @@ pub async fn get_context_for_llm(state: State<'_, ContextState>) -> Result<Strin
 #[tauri::command]
 pub async fn update_context_usage(
     usage: usize,
-    state: State<'_, ContextState>,
+    state: State<'_, AppState>,
 ) -> Result<(), String> {
     debug!("Updating context usage: {} tokens", usage);
-    state.0.update_context_usage(usage)
+    state.context.0.update_context_usage(usage)
 }

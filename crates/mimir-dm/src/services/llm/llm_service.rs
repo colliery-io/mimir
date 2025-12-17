@@ -181,7 +181,7 @@ impl LlmProvider for Provider {
 
 /// Default model names for different providers (used when no model is configured)
 pub const DEFAULT_OLLAMA_MODEL: &str = "gpt-oss:20b";
-pub const DEFAULT_GROQ_MODEL: &str = "openai/gpt-oss-120b";
+pub const DEFAULT_GROQ_MODEL: &str = "qwen/qwen3-32b";
 pub const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 
 /// Event emitted during model download progress
@@ -561,10 +561,17 @@ impl LlmService {
         action: ActionDescription,
         tool_name: String,
     ) -> Result<bool> {
-        let app = self
-            .app_handle
-            .as_ref()
-            .ok_or_else(|| anyhow!("App handle not set for confirmation requests"))?;
+        // Auto-approve when no app handle (testing mode)
+        let app = match self.app_handle.as_ref() {
+            Some(app) => app,
+            None => {
+                info!(
+                    "No app handle - auto-approving tool {} (testing mode)",
+                    tool_name
+                );
+                return Ok(true);
+            }
+        };
 
         let confirmation_id = Uuid::new_v4();
         info!("Creating confirmation request with ID: {}", confirmation_id);

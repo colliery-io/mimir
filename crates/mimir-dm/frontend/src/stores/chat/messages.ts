@@ -207,10 +207,11 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
         ...conversationMessages
       ]
 
-      // Extract campaign directory from context if available
+      // Extract campaign info from context if available
       const { useSharedContextStore } = await import('../sharedContext')
       const contextStore = useSharedContextStore()
       const campaignDirectoryPath = contextStore.campaign?.directory_path || null
+      const campaignId = contextStore.campaign?.id ? parseInt(contextStore.campaign.id, 10) : null
 
       // Send to backend
       const response = await invoke<ChatResponseWithUsage>('send_chat_message', {
@@ -220,7 +221,8 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
         enableTools: true,  // Enable tools for testing
         sessionId: currentSessionId,
         ollamaUrl: llmEndpoint,
-        campaignDirectoryPath: campaignDirectoryPath
+        campaignDirectoryPath: campaignDirectoryPath,
+        campaignId: campaignId
       })
 
       // Add assistant response
@@ -385,6 +387,7 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
       const { useSharedContextStore } = await import('../sharedContext')
       const contextStore = useSharedContextStore()
       const campaignDirectoryPath = contextStore.campaign?.directory_path || null
+      const campaignId = contextStore.campaign?.id ? parseInt(contextStore.campaign.id, 10) : null
 
       const response = await invoke<ChatResponseWithUsage>('send_chat_message', {
         messages: apiMessages,
@@ -393,7 +396,8 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
         enableTools: true,
         sessionId: currentSessionId,
         ollamaUrl: llmEndpoint,
-        campaignDirectoryPath: campaignDirectoryPath
+        campaignDirectoryPath: campaignDirectoryPath,
+        campaignId: campaignId
       })
 
       const assistantMessage: ChatMessage = {

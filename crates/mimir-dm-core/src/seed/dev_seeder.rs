@@ -186,6 +186,10 @@ pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Resu
     seed_module_document_content(conn, &modules, &campaign.directory_path)?;
     info!("Populated module document content");
 
+    // Create session notes documents
+    seed_session_notes(conn, campaign.id, &campaign.directory_path)?;
+    info!("Created session notes documents");
+
     // Create players
     let players = seed_players(conn)?;
     info!("Created {} test players", players.len());
@@ -482,6 +486,177 @@ The hideout consists of several connected cave chambers:
             let doc_service = DocumentService::new(conn);
             doc_service.save_document_file(&overview_path.to_string_lossy(), content)?;
         }
+    }
+
+    Ok(())
+}
+
+/// Seed session notes documents for campaign summary testing
+fn seed_session_notes(
+    conn: &mut DbConnection,
+    campaign_id: i32,
+    campaign_directory: &str,
+) -> Result<()> {
+    use crate::models::campaign::documents::NewDocument;
+    use std::path::PathBuf;
+
+    let session_notes = vec![
+        (
+            1,
+            "Session 1: The Road to Phandalin",
+            r#"# Session 1: The Road to Phandalin
+
+## Date: Campaign Start
+
+## Summary
+
+The party was hired by Gundren Rockseeker, a dwarf entrepreneur, to escort a wagon of supplies from Neverwinter to Phandalin. Gundren rode ahead with his bodyguard Sildar Hallwinter to "take care of business."
+
+## Key Events
+
+1. **The Ambush**: On the Triboar Trail, the party discovered two dead horses blocking the road - they belonged to Gundren and Sildar. Goblins ambushed the party from the treeline.
+
+2. **Combat**: The party fought off 4 goblins and discovered a trail leading into the forest. One goblin was captured and revealed that "King Grol" had ordered them to capture the dwarf.
+
+3. **Following the Trail**: The party followed the goblin trail, avoiding a snare trap, to find Cragmaw Hideout.
+
+## NPCs Met
+- Gundren Rockseeker (mentioned, captured)
+- Sildar Hallwinter (mentioned, captured)
+
+## Loot
+- 25 gp from dead horses' saddlebags
+- Empty map case (the map was taken)
+
+## Clues Discovered
+- Gundren was taken to "Cragmaw Castle" by order of "The Black Spider"
+- The goblins work for a bugbear named Klarg at the hideout
+
+## Party Status
+All party members at full health after the encounter.
+"#,
+        ),
+        (
+            2,
+            "Session 2: Cragmaw Hideout",
+            r#"# Session 2: Cragmaw Hideout
+
+## Date: One week after session 1
+
+## Summary
+
+The party infiltrated Cragmaw Hideout to rescue Sildar Hallwinter and gather information about Gundren Rockseeker's whereabouts.
+
+## Key Events
+
+1. **Cave Entrance**: The party dealt with goblin sentries and discovered a cave system with a stream running through it.
+
+2. **Flood Trap**: The goblins released dammed water to flood the passage. Quick thinking saved the party from being washed away.
+
+3. **Sildar Rescued**: Found Sildar Hallwinter held prisoner in the goblin den. He was beaten but alive. He revealed he's a member of the Lords' Alliance.
+
+4. **Klarg Defeated**: The party confronted Klarg the bugbear in his lair. After a fierce battle, Klarg was slain.
+
+## NPCs Met
+- Sildar Hallwinter (rescued) - Lords' Alliance agent
+- Klarg (defeated) - Bugbear leader of the hideout
+
+## Important Information from Sildar
+- Gundren and his brothers discovered the location of Wave Echo Cave
+- Wave Echo Cave contains the legendary Forge of Spells
+- Someone called "The Black Spider" wants this information
+- Gundren was taken to Cragmaw Castle, location unknown
+- Sildar asks the party to help him reach Phandalin and find his contact Iarno Albrek
+
+## Loot
+- Klarg's treasure chest: 600 cp, 110 sp, two potions of healing
+- Supplies marked with a blue lion (Lionshield Coster goods)
+
+## Current Objectives
+- Escort Sildar to Phandalin
+- Find Iarno Albrek at Phandalin
+- Discover the location of Cragmaw Castle
+- Learn more about the Black Spider
+
+## Party Status
+Helena used most of her spell slots healing the party.
+"#,
+        ),
+        (
+            3,
+            "Session 3: Welcome to Phandalin",
+            r#"# Session 3: Welcome to Phandalin
+
+## Date: Arrival in Phandalin
+
+## Summary
+
+The party arrived in Phandalin with Sildar and delivered the supplies. They discovered the town is being terrorized by a gang called the Redbrands.
+
+## Key Events
+
+1. **Arrival**: Delivered supplies to Barthen's Provisions. Elmar Barthen paid the agreed 10 gp each and expressed concern about his friend Gundren.
+
+2. **Town Investigation**: The party learned about the Redbrands - a gang of ruffians in red cloaks who have been extorting townspeople.
+
+3. **Stonehill Inn**: At the inn, Toblen Stonehill shared that the Redbrands frequent the Sleeping Giant tap house. A local woodcarver named Thel Dendrar stood up to them and hasn't been seen since.
+
+4. **Confrontation**: The party encountered Redbrand ruffians who tried to shake them down. A fight ensued, and the party captured one for questioning.
+
+## NPCs Met
+- Elmar Barthen (merchant, friend of Gundren)
+- Toblen Stonehill (innkeeper)
+- Linene Graywind (Lionshield Coster - grateful for recovered goods)
+- Daran Edermath (retired adventurer, warned about Redbrands)
+
+## Important Information
+- The Redbrands are led by someone called "Glasstaff"
+- Their hideout is beneath Tresendar Manor on the east side of town
+- Iarno Albrek (Sildar's contact) hasn't been seen in Phandalin
+- Sister Garaele at the shrine has a task for capable adventurers
+- Halia Thornton at the Miner's Exchange has offered a bounty on Glasstaff
+
+## Current Objectives
+- Investigate the Redbrands
+- Find Glasstaff
+- Learn what happened to Thel Dendrar
+- Find the location of Cragmaw Castle
+- Look for Iarno Albrek (missing Lords' Alliance agent)
+
+## Party Status
+Full health, well-rested after a night at Stonehill Inn.
+"#,
+        ),
+    ];
+
+    for (session_number, title, content) in session_notes {
+        // Create the document in the database
+        let file_path = format!("sessions/session_{}_notes.md", session_number);
+        let full_path = PathBuf::from(campaign_directory).join(&file_path);
+
+        // Ensure directory exists
+        if let Some(parent) = full_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // Write the file
+        std::fs::write(&full_path, content)?;
+
+        // Create document record
+        // Note: session_id is None because we don't have actual session records,
+        // just session notes documents. The document_type identifies these as session notes.
+        let new_doc = NewDocument {
+            campaign_id,
+            module_id: None,
+            session_id: None,
+            template_id: format!("session_notes_{}", session_number),
+            document_type: "session_notes".to_string(),
+            title: title.to_string(),
+            file_path,
+        };
+
+        let mut service = DocumentService::new(conn);
+        service.create_document(new_doc)?;
     }
 
     Ok(())

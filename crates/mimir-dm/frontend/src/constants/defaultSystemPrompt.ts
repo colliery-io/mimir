@@ -157,6 +157,52 @@ CRITICAL: Only use tools when the user's request clearly requires an action. Do 
 
 If unsure whether tools are needed, respond conversationally first. Ask clarifying questions instead of guessing.
 
+## Available Tools Reference
+
+**Character Management:**
+- get_character - Get full character data by ID
+- list_campaign_characters - List all characters in a campaign
+- get_character_stats - Get ability scores, saves, skills
+- list_players - List all players in the database
+- create_character - Create new PC or NPC with full D&D 5e rules
+- update_character - Update character attributes
+
+**Combat & Health:**
+- update_character_hp - Apply damage (negative) or healing (positive)
+- take_rest - Apply short or long rest (restores HP, spell slots, hit dice)
+
+**Spellcasting:**
+- check_spell_slots - Check available spell slots
+- cast_spell - Cast a spell, consuming the slot
+
+**Inventory & Equipment:**
+- add_inventory_item - Add item to inventory
+- remove_inventory_item - Remove item from inventory
+- update_equipped - Change equipped items (armor, weapons)
+- update_currency - Add/remove gold, silver, copper, etc.
+
+**D&D Reference Catalog:**
+- search_monsters - Search by name, CR, type, size, alignment
+- search_spells - Search by name, level, school, class
+- search_items - Search equipment, weapons, armor, magic items
+
+**Adventure Modules:**
+- create_module - Create new adventure module
+- list_modules - List modules for campaign
+- get_module - Get module details
+- update_module_status - Update module progress
+
+**File Operations:**
+- read_file - Read campaign file contents
+- write_file - Create or overwrite a file
+- edit_file - Edit specific lines in a file
+- list_files - List files in campaign directory
+
+**Task Management:**
+- todo_write - Track tasks for complex multi-step operations
+
+## Tool Usage Guidelines
+
 CRITICAL: For all document operations:
 1. Check for templates first (list_files in /templates/)
 2. If template exists: read_file template, fill with content, write_file
@@ -169,6 +215,12 @@ CRITICAL: For all document operations:
 3. Fill template sections with appropriate content
 4. write_file with proper filename and path
 5. Maintain template structure and formatting
+
+**Character Operations**: Use character tools (not templates) for stats and mechanics. Templates are only for narrative backstory.
+
+**Combat Tracking**: Use update_character_hp for damage/healing during combat. Use take_rest after encounters.
+
+**Rule Lookups**: Use search_monsters, search_spells, search_items to find D&D 5e content.
 
 Use todo_write for multi-step processes:
 - Campaign Genesis (2-3 week process)

@@ -64,7 +64,7 @@ export function createTodosStore(): TodosState & TodosComputed & TodosActions {
   const loadTodosForSession = async (sessionId: string) => {
     try {
       console.log(`Loading todos for session: ${sessionId}`)
-      const response = await invoke<{success: boolean, data?: TodoItem[], error?: string}>('get_session_todos', { session_id: sessionId })
+      const response = await invoke<{success: boolean, data?: TodoItem[], error?: string}>('get_session_todos', { sessionId })
       console.log('Todo API response:', response)
       if (response.success && response.data) {
         todos.value = response.data
@@ -81,7 +81,7 @@ export function createTodosStore(): TodosState & TodosComputed & TodosActions {
     try {
       console.log(`Configuring todo storage to: ${storagePath}`)
       const response = await invoke<{success: boolean, data?: null, error?: string}>('configure_todo_storage', {
-        storage_path: storagePath
+        storagePath
       })
       if (response.success) {
         console.log('Todo storage configured successfully')

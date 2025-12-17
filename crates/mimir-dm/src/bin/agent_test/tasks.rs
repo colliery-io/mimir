@@ -200,7 +200,7 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
             AgentTask {
                 id: "create_fighter".to_string(),
                 description: "Create a basic fighter character".to_string(),
-                prompt: "Create a level 3 human fighter named Gareth Stonewall. He should have 28 max HP.".to_string(),
+                prompt: "Create a level 3 human fighter named Gareth Stonewall for player Alice (player_id 1). He should have 28 max HP.".to_string(),
                 turns: vec![],
                 expected_tools: vec!["create_character".to_string()],
                 setup: vec![],
@@ -357,7 +357,7 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
             AgentTask {
                 id: "create_and_equip".to_string(),
                 description: "Create character and add equipment".to_string(),
-                prompt: "Create a level 1 elf wizard named Lyra Starweaver and give her a quarterstaff and a spellbook.".to_string(),
+                prompt: "Create a level 1 elf wizard named Lyra Starweaver for player Bob (player_id 2) and give her a quarterstaff and a spellbook.".to_string(),
                 turns: vec![],
                 expected_tools: vec![
                     "create_character".to_string(),
@@ -389,7 +389,7 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 prompt: String::new(),  // Empty for multi-turn
                 turns: vec![
                     ConversationTurn {
-                        prompt: "Create a level 2 half-orc barbarian named Grok the Mighty.".to_string(),
+                        prompt: "Create a level 2 half-orc barbarian named Grok the Mighty for player Charlie (player_id 3).".to_string(),
                         verify: Some(vec![
                             Verification::CharacterExists {
                                 name: "Grok".to_string(),
