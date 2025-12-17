@@ -40,6 +40,13 @@
 #let alignment = get(data, "alignment", default: none)
 #let classes = get(data, "classes", default: ())
 
+// NPC-specific fields
+#let npc-role = get(data, "npc_role", default: none)
+#let npc-location = get(data, "npc_location", default: none)
+#let npc-faction = get(data, "npc_faction", default: none)
+#let npc-notes = get(data, "npc_notes", default: none)
+#let is-npc = npc-role != none or npc-location != none or npc-faction != none or npc-notes != none
+
 // Build class string
 #let class-str = if classes.len() > 0 {
   classes.map(c => {
@@ -60,8 +67,18 @@
   stroke: (bottom: 2pt + colors.accent),
   {
     grid(
-      columns: (1fr, auto),
+      columns: (1fr, auto, auto),
+      column-gutter: spacing.sm,
       title-text(char-name),
+      if is-npc {
+        box(
+          fill: colors.accent,
+          radius: 4pt,
+          inset: (x: spacing.sm, y: spacing.xs),
+        )[
+          #text(fill: white, weight: "bold", size: sizes.sm)[NPC]
+        ]
+      },
       if classes.len() > 0 {
         let primary = classes.at(0)
         class-icon(get(primary, "class_name", default: "Fighter"), size: sizes.xxl)
@@ -78,6 +95,56 @@
     }
   }
 )
+
+// =============================================================================
+// NPC INFO SECTION (only shown for NPCs)
+// =============================================================================
+
+#if is-npc [
+  #v(spacing.md)
+
+  #block(
+    width: 100%,
+    fill: rgb("#fff8e1"),
+    stroke: 1pt + colors.accent,
+    radius: 4pt,
+    inset: spacing.md,
+  )[
+    #text(weight: "bold", size: sizes.md)[NPC Information]
+    #v(spacing.sm)
+
+    #grid(
+      columns: (1fr, 1fr),
+      column-gutter: spacing.lg,
+      row-gutter: spacing.sm,
+
+      if npc-role != none [
+        #label-text("Role")
+        #linebreak()
+        #text(size: sizes.sm)[#npc-role]
+      ],
+
+      if npc-location != none [
+        #label-text("Location")
+        #linebreak()
+        #text(size: sizes.sm)[#npc-location]
+      ],
+
+      if npc-faction != none [
+        #label-text("Faction")
+        #linebreak()
+        #text(size: sizes.sm)[#npc-faction]
+      ],
+    )
+
+    #if npc-notes != none [
+      #v(spacing.sm)
+      #label-text("DM Notes")
+      #linebreak()
+      #text(size: sizes.sm)[#npc-notes]
+    ]
+  ]
+]
 
 #v(spacing.md)
 
@@ -319,15 +386,26 @@
     ]
   },
 
-  // Spells
+  // Spells or Personality
   {
     let spells = get(data, "spells", default: ())
     let cantrips = get(spells, "cantrips", default: ())
     let prepared = get(spells, "prepared_spells", default: ())
     let known = get(spells, "known_spells", default: ())
     let slots = get(spells, "spell_slots", default: (:))
+    let has-spells = cantrips.len() > 0 or prepared.len() > 0 or known.len() > 0
 
-    if cantrips.len() > 0 or prepared.len() > 0 or known.len() > 0 [
+    // Personality data
+    let personality = get(data, "personality", default: ())
+    let traits = get(personality, "traits", default: none)
+    let ideals = get(personality, "ideals", default: none)
+    let bonds = get(personality, "bonds", default: none)
+    let flaws = get(personality, "flaws", default: none)
+    let has-personality = traits != none or ideals != none or bonds != none or flaws != none
+
+    // For NPCs: always show personality (it's crucial for roleplaying)
+    // For PCs: show spells if they have them, otherwise personality
+    if has-spells and not is-npc [
       #info-box(title: "Spellcasting")[
         // Spell slots
         #if slots.keys().len() > 0 [
@@ -358,14 +436,8 @@
           #text(size: sizes.sm)[#spell-list.map(s => if type(s) == dictionary { get(s, "name", default: "?") } else { s }).join(", ")]
         ]
       ]
-    ] else [
-      // Personality for non-spellcasters
-      #let personality = get(data, "personality", default: ())
-      #let traits = get(personality, "traits", default: none)
-      #let ideals = get(personality, "ideals", default: none)
-      #let bonds = get(personality, "bonds", default: none)
-      #let flaws = get(personality, "flaws", default: none)
-
+    ] else if has-personality [
+      // Personality - shown for NPCs (always) or non-spellcasting PCs
       #info-box(title: "Personality")[
         #if traits != none [
           #label-text("Traits")
@@ -389,6 +461,41 @@
           #label-text("Flaws")
           #linebreak()
           #text(size: sizes.sm)[#flaws]
+        ]
+      ]
+    ]
+
+    // For NPCs with spells, show spells after personality
+    if has-spells and is-npc [
+      #v(spacing.sm)
+      #info-box(title: "Spellcasting")[
+        // Spell slots
+        #if slots.keys().len() > 0 [
+          #label-text("Spell Slots")
+          #linebreak()
+          #for level in slots.keys().sorted() {
+            let slot = slots.at(level)
+            let max-slots = get(slot, "max", default: 0)
+            let current-slots = get(slot, "current", default: 0)
+            text(size: sizes.sm)[Lv#level: #current-slots/#max-slots ]
+          }
+          #v(spacing.sm)
+        ]
+
+        // Cantrips (extract names from SpellReference objects)
+        #if cantrips.len() > 0 [
+          #label-text("Cantrips")
+          #linebreak()
+          #text(size: sizes.sm)[#cantrips.map(s => if type(s) == dictionary { get(s, "name", default: "?") } else { s }).join(", ")]
+          #v(spacing.sm)
+        ]
+
+        // Prepared/Known spells (extract names from SpellReference objects)
+        #let spell-list = if prepared.len() > 0 { prepared } else { known }
+        #if spell-list.len() > 0 [
+          #label-text(if prepared.len() > 0 { "Prepared Spells" } else { "Known Spells" })
+          #linebreak()
+          #text(size: sizes.sm)[#spell-list.map(s => if type(s) == dictionary { get(s, "name", default: "?") } else { s }).join(", ")]
         ]
       ]
     ]

@@ -449,6 +449,11 @@
 #let npcs-raw = data.at("npcs", default: ())
 #let npcs = if npcs-raw == none { () } else { npcs-raw }
 
+// Helper to safely get nested data
+#let get(obj, key, default: none) = {
+  if obj != none and key in obj { obj.at(key) } else { default }
+}
+
 // Helper to calculate ability modifier
 #let ability-mod-calc(score) = {
   calc.floor((score - 10) / 2)
@@ -474,29 +479,27 @@
 
   = Campaign NPCs
 
-  #v(spacing.md)
-
   #for (npc-index, npc) in npcs.enumerate() [
-    #let char-name = npc.at("character_name", default: "Unknown NPC")
-    #let level = npc.at("level", default: 1)
-    #let race = npc.at("race", default: "Unknown")
-    #let subrace = npc.at("subrace", default: none)
-    #let background = npc.at("background", default: "Unknown")
-    #let alignment = npc.at("alignment", default: none)
-    #let classes = npc.at("classes", default: ())
+    #let char-name = get(npc, "character_name", default: "Unknown NPC")
+    #let level = get(npc, "level", default: 1)
+    #let race = get(npc, "race", default: "Unknown")
+    #let subrace = get(npc, "subrace", default: none)
+    #let background = get(npc, "background", default: "Unknown")
+    #let alignment = get(npc, "alignment", default: none)
+    #let classes = get(npc, "classes", default: ())
 
     // NPC-specific fields
-    #let npc-role = npc.at("npc_role", default: none)
-    #let npc-location = npc.at("npc_location", default: none)
-    #let npc-faction = npc.at("npc_faction", default: none)
-    #let npc-notes = npc.at("npc_notes", default: none)
+    #let npc-role = get(npc, "npc_role", default: none)
+    #let npc-location = get(npc, "npc_location", default: none)
+    #let npc-faction = get(npc, "npc_faction", default: none)
+    #let npc-notes = get(npc, "npc_notes", default: none)
 
     // Build class string
     #let class-str = if classes.len() > 0 {
       classes.map(c => {
-        let name = c.at("class_name", default: "?")
-        let lvl = c.at("level", default: 0)
-        let sub = c.at("subclass", default: none)
+        let name = get(c, "class_name", default: "?")
+        let lvl = get(c, "level", default: 0)
+        let sub = get(c, "subclass", default: none)
         if sub != none { [#name (#sub) #lvl] } else { [#name #lvl] }
       }).join(" / ")
     } else { "Commoner" }
@@ -505,7 +508,7 @@
     #let race-str = if subrace != none { [#subrace #race] } else { race }
 
     // Ability scores
-    #let abilities = npc.at("abilities", default: (
+    #let abilities = get(npc, "abilities", default: (
       strength: 10,
       dexterity: 10,
       constitution: 10,
@@ -513,33 +516,63 @@
       wisdom: 10,
       charisma: 10,
     ))
-    #let str-score = abilities.at("strength", default: 10)
-    #let dex-score = abilities.at("dexterity", default: 10)
-    #let con-score = abilities.at("constitution", default: 10)
-    #let int-score = abilities.at("intelligence", default: 10)
-    #let wis-score = abilities.at("wisdom", default: 10)
-    #let cha-score = abilities.at("charisma", default: 10)
+    #let str-score = get(abilities, "strength", default: 10)
+    #let dex-score = get(abilities, "dexterity", default: 10)
+    #let con-score = get(abilities, "constitution", default: 10)
+    #let int-score = get(abilities, "intelligence", default: 10)
+    #let wis-score = get(abilities, "wisdom", default: 10)
+    #let cha-score = get(abilities, "charisma", default: 10)
 
     // Combat stats
-    #let max-hp = npc.at("max_hp", default: 10)
-    #let speed = npc.at("speed", default: 30)
-    #let base-ac = 10 + ability-mod-calc(dex-score)
+    #let max-hp = get(npc, "max_hp", default: 10)
+    #let current-hp = get(npc, "current_hp", default: max-hp)
+    #let speed = get(npc, "speed", default: 30)
 
-    // NPC Card
+    // Proficiencies
+    #let proficiencies = get(npc, "proficiencies", default: ())
+    #let prof-saves = get(proficiencies, "saves", default: ())
+    #let prof-skills = get(proficiencies, "skills", default: ())
+    #let prof-tools = get(proficiencies, "tools", default: ())
+    #let prof-langs = get(proficiencies, "languages", default: ())
+
+    // AC calculation
+    #let equipped = get(npc, "equipped", default: ())
+    #let has-shield = get(equipped, "shield", default: none) != none
+    #let base-ac = 10 + ability-mod-calc(dex-score) + if has-shield { 2 } else { 0 }
+
+    // Personality
+    #let personality = get(npc, "personality", default: ())
+    #let traits = get(personality, "traits", default: none)
+    #let ideals = get(personality, "ideals", default: none)
+    #let bonds = get(personality, "bonds", default: none)
+    #let flaws = get(personality, "flaws", default: none)
+
+    // Class features and feats
+    #let class-features = get(npc, "class_features", default: ())
+    #let feats = get(npc, "feats", default: ())
+
+    // Spells
+    #let spells = get(npc, "spells", default: ())
+    #let cantrips = get(spells, "cantrips", default: ())
+    #let prepared = get(spells, "prepared_spells", default: ())
+    #let known = get(spells, "known_spells", default: ())
+
+    #v(spacing.lg)
+
+    // =========================================================================
+    // NPC HEADER
+    // =========================================================================
     #block(
       width: 100%,
-      stroke: 1pt + colors.border-light,
-      radius: 4pt,
       inset: spacing.md,
-      breakable: false,
+      stroke: (bottom: 2pt + colors.accent),
     )[
-      // Header
       #grid(
         columns: (1fr, auto),
         [
-          #text(size: sizes.lg, weight: "bold", font: font-heading)[#char-name]
+          #text(size: sizes.xl, weight: "bold", font: font-heading)[#char-name]
           #linebreak()
-          #text(size: sizes.sm)[Level #level #race-str #class-str]
+          #text(size: sizes.md)[Level #level #race-str #class-str]
           #if background != "Unknown" or alignment != none [
             #linebreak()
             #text(size: sizes.sm, fill: colors.text-secondary)[
@@ -558,77 +591,230 @@
           ]
         ]
       )
+    ]
 
-      #v(spacing.sm)
-
-      // Two-column layout for stats and info
-      #grid(
-        columns: (1fr, 1fr),
-        column-gutter: spacing.lg,
-
-        // Left column: Ability scores and combat
-        [
-          // Ability Scores Grid
-          #text(weight: "bold", size: sizes.sm)[Ability Scores]
-          #v(spacing.xs)
-          #grid(
-            columns: (1fr, 1fr, 1fr),
-            row-gutter: spacing.xs,
-            column-gutter: spacing.sm,
-            [*STR* #str-score (#fmt-mod(str-score))],
-            [*DEX* #dex-score (#fmt-mod(dex-score))],
-            [*CON* #con-score (#fmt-mod(con-score))],
-            [*INT* #int-score (#fmt-mod(int-score))],
-            [*WIS* #wis-score (#fmt-mod(wis-score))],
-            [*CHA* #cha-score (#fmt-mod(cha-score))],
-          )
-
-          #v(spacing.sm)
-
-          // Combat Stats
-          #text(weight: "bold", size: sizes.sm)[Combat]
-          #v(spacing.xs)
-          #grid(
-            columns: (auto, auto, auto, auto),
-            column-gutter: spacing.md,
-            [*HP* #max-hp],
-            [*AC* #base-ac],
-            [*Speed* #speed ft],
-            [*Prof* +#prof-bonus(level)],
-          )
-        ],
-
-        // Right column: NPC Info
-        [
-          #if npc-role != none or npc-location != none or npc-faction != none [
-            #text(weight: "bold", size: sizes.sm)[NPC Details]
-            #v(spacing.xs)
-            #if npc-role != none [
-              *Role:* #npc-role #linebreak()
-            ]
-            #if npc-location != none [
-              *Location:* #npc-location #linebreak()
-            ]
-            #if npc-faction != none [
-              *Faction:* #npc-faction
-            ]
-          ]
-        ],
-      )
-
-      // Notes section (full width if present)
-      #if npc-notes != none [
+    // =========================================================================
+    // NPC INFO BOX (Role, Location, Faction, Notes)
+    // =========================================================================
+    #if npc-role != none or npc-location != none or npc-faction != none or npc-notes != none [
+      #v(spacing.md)
+      #block(
+        width: 100%,
+        fill: rgb("#fff8e1"),
+        stroke: 1pt + colors.accent,
+        radius: 4pt,
+        inset: spacing.md,
+      )[
+        #text(weight: "bold", size: sizes.md)[NPC Information]
         #v(spacing.sm)
-        #text(weight: "bold", size: sizes.sm)[Notes]
-        #v(spacing.xs)
-        #text(size: sizes.sm, fill: colors.text-secondary)[#npc-notes]
+
+        #grid(
+          columns: (1fr, 1fr),
+          column-gutter: spacing.lg,
+          row-gutter: spacing.sm,
+
+          if npc-role != none [
+            *Role:* #npc-role
+          ],
+          if npc-location != none [
+            *Location:* #npc-location
+          ],
+          if npc-faction != none [
+            *Faction:* #npc-faction
+          ],
+        )
+
+        #if npc-notes != none [
+          #v(spacing.sm)
+          *DM Notes:* #text(size: sizes.sm)[#npc-notes]
+        ]
       ]
     ]
 
     #v(spacing.md)
 
-    // Page break between NPCs (except after last)
-    #if npc-index < npcs.len() - 1 and calc.rem(npc-index + 1, 3) == 0 [
+    // =========================================================================
+    // ABILITY SCORES AND COMBAT
+    // =========================================================================
+    #grid(
+      columns: (2fr, 1fr),
+      column-gutter: spacing.md,
+
+      // Ability Scores
+      [
+        #block(
+          width: 100%,
+          stroke: 1pt + colors.border-light,
+          radius: 4pt,
+          inset: spacing.sm,
+        )[
+          #text(weight: "bold", size: sizes.sm)[Ability Scores]
+          #v(spacing.xs)
+          #grid(
+            columns: (1fr, 1fr, 1fr, 1fr, 1fr, 1fr),
+            column-gutter: spacing.xs,
+            ..("STR", "DEX", "CON", "INT", "WIS", "CHA").zip((str-score, dex-score, con-score, int-score, wis-score, cha-score)).map(((name, score)) => {
+              align(center)[
+                #text(size: sizes.xs, weight: "bold")[#name]
+                #linebreak()
+                #text(size: sizes.md)[#score]
+                #linebreak()
+                #text(size: sizes.sm, fill: colors.text-secondary)[#fmt-mod(score)]
+              ]
+            })
+          )
+        ]
+      ],
+
+      // Combat Stats
+      [
+        #block(
+          width: 100%,
+          stroke: 1pt + colors.border-light,
+          radius: 4pt,
+          inset: spacing.sm,
+        )[
+          #text(weight: "bold", size: sizes.sm)[Combat]
+          #v(spacing.xs)
+          #grid(
+            columns: (1fr, 1fr),
+            row-gutter: spacing.xs,
+            [*HP:* #current-hp / #max-hp],
+            [*AC:* #base-ac],
+            [*Speed:* #speed ft],
+            [*Prof:* +#prof-bonus(level)],
+          )
+        ]
+      ],
+    )
+
+    #v(spacing.sm)
+
+    // =========================================================================
+    // PROFICIENCIES AND PERSONALITY
+    // =========================================================================
+    #grid(
+      columns: (1fr, 1fr),
+      column-gutter: spacing.md,
+
+      // Proficiencies
+      [
+        #block(
+          width: 100%,
+          stroke: 1pt + colors.border-light,
+          radius: 4pt,
+          inset: spacing.sm,
+        )[
+          #text(weight: "bold", size: sizes.sm)[Proficiencies]
+          #v(spacing.xs)
+
+          #if prof-skills.len() > 0 [
+            *Skills:* #text(size: sizes.sm)[#prof-skills.join(", ")]
+            #linebreak()
+          ]
+          #if prof-langs.len() > 0 [
+            *Languages:* #text(size: sizes.sm)[#prof-langs.join(", ")]
+            #linebreak()
+          ]
+          #if prof-tools.len() > 0 [
+            *Tools:* #text(size: sizes.sm)[#prof-tools.join(", ")]
+          ]
+          #if prof-skills.len() == 0 and prof-langs.len() == 0 and prof-tools.len() == 0 [
+            #text(size: sizes.sm, fill: colors.text-secondary)[None listed]
+          ]
+        ]
+      ],
+
+      // Personality
+      [
+        #block(
+          width: 100%,
+          stroke: 1pt + colors.border-light,
+          radius: 4pt,
+          inset: spacing.sm,
+        )[
+          #text(weight: "bold", size: sizes.sm)[Personality]
+          #v(spacing.xs)
+
+          #if traits != none [
+            *Traits:* #text(size: sizes.sm)[#traits]
+            #v(spacing.xs)
+          ]
+          #if ideals != none [
+            *Ideals:* #text(size: sizes.sm)[#ideals]
+            #v(spacing.xs)
+          ]
+          #if bonds != none [
+            *Bonds:* #text(size: sizes.sm)[#bonds]
+            #v(spacing.xs)
+          ]
+          #if flaws != none [
+            *Flaws:* #text(size: sizes.sm)[#flaws]
+          ]
+          #if traits == none and ideals == none and bonds == none and flaws == none [
+            #text(size: sizes.sm, fill: colors.text-secondary)[None listed]
+          ]
+        ]
+      ],
+    )
+
+    // =========================================================================
+    // FEATURES AND SPELLS (if any)
+    // =========================================================================
+    #if class-features.len() > 0 or feats.len() > 0 or cantrips.len() > 0 or prepared.len() > 0 or known.len() > 0 [
+      #v(spacing.sm)
+      #grid(
+        columns: (1fr, 1fr),
+        column-gutter: spacing.md,
+
+        // Features
+        if class-features.len() > 0 or feats.len() > 0 [
+          #block(
+            width: 100%,
+            stroke: 1pt + colors.border-light,
+            radius: 4pt,
+            inset: spacing.sm,
+          )[
+            #text(weight: "bold", size: sizes.sm)[Features & Traits]
+            #v(spacing.xs)
+            #for feature in class-features {
+              text(size: sizes.sm)[- #if type(feature) == dictionary { get(feature, "name", default: "?") } else { feature }]
+              linebreak()
+            }
+            #if feats.len() > 0 [
+              #v(spacing.xs)
+              *Feats:* #text(size: sizes.sm)[#feats.join(", ")]
+            ]
+          ]
+        ],
+
+        // Spells
+        if cantrips.len() > 0 or prepared.len() > 0 or known.len() > 0 [
+          #block(
+            width: 100%,
+            stroke: 1pt + colors.border-light,
+            radius: 4pt,
+            inset: spacing.sm,
+          )[
+            #text(weight: "bold", size: sizes.sm)[Spellcasting]
+            #v(spacing.xs)
+
+            #if cantrips.len() > 0 [
+              *Cantrips:* #text(size: sizes.sm)[#cantrips.map(s => if type(s) == dictionary { get(s, "name", default: "?") } else { s }).join(", ")]
+              #v(spacing.xs)
+            ]
+
+            #let spell-list = if prepared.len() > 0 { prepared } else { known }
+            #if spell-list.len() > 0 [
+              *Spells:* #text(size: sizes.sm)[#spell-list.map(s => if type(s) == dictionary { get(s, "name", default: "?") } else { s }).join(", ")]
+            ]
+          ]
+        ],
+      )
+    ]
+
+    // Page break after each NPC (except the last)
+    #if npc-index < npcs.len() - 1 [
       #pagebreak()
     ]
   ]
