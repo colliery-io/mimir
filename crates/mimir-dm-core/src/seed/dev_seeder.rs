@@ -10,7 +10,7 @@ use crate::error::Result;
 use crate::models::character::CharacterData;
 use crate::models::character::{
     AbilityScores, ClassLevel, Currency, EquippedItems, FeatureReference, InventoryItem,
-    Personality, Proficiencies, SpellData, SpellReference, SpellSlots,
+    LegendaryAction, Personality, Proficiencies, SpellData, SpellReference, SpellSlots,
 };
 use crate::services::{
     CampaignService, CharacterService, DocumentService, ModuleMonsterService, ModuleService,
@@ -734,6 +734,8 @@ fn create_thorin(player_id: i32, created_at: &str) -> CharacterData {
         npc_location: None,
         npc_faction: None,
         npc_notes: None,
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     }
 }
 
@@ -894,6 +896,8 @@ fn create_elara(player_id: i32, created_at: &str) -> CharacterData {
         npc_location: None,
         npc_faction: None,
         npc_notes: None,
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     }
 }
 
@@ -1024,6 +1028,8 @@ fn create_finn(player_id: i32, created_at: &str) -> CharacterData {
         npc_location: None,
         npc_faction: None,
         npc_notes: None,
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     }
 }
 
@@ -1218,6 +1224,8 @@ fn create_helena(player_id: i32, created_at: &str) -> CharacterData {
         npc_location: None,
         npc_faction: None,
         npc_notes: None,
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     }
 }
 
@@ -1314,6 +1322,8 @@ fn create_sildar(created_at: &str) -> CharacterData {
         npc_location: Some("Phandalin".to_string()),
         npc_faction: Some("Lords' Alliance".to_string()),
         npc_notes: Some("Sildar was escorting Gundren Rockseeker to Phandalin when they were ambushed by goblins. He seeks to establish law and order in Phandalin and find his missing contact, Iarno Albrek.".to_string()),
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     }
 }
 
@@ -1383,6 +1393,8 @@ fn create_gundren(created_at: &str) -> CharacterData {
         npc_location: Some("Captured at Cragmaw Castle".to_string()),
         npc_faction: Some("Rockseeker Clan".to_string()),
         npc_notes: Some("Gundren and his brothers discovered the entrance to Wave Echo Cave, a legendary mine. He hired the party to escort supplies while he traveled ahead with Sildar, but was captured by goblins working for the Black Spider.".to_string()),
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     }
 }
 
@@ -1448,6 +1460,8 @@ fn create_toblen(created_at: &str) -> CharacterData {
         npc_location: Some("Stonehill Inn, Phandalin".to_string()),
         npc_faction: None,
         npc_notes: Some("Toblen is a friendly innkeeper who came to Phandalin to prospect but found success running the Stonehill Inn instead. He's a good source of local rumors and information about the Redbrands troubling the town.".to_string()),
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     }
 }
 
@@ -1585,6 +1599,29 @@ fn create_iarno(created_at: &str) -> CharacterData {
         npc_location: Some("Tresendar Manor, Phandalin".to_string()),
         npc_faction: Some("Redbrands".to_string()),
         npc_notes: Some("Iarno Albrek, also known as 'Glasstaff', is a former member of the Lords' Alliance who was sent to establish order in Phandalin. Instead, he secretly became the leader of the Redbrands, a gang of ruffians, working for the mysterious Black Spider. He carries a distinctive glass staff and is a capable enchanter.".to_string()),
+        legendary_actions: vec![
+            LegendaryAction {
+                name: "Cantrip".to_string(),
+                cost: 1,
+                description: "Glasstaff casts a cantrip.".to_string(),
+            },
+            LegendaryAction {
+                name: "Staff Defense".to_string(),
+                cost: 1,
+                description: "Glasstaff expends one charge from his Staff of Defense to cast Shield as a reaction.".to_string(),
+            },
+            LegendaryAction {
+                name: "Hypnotic Gaze".to_string(),
+                cost: 2,
+                description: "Glasstaff uses his Hypnotic Gaze feature on a creature within 5 feet. The target must succeed on a DC 14 Wisdom saving throw or be charmed until the end of Glasstaff's next turn.".to_string(),
+            },
+            LegendaryAction {
+                name: "Cast a Spell".to_string(),
+                cost: 3,
+                description: "Glasstaff casts a spell from his list of prepared spells, using a spell slot as normal.".to_string(),
+            },
+        ],
+        legendary_action_count: Some(3),
     }
 }
 

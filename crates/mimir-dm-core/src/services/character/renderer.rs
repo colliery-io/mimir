@@ -1033,6 +1033,8 @@ mod tests {
             npc_location: None,
             npc_faction: None,
             npc_notes: None,
+            legendary_actions: Vec::new(),
+            legendary_action_count: None,
         }
     }
 
@@ -1151,6 +1153,8 @@ mod tests {
             npc_location: None,
             npc_faction: None,
             npc_notes: None,
+            legendary_actions: Vec::new(),
+            legendary_action_count: None,
         }
     }
 
@@ -1267,6 +1271,8 @@ mod tests {
             npc_location: None,
             npc_faction: None,
             npc_notes: None,
+            legendary_actions: Vec::new(),
+            legendary_action_count: None,
         };
 
         let markdown = renderer.render(&minimal);
@@ -1330,6 +1336,8 @@ mod tests {
             npc_location: Some("The Rusty Anchor, Waterdeep".to_string()),
             npc_faction: Some("Innkeepers Guild".to_string()),
             npc_notes: Some("Friendly and talkative. Knows local rumors.".to_string()),
+            legendary_actions: Vec::new(),
+            legendary_action_count: None,
         };
 
         let markdown = renderer.render(&npc);

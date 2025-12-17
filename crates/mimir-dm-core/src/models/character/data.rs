@@ -368,6 +368,22 @@ pub struct Personality {
     pub flaws: Option<String>,
 }
 
+/// Legendary action for boss NPCs
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LegendaryAction {
+    /// Name of the legendary action
+    pub name: String,
+    /// Cost in legendary action points (usually 1-3)
+    #[serde(default = "default_legendary_cost")]
+    pub cost: i32,
+    /// Description of what the action does
+    pub description: String,
+}
+
+fn default_legendary_cost() -> i32 {
+    1
+}
+
 /// Individual class level for multiclassing support
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClassLevel {
@@ -450,6 +466,13 @@ pub struct CharacterData {
     pub npc_faction: Option<String>,
     #[serde(default)]
     pub npc_notes: Option<String>,
+
+    // Boss NPC abilities
+    #[serde(default)]
+    pub legendary_actions: Vec<LegendaryAction>,
+    /// Number of legendary actions available per round (default 3)
+    #[serde(default)]
+    pub legendary_action_count: Option<i32>,
 }
 
 impl CharacterData {
@@ -595,6 +618,8 @@ mod tests {
             npc_location: None,
             npc_faction: None,
             npc_notes: None,
+            legendary_actions: Vec::new(),
+            legendary_action_count: None,
         };
 
         character.level = 1;
@@ -721,6 +746,8 @@ mod tests {
             npc_location: None,
             npc_faction: None,
             npc_notes: None,
+            legendary_actions: Vec::new(),
+            legendary_action_count: None,
         };
 
         // Test YAML serialization

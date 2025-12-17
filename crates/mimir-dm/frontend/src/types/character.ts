@@ -89,6 +89,9 @@ export interface CharacterData {
   npc_location: string | null
   npc_faction: string | null
   npc_notes: string | null
+  // Boss NPC abilities
+  legendary_actions: LegendaryAction[]
+  legendary_action_count: number | null
 }
 
 export interface AbilityScores {
@@ -177,6 +180,12 @@ export interface Personality {
   ideals: string | null
   bonds: string | null
   flaws: string | null
+}
+
+export interface LegendaryAction {
+  name: string
+  cost: number
+  description: string
 }
 
 // ============================================================================

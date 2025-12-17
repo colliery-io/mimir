@@ -203,6 +203,8 @@ pub async fn create_minimal_character(
         npc_location: None,
         npc_faction: None,
         npc_notes: None,
+        legendary_actions: Vec::new(),
+        legendary_action_count: None,
     };
 
     let mut char_service = CharacterService::new(&mut conn);

@@ -392,6 +392,8 @@ impl<'a> CharacterBuilder<'a> {
             npc_location: None,
             npc_faction: None,
             npc_notes: None,
+            legendary_actions: Vec::new(),
+            legendary_action_count: None,
         };
 
         // Initialize spell slots from class data

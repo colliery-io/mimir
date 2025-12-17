@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 // Re-export commonly used data types
 pub use data::{
     AbilityScores, CharacterData, ClassLevel, Currency, EquippedItems, FeatureReference,
-    InventoryItem, Personality, Proficiencies, SpellData, SpellReference, SpellSlots,
+    InventoryItem, LegendaryAction, Personality, Proficiencies, SpellData, SpellReference,
+    SpellSlots,
 };
 
 /// Database model for characters (metadata only)

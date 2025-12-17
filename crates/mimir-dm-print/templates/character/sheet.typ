@@ -503,6 +503,45 @@
 )
 
 // =============================================================================
+// LEGENDARY ACTIONS (for boss NPCs)
+// =============================================================================
+
+#let legendary-actions = get(data, "legendary_actions", default: ())
+#let legendary-count = get(data, "legendary_action_count", default: none)
+
+#if legendary-actions.len() > 0 [
+  #v(spacing.md)
+
+  #block(
+    width: 100%,
+    fill: rgb("#fff3e0"),
+    stroke: 1pt + rgb("#ff9800"),
+    radius: 4pt,
+    inset: spacing.md,
+  )[
+    #text(weight: "bold", size: sizes.md, fill: rgb("#e65100"))[Legendary Actions]
+    #v(spacing.sm)
+
+    #text(size: sizes.sm)[
+      #char-name can take #if legendary-count != none { legendary-count } else { 3 } legendary actions, choosing from the options below. Only one legendary action can be used at a time and only at the end of another creature's turn. #char-name regains spent legendary actions at the start of its turn.
+    ]
+
+    #v(spacing.sm)
+
+    #for action in legendary-actions {
+      let name = get(action, "name", default: "?")
+      let cost = get(action, "cost", default: 1)
+      let desc = get(action, "description", default: "")
+
+      text(weight: "bold", size: sizes.sm)[#name#if cost > 1 [ (Costs #cost Actions)]. ]
+      text(size: sizes.sm)[#desc]
+      linebreak()
+      v(spacing.xs)
+    }
+  ]
+]
+
+// =============================================================================
 // FOOTER
 // =============================================================================
 
