@@ -43,11 +43,12 @@ const skullImage = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 72px); /* Full height minus header */
+  height: 100%;
 }
 
 .hero {
   text-align: center;
+  overflow: visible;
 }
 
 .hero-image-container {
@@ -55,14 +56,18 @@ const skullImage = computed(() => {
   justify-content: center;
   align-items: center;
   animation: float 6s ease-in-out infinite;
+  overflow: visible;
 }
 
 .hero-image {
   width: 400px;
   height: 400px;
   object-fit: contain;
-  /* Removed decorative glow effect for theme consistency */
   display: block;
+  /* Add padding to allow glow effects to extend beyond image bounds */
+  padding: 60px;
+  margin: -60px;
+  box-sizing: content-box;
 }
 
 @keyframes float {

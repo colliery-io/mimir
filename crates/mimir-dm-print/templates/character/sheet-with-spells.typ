@@ -462,6 +462,76 @@
 )
 
 // =============================================================================
+// NPC INFORMATION (if applicable)
+// =============================================================================
+
+#let npc-role = get(char-data, "npc_role", default: none)
+#let npc-location = get(char-data, "npc_location", default: none)
+#let npc-faction = get(char-data, "npc_faction", default: none)
+#let npc-notes = get(char-data, "npc_notes", default: none)
+
+#if npc-role != none or npc-location != none or npc-faction != none or npc-notes != none [
+  #v(spacing.md)
+
+  #info-box(title: "NPC Information")[
+    #if npc-role != none [
+      #inline-labeled("Role", npc-role)
+      #linebreak()
+    ]
+    #if npc-location != none [
+      #inline-labeled("Location", npc-location)
+      #linebreak()
+    ]
+    #if npc-faction != none [
+      #inline-labeled("Faction", npc-faction)
+      #linebreak()
+    ]
+    #if npc-notes != none [
+      #v(spacing.xs)
+      #label-text("Notes")
+      #linebreak()
+      #text(size: sizes.sm)[#npc-notes]
+    ]
+  ]
+]
+
+// =============================================================================
+// LEGENDARY ACTIONS (for boss NPCs)
+// =============================================================================
+
+#let legendary-actions = get(char-data, "legendary_actions", default: ())
+#let legendary-action-count = get(char-data, "legendary_action_count", default: 3)
+
+#if type(legendary-actions) == array and legendary-actions.len() > 0 [
+  #v(spacing.md)
+
+  #info-box(title: "Legendary Actions")[
+    #text(size: sizes.sm)[
+      #char-name can take #legendary-action-count legendary action#if legendary-action-count != 1 [s], choosing from the options below. Only one legendary action can be used at a time and only at the end of another creature's turn.
+    ]
+
+    #v(spacing.sm)
+
+    #for action in legendary-actions [
+      #{
+        let action-name = get(action, "name", default: "Unknown")
+        let action-cost = get(action, "cost", default: 1)
+        let action-desc = get(action, "description", default: "")
+
+        text(weight: "bold", size: sizes.sm)[#action-name]
+        if action-cost > 1 [
+          #text(size: sizes.xs, fill: colors.text-secondary)[ (Costs #action-cost Actions)]
+        ]
+        [. ]
+        text(size: sizes.sm)[#action-desc]
+        linebreak()
+        v(spacing.xs)
+      }
+    ]
+  ]
+]
+
+// =============================================================================
 // FOOTER FOR CHARACTER SHEET
 // =============================================================================
 

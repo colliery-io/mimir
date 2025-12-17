@@ -789,14 +789,25 @@ pub async fn export_campaign_documents(
         .collect();
 
     // Sort campaign documents according to campaign construction flow
+    // Includes both required and optional documents from all stages
     let document_order: Vec<&str> = vec![
+        // Concept stage
         "campaign_pitch",
+        // Session Zero stage (required)
         "starting_scenario",
         "world_primer",
         "character_guidelines",
         "table_expectations",
         "character_integration",
+        // Session Zero stage (optional)
+        "safety_tools",
+        "house_rules",
+        // Integration stage (required)
         "campaign_bible",
+        // Integration stage (optional)
+        "player_secrets",
+        "faction_overview",
+        // Legacy document types
         "major_npc_tracker",
     ];
 

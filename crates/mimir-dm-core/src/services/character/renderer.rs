@@ -3,7 +3,7 @@
 //! Generates human-readable markdown character sheets from CharacterData.
 
 use crate::models::catalog::{Item, Spell};
-use crate::models::character::{CharacterData, FeatureReference};
+use crate::models::character::CharacterData;
 use std::collections::HashMap;
 
 /// Trait for rendering character sheets in various formats.
@@ -877,6 +877,36 @@ impl MarkdownRenderer {
         output.push('\n');
         output
     }
+
+    /// Renders legendary actions section for boss NPCs
+    fn render_legendary_actions(&self, character: &CharacterData) -> String {
+        if character.legendary_actions.is_empty() {
+            return String::new();
+        }
+
+        let mut output = String::from("## Legendary Actions\n\n");
+
+        let action_count = character.legendary_action_count.unwrap_or(3);
+        output.push_str(&format!(
+            "{} can take {} legendary action{}, choosing from the options below. \
+             Only one legendary action can be used at a time and only at the end of \
+             another creature's turn.\n\n",
+            character.character_name,
+            action_count,
+            if action_count == 1 { "" } else { "s" }
+        ));
+
+        for action in &character.legendary_actions {
+            output.push_str(&format!("**{}**", action.name));
+            if action.cost > 1 {
+                output.push_str(&format!(" (Costs {} Actions)", action.cost));
+            }
+            output.push_str(&format!(". {}  \n", action.description));
+        }
+
+        output.push('\n');
+        output
+    }
 }
 
 impl CharacterRenderer for MarkdownRenderer {
@@ -905,6 +935,7 @@ impl CharacterRenderer for MarkdownRenderer {
         output.push_str(&self.render_metadata(character));
         // Render NPC info after metadata if character has NPC fields
         output.push_str(&self.render_npc_info(character));
+        output.push_str(&self.render_legendary_actions(character));
         output.push_str(&self.render_ability_scores(character));
         output.push_str(&self.render_combat_stats(character));
         output.push_str(&self.render_attacks(character));
@@ -926,10 +957,10 @@ impl CharacterRenderer for MarkdownRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::character::data::{ClassLevel, Currency};
+    use crate::models::character::data::{ClassLevel, Currency, LegendaryAction};
     use crate::models::character::{
-        AbilityScores, EquippedItems, InventoryItem, Personality, Proficiencies, SpellData,
-        SpellReference, SpellSlots,
+        AbilityScores, EquippedItems, FeatureReference, InventoryItem, Personality, Proficiencies,
+        SpellData, SpellReference, SpellSlots,
     };
 
     fn create_sample_fighter() -> CharacterData {
@@ -1359,5 +1390,92 @@ mod tests {
 
         // Should not have NPC section for player characters
         assert!(!markdown.contains("## NPC Information"));
+    }
+
+    #[test]
+    fn test_render_legendary_actions() {
+        let renderer = MarkdownRenderer::new();
+
+        // Create a boss NPC with legendary actions
+        let boss = CharacterData {
+            character_name: "Ancient Red Dragon".to_string(),
+            player_id: None,
+            level: 20,
+            experience_points: 0,
+            version: 1,
+            snapshot_reason: None,
+            created_at: "2025-01-01".to_string(),
+            race: "Dragon".to_string(),
+            subrace: None,
+            classes: vec![ClassLevel {
+                class_name: "Monster".to_string(),
+                level: 20,
+                subclass: None,
+                hit_dice_type: "d20".to_string(),
+                hit_dice_remaining: 20,
+            }],
+            background: "Ancient Wyrm".to_string(),
+            alignment: Some("Chaotic Evil".to_string()),
+            abilities: AbilityScores {
+                strength: 30,
+                dexterity: 10,
+                constitution: 29,
+                intelligence: 18,
+                wisdom: 15,
+                charisma: 23,
+            },
+            max_hp: 546,
+            current_hp: 546,
+            proficiencies: Proficiencies::default(),
+            class_features: Vec::new(),
+            feats: Vec::new(),
+            spells: SpellData::default(),
+            inventory: Vec::new(),
+            currency: Currency::default(),
+            speed: 40,
+            equipped: EquippedItems::default(),
+            personality: Personality::default(),
+            npc_role: Some("Villain".to_string()),
+            npc_location: Some("Mount Hotenow".to_string()),
+            npc_faction: None,
+            npc_notes: None,
+            legendary_actions: vec![
+                LegendaryAction {
+                    name: "Detect".to_string(),
+                    cost: 1,
+                    description: "The dragon makes a Wisdom (Perception) check.".to_string(),
+                },
+                LegendaryAction {
+                    name: "Tail Attack".to_string(),
+                    cost: 1,
+                    description: "The dragon makes a tail attack.".to_string(),
+                },
+                LegendaryAction {
+                    name: "Wing Attack".to_string(),
+                    cost: 2,
+                    description: "The dragon beats its wings. Each creature within 15 feet must succeed on a DC 25 Dexterity saving throw or take 17 bludgeoning damage and be knocked prone.".to_string(),
+                },
+            ],
+            legendary_action_count: Some(3),
+        };
+
+        let markdown = renderer.render(&boss);
+
+        // Check legendary actions section
+        assert!(markdown.contains("## Legendary Actions"));
+        assert!(markdown.contains("Ancient Red Dragon can take 3 legendary actions"));
+        assert!(markdown.contains("**Detect**. The dragon makes a Wisdom (Perception) check."));
+        assert!(markdown.contains("**Tail Attack**. The dragon makes a tail attack."));
+        assert!(markdown.contains("**Wing Attack** (Costs 2 Actions). The dragon beats its wings."));
+    }
+
+    #[test]
+    fn test_legendary_actions_not_rendered_when_empty() {
+        let renderer = MarkdownRenderer::new();
+        let fighter = create_sample_fighter();
+        let markdown = renderer.render(&fighter);
+
+        // Should not have legendary actions section for regular characters
+        assert!(!markdown.contains("## Legendary Actions"));
     }
 }

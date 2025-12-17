@@ -51,7 +51,8 @@ onMounted(async () => {
 
 <style>
 #app {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--color-background);
   color: var(--color-text);
   transition: background-color 0.3s ease, color 0.3s ease;

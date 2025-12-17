@@ -15,19 +15,22 @@ import AppHeader from '../../../app/AppHeader.vue'
 
 <style scoped>
 .main-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .main-content {
   flex: 1;
   padding: var(--spacing-xl) 0;
+  overflow-y: auto;
 }
 
 .content-wrapper {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--spacing-lg);
+  height: 100%;
 }
 </style>

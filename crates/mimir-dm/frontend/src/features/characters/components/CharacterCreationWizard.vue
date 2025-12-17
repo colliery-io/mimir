@@ -92,6 +92,55 @@
                 placeholder="Additional notes about this NPC..."
               ></textarea>
             </div>
+
+            <!-- Legendary Actions (for boss NPCs) -->
+            <div class="legendary-actions-section">
+              <div class="legendary-header">
+                <label>Legendary Actions <span class="optional-label">(optional, for boss NPCs)</span></label>
+                <button type="button" class="btn-add-action" @click="addLegendaryAction">
+                  + Add Action
+                </button>
+              </div>
+
+              <div v-if="formData.legendary_actions.length > 0" class="legendary-count-row">
+                <label>Actions per Round:</label>
+                <select v-model.number="formData.legendary_action_count" class="form-select-sm">
+                  <option :value="1">1</option>
+                  <option :value="2">2</option>
+                  <option :value="3">3</option>
+                  <option :value="4">4</option>
+                  <option :value="5">5</option>
+                </select>
+              </div>
+
+              <div v-for="(action, index) in formData.legendary_actions" :key="index" class="legendary-action-card">
+                <div class="action-header">
+                  <input
+                    v-model="action.name"
+                    type="text"
+                    class="form-input action-name-input"
+                    placeholder="Action name"
+                  />
+                  <div class="action-cost">
+                    <label>Cost:</label>
+                    <select v-model.number="action.cost" class="form-select-sm">
+                      <option :value="1">1</option>
+                      <option :value="2">2</option>
+                      <option :value="3">3</option>
+                    </select>
+                  </div>
+                  <button type="button" class="btn-remove-action" @click="removeLegendaryAction(index)">
+                    x
+                  </button>
+                </div>
+                <textarea
+                  v-model="action.description"
+                  class="form-textarea action-description"
+                  rows="2"
+                  placeholder="Describe what this action does..."
+                ></textarea>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -386,6 +435,18 @@
               <span class="review-label">Notes:</span>
               <span class="review-value review-notes">{{ formData.npc_notes }}</span>
             </div>
+            <div v-if="formData.is_npc && formData.legendary_actions.length > 0" class="review-item review-legendary">
+              <span class="review-label">Legendary Actions:</span>
+              <span class="review-value">
+                {{ formData.legendary_actions.length }} action(s), {{ formData.legendary_action_count }}/round
+                <ul class="legendary-review-list">
+                  <li v-for="(action, i) in formData.legendary_actions" :key="i">
+                    <strong>{{ action.name || '(unnamed)' }}</strong>
+                    <span v-if="action.cost > 1"> ({{ action.cost }} actions)</span>
+                  </li>
+                </ul>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -428,7 +489,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { usePlayerStore } from '../../../stores/players'
 import { useCampaignStore } from '../../../stores/campaigns'
 import SpellSelector from './SpellSelector.vue'
-import type { SpellReferenceInput } from '@/types/character'
+import type { SpellReferenceInput, LegendaryAction } from '@/types/character'
 
 const props = withDefaults(defineProps<{
   visible: boolean
@@ -500,7 +561,10 @@ const formData = ref({
   npc_role: '',
   npc_location: '',
   npc_faction: '',
-  npc_notes: ''
+  npc_notes: '',
+  // Boss NPC abilities
+  legendary_actions: [] as LegendaryAction[],
+  legendary_action_count: 3
 })
 
 const players = computed(() => playerStore.players)
@@ -1078,7 +1142,9 @@ const resetForm = () => {
     npc_role: '',
     npc_location: '',
     npc_faction: '',
-    npc_notes: ''
+    npc_notes: '',
+    legendary_actions: [],
+    legendary_action_count: 3
   }
   selectedSpells.value = []
   selectedSpellsGrouped.value = {}
@@ -1097,7 +1163,22 @@ const setCharacterType = (isNpc: boolean) => {
     formData.value.npc_location = ''
     formData.value.npc_faction = ''
     formData.value.npc_notes = ''
+    formData.value.legendary_actions = []
+    formData.value.legendary_action_count = 3
   }
+}
+
+// Legendary action helpers
+const addLegendaryAction = () => {
+  formData.value.legendary_actions.push({
+    name: '',
+    cost: 1,
+    description: ''
+  })
+}
+
+const removeLegendaryAction = (index: number) => {
+  formData.value.legendary_actions.splice(index, 1)
 }
 
 const nextStep = () => {
@@ -1186,7 +1267,14 @@ const createCharacter = async () => {
       npc_role: formData.value.is_npc && formData.value.npc_role ? formData.value.npc_role : null,
       npc_location: formData.value.is_npc && formData.value.npc_location ? formData.value.npc_location : null,
       npc_faction: formData.value.is_npc && formData.value.npc_faction ? formData.value.npc_faction : null,
-      npc_notes: formData.value.is_npc && formData.value.npc_notes ? formData.value.npc_notes : null
+      npc_notes: formData.value.is_npc && formData.value.npc_notes ? formData.value.npc_notes : null,
+      // Boss NPC abilities
+      legendary_actions: formData.value.is_npc && formData.value.legendary_actions.length > 0
+        ? formData.value.legendary_actions
+        : null,
+      legendary_action_count: formData.value.is_npc && formData.value.legendary_actions.length > 0
+        ? formData.value.legendary_action_count
+        : null
     }
 
     await invoke('create_character', { request })
@@ -1626,9 +1714,14 @@ watch(
   font-size: 14px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: var(--background);
+  background: var(--surface);
   color: var(--text);
-  width: 60px;
+  min-width: 60px;
+}
+
+.form-select-sm:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .ability-incrementer {
@@ -1886,5 +1979,120 @@ watch(
 .review-notes {
   white-space: pre-wrap;
   font-style: italic;
+}
+
+/* Legendary Actions Section */
+.legendary-actions-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.legendary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.legendary-header label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.btn-add-action {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-add-action:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.legendary-count-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.legendary-count-row label {
+  color: var(--text-secondary);
+}
+
+.legendary-action-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.action-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.action-name-input {
+  flex: 1;
+}
+
+.action-cost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.btn-remove-action {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-remove-action:hover {
+  background: var(--error, #dc2626);
+  color: white;
+  border-color: var(--error, #dc2626);
+}
+
+.action-description {
+  min-height: 50px;
+}
+
+/* Legendary actions in review */
+.review-legendary {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.legendary-review-list {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+.legendary-review-list li {
+  margin-bottom: 4px;
 }
 </style>

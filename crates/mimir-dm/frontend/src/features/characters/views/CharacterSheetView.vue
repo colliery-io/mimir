@@ -311,6 +311,74 @@
                 </div>
               </template>
             </section>
+
+            <!-- Legendary Actions (for NPCs) -->
+            <section class="sheet-section legendary-section" v-if="isNpc && (hasLegendaryActions || isEditing)">
+              <h2 class="section-title">Legendary Actions</h2>
+
+              <!-- Edit mode -->
+              <template v-if="isEditing && editData">
+                <div class="legendary-count-edit">
+                  <label>Actions per Round:</label>
+                  <select v-model.number="editData.legendary_action_count" class="form-select-sm">
+                    <option :value="1">1</option>
+                    <option :value="2">2</option>
+                    <option :value="3">3</option>
+                    <option :value="4">4</option>
+                    <option :value="5">5</option>
+                  </select>
+                  <button type="button" class="btn-add-legendary" @click="addLegendaryActionEdit">
+                    + Add Action
+                  </button>
+                </div>
+
+                <div v-for="(action, index) in editData.legendary_actions" :key="index" class="legendary-action-edit">
+                  <div class="action-edit-header">
+                    <input
+                      v-model="action.name"
+                      type="text"
+                      class="edit-input"
+                      placeholder="Action name"
+                    />
+                    <div class="action-cost-edit">
+                      <label>Cost:</label>
+                      <select v-model.number="action.cost" class="form-select-sm">
+                        <option :value="1">1</option>
+                        <option :value="2">2</option>
+                        <option :value="3">3</option>
+                      </select>
+                    </div>
+                    <button type="button" class="btn-remove-legendary" @click="removeLegendaryActionEdit(index)">
+                      x
+                    </button>
+                  </div>
+                  <textarea
+                    v-model="action.description"
+                    class="edit-textarea action-desc-edit"
+                    placeholder="Action description..."
+                    rows="2"
+                  ></textarea>
+                </div>
+
+                <p v-if="editData.legendary_actions.length === 0" class="no-actions-hint">
+                  No legendary actions defined. Click "+ Add Action" to add one.
+                </p>
+              </template>
+
+              <!-- View mode -->
+              <template v-else>
+                <p class="legendary-intro">
+                  {{ data.character_name }} can take {{ data.legendary_action_count || 3 }} legendary actions,
+                  choosing from the options below. Only one legendary action can be used at a time and only at
+                  the end of another creature's turn.
+                </p>
+                <div v-for="(action, index) in data.legendary_actions" :key="index" class="legendary-action-view">
+                  <strong>{{ action.name }}</strong>
+                  <span v-if="action.cost > 1"> (Costs {{ action.cost }} Actions)</span>.
+                  {{ action.description }}
+                </div>
+              </template>
+            </section>
           </div>
         </div>
 
@@ -841,6 +909,12 @@ const editData = ref<{
     bonds: string
     flaws: string
   }
+  legendary_actions: Array<{
+    name: string
+    cost: number
+    description: string
+  }>
+  legendary_action_count: number
 } | null>(null)
 
 const characterId = computed(() => Number(route.params.id))
@@ -1438,6 +1512,20 @@ const hasPersonality = computed(() => {
   return p.traits || p.ideals || p.bonds || p.flaws
 })
 
+const isNpc = computed(() => {
+  if (!data.value) return false
+  return data.value.npc_role != null ||
+         data.value.npc_location != null ||
+         data.value.npc_faction != null ||
+         data.value.npc_notes != null ||
+         (data.value.legendary_actions && data.value.legendary_actions.length > 0)
+})
+
+const hasLegendaryActions = computed(() => {
+  if (!data.value) return false
+  return data.value.legendary_actions && data.value.legendary_actions.length > 0
+})
+
 // Spellcasting
 const hasSpells = computed(() => {
   if (!data.value) return false
@@ -1872,7 +1960,11 @@ const startEditing = () => {
       ideals: data.value.personality.ideals || '',
       bonds: data.value.personality.bonds || '',
       flaws: data.value.personality.flaws || ''
-    }
+    },
+    legendary_actions: data.value.legendary_actions
+      ? data.value.legendary_actions.map(a => ({ ...a }))
+      : [],
+    legendary_action_count: data.value.legendary_action_count || 3
   }
   isEditing.value = true
 }
@@ -1880,6 +1972,21 @@ const startEditing = () => {
 const cancelEditing = () => {
   isEditing.value = false
   editData.value = null
+}
+
+// Legendary action edit helpers
+const addLegendaryActionEdit = () => {
+  if (!editData.value) return
+  editData.value.legendary_actions.push({
+    name: '',
+    cost: 1,
+    description: ''
+  })
+}
+
+const removeLegendaryActionEdit = (index: number) => {
+  if (!editData.value) return
+  editData.value.legendary_actions.splice(index, 1)
 }
 
 const saveEdits = async () => {
@@ -1897,7 +2004,11 @@ const saveEdits = async () => {
         ideals: editData.value.personality.ideals || null,
         bonds: editData.value.personality.bonds || null,
         flaws: editData.value.personality.flaws || null
-      }
+      },
+      legendary_actions: editData.value.legendary_actions.filter(a => a.name.trim() !== ''),
+      legendary_action_count: editData.value.legendary_actions.length > 0
+        ? editData.value.legendary_action_count
+        : null
     }
 
     await invoke('update_character', {
@@ -2576,6 +2687,119 @@ const deleteCharacter = async () => {
   color: var(--color-text-secondary);
   display: block;
   margin-bottom: 2px;
+}
+
+/* Legendary Actions Section */
+.legendary-intro {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-md);
+  line-height: 1.5;
+}
+
+.legendary-action-view {
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-sm);
+  line-height: 1.4;
+}
+
+.legendary-count-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.legendary-count-edit label {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.legendary-action-edit {
+  background: var(--color-surface-variant);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.action-edit-header {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.action-edit-header .edit-input {
+  flex: 1;
+}
+
+.action-cost-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.action-cost-edit label {
+  color: var(--color-text-secondary);
+}
+
+.form-select-sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  min-width: 60px;
+}
+
+.form-select-sm:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.btn-add-legendary {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-primary-500);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-add-legendary:hover {
+  background: var(--color-primary-600);
+}
+
+.btn-remove-legendary {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.75rem;
+  background: var(--color-surface-variant);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.btn-remove-legendary:hover {
+  background: var(--color-error);
+  color: white;
+  border-color: var(--color-error);
+}
+
+.action-desc-edit {
+  min-height: 50px;
+}
+
+.no-actions-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
 }
 
 /* Spells Sheet Tab */

@@ -3,10 +3,7 @@
     <!-- Play Mode Header -->
     <header class="play-header">
       <div class="header-left">
-        <button class="back-button" @click="navigateBack">
-          <span class="back-icon">&larr;</span>
-          Back to Module
-        </button>
+        <!-- Empty left section for layout balance -->
       </div>
 
       <div class="header-center">
@@ -459,13 +456,13 @@ async function loadDocumentContent(doc: Document) {
 }
 
 // Navigation
-function navigateBack() {
-  router.push({ name: 'module-board', params: { id: moduleId.value } })
-}
-
 function handleEndSession() {
-  if (confirm('End this play session and return to module prep?')) {
-    navigateBack()
+  // Navigate to campaign board view
+  if (campaign.value?.id) {
+    router.push({ name: 'campaign-board', params: { id: campaign.value.id } })
+  } else {
+    // Fallback to campaigns list
+    router.push({ name: 'campaigns' })
   }
 }
 
@@ -605,28 +602,6 @@ onMounted(async () => {
   background: var(--color-accent, #e67e22);
   color: white;
   border-radius: 0.25rem;
-}
-
-.back-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  color: var(--color-text);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.back-button:hover {
-  background: var(--color-surface);
-  border-color: var(--color-primary);
-}
-
-.back-icon {
-  font-size: 1.1rem;
 }
 
 .end-session-button {

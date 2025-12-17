@@ -8,7 +8,9 @@ use crate::state::AppState;
 use mimir_dm_core::models::catalog::Spell;
 use mimir_dm_core::models::character::data::ClassLevel;
 use mimir_dm_core::models::character::data::{InventoryItem, Personality};
-use mimir_dm_core::models::character::{Character, CharacterData, CharacterVersion, SpellReference};
+use mimir_dm_core::models::character::{
+    Character, CharacterData, CharacterVersion, LegendaryAction, SpellReference,
+};
 use mimir_dm_core::services::character::creation::{AbilityScoreMethod, CharacterBuilder};
 use mimir_dm_core::services::character::level_up::{AsiOrFeat, HpGainMethod, LevelUpOptions};
 use mimir_dm_core::services::character::renderer::{CharacterRenderer, MarkdownRenderer};
@@ -47,6 +49,9 @@ pub struct CreateCharacterRequest {
     pub npc_location: Option<String>,
     pub npc_faction: Option<String>,
     pub npc_notes: Option<String>,
+    // Boss NPC abilities
+    pub legendary_actions: Option<Vec<LegendaryActionInput>>,
+    pub legendary_action_count: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -87,6 +92,13 @@ impl From<SpellReferenceInput> for SpellReference {
     fn from(input: SpellReferenceInput) -> Self {
         SpellReference::new(input.name, input.source)
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LegendaryActionInput {
+    pub name: String,
+    pub cost: i32,
+    pub description: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -352,6 +364,19 @@ pub async fn create_character(
         character_data.npc_location = request.npc_location;
         character_data.npc_faction = request.npc_faction;
         character_data.npc_notes = request.npc_notes;
+
+        // Set legendary actions for boss NPCs
+        if let Some(legendary_actions) = request.legendary_actions {
+            character_data.legendary_actions = legendary_actions
+                .into_iter()
+                .map(|a| LegendaryAction {
+                    name: a.name,
+                    cost: a.cost,
+                    description: a.description,
+                })
+                .collect();
+        }
+        character_data.legendary_action_count = request.legendary_action_count;
     }
 
     // Persist to database using CharacterService
