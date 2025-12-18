@@ -208,7 +208,7 @@ pub type CancellationTokens = Arc<Mutex<HashMap<String, CancellationToken>>>;
 
 /// LLM Service state
 pub struct LlmService {
-    pub(super) provider: Provider,
+    pub(super) provider: Arc<Provider>,
     model_name: String,
     provider_type: ProviderType,
     pub(super) tool_registry: Arc<ToolRegistry>,
@@ -245,6 +245,7 @@ impl LlmService {
 
         // Create provider based on settings
         let (provider, model_name, provider_type) = Self::create_provider_from_settings(&settings)?;
+        let provider = Arc::new(provider);
 
         // Get tool confirmation timeout from settings
         let tool_confirmation_timeout =
@@ -278,7 +279,11 @@ impl LlmService {
         // Create tool registry and register all standard tools
         // This is the single source of truth for available tools
         let mut tool_registry = ToolRegistry::new();
-        register_all_tools(&mut tool_registry, db_service.clone(), todo_state_manager.clone());
+        register_all_tools(
+            &mut tool_registry,
+            db_service.clone(),
+            todo_state_manager.clone(),
+        );
         info!("Tool registry initialized with all standard tools");
 
         Ok(Self {
@@ -504,13 +509,13 @@ impl LlmService {
 
     /// Get the provider for direct LLM operations
     #[allow(dead_code)]
-    pub fn provider(&self) -> Provider {
+    pub fn provider(&self) -> Arc<Provider> {
         self.provider.clone()
     }
 
     /// Get the configured provider
     /// Note: The endpoint parameter is deprecated and ignored - configure provider via settings
-    pub(super) fn get_provider_with_endpoint(&self, _endpoint: Option<&str>) -> Result<Provider> {
+    pub(super) fn get_provider_with_endpoint(&self, _endpoint: Option<&str>) -> Result<Arc<Provider>> {
         Ok(self.provider.clone())
     }
 

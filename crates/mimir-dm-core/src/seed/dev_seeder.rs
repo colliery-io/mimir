@@ -13,8 +13,8 @@ use crate::models::character::{
     LegendaryAction, Personality, Proficiencies, SpellData, SpellReference, SpellSlots,
 };
 use crate::services::{
-    CampaignService, CharacterService, DocumentService, ModuleMonsterService, ModuleService,
-    PlayerService,
+    CampaignService, CampaignSummaryService, CharacterService, DocumentService,
+    ModuleMonsterService, ModuleService, PlayerService,
 };
 use chrono::Utc;
 use std::collections::HashMap;
@@ -189,6 +189,10 @@ pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Resu
     // Create session notes documents
     seed_session_notes(conn, campaign.id, &campaign.directory_path)?;
     info!("Created session notes documents");
+
+    // Generate campaign summary from session notes
+    seed_campaign_summary(conn, campaign.id, &campaign.directory_path)?;
+    info!("Generated campaign summary");
 
     // Create players
     let players = seed_players(conn)?;
@@ -658,6 +662,43 @@ Full health, well-rested after a night at Stonehill Inn.
         let mut service = DocumentService::new(conn);
         service.create_document(new_doc)?;
     }
+
+    Ok(())
+}
+
+/// Seed campaign summary from session notes
+///
+/// Creates a pre-written summary that matches the session notes content.
+/// This provides deterministic test data without requiring LLM calls.
+fn seed_campaign_summary(
+    conn: &mut DbConnection,
+    campaign_id: i32,
+    campaign_directory: &str,
+) -> Result<()> {
+    use crate::services::campaign_summary_service::CampaignSummary;
+
+    // Pre-written summary that matches the session notes content
+    let summary_text = r#"The party began by escorting Gundren Rockseeker's wagon from Neverwinter to Phandalin, where a goblin ambush on the Triboar Trail led to the capture of Gundren and Sildar Hallwinter. They followed the goblins' trail, evaded a snare, and entered the Cragmaw Hideout. Inside, the party rescued Sildar, defeated the bugbear leader Klarg, and learned that Gundren had discovered Wave Echo Cave—home of the legendary Forge of Spells—and had been taken to a place called Cragmaw Castle by an ominous figure known as the Black Spider.
+
+After escaping the hideout, the group escorted Sildar to Phandalin, where they delivered the wagon goods to Barthen's Provisions and uncovered a town in distress. They learned of the Redbrands, a red‑cloaked gang extorting the townsfolk, and that their leader was a mysterious "Glasstaff" whose hideout lies beneath Tresendar Manor. They captured a Redbrand thug to interrogate and discovered that Thel Dendrar—the only townsperson who confronted the bad guys—disappeared after confronting them. Halia Thornton at the Miner's Exchange and Sister Garaele at the shrine offered assistance in dealing with the Redbrands.
+
+Presently, the party is in Phandalin, investigating the Redbrands, locating Glasstaff, and searching for the missing Iarno Albrek. They also need to find Cragmaw Castle's location and learn more about the Black Spider's motives. Their main immediate objectives are to uncover the Redbrand base, recover Thel Dendrar, and identify Cragmaw Castle's whereabouts so they can rescue Gundren.
+
+Key NPCs encountered include the captured dwarf Gundren Rockseeker, the loyal Sildar Hallwinter, the bugbear leader Klarg, the merchant Elmar Barthen, the innkeeper Toblen Stonehill, the secretive Iarno Albrek, the Redbrand leader Glasstaff, the informant Linene Graywind, the former adventurer Daran Edermath, and the helpful figures Halia Thornton and Sister Garaele."#;
+
+    // Gather source materials to compute hash
+    let mut summary_service = CampaignSummaryService::new(conn);
+    let source = summary_service.gather_source_materials(campaign_id, campaign_directory)?;
+    let source_hash = CampaignSummaryService::calculate_source_hash(&source);
+
+    let summary = CampaignSummary {
+        summary: summary_text.to_string(),
+        generated_at: Utc::now().to_rfc3339(),
+        source_hash,
+        campaign_id,
+    };
+
+    summary_service.save_summary(campaign_directory, &summary)?;
 
     Ok(())
 }

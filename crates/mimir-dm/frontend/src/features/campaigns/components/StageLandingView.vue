@@ -6,16 +6,24 @@
       :subtitle="stageInfo.subtitle"
     />
 
-    <!-- Campaign Actions -->
+    <!-- Campaign Summary Actions -->
     <div class="campaign-actions" v-if="campaign?.id">
-      <button
-        class="btn btn-ghost btn-sm"
-        :disabled="invalidatingSummary"
-        @click="handleInvalidateSummary"
-        title="Clear cached AI summary. It will regenerate on next chat."
-      >
-        {{ invalidatingSummary ? 'Clearing...' : 'Refresh Story Summary' }}
-      </button>
+      <div class="summary-controls">
+        <button
+          class="btn btn-ghost btn-sm"
+          :disabled="refreshingSummary"
+          @click="handleRefreshSummary"
+          title="Regenerate the AI story summary from session notes"
+        >
+          {{ refreshingSummary ? 'Refreshing...' : 'Refresh Story Summary' }}
+        </button>
+        <span v-if="summaryLastUpdated" class="summary-timestamp">
+          Last updated: {{ formatTimestamp(summaryLastUpdated) }}
+        </span>
+        <span v-else class="summary-timestamp summary-none">
+          No summary generated yet
+        </span>
+      </div>
     </div>
 
     <!-- Next Steps (shown at top when ready, except for active/concluding stages) -->
@@ -134,7 +142,8 @@ const modulesLoading = ref(false)
 const showCreateModal = ref(false)
 
 // Summary invalidation state
-const invalidatingSummary = ref(false)
+const refreshingSummary = ref(false)
+const summaryLastUpdated = ref<string | null>(null)
 
 // Get stage info from board configuration
 const stageInfo = computed(() => {
@@ -180,6 +189,7 @@ watch(() => props.stage, async () => {
 // Initialize board configuration service on mount
 onMounted(async () => {
   await loadStageContent()
+  await loadSummaryStatus()
   if (props.boardConfig && !boardConfigService.getBoardConfig('campaign')) {
     // Transform and cache the board config in the service
     const config = {
@@ -320,26 +330,55 @@ const handleCreateModule = async (data: { name: string; type: string; sessions: 
   }
 }
 
-// Invalidate the cached campaign summary so it regenerates on next chat
-const handleInvalidateSummary = async () => {
+// Format ISO timestamp to readable format
+const formatTimestamp = (isoString: string): string => {
+  try {
+    const date = new Date(isoString)
+    return date.toLocaleString()
+  } catch {
+    return isoString
+  }
+}
+
+// Load current summary status
+const loadSummaryStatus = async () => {
   if (!props.campaign?.id) return
 
-  invalidatingSummary.value = true
   try {
-    const response = await invoke<{ success: boolean; data?: { message: string }; error?: string }>(
-      'invalidate_campaign_summary',
+    const response = await invoke<{ success: boolean; data?: { summary: string | null; last_updated: string | null }; error?: string }>(
+      'get_campaign_summary',
       { campaignId: props.campaign.id }
     )
 
     if (response.success && response.data) {
-      console.log('Campaign summary invalidated:', response.data.message)
-    } else if (response.error) {
-      console.error('Failed to invalidate summary:', response.error)
+      summaryLastUpdated.value = response.data.last_updated
     }
   } catch (e) {
-    console.error('Error invalidating campaign summary:', e)
+    console.error('Error loading campaign summary status:', e)
+  }
+}
+
+// Refresh (regenerate) the campaign summary using LLM
+const handleRefreshSummary = async () => {
+  if (!props.campaign?.id) return
+
+  refreshingSummary.value = true
+  try {
+    const response = await invoke<{ success: boolean; data?: { summary: string | null; last_updated: string | null }; error?: string }>(
+      'refresh_campaign_summary',
+      { campaignId: props.campaign.id }
+    )
+
+    if (response.success && response.data) {
+      summaryLastUpdated.value = response.data.last_updated
+      console.log('Campaign summary refreshed')
+    } else if (response.error) {
+      console.error('Failed to refresh summary:', response.error)
+    }
+  } catch (e) {
+    console.error('Error refreshing campaign summary:', e)
   } finally {
-    invalidatingSummary.value = false
+    refreshingSummary.value = false
   }
 }
 
@@ -378,5 +417,20 @@ onActivated(() => {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
+}
+
+.summary-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.summary-timestamp {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.summary-timestamp.summary-none {
+  font-style: italic;
 }
 </style>

@@ -411,20 +411,22 @@ pub async fn list_archived_campaigns(
 /// Response for campaign summary operations
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CampaignSummaryResponse {
-    pub invalidated: bool,
-    pub message: String,
+    /// The summary text (null if no summary exists)
+    pub summary: Option<String>,
+    /// ISO8601 timestamp when summary was last generated (null if no summary)
+    pub last_updated: Option<String>,
 }
 
-/// Invalidate (clear) the cached campaign summary
+/// Get the cached campaign summary and its timestamp
 ///
-/// This forces the summary to be regenerated the next time it's needed.
-/// Useful when the user knows the summary is out of date or wants a fresh generation.
+/// Returns the current cached summary if one exists, along with when it was generated.
+/// Returns null values if no summary has been generated yet.
 #[tauri::command]
-pub async fn invalidate_campaign_summary(
+pub async fn get_campaign_summary(
     campaign_id: i32,
     state: State<'_, AppState>,
 ) -> Result<ApiResponse<CampaignSummaryResponse>, ApiError> {
-    info!("Invalidating campaign summary for campaign {}", campaign_id);
+    debug!("Getting campaign summary for campaign {}", campaign_id);
 
     // Get campaign directory
     let campaign_dir = {
@@ -441,28 +443,147 @@ pub async fn invalidate_campaign_summary(
         }
     };
 
-    // Invalidate the cache
+    // Get cached summary
     let mut conn = state.db.get_connection()?;
     let service = mimir_dm_core::services::CampaignSummaryService::new(&mut conn);
 
-    match service.invalidate_cache(&campaign_dir) {
-        Ok(()) => {
-            info!(
-                "Successfully invalidated campaign summary for campaign {}",
-                campaign_id
-            );
+    match service.get_cached_summary(&campaign_dir) {
+        Some(summary) => {
+            debug!("Found cached summary for campaign {}", campaign_id);
             Ok(ApiResponse::success(CampaignSummaryResponse {
-                invalidated: true,
-                message: "Campaign summary cache cleared. It will be regenerated on next use."
-                    .to_string(),
+                summary: Some(summary.summary),
+                last_updated: Some(summary.generated_at),
             }))
         }
-        Err(e) => {
-            error!("Failed to invalidate campaign summary: {}", e);
-            Ok(ApiResponse::error(format!(
-                "Failed to invalidate campaign summary: {}",
-                e
-            )))
+        None => {
+            debug!("No cached summary for campaign {}", campaign_id);
+            Ok(ApiResponse::success(CampaignSummaryResponse {
+                summary: None,
+                last_updated: None,
+            }))
         }
     }
+}
+
+/// Refresh (regenerate) the campaign summary using LLM
+///
+/// Gathers all session notes and module information, then uses the configured
+/// LLM provider to generate a new story summary. The result is cached.
+#[tauri::command]
+pub async fn refresh_campaign_summary(
+    campaign_id: i32,
+    state: State<'_, AppState>,
+) -> Result<ApiResponse<CampaignSummaryResponse>, ApiError> {
+    use mimir_dm_core::services::{
+        format_source_for_llm, CampaignSummary, CampaignSummaryService,
+    };
+    use mimir_dm_llm::{LlmProvider, Message};
+
+    info!("Refreshing campaign summary for campaign {}", campaign_id);
+
+    // Get campaign directory
+    let campaign_dir = {
+        let mut conn = state.db.get_connection()?;
+        let mut service = mimir_dm_core::services::CampaignService::new(&mut conn);
+        match service.get_campaign(campaign_id)? {
+            Some(campaign) => campaign.directory_path,
+            None => {
+                return Ok(ApiResponse::error(format!(
+                    "Campaign {} not found",
+                    campaign_id
+                )));
+            }
+        }
+    };
+
+    // Gather source materials
+    let source = {
+        let mut conn = state.db.get_connection()?;
+        let mut service = CampaignSummaryService::new(&mut conn);
+        match service.gather_source_materials(campaign_id, &campaign_dir) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Failed to gather source materials: {}", e);
+                return Ok(ApiResponse::error(format!(
+                    "Failed to gather source materials: {}",
+                    e
+                )));
+            }
+        }
+    };
+
+    // Check if we have content to summarize
+    if source.session_notes.is_empty() && source.modules.is_empty() {
+        return Ok(ApiResponse::error(
+            "No session notes or modules found to summarize".to_string(),
+        ));
+    }
+
+    // Get LLM provider
+    let llm_guard = state.llm.lock().await;
+    let llm_service = match llm_guard.as_ref() {
+        Some(llm) => llm,
+        None => {
+            return Ok(ApiResponse::error(
+                "LLM service not initialized. Please configure a provider in settings.".to_string(),
+            ));
+        }
+    };
+
+    // Generate summary using LLM
+    let prompt = format_source_for_llm(&source);
+    let messages = vec![Message {
+        role: "user".to_string(),
+        content: prompt,
+        tool_call_id: None,
+    }];
+
+    info!(
+        "Calling LLM to generate summary ({} notes, {} modules)",
+        source.session_notes.len(),
+        source.modules.len()
+    );
+
+    let provider = llm_service.provider();
+    let response = match provider
+        .chat(messages, None, None, None, None, None, None, None)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            error!("LLM call failed: {}", e);
+            return Ok(ApiResponse::error(format!(
+                "Failed to generate summary: {}",
+                e
+            )));
+        }
+    };
+
+    let summary_text = response.content;
+    let generated_at = chrono::Utc::now().to_rfc3339();
+
+    // Save to cache
+    let source_hash = CampaignSummaryService::calculate_source_hash(&source);
+    let summary = CampaignSummary {
+        summary: summary_text.clone(),
+        generated_at: generated_at.clone(),
+        source_hash,
+        campaign_id,
+    };
+
+    {
+        let mut conn = state.db.get_connection()?;
+        let service = CampaignSummaryService::new(&mut conn);
+        if let Err(e) = service.save_summary(&campaign_dir, &summary) {
+            error!("Failed to cache summary: {}", e);
+            // Continue anyway - we have the summary even if caching failed
+        }
+    }
+
+    info!("Campaign summary refreshed successfully");
+
+    Ok(ApiResponse::success(CampaignSummaryResponse {
+        summary: Some(summary_text),
+        last_updated: Some(generated_at),
+    }))
 }

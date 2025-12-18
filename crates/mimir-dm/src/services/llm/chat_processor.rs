@@ -124,18 +124,17 @@ fn build_campaign_context(db_service: &Arc<DatabaseService>, campaign_id: i32) -
         }
     };
 
-    // Get campaign info
-    let campaign = {
+    // Get campaign info and directory
+    let (campaign, campaign_dir) = {
         let mut service = CampaignService::new(&mut conn);
-        service
-            .get_campaign(campaign_id)
-            .ok()
-            .flatten()
-            .map(|c| CampaignContext {
-                id: c.id,
-                name: c.name,
-                status: c.status,
-            })
+        let campaign_data = service.get_campaign(campaign_id).ok().flatten();
+        let dir = campaign_data.as_ref().map(|c| c.directory_path.clone());
+        let ctx = campaign_data.map(|c| CampaignContext {
+            id: c.id,
+            name: c.name,
+            status: c.status,
+        });
+        (ctx, dir)
     };
 
     // Get all characters for campaign
@@ -210,29 +209,11 @@ fn build_campaign_context(db_service: &Arc<DatabaseService>, campaign_id: i32) -
             .collect()
     };
 
-    // Story context - fetch from cached campaign summary
-    let story = {
-        let campaign_dir = {
-            let mut service = CampaignService::new(&mut conn);
-            service
-                .get_campaign(campaign_id)
-                .ok()
-                .flatten()
-                .map(|c| c.directory_path)
-        };
-
-        let summary_text = campaign_dir.and_then(|dir| {
-            let mut service = CampaignSummaryService::new(&mut conn);
-            service
-                .get_summary_with_staleness_check(campaign_id, &dir)
-                .ok()
-                .and_then(|(maybe_summary, _, _)| maybe_summary)
-                .map(|s| s.summary)
-        });
-
-        StoryContext {
-            story_summary: summary_text,
-        }
+    // Story context - read from cache (manual refresh via UI)
+    let story = if let Some(ref dir) = campaign_dir {
+        get_cached_story_summary(db_service, dir)
+    } else {
+        StoryContext { story_summary: None }
     };
 
     ApplicationContext {
@@ -244,26 +225,63 @@ fn build_campaign_context(db_service: &Arc<DatabaseService>, campaign_id: i32) -
     }
 }
 
+/// Get story summary from cache (no auto-regeneration)
+///
+/// The summary is refreshed manually via the UI's refresh button.
+/// This function simply reads whatever is cached.
+fn get_cached_story_summary(db_service: &Arc<DatabaseService>, campaign_dir: &str) -> StoryContext {
+    let mut conn = match db_service.get_connection() {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Failed to get DB connection for story summary: {}", e);
+            return StoryContext { story_summary: None };
+        }
+    };
+
+    let service = CampaignSummaryService::new(&mut conn);
+    match service.get_cached_summary(campaign_dir) {
+        Some(summary) => {
+            debug!("Using cached story summary");
+            StoryContext {
+                story_summary: Some(summary.summary),
+            }
+        }
+        None => {
+            debug!("No cached story summary found");
+            StoryContext { story_summary: None }
+        }
+    }
+}
+
 // Model name is now retrieved from LlmService, not a constant
 
-/// Helper macro for bifurcated logging - full content to file, truncated to console
+/// Helper macro for bifurcated logging - full content in debug builds, truncated in release
 macro_rules! debug_content {
     ($msg:expr, $full_content:expr, $truncate_at:expr) => {
-        // Full content to file (debug level)
-        debug!(target: "file_only", "{}: {}", $msg, $full_content);
-        // Truncated content to console (debug level, but with default target)
-        if $full_content.len() > $truncate_at {
-            debug!(
-                "{}: {}... [truncated from {} chars]",
-                $msg,
-                &$full_content
-                    .chars()
-                    .take($truncate_at)
-                    .collect::<String>(),
-                $full_content.len()
-            );
-        } else {
+        // In debug builds, always show full content
+        #[cfg(debug_assertions)]
+        {
             debug!("{}: {}", $msg, $full_content);
+        }
+        // In release builds, truncate for console but full to file
+        #[cfg(not(debug_assertions))]
+        {
+            // Full content to file (debug level)
+            debug!(target: "file_only", "{}: {}", $msg, $full_content);
+            // Truncated content to console (debug level, but with default target)
+            if $full_content.len() > $truncate_at {
+                debug!(
+                    "{}: {}... [truncated from {} chars]",
+                    $msg,
+                    &$full_content
+                        .chars()
+                        .take($truncate_at)
+                        .collect::<String>(),
+                    $full_content.len()
+                );
+            } else {
+                debug!("{}: {}", $msg, $full_content);
+            }
         }
     };
 }
@@ -829,7 +847,26 @@ impl<'a> ChatProcessor<'a> {
         session_id: &str,
         chat_logger: &Option<Arc<crate::services::chat_logger::ChatLogger>>,
     ) {
-        let system_rules = if let Some(campaign_dir) = campaign_directory_path {
+        // If we have campaign_id but no directory path, look it up from DB
+        let resolved_campaign_dir: Option<String> = if campaign_directory_path.is_some() {
+            campaign_directory_path.map(|s| s.to_string())
+        } else if let Some(id) = campaign_id {
+            // Look up directory path from campaign_id
+            if let Ok(mut conn) = self.llm.db_service.get_connection() {
+                let mut service = CampaignService::new(&mut conn);
+                service
+                    .get_campaign(id)
+                    .ok()
+                    .flatten()
+                    .map(|c| c.directory_path)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let system_rules = if let Some(ref campaign_dir) = resolved_campaign_dir {
             let campaign_tool_registry = self.build_campaign_tool_registry(campaign_dir);
             campaign_tool_registry
                 .generate_system_rules_with_directory(Some(session_id), Some(campaign_dir))
@@ -840,11 +877,13 @@ impl<'a> ChatProcessor<'a> {
         };
 
         // Build campaign context from database if campaign_id is provided
-        let campaign_context = campaign_id.map(|id| {
+        let campaign_context = if let Some(id) = campaign_id {
             info!("Building rich campaign context for campaign_id={}", id);
             let context = build_campaign_context(&self.llm.db_service, id);
-            serde_json::to_string_pretty(&context).unwrap_or_else(|_| "{}".to_string())
-        });
+            Some(serde_json::to_string_pretty(&context).unwrap_or_else(|_| "{}".to_string()))
+        } else {
+            None
+        };
 
         // Combine system rules and campaign context
         let mut content_parts: Vec<String> = Vec::new();
@@ -855,7 +894,19 @@ impl<'a> ChatProcessor<'a> {
 
         if let Some(context_json) = campaign_context {
             content_parts.push(format!(
-                "Current Campaign Context:\n```json\n{}\n```",
+                r#"## LIVE CAMPAIGN DATA
+
+**IMPORTANT**: The JSON below contains the CURRENT state of this campaign. Use this data directly:
+- **Character IDs**: Use these IDs with character tools (e.g., `get_character`, `update_character_hp`)
+- **Module IDs**: Use these IDs with module tools (e.g., `get_module`, `update_module_status`)
+- **NPC Info**: Reference NPC names, locations, and notes directly
+- **Story Summary**: Contains the narrative so far - use this to understand context
+
+**DO NOT ask the user for IDs that are already in this context.**
+
+```json
+{}
+```"#,
                 context_json
             ));
             info!("Injected rich campaign context ({} chars)", context_json.len());

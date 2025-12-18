@@ -548,8 +548,8 @@ pub mod catalog_tools;
 // Module management tools
 pub mod module_tools;
 
-// Campaign summary tools (LLM-based story summarization)
-pub mod campaign_summary_tools;
+// Note: campaign_summary_tools module removed - story summaries are now
+// auto-generated during context building in chat_processor.rs
 
 #[cfg(test)]
 mod character_tools_test;
@@ -566,7 +566,6 @@ pub use character_write_tools::{
     UpdateEquippedTool,
 };
 pub use module_tools::{CreateModuleTool, GetModuleTool, ListModulesTool, UpdateModuleStatusTool};
-pub use campaign_summary_tools::{GetCampaignSummaryTool, InvalidateCampaignSummaryTool};
 
 use mimir_dm_core::DatabaseService;
 use mimir_dm_llm::{TodoListTool, TodoStateManager};
@@ -651,16 +650,12 @@ pub fn register_all_tools(
     registry.register(Arc::new(SearchSpellsTool::new(db_service.clone())));
     info!("  - SearchSpellsTool");
 
-    registry.register(Arc::new(SearchItemsTool::new(db_service.clone())));
+    registry.register(Arc::new(SearchItemsTool::new(db_service)));
     info!("  - SearchItemsTool");
 
-    // Campaign summary tools (read-only)
-    // Note: RegenerateCampaignSummaryTool requires LLM provider, registered separately
-    registry.register(Arc::new(GetCampaignSummaryTool::new(db_service.clone())));
-    info!("  - GetCampaignSummaryTool");
-
-    registry.register(Arc::new(InvalidateCampaignSummaryTool::new(db_service)));
-    info!("  - InvalidateCampaignSummaryTool");
+    // Note: Campaign summary is NOT registered as an LLM tool.
+    // Story summaries are auto-generated and injected as context during chat processing.
+    // See chat_processor.rs build_campaign_context() for the auto-regeneration logic.
 
     info!("All tools registered successfully");
 }
