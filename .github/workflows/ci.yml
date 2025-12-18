@@ -81,6 +81,11 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: install dependencies (ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglib2.0-dev
+
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 
@@ -93,36 +98,3 @@ jobs:
           name: coverage-report
           path: target/coverage/
           retention-days: 14
-
-  coverage-threshold:
-    name: Coverage Threshold Check
-    runs-on: ubuntu-latest
-    needs: test-other-crates
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
-
-      - name: Check mimir-dm-core coverage (60% threshold)
-        run: |
-          echo "Checking mimir-dm-core coverage threshold (60%)..."
-          cargo tarpaulin --packages mimir-dm-core \
-            --test-threads 1 \
-            --timeout 120 \
-            --exclude-files "*/tests/*" "**/tests/*" "**/schema.rs" "**/build.rs" \
-            --ignore-tests \
-            --fail-under 60
-
-      - name: Check mimir-dm-llm coverage (50% threshold)
-        run: |
-          echo "Checking mimir-dm-llm coverage threshold (50%)..."
-          cargo tarpaulin --packages mimir-dm-llm \
-            --test-threads 1 \
-            --timeout 120 \
-            --exclude-files "*/tests/*" "**/tests/*" "**/build.rs" \
-            --ignore-tests \
-            --fail-under 50

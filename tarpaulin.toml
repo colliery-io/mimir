@@ -6,7 +6,7 @@
 packages = ["mimir-dm-core", "mimir-dm-llm"]
 
 # Run tests single-threaded to avoid SQLite locking issues
-test-threads = 1
+implicit-test-threads = true
 
 # Timeout per test in seconds
 timeout = "120s"

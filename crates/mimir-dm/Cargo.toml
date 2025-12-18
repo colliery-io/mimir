@@ -18,6 +18,7 @@ path = "src/main.rs"
 [[bin]]
 name = "agent-test"
 path = "src/bin/agent_test/main.rs"
+required-features = ["agent-test"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -68,6 +69,7 @@ indicatif = { workspace = true }
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+agent-test = []  # Enable to build the agent-test binary
 
 [dev-dependencies]
 tempfile = { workspace = true }
