@@ -4,6 +4,7 @@ members = [
     "crates/mimir-dm-core",
     "crates/mimir-dm-llm",
     "crates/mimir-dm-print",
+    "crates/mimir-dm-agent-test",
     "crates/mimir-5etools-splitter",
     "crates/mimir-llm-eval"
 ]

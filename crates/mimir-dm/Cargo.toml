@@ -15,10 +15,6 @@ path = "src/lib.rs"
 name = "mimir"
 path = "src/main.rs"
 
-[[bin]]
-name = "agent-test"
-path = "src/bin/agent_test/main.rs"
-
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
