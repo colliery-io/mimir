@@ -8,10 +8,7 @@ use mimir_dm_core::services::{
     CampaignService, CampaignSummaryService, CharacterService, ModuleService, PlayerService,
 };
 use mimir_dm_core::DatabaseService;
-use mimir_dm_llm::{
-    traits::ActionDescription, EditFileTool, FileToolsConfig, ListFilesTool, LlmProvider,
-    ReadFileTool, TodoListTool, WriteFileTool,
-};
+use mimir_dm_llm::{traits::ActionDescription, LlmProvider};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -22,19 +19,6 @@ use tracing::{debug, error, info, warn};
 
 use crate::services::chat_logger::ChatTokenUsage;
 use crate::services::llm::LlmService;
-use crate::services::tools::character_tools::{
-    CheckSpellSlotsTool, GetCharacterStatsTool, GetCharacterTool, ListCampaignCharactersTool,
-    ListPlayersTool,
-};
-use crate::services::tools::character_write_tools::{
-    AddInventoryItemTool, CastSpellTool, CreateCharacterTool, RemoveInventoryItemTool,
-    TakeRestTool, UpdateCharacterHpTool, UpdateCharacterTool, UpdateCurrencyTool,
-    UpdateEquippedTool,
-};
-use crate::services::tools::catalog_tools::{SearchItemsTool, SearchMonstersTool, SearchSpellsTool};
-use crate::services::tools::module_tools::{
-    CreateModuleTool, GetModuleTool, ListModulesTool, UpdateModuleStatusTool,
-};
 use crate::services::tools::ToolRegistry;
 
 // ============================================================================
@@ -531,81 +515,15 @@ impl<'a> ChatProcessor<'a> {
 
     /// Build a campaign-specific tool registry with all tools
     fn build_campaign_tool_registry(&self, campaign_dir: &str) -> ToolRegistry {
-        let campaign_file_config = Arc::new(FileToolsConfig::with_root(std::path::PathBuf::from(
-            campaign_dir,
-        )));
+        use crate::services::tools::register_all_tools_with_file_config;
 
         let mut registry = ToolRegistry::new();
-
-        // File tools
-        registry.register(Arc::new(ReadFileTool::new(campaign_file_config.clone())));
-        registry.register(Arc::new(WriteFileTool::new(campaign_file_config.clone())));
-        registry.register(Arc::new(ListFilesTool::new(campaign_file_config.clone())));
-        registry.register(Arc::new(EditFileTool::new(campaign_file_config.clone())));
-
-        // Todo tool
-        let todo_tool = TodoListTool::new(self.llm.todo_state_manager.clone());
-        registry.register(Arc::new(todo_tool));
-
-        // Character read tools
-        registry.register(Arc::new(GetCharacterTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(ListCampaignCharactersTool::new(
+        register_all_tools_with_file_config(
+            &mut registry,
             self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(GetCharacterStatsTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(CheckSpellSlotsTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(ListPlayersTool::new(self.llm.db_service.clone())));
-
-        // Character write tools
-        registry.register(Arc::new(UpdateCharacterHpTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(AddInventoryItemTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(CastSpellTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(CreateCharacterTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(UpdateCharacterTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(TakeRestTool::new(self.llm.db_service.clone())));
-
-        // Equipment/inventory tools
-        registry.register(Arc::new(UpdateEquippedTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(RemoveInventoryItemTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(UpdateCurrencyTool::new(
-            self.llm.db_service.clone(),
-        )));
-
-        // Catalog query tools
-        registry.register(Arc::new(SearchMonstersTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(SearchItemsTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(SearchSpellsTool::new(
-            self.llm.db_service.clone(),
-        )));
-
-        // Module management tools
-        registry.register(Arc::new(CreateModuleTool::new(
-            self.llm.db_service.clone(),
-        )));
-        registry.register(Arc::new(ListModulesTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(GetModuleTool::new(self.llm.db_service.clone())));
-        registry.register(Arc::new(UpdateModuleStatusTool::new(
-            self.llm.db_service.clone(),
-        )));
-
+            self.llm.todo_state_manager.clone(),
+            Some(campaign_dir),
+        );
         registry
     }
 
@@ -652,9 +570,29 @@ impl<'a> ChatProcessor<'a> {
             logger.log_user_message(&user_msg.content, None);
         }
 
+        // Resolve campaign directory path - either use provided path or look up from campaign_id
+        // This ensures consistent tool registration and system rules generation
+        let resolved_campaign_dir: Option<String> = if campaign_directory_path.is_some() {
+            campaign_directory_path.map(|s| s.to_string())
+        } else if let Some(id) = campaign_id {
+            // Look up directory path from campaign_id
+            if let Ok(mut conn) = self.llm.db_service.get_connection() {
+                let mut service = CampaignService::new(&mut conn);
+                service
+                    .get_campaign(id)
+                    .ok()
+                    .flatten()
+                    .map(|c| c.directory_path)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         // Get tools if enabled
         let tools = if enable_tools {
-            Some(self.get_tool_definitions(campaign_directory_path, session_id))
+            Some(self.get_tool_definitions(resolved_campaign_dir.as_deref(), session_id))
         } else {
             debug!("Tools disabled for this request");
             None
@@ -664,7 +602,7 @@ impl<'a> ChatProcessor<'a> {
         if tools.is_some() {
             self.inject_system_rules(
                 &mut provider_messages,
-                campaign_directory_path,
+                resolved_campaign_dir.as_deref(),
                 campaign_id,
                 session_id,
                 &chat_logger,
@@ -751,7 +689,7 @@ impl<'a> ChatProcessor<'a> {
                     let records = self.execute_tool_calls(
                         tool_calls,
                         &mut provider_messages,
-                        campaign_directory_path,
+                        resolved_campaign_dir.as_deref(),
                         session_id,
                         tool_call_count,
                         &chat_logger,
@@ -839,6 +777,10 @@ impl<'a> ChatProcessor<'a> {
     }
 
     /// Inject system rules for tool guidance and campaign context
+    ///
+    /// Note: campaign_directory_path should already be resolved from campaign_id
+    /// if needed - this is done at the start of process_chat() to ensure
+    /// consistent tool registration and system rules generation.
     fn inject_system_rules(
         &self,
         provider_messages: &mut Vec<mimir_dm_llm::Message>,
@@ -847,26 +789,7 @@ impl<'a> ChatProcessor<'a> {
         session_id: &str,
         chat_logger: &Option<Arc<crate::services::chat_logger::ChatLogger>>,
     ) {
-        // If we have campaign_id but no directory path, look it up from DB
-        let resolved_campaign_dir: Option<String> = if campaign_directory_path.is_some() {
-            campaign_directory_path.map(|s| s.to_string())
-        } else if let Some(id) = campaign_id {
-            // Look up directory path from campaign_id
-            if let Ok(mut conn) = self.llm.db_service.get_connection() {
-                let mut service = CampaignService::new(&mut conn);
-                service
-                    .get_campaign(id)
-                    .ok()
-                    .flatten()
-                    .map(|c| c.directory_path)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        let system_rules = if let Some(ref campaign_dir) = resolved_campaign_dir {
+        let system_rules = if let Some(campaign_dir) = campaign_directory_path {
             let campaign_tool_registry = self.build_campaign_tool_registry(campaign_dir);
             campaign_tool_registry
                 .generate_system_rules_with_directory(Some(session_id), Some(campaign_dir))

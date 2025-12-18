@@ -324,6 +324,9 @@ impl ToolRegistry {
         if self.has_tool("update_character") {
             guidance.push_str("- **update_character**: Update character attributes, background, or other details\n");
         }
+        if self.has_tool("level_up") {
+            guidance.push_str("- **level_up**: Level up a character to a target level (calculates HP based on class hit dice + CON)\n");
+        }
         guidance.push_str("\n");
 
         // Combat & Health Tools
@@ -470,6 +473,7 @@ impl ToolRegistry {
         guidance.push_str("- **Show reasoning** in `<thought>` blocks for complex tasks\n");
         guidance.push_str("- **Use catalog search tools** to look up D&D rules, monsters, spells, and items\n");
         guidance.push_str("- **Prefer character tools over file editing** for character data changes\n");
+        guidance.push_str("- **NEVER assume or guess** - always use tools to verify character info, party composition, HP, spell slots, etc. Use list_campaign_characters, get_character, or get_character_stats to get accurate current state\n");
 
         guidance
     }
@@ -561,101 +565,85 @@ pub use character_tools::{
     ListPlayersTool,
 };
 pub use character_write_tools::{
-    AddInventoryItemTool, CastSpellTool, CreateCharacterTool, RemoveInventoryItemTool,
+    AddInventoryItemTool, CastSpellTool, CreateCharacterTool, LevelUpTool, RemoveInventoryItemTool,
     TakeRestTool, UpdateCharacterHpTool, UpdateCharacterTool, UpdateCurrencyTool,
     UpdateEquippedTool,
 };
 pub use module_tools::{CreateModuleTool, GetModuleTool, ListModulesTool, UpdateModuleStatusTool};
 
 use mimir_dm_core::DatabaseService;
+use mimir_dm_llm::tools::{EditFileTool, ListFilesTool, ReadFileTool, WriteFileTool};
+use mimir_dm_llm::FileToolsConfig;
 use mimir_dm_llm::{TodoListTool, TodoStateManager};
+use std::path::PathBuf;
 
 /// Register all standard tools in the tool registry
 ///
 /// This is the single source of truth for what tools are available.
 /// Both production and tests should use this function to ensure consistency.
+///
+/// If `campaign_dir` is provided, file tools will be registered with that directory as root.
 pub fn register_all_tools(
     registry: &mut ToolRegistry,
     db_service: Arc<DatabaseService>,
     todo_state_manager: TodoStateManager,
 ) {
-    info!("Registering all standard tools...");
+    register_all_tools_with_file_config(registry, db_service, todo_state_manager, None);
+}
+
+/// Register all tools with optional campaign-specific file tools
+///
+/// This is the single source of truth for what tools are available.
+pub fn register_all_tools_with_file_config(
+    registry: &mut ToolRegistry,
+    db_service: Arc<DatabaseService>,
+    todo_state_manager: TodoStateManager,
+    campaign_dir: Option<&str>,
+) {
+    // File tools (only if campaign directory is provided)
+    if let Some(dir) = campaign_dir {
+        let file_config = Arc::new(FileToolsConfig::with_root(PathBuf::from(dir)));
+        registry.register(Arc::new(ReadFileTool::new(file_config.clone())));
+        registry.register(Arc::new(WriteFileTool::new(file_config.clone())));
+        registry.register(Arc::new(ListFilesTool::new(file_config.clone())));
+        registry.register(Arc::new(EditFileTool::new(file_config)));
+    }
 
     // Task management
     let todo_tool = TodoListTool::new(todo_state_manager);
     registry.register(Arc::new(todo_tool));
-    info!("  - TodoListTool");
 
     // Character read tools
     registry.register(Arc::new(ListPlayersTool::new(db_service.clone())));
-    info!("  - ListPlayersTool");
-
     registry.register(Arc::new(GetCharacterTool::new(db_service.clone())));
-    info!("  - GetCharacterTool");
-
     registry.register(Arc::new(ListCampaignCharactersTool::new(db_service.clone())));
-    info!("  - ListCampaignCharactersTool");
-
     registry.register(Arc::new(GetCharacterStatsTool::new(db_service.clone())));
-    info!("  - GetCharacterStatsTool");
-
     registry.register(Arc::new(CheckSpellSlotsTool::new(db_service.clone())));
-    info!("  - CheckSpellSlotsTool");
 
     // Character write tools
     registry.register(Arc::new(CreateCharacterTool::new(db_service.clone())));
-    info!("  - CreateCharacterTool");
-
     registry.register(Arc::new(UpdateCharacterHpTool::new(db_service.clone())));
-    info!("  - UpdateCharacterHpTool");
-
     registry.register(Arc::new(AddInventoryItemTool::new(db_service.clone())));
-    info!("  - AddInventoryItemTool");
-
     registry.register(Arc::new(RemoveInventoryItemTool::new(db_service.clone())));
-    info!("  - RemoveInventoryItemTool");
-
     registry.register(Arc::new(UpdateCharacterTool::new(db_service.clone())));
-    info!("  - UpdateCharacterTool");
-
+    registry.register(Arc::new(LevelUpTool::new(db_service.clone())));
     registry.register(Arc::new(CastSpellTool::new(db_service.clone())));
-    info!("  - CastSpellTool");
-
     registry.register(Arc::new(TakeRestTool::new(db_service.clone())));
-    info!("  - TakeRestTool");
-
     registry.register(Arc::new(UpdateEquippedTool::new(db_service.clone())));
-    info!("  - UpdateEquippedTool");
-
     registry.register(Arc::new(UpdateCurrencyTool::new(db_service.clone())));
-    info!("  - UpdateCurrencyTool");
 
     // Module management tools
     registry.register(Arc::new(CreateModuleTool::new(db_service.clone())));
-    info!("  - CreateModuleTool");
-
     registry.register(Arc::new(ListModulesTool::new(db_service.clone())));
-    info!("  - ListModulesTool");
-
     registry.register(Arc::new(GetModuleTool::new(db_service.clone())));
-    info!("  - GetModuleTool");
-
     registry.register(Arc::new(UpdateModuleStatusTool::new(db_service.clone())));
-    info!("  - UpdateModuleStatusTool");
 
     // Catalog search tools
     registry.register(Arc::new(SearchMonstersTool::new(db_service.clone())));
-    info!("  - SearchMonstersTool");
-
     registry.register(Arc::new(SearchSpellsTool::new(db_service.clone())));
-    info!("  - SearchSpellsTool");
-
     registry.register(Arc::new(SearchItemsTool::new(db_service)));
-    info!("  - SearchItemsTool");
 
     // Note: Campaign summary is NOT registered as an LLM tool.
     // Story summaries are auto-generated and injected as context during chat processing.
     // See chat_processor.rs build_campaign_context() for the auto-regeneration logic.
-
-    info!("All tools registered successfully");
 }

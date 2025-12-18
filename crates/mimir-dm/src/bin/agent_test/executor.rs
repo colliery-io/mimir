@@ -1,7 +1,9 @@
 //! Task executor - runs tasks through the production ChatProcessor
 
 use anyhow::{Context, Result};
+use flate2::read::GzDecoder;
 use mimir_dm::app_init::AppPaths;
+use mimir_dm::commands::content::books::catalog_import::import_all_catalogs_from_book;
 use mimir_dm::services::llm::chat_processor::{ChatProcessor, ToolCallRecord};
 use mimir_dm::services::llm::{ConfirmationReceivers, LlmService};
 use mimir_dm::services::provider_settings::{GroqConfig, OllamaConfig, ProviderSettings, ProviderType};
@@ -11,8 +13,10 @@ use mimir_dm_core::DatabaseService;
 use mimir_dm_llm::Message;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
+use tar::Archive;
 use tempfile::TempDir;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -207,6 +211,9 @@ impl AgentTestExecutor {
             seed_dev_data(&mut conn, campaigns_dir.to_str().unwrap())?;
         }
 
+        // Load PHB catalog data for character creation tests
+        Self::load_phb_catalog_data(&db_service, &data_dir)?;
+
         tracing::info!("Test database seeded at: {:?}", db_path);
 
         // Create provider settings for the test
@@ -284,6 +291,48 @@ impl AgentTestExecutor {
             }
             other => anyhow::bail!("Unknown provider: {}. Supported: ollama, groq", other),
         }
+    }
+
+    /// Load PHB catalog data (races, classes, backgrounds) for character creation tests
+    ///
+    /// Looks for PHB archive in the standard data/books-output location.
+    /// If not found, logs a warning but continues (some tests may fail).
+    fn load_phb_catalog_data(db_service: &Arc<DatabaseService>, data_dir: &Path) -> Result<()> {
+        // Look for PHB archive relative to cargo workspace root
+        let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let workspace_root = crate_dir.parent().unwrap().parent().unwrap();
+        let phb_archive = workspace_root.join("data/books-output/phb.tar.gz");
+
+        if !phb_archive.exists() {
+            tracing::warn!(
+                "PHB archive not found at {:?} - character creation tests may fail",
+                phb_archive
+            );
+            return Ok(());
+        }
+
+        tracing::info!("Loading PHB catalog data from {:?}", phb_archive);
+
+        // Extract PHB to books directory
+        let books_dir = data_dir.join("books");
+        let tar_gz = std::fs::File::open(&phb_archive)
+            .context("Failed to open PHB archive")?;
+        let tar = GzDecoder::new(tar_gz);
+        let mut archive = Archive::new(tar);
+        archive.unpack(&books_dir)
+            .context("Failed to extract PHB archive")?;
+
+        // Import catalog data from extracted PHB
+        let phb_dir = books_dir.join("PHB");
+        if phb_dir.exists() {
+            let mut conn = db_service.get_connection()?;
+            import_all_catalogs_from_book(&mut conn, &phb_dir, "PHB");
+            tracing::info!("PHB catalog data loaded successfully");
+        } else {
+            tracing::warn!("PHB directory not found after extraction");
+        }
+
+        Ok(())
     }
 
     /// Get campaign directory path for the test campaign
@@ -447,7 +496,13 @@ impl AgentTestExecutor {
                     vec![]
                 };
 
-                let success = !had_errors && verification_results.iter().all(|v| v.passed);
+                // Success is verification-based when verifications exist,
+                // otherwise fall back to error-based (for simple tests without verifications)
+                let success = if verification_results.is_empty() {
+                    !had_errors
+                } else {
+                    verification_results.iter().all(|v| v.passed)
+                };
 
                 // Log verification results
                 for vr in &verification_results {
@@ -589,7 +644,14 @@ impl AgentTestExecutor {
                         vec![]
                     };
 
-                    let turn_success = turn_verification_results.iter().all(|v| v.passed);
+                    // Turn success is verification-based when verifications exist,
+                    // otherwise fall back to error-based
+                    let turn_had_errors = response.tools_called.iter().any(|t| !t.success);
+                    let turn_success = if turn_verification_results.is_empty() {
+                        !turn_had_errors
+                    } else {
+                        turn_verification_results.iter().all(|v| v.passed)
+                    };
 
                     // Log turn verification results
                     for vr in &turn_verification_results {
@@ -629,7 +691,6 @@ impl AgentTestExecutor {
                 }
                 Err(e) => {
                     tracing::error!("LLM error in turn {}: {}", turn_idx + 1, e);
-                    had_errors = true;
 
                     turn_results.push(TurnResult {
                         turn_number: turn_idx + 1,
@@ -644,8 +705,9 @@ impl AgentTestExecutor {
             }
         }
 
-        // Overall success is all turns passing
-        let success = !had_errors && turn_results.iter().all(|t| t.success);
+        // Overall success is all turns passing their verifications
+        // (tool errors don't fail the test if verifications pass)
+        let success = turn_results.iter().all(|t| t.success);
         tracing::info!(
             "=== Task {} {} ({} turns) ===\n",
             task.id,

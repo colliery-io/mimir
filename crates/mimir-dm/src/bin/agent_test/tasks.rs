@@ -199,10 +199,10 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
         tasks: vec![
             AgentTask {
                 id: "create_fighter".to_string(),
-                description: "Create a basic fighter character".to_string(),
-                prompt: "Create a level 3 human fighter named Gareth Stonewall for player Alice (player_id 1). He should have 28 max HP.".to_string(),
+                description: "Create a basic fighter character and level it up".to_string(),
+                prompt: "Create a level 1 human fighter named Gareth Stonewall for player Alice (player_id 1), then level him up to level 3. He should end up with 28 max HP.".to_string(),
                 turns: vec![],
-                expected_tools: vec!["create_character".to_string()],
+                expected_tools: vec!["create_character".to_string(), "level_up".to_string()],
                 setup: vec![],
                 verify: Some(vec![
                     Verification::CharacterExists {
@@ -220,7 +220,7 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                         with_args: None,
                     },
                 ]),
-                timeout_secs: 60,
+                timeout_secs: 120,
                 tags: vec!["character".to_string(), "creation".to_string()],
             },
             AgentTask {
@@ -357,7 +357,7 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
             AgentTask {
                 id: "create_and_equip".to_string(),
                 description: "Create character and add equipment".to_string(),
-                prompt: "Create a level 1 elf wizard named Lyra Starweaver for player Bob (player_id 2) and give her a quarterstaff and a spellbook.".to_string(),
+                prompt: "Create a level 1 elf wizard named Lyra Starweaver with the Sage background for player Bob (player_id 2), then add a quarterstaff and a spellbook to her inventory.".to_string(),
                 turns: vec![],
                 expected_tools: vec![
                     "create_character".to_string(),
@@ -389,7 +389,7 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 prompt: String::new(),  // Empty for multi-turn
                 turns: vec![
                     ConversationTurn {
-                        prompt: "Create a level 2 half-orc barbarian named Grok the Mighty for player Charlie (player_id 3).".to_string(),
+                        prompt: "Create a level 1 half-orc barbarian named Grok the Mighty for player Charlie (player_id 3), then level it up to 2.".to_string(),
                         verify: Some(vec![
                             Verification::CharacterExists {
                                 name: "Grok".to_string(),
@@ -400,7 +400,7 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                                 }),
                             },
                         ]),
-                        expected_tools: vec!["create_character".to_string()],
+                        expected_tools: vec!["create_character".to_string(), "level_up".to_string()],
                     },
                     ConversationTurn {
                         prompt: "Give Grok a greataxe.".to_string(),
@@ -606,23 +606,8 @@ pub fn create_default_tasks(output_dir: &Path) -> Result<()> {
                 timeout_secs: 30,
                 tags: vec!["knowledge".to_string(), "combat".to_string()],
             },
-            AgentTask {
-                id: "condition_rules".to_string(),
-                description: "Ask about a condition".to_string(),
-                prompt: "What does the stunned condition do?".to_string(),
-                turns: vec![],
-                expected_tools: vec![],
-                setup: vec![],
-                verify: Some(vec![
-                    Verification::LlmJudge {
-                        criteria: "Response accurately describes the stunned condition: incapacitated, can't move, can speak only falteringly, automatically fails Str/Dex saves, attacks against have advantage.".to_string(),
-                        context: None,
-                    },
-                    Verification::NoErrors,
-                ]),
-                timeout_secs: 30,
-                tags: vec!["knowledge".to_string(), "conditions".to_string()],
-            },
+            // NOTE: condition_rules test removed - requires RAG pipeline for accurate D&D rules
+            // Don't rely on LLM's baked-in knowledge for official game rules
         ],
     };
 

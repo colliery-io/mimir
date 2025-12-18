@@ -42,7 +42,7 @@
       "prompt": "",
       "turns": [
         {
-          "prompt": "Create a level 2 half-orc barbarian named Grok the Mighty for player Charlie (player_id 3).",
+          "prompt": "Create a level 1 half-orc barbarian named Grok the Mighty for player Charlie (player_id 3), then level it up to 2.",
           "verify": [
             {
               "type": "character_exists",
@@ -57,7 +57,8 @@
             }
           ],
           "expected_tools": [
-            "create_character"
+            "create_character",
+            "level_up"
           ]
         },
         {

@@ -608,9 +608,9 @@ impl ToolTrait for CreateCharacterTool {
     }
 
     fn description(&self) -> &str {
-        "Create a new D&D 5e character with full rule support.
+        "Create a new D&D 5e character at LEVEL 1 with full rule support.
 
-IMPORTANT: Use this tool instead of templates/files when creating characters. This tool handles all D&D 5e rules automatically and stores characters in the database.
+IMPORTANT: Characters are always created at level 1. For higher levels, use level_up tool after creation.
 
 Usage:
 - First use list_players to find the correct player_id
@@ -620,23 +620,21 @@ Usage:
 - Source is typically 'PHB' for Player's Handbook content
 - If campaign_id is not provided, the character is created in the general character pool
 
-When to use:
-- When a player wants to create a new character
-- Setting up characters for a new campaign
-- Creating NPCs that need full character sheets
-- Replacing a dead character mid-campaign
+For higher level characters:
+1. Create the character with create_character (creates at level 1)
+2. Use level_up tool with target_level and optional max_hp to reach desired level
 
 Character creation includes:
 - Racial traits and ability bonuses applied automatically
 - Class features and proficiencies from class/background
-- Starting HP calculated from class hit dice + CON modifier
+- Starting HP calculated from class hit dice + CON modifier (level 1)
 - Spell slots calculated for spellcasting classes
 - Speed and other racial attributes
 
 Output:
 - Created character with database ID
-- Character name, level, race, and class confirmed
-- Character is immediately available for gameplay"
+- Character name, level 1, race, and class confirmed
+- Use level_up to advance to higher levels"
     }
 
     fn parameters_schema(&self) -> Value {
@@ -967,11 +965,12 @@ When to use:
 - Player requests to rename character
 - Recording character growth from campaign events
 
-NOT for:
-- HP changes (use update_character_hp)
-- Inventory changes (use add_inventory_item)
-- Spell slot usage (use cast_spell)
-- Level ups (handled through separate level up flow)
+CANNOT change (use other tools instead):
+- Level/XP → use level_up tool
+- HP → use update_character_hp tool
+- Inventory → use add_inventory_item / remove_inventory_item
+- Spell slots → use cast_spell / take_rest
+- Equipment → use update_equipped
 
 Output:
 - Confirmation of updated character
@@ -1096,6 +1095,235 @@ Output:
         debug!(
             "Updated character: {} (ID: {})",
             char_data.character_name, character_id
+        );
+        Ok(serde_json::to_string_pretty(&result)?)
+    }
+}
+
+/// Tool for leveling up a character
+pub struct LevelUpTool {
+    db_service: Arc<DatabaseService>,
+}
+
+impl LevelUpTool {
+    pub fn new(db_service: Arc<DatabaseService>) -> Self {
+        Self { db_service }
+    }
+
+    /// Get hit die value for a class
+    fn get_hit_die(class_name: &str) -> i32 {
+        match class_name.to_lowercase().as_str() {
+            "barbarian" => 12,
+            "fighter" | "paladin" | "ranger" => 10,
+            "bard" | "cleric" | "druid" | "monk" | "rogue" | "warlock" => 8,
+            "sorcerer" | "wizard" => 6,
+            _ => 8, // Default to d8
+        }
+    }
+}
+
+#[async_trait]
+impl ToolTrait for LevelUpTool {
+    fn name(&self) -> &str {
+        "level_up"
+    }
+
+    fn description(&self) -> &str {
+        "Level up a character to a target level.
+
+Usage:
+- Provide character_id and target_level
+- Optionally provide hp_increase_method: 'average' (default) or 'max'
+- Optionally provide custom max_hp to override calculated HP
+- Creates version snapshot for history tracking
+
+Level up effects:
+- Increases character level
+- Calculates HP gain based on class hit dice + CON modifier
+- Updates hit dice pool
+- For multiclass characters, uses primary (first) class hit die
+
+HP calculation per level:
+- Average: (hit_die / 2 + 1) + CON modifier per level
+- Max: hit_die + CON modifier per level
+
+When to use:
+- Character gains enough XP to level up
+- Starting a character at higher level
+- Advancing NPCs between sessions
+- Campaign milestone leveling
+
+Output:
+- New level confirmed
+- HP before and after
+- Hit dice updated"
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "character_id": {
+                    "type": "integer",
+                    "description": "ID of the character to level up"
+                },
+                "target_level": {
+                    "type": "integer",
+                    "description": "Target level (must be higher than current level, max 20)"
+                },
+                "hp_increase_method": {
+                    "type": ["string", "null"],
+                    "enum": ["average", "max"],
+                    "description": "How to calculate HP gain: 'average' (default) or 'max'"
+                },
+                "max_hp": {
+                    "type": ["integer", "null"],
+                    "description": "Override calculated max HP with this value (optional)"
+                }
+            },
+            "required": ["character_id", "target_level"]
+        })
+    }
+
+    fn requires_confirmation(&self) -> bool {
+        true
+    }
+
+    fn describe_action(&self, arguments: &Value) -> Option<ActionDescription> {
+        let character_id = arguments.get("character_id")?.as_i64()?;
+        let target_level = arguments.get("target_level")?.as_i64()?;
+        let hp_method = arguments
+            .get("hp_increase_method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("average");
+
+        Some(ActionDescription {
+            title: "Level Up Character".to_string(),
+            description: format!(
+                "Level up character {} to level {} (HP method: {})",
+                character_id, target_level, hp_method
+            ),
+            changes: ChangeDetail::Generic {
+                items: vec![
+                    format!("Character ID: {}", character_id),
+                    format!("Target level: {}", target_level),
+                    format!("HP method: {}", hp_method),
+                ],
+            },
+        })
+    }
+
+    async fn execute(&self, arguments: Value) -> Result<String, Box<dyn Error + Send + Sync>> {
+        let character_id = arguments
+            .get("character_id")
+            .and_then(|v| v.as_i64())
+            .ok_or("Missing character_id")? as i32;
+
+        let target_level = arguments
+            .get("target_level")
+            .and_then(|v| v.as_i64())
+            .ok_or("Missing target_level")? as i32;
+
+        let hp_method = arguments
+            .get("hp_increase_method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("average");
+
+        let custom_max_hp = arguments
+            .get("max_hp")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32);
+
+        if target_level < 1 || target_level > 20 {
+            return Err("Target level must be between 1 and 20".into());
+        }
+
+        let mut conn = self
+            .db_service
+            .get_connection()
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        let mut char_service = CharacterService::new(&mut conn);
+        let (_character, mut char_data) = char_service
+            .get_character(character_id)
+            .map_err(|e| format!("Character not found: {}", e))?;
+
+        let current_level = char_data.level;
+
+        if target_level <= current_level {
+            return Err(format!(
+                "Target level {} must be higher than current level {}",
+                target_level, current_level
+            )
+            .into());
+        }
+
+        let levels_gained = target_level - current_level;
+        let old_hp = char_data.max_hp;
+
+        // Get primary class hit die
+        let hit_die = char_data
+            .classes
+            .first()
+            .map(|c| Self::get_hit_die(&c.class_name))
+            .unwrap_or(8);
+
+        // Calculate CON modifier
+        let con_mod = (char_data.abilities.constitution - 10) / 2;
+
+        // Calculate HP gain
+        let hp_per_level = match hp_method {
+            "max" => hit_die + con_mod,
+            _ => (hit_die / 2 + 1) + con_mod, // average
+        };
+
+        let hp_gain = hp_per_level * levels_gained;
+
+        // Update character
+        char_data.level = target_level;
+
+        // Use custom max_hp if provided, otherwise calculate
+        if let Some(custom_hp) = custom_max_hp {
+            char_data.max_hp = custom_hp;
+        } else {
+            char_data.max_hp = old_hp + hp_gain;
+        }
+
+        char_data.current_hp = char_data.max_hp; // Full HP on level up
+
+        // Update class level (primary class)
+        if let Some(class) = char_data.classes.first_mut() {
+            class.level = target_level;
+            class.hit_dice_remaining = target_level;
+        }
+
+        let snapshot_reason = format!(
+            "Leveled up from {} to {} (HP: {} -> {})",
+            current_level, target_level, old_hp, char_data.max_hp
+        );
+        char_service
+            .update_character(character_id, char_data.clone(), Some(snapshot_reason))
+            .map_err(|e| format!("Failed to update character: {}", e))?;
+
+        let result = json!({
+            "success": true,
+            "character_id": character_id,
+            "character_name": char_data.character_name,
+            "old_level": current_level,
+            "new_level": target_level,
+            "levels_gained": levels_gained,
+            "old_hp": old_hp,
+            "new_hp": char_data.max_hp,
+            "hp_gain": char_data.max_hp - old_hp,
+            "message": format!(
+                "{} leveled up from {} to {}! HP: {} -> {}",
+                char_data.character_name, current_level, target_level, old_hp, char_data.max_hp
+            )
+        });
+
+        debug!(
+            "Leveled up character {}: {} -> {}",
+            character_id, current_level, target_level
         );
         Ok(serde_json::to_string_pretty(&result)?)
     }
