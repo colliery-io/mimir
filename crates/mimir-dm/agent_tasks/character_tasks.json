@@ -4,11 +4,12 @@
   "tasks": [
     {
       "id": "create_fighter",
-      "description": "Create a basic fighter character",
-      "prompt": "Create a level 3 human fighter named Gareth Stonewall for player Alice (player_id 1). He should have 28 max HP.",
+      "description": "Create a basic fighter character and level it up",
+      "prompt": "Create a level 1 human fighter named Gareth Stonewall for player Alice (player_id 1), then level him up to level 3. He should end up with 28 max HP.",
       "turns": [],
       "expected_tools": [
-        "create_character"
+        "create_character",
+        "level_up"
       ],
       "setup": [],
       "verify": [
@@ -29,7 +30,7 @@
           "with_args": null
         }
       ],
-      "timeout_secs": 60,
+      "timeout_secs": 120,
       "tags": [
         "character",
         "creation"

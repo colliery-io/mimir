@@ -5,7 +5,7 @@
     {
       "id": "create_and_equip",
       "description": "Create character and add equipment",
-      "prompt": "Create a level 1 elf wizard named Lyra Starweaver for player Bob (player_id 2) and give her a quarterstaff and a spellbook.",
+      "prompt": "Create a level 1 elf wizard named Lyra Starweaver with the Sage background for player Bob (player_id 2), then add a quarterstaff and a spellbook to her inventory.",
       "turns": [],
       "expected_tools": [
         "create_character",

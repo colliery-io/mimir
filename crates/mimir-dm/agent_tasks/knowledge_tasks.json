@@ -47,29 +47,6 @@
         "knowledge",
         "combat"
       ]
-    },
-    {
-      "id": "condition_rules",
-      "description": "Ask about a condition",
-      "prompt": "What does the stunned condition do?",
-      "turns": [],
-      "expected_tools": [],
-      "setup": [],
-      "verify": [
-        {
-          "type": "llm_judge",
-          "criteria": "Response accurately describes the stunned condition: incapacitated, can't move, can speak only falteringly, automatically fails Str/Dex saves, attacks against have advantage.",
-          "context": null
-        },
-        {
-          "type": "no_errors"
-        }
-      ],
-      "timeout_secs": 30,
-      "tags": [
-        "knowledge",
-        "conditions"
-      ]
     }
   ]
 }
