@@ -3,6 +3,7 @@
   "productName": "Mimir",
   "version": "0.0.3",
   "identifier": "com.mimir.app",
+  "mainBinaryName": "mimir",
   "build": {
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
