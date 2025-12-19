@@ -1,0 +1,3 @@
+# Ignore evaluation results (can be large)
+results/*.json
+results/*.md

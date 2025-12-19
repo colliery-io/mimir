@@ -1,0 +1,44 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+/tmp/
+.temp/
+
+# Data processing outputs
+data/
+5etools-*/
+5e-bits-enriched/
+5e-core-data/
+5e-database/
+
+# Development assets
+crates/mimir-dm/assets/dev/
+crates/mimir-dm/assets/*
+
+# Agent testing
+agent_tasks/
+agent_test_results/
+
+# TypeScript build cache
+*.tsbuildinfo
