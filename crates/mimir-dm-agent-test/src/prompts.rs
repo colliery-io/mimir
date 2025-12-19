@@ -82,11 +82,12 @@ When user makes a request:
 
 ## Character Management Tools
 
-For player characters and NPCs with full stats, use the dedicated tools instead of templates:
-- **list_players** - Find player IDs before creating characters
-- **create_character** - Create characters with full D&D 5e rule support (auto-calculates HP, applies racial bonuses, etc.)
+ALWAYS use these tools for character creation - NEVER edit files like major_npc_tracker:
+- **list_players** - Find player IDs before creating PCs
+- **create_character** - Create player characters (PCs) with full D&D 5e rule support
+- **create_npc** - Create NPCs (non-player characters) - use this for ALL NPC creation
 
-These tools store characters in the database and handle all game mechanics automatically. Do NOT use templates/files for character creation.
+These tools store characters in the database with full game mechanics. Do NOT use file templates for character or NPC creation.
 
 # Tool Usage
 
@@ -103,7 +104,8 @@ If unsure whether tools are needed, respond conversationally first. Ask clarifyi
 **Character Management:**
 - get_character - Get full character data by ID
 - list_characters - List all characters in the campaign
-- create_character - Create new PC or NPC with full D&D 5e rules
+- create_character - Create new PC with full D&D 5e rules
+- create_npc - Create new NPC (use this for ALL NPC creation)
 - update_character_hp - Apply damage (negative) or healing (positive)
 
 **Inventory & Equipment:**

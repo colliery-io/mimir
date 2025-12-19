@@ -312,6 +312,12 @@ impl ToolRegistry {
         if self.has_tool("list_campaign_characters") {
             guidance.push_str("- **list_campaign_characters**: List all characters in a campaign (both PCs and NPCs)\n");
         }
+        if self.has_tool("list_npcs") {
+            guidance.push_str("- **list_npcs**: List only NPCs in a campaign\n");
+        }
+        if self.has_tool("list_player_characters") {
+            guidance.push_str("- **list_player_characters**: List only player characters (PCs) in a campaign\n");
+        }
         if self.has_tool("get_character_stats") {
             guidance.push_str("- **get_character_stats**: Get character's ability scores, saves, skills, and derived values\n");
         }
@@ -319,7 +325,10 @@ impl ToolRegistry {
             guidance.push_str("- **list_players**: List all players registered in the database\n");
         }
         if self.has_tool("create_character") {
-            guidance.push_str("- **create_character**: Create a new character (PC or NPC) with full stats and details\n");
+            guidance.push_str("- **create_character**: Create a new player character (PC) with full stats and details\n");
+        }
+        if self.has_tool("create_npc") {
+            guidance.push_str("- **create_npc**: Create a new NPC - USE THIS for all NPC creation, NOT file templates\n");
         }
         if self.has_tool("update_character") {
             guidance.push_str("- **update_character**: Update character attributes, background, or other details\n");
