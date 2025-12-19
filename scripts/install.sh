@@ -1,13 +1,13 @@
 #!/bin/sh
 # Mimir Install Script
-# Usage: curl -sSL https://raw.githubusercontent.com/colliery-io/mimir/main/scripts/install.sh | sh
+# Usage: curl -sSL https://raw.githubusercontent.com/mimir-dm/mimir/main/scripts/install.sh | sh
 #
 # Options:
 #   --version X.Y.Z    Install specific version (default: latest)
 
 set -e
 
-REPO="colliery-io/mimir"
+REPO="mimir-dm/mimir"
 GITHUB_API="https://api.github.com/repos/${REPO}"
 GITHUB_RELEASES="https://github.com/${REPO}/releases"
 
