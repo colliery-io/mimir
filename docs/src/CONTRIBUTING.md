@@ -376,7 +376,7 @@ See individual crate READMEs for detailed information.
 ### Version Numbering
 
 We follow [Semantic Versioning](https://semver.org/):
-- MAJOR.MINOR.PATCH (e.g., 0.0.1)
+- MAJOR.MINOR.PATCH (e.g., 0.1.0)
 - MAJOR: Breaking changes
 - MINOR: New features, backwards compatible
 - PATCH: Bug fixes, backwards compatible
@@ -386,11 +386,9 @@ We follow [Semantic Versioning](https://semver.org/):
 1. Update version in all `Cargo.toml` files
 2. Update version in `package.json`
 3. Update version in `tauri.conf.json`
-4. Update CHANGELOG.md
-5. Create git tag: `git tag v0.0.2`
-6. Push tag: `git push origin v0.0.2`
-7. GitHub Actions builds and creates release
-8. Publish release notes on GitHub
+4. Create git tag: `git tag vX.Y.Z`
+5. Push tag: `git push origin vX.Y.Z`
+6. GitHub Actions builds and creates release
 
 ## Questions and Help
 
