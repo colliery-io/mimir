@@ -8,13 +8,12 @@ Mimir is a local-first desktop application for managing D&D campaigns. Built wit
 
 ## Installation
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/mimir-dm/mimir/releases).
+**macOS / Linux**:
+```bash
+curl -sSL https://raw.githubusercontent.com/mimir-dm/mimir/main/scripts/install.sh | sh
+```
 
-**macOS**: Download the `.dmg`, drag to Applications, then run `xattr -cr /Applications/Mimir.app` to remove quarantine.
-
-**Windows**: Download and run the `.msi` installer.
-
-**Linux**: Download the `.deb` package or `.AppImage`.
+**Windows**: Download and run the `.msi` installer from [GitHub Releases](https://github.com/mimir-dm/mimir/releases).
 
 ## Documentation
 
