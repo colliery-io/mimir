@@ -27,6 +27,7 @@ similar = "2.6"
 
 # Database dependencies
 rusqlite = { version = "0.31.0", features = ["bundled"] }
+libsqlite3-sys = { version = "0.28", features = ["bundled"] }
 diesel = { version = "2.1", features = ["sqlite", "chrono", "uuid", "64-column-tables", "returning_clauses_for_sqlite_3_35", "r2d2"] }
 diesel_migrations = "2.1"
 r2d2 = "0.8"
