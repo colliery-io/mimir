@@ -354,6 +354,13 @@ Output:
                         .collect()
                 })
             }).unwrap_or_default(),
+            classes: arguments.get("classes").and_then(|v| {
+                v.as_array().map(|arr| {
+                    arr.iter()
+                        .filter_map(|s| s.as_str().map(String::from))
+                        .collect()
+                })
+            }).unwrap_or_default(),
             sources: Vec::new(),
             tags: Vec::new(),
             limit: Some(50),

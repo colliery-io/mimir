@@ -1,6 +1,27 @@
 <template>
   <div class="search-filters">
     <template v-if="category === 'Spells'">
+      <select v-model="localFilters.spells.class" @change="emitUpdate">
+        <option value="">All Classes</option>
+        <option value="Artificer">Artificer</option>
+        <option value="Bard">Bard</option>
+        <option value="Cleric">Cleric</option>
+        <option value="Druid">Druid</option>
+        <option value="Paladin">Paladin</option>
+        <option value="Ranger">Ranger</option>
+        <option value="Sorcerer">Sorcerer</option>
+        <option value="Warlock">Warlock</option>
+        <option value="Wizard">Wizard</option>
+      </select>
+
+      <select v-model="localFilters.spells.level" @change="emitUpdate">
+        <option value="">All Levels</option>
+        <option value="0">Cantrip</option>
+        <option v-for="level in 9" :key="level" :value="String(level)">
+          Level {{ level }}
+        </option>
+      </select>
+
       <select v-model="localFilters.spells.school" @change="emitUpdate">
         <option value="">All Schools</option>
         <option value="abjuration">Abjuration</option>
@@ -12,28 +33,20 @@
         <option value="necromancy">Necromancy</option>
         <option value="transmutation">Transmutation</option>
       </select>
-      
-      <select v-model="localFilters.spells.level" @change="emitUpdate">
-        <option value="">All Levels</option>
-        <option value="0">Cantrip</option>
-        <option v-for="level in 9" :key="level" :value="String(level)">
-          Level {{ level }}
-        </option>
-      </select>
-      
+
       <label class="checkbox-label">
-        <input 
-          type="checkbox" 
-          v-model="localFilters.spells.ritual" 
+        <input
+          type="checkbox"
+          v-model="localFilters.spells.ritual"
           @change="emitUpdate"
         >
         Ritual
       </label>
-      
+
       <label class="checkbox-label">
-        <input 
-          type="checkbox" 
-          v-model="localFilters.spells.concentration" 
+        <input
+          type="checkbox"
+          v-model="localFilters.spells.concentration"
           @change="emitUpdate"
         >
         Concentration

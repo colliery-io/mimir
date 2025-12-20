@@ -377,12 +377,13 @@ impl CatalogSpell {
 /// Spell filter parameters for database queries
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SpellFilters {
-    pub query: Option<String>, // Name search
-    pub levels: Vec<i32>,      // Filter by level
-    pub schools: Vec<String>,  // Filter by school
-    pub sources: Vec<String>,  // Filter by book
-    pub tags: Vec<String>,     // Filter by tags (concentration, ritual, etc.)
-    pub limit: Option<i32>,    // Pagination
+    pub query: Option<String>,   // Name search
+    pub levels: Vec<i32>,        // Filter by level
+    pub schools: Vec<String>,    // Filter by school
+    pub sources: Vec<String>,    // Filter by book
+    pub tags: Vec<String>,       // Filter by tags (concentration, ritual, etc.)
+    pub classes: Vec<String>,    // Filter by class (Wizard, Cleric, etc.)
+    pub limit: Option<i32>,      // Pagination
     pub offset: Option<i32>,
 }
 

@@ -386,6 +386,22 @@
         <div v-else-if="activeTab === 'spells'" class="spells-sheet">
           <!-- Spellcasting Header -->
           <div class="spells-header">
+            <div class="spells-header-actions">
+              <button
+                v-if="!isSpellEditMode"
+                @click="startSpellEdit"
+                class="btn-edit-small"
+              >
+                Edit Spells
+              </button>
+              <button
+                v-else
+                @click="cancelSpellEdit"
+                class="btn-secondary btn-small"
+              >
+                Done
+              </button>
+            </div>
             <div class="spellcasting-info">
               <div class="spell-stat-box">
                 <span class="stat-label">Spellcasting Class</span>
@@ -402,6 +418,12 @@
               <div class="spell-stat-box">
                 <span class="stat-label">Spell Attack Bonus</span>
                 <span class="stat-value">{{ formatModifier(spellAttackBonus) }}</span>
+              </div>
+              <div v-if="maxSpellsKnown !== null" class="spell-stat-box">
+                <span class="stat-label">Spells Known</span>
+                <span class="stat-value" :class="{ 'at-limit': isAtSpellLimit }">
+                  {{ currentSpellsCount }}/{{ maxSpellsKnown }}
+                </span>
               </div>
             </div>
 
@@ -427,17 +449,42 @@
             <div class="spell-level-section">
               <div class="level-header-box">
                 <span class="level-title">Cantrips</span>
+                <span v-if="isSpellEditMode && isFullListCaster" class="edit-hint">Click to toggle</span>
+                <button
+                  v-if="isSpellEditMode && !isFullListCaster"
+                  @click="openSpellPicker(0)"
+                  class="btn-add-spell"
+                  :disabled="isAtCantripLimit"
+                >
+                  + Add
+                </button>
+                <div v-if="maxCantripsKnown > 0" class="level-slots-info">
+                  <span class="slots-total" :class="{ 'at-limit': isAtCantripLimit }">
+                    {{ currentCantripsCount }}/{{ maxCantripsKnown }} known
+                  </span>
+                  <div class="slots-circles-header">
+                    <span
+                      v-for="i in maxCantripsKnown"
+                      :key="i"
+                      class="slot-circle-sm"
+                      :class="{ used: i > currentCantripsCount }"
+                    ></span>
+                  </div>
+                </div>
               </div>
               <div class="spell-list">
                 <div
-                  v-for="spellName in (isFullListCaster ? spellsByLevel[0]?.map(s => s.name) : data.spells.cantrips.map(s => s.name)) || []"
+                  v-for="spellName in getSortedSpellsForLevel(0)"
                   :key="spellName"
                   class="spell-item"
-                  :class="{ expanded: expandedSpells.has(spellName) }"
+                  :class="{ expanded: expandedSpells.has(spellName), 'spell-in-book': isSpellEditMode && isSpellKnown(spellName) }"
                 >
-                  <div class="spell-row" @click="toggleSpellExpansion(spellName)">
+                  <div class="spell-row" @click="isSpellEditMode ? toggleSpellInBook(spellName, true) : toggleSpellExpansion(spellName)">
+                    <span v-if="isSpellEditMode" class="spell-checkbox" :class="{ checked: isSpellKnown(spellName) }">
+                      {{ isSpellKnown(spellName) ? '✓' : '' }}
+                    </span>
                     <span class="spell-name">{{ spellName }}</span>
-                    <span class="expand-icon">{{ expandedSpells.has(spellName) ? '-' : '+' }}</span>
+                    <span v-if="!isSpellEditMode" class="expand-icon">{{ expandedSpells.has(spellName) ? '-' : '+' }}</span>
                   </div>
                   <div v-if="expandedSpells.has(spellName)" class="spell-details">
                     <div v-if="loadingSpellDetails.has(spellName)" class="loading-details">
@@ -463,7 +510,7 @@
                     </template>
                   </div>
                 </div>
-                <div v-if="!(isFullListCaster ? spellsByLevel[0]?.length : data.spells.cantrips.length)" class="no-spells-message">
+                <div v-if="!getSortedSpellsForLevel(0).length" class="no-spells-message">
                   No cantrips
                 </div>
               </div>
@@ -474,6 +521,18 @@
               <div v-if="level <= maxSpellLevel" class="spell-level-section">
                 <div class="level-header-box">
                   <span class="level-title">Level {{ level }}</span>
+                  <span v-if="isSpellEditMode && isFullListCaster" class="edit-hint">Spellbook (no limit)</span>
+                  <span v-if="isSpellEditMode && !isFullListCaster && maxSpellsKnown !== null" class="spell-count" :class="{ 'at-limit': isAtSpellLimit }">
+                    {{ currentSpellsCount }}/{{ maxSpellsKnown }} known
+                  </span>
+                  <button
+                    v-if="isSpellEditMode && !isFullListCaster"
+                    @click="openSpellPicker(level)"
+                    class="btn-add-spell"
+                    :disabled="isAtSpellLimit"
+                  >
+                    + Add
+                  </button>
                   <div class="level-slots-info">
                     <span v-if="calculatedSpellSlots[level]" class="slots-total">
                       {{ calculatedSpellSlots[level].max }} slots
@@ -491,14 +550,17 @@
                 </div>
                 <div class="spell-list">
                   <div
-                    v-for="spellName in (isFullListCaster ? spellsByLevel[level]?.map(s => s.name) : spellsForSheet[level]) || []"
+                    v-for="spellName in getSortedSpellsForLevel(level)"
                     :key="spellName"
                     class="spell-item"
-                    :class="{ expanded: expandedSpells.has(spellName) }"
+                    :class="{ expanded: expandedSpells.has(spellName), 'spell-in-book': isSpellEditMode && isSpellKnown(spellName) }"
                   >
-                    <div class="spell-row" @click="toggleSpellExpansion(spellName)">
+                    <div class="spell-row" @click="isSpellEditMode ? toggleSpellInBook(spellName, false) : toggleSpellExpansion(spellName)">
+                      <span v-if="isSpellEditMode" class="spell-checkbox" :class="{ checked: isSpellKnown(spellName) }">
+                        {{ isSpellKnown(spellName) ? '✓' : '' }}
+                      </span>
                       <span class="spell-name">{{ spellName }}</span>
-                      <span class="expand-icon">{{ expandedSpells.has(spellName) ? '-' : '+' }}</span>
+                      <span v-if="!isSpellEditMode" class="expand-icon">{{ expandedSpells.has(spellName) ? '-' : '+' }}</span>
                     </div>
                     <div v-if="expandedSpells.has(spellName)" class="spell-details">
                       <div v-if="loadingSpellDetails.has(spellName)" class="loading-details">
@@ -525,12 +587,41 @@
                       </template>
                     </div>
                   </div>
-                  <div v-if="!(isFullListCaster ? spellsByLevel[level]?.length : spellsForSheet[level]?.length)" class="no-spells-message">
+                  <div v-if="!getSortedSpellsForLevel(level).length" class="no-spells-message">
                     -
                   </div>
                 </div>
               </div>
             </template>
+          </div>
+
+          <!-- Spell Picker Modal -->
+          <div v-if="showSpellPicker" class="spell-picker-overlay" @click.self="showSpellPicker = false">
+            <div class="spell-picker-modal">
+              <div class="spell-picker-header">
+                <h3>Add {{ spellPickerLevel === 0 ? 'Cantrip' : `Level ${spellPickerLevel} Spell` }}</h3>
+                <button @click="showSpellPicker = false" class="btn-close">×</button>
+              </div>
+              <div class="spell-picker-content">
+                <div v-if="spellsForPicker.length === 0" class="no-spells-available">
+                  No spells available for this level
+                </div>
+                <div v-else class="spell-picker-list">
+                  <button
+                    v-for="spell in spellsForPicker"
+                    :key="spell.name"
+                    @click="!isSpellKnown(spell.name) && addSpell(spell)"
+                    class="spell-picker-item"
+                    :class="{ 'spell-known': isSpellKnown(spell.name) }"
+                    :disabled="isSpellKnown(spell.name)"
+                  >
+                    <span class="picker-spell-name">{{ spell.name }}</span>
+                    <span v-if="isSpellKnown(spell.name)" class="picker-spell-known-badge">Known</span>
+                    <span v-else class="picker-spell-school">{{ spell.school }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -835,6 +926,7 @@ import type { CharacterData, FeatureDetail, FeatureReference } from '../../../ty
 // Spell summary from catalog
 interface SpellSummary {
   name: string
+  source: string
   level: number
   school: string
   concentration: boolean
@@ -873,6 +965,17 @@ interface ItemDetails {
   property?: string[]
   range?: string
   entries?: Array<string | object>
+}
+
+// Class details from catalog (for spell progression)
+// Note: Property names are camelCase to match JSON response from Rust serde
+interface CatalogClass {
+  name: string
+  source: string
+  cantripProgression?: number[]
+  spellsKnownProgression?: number[]
+  casterProgression?: string
+  spellcastingAbility?: string
 }
 
 const route = useRoute()
@@ -917,6 +1020,9 @@ const editData = ref<{
   legendary_action_count: number
 } | null>(null)
 
+// Catalog class details (for spell progression from rules)
+const catalogClassDetails = ref<CatalogClass | null>(null)
+
 const characterId = computed(() => Number(route.params.id))
 const character = computed(() => characterStore.currentCharacter)
 const data = computed(() => character.value?.data as CharacterData)
@@ -957,6 +1063,40 @@ const fetchFeatureDetails = async () => {
 watch(() => data.value?.class_features, (newFeatures) => {
   if (newFeatures?.length) {
     fetchFeatureDetails()
+  }
+}, { immediate: true })
+
+// Fetch spellcasting class details from catalog (for progression data)
+const fetchSpellcastingClassDetails = async () => {
+  if (!data.value?.classes?.length) return
+
+  // Find the first spellcasting class
+  const spellcasters = ['wizard', 'cleric', 'druid', 'bard', 'sorcerer', 'warlock', 'paladin', 'ranger']
+  const spellcastingCls = data.value.classes.find(c =>
+    spellcasters.includes(c.class_name.toLowerCase())
+  )
+
+  if (!spellcastingCls) {
+    catalogClassDetails.value = null
+    return
+  }
+
+  try {
+    const classData = await invoke<CatalogClass | null>('get_class_details', {
+      className: spellcastingCls.class_name,
+      classSource: 'PHB' // Most base classes are PHB
+    })
+    catalogClassDetails.value = classData
+  } catch (error) {
+    console.error('Failed to fetch class details:', error)
+    catalogClassDetails.value = null
+  }
+}
+
+// Watch for character data changes to fetch class details
+watch(() => data.value?.classes, (newClasses) => {
+  if (newClasses?.length) {
+    fetchSpellcastingClassDetails()
   }
 }, { immediate: true })
 
@@ -1204,6 +1344,15 @@ const hasEquipment = computed(() => {
 
 // Equipment Tab State
 const showCurrencyEditor = ref(false)
+
+// Spell edit mode
+const isSpellEditMode = ref(false)
+const spellEditData = ref<{
+  cantrips: { name: string; source: string }[]
+  known_spells: { name: string; source: string }[]
+} | null>(null)
+const showSpellPicker = ref(false)
+const spellPickerLevel = ref(0)
 const currencyEdit = ref({
   platinum: 0,
   gold: 0,
@@ -1750,6 +1899,89 @@ const spellAttackBonus = computed(() => {
   return proficiencyBonus.value + getModifier(ability)
 })
 
+// Hardcoded cantrip progressions as fallback (from PHB)
+const cantripProgressionFallback: Record<string, number[]> = {
+  wizard: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+  cleric: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+  druid: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  bard: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  sorcerer: [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+  warlock: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+}
+
+// Hardcoded spells known progressions as fallback (from PHB)
+const spellsKnownProgressionFallback: Record<string, number[]> = {
+  bard: [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22],
+  sorcerer: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15],
+  warlock: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+  ranger: [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11],
+}
+
+// Max cantrips known based on class and level (from catalog rules)
+const maxCantripsKnown = computed(() => {
+  if (!spellcastingClass.value) return 0
+  const cls = spellcastingClass.value.class_name.toLowerCase()
+  const level = spellcastingClass.value.level
+
+  // Use catalog class data if available (camelCase from JSON)
+  if (catalogClassDetails.value?.cantripProgression?.length) {
+    const progression = catalogClassDetails.value.cantripProgression
+    return progression[Math.min(level, progression.length) - 1] || 0
+  }
+
+  // Fallback to hardcoded progression
+  const fallback = cantripProgressionFallback[cls]
+  if (fallback) {
+    return fallback[Math.min(level, 20) - 1] || 0
+  }
+
+  // Paladin and Ranger don't get cantrips
+  return 0
+})
+
+// Max spells known (for known spell casters like Bard, Sorcerer, Warlock, Ranger)
+// Full list casters (Wizard, Cleric, Druid, Paladin) don't have a limit on spellbook/known spells
+const maxSpellsKnown = computed(() => {
+  if (!spellcastingClass.value) return null // null means no limit
+  const cls = spellcastingClass.value.class_name.toLowerCase()
+  const level = spellcastingClass.value.level
+
+  // Use catalog class data if available (camelCase from JSON)
+  if (catalogClassDetails.value?.spellsKnownProgression?.length) {
+    const progression = catalogClassDetails.value.spellsKnownProgression
+    return progression[Math.min(level, progression.length) - 1] || 0
+  }
+
+  // Fallback to hardcoded progression for known casters
+  const fallback = spellsKnownProgressionFallback[cls]
+  if (fallback) {
+    return fallback[Math.min(level, 20) - 1] || 0
+  }
+
+  // No progression means it's a full list caster (no limit on spellbook)
+  return null
+})
+
+// Current counts
+const currentCantripsCount = computed(() => {
+  return data.value?.spells.cantrips.length || 0
+})
+
+const currentSpellsCount = computed(() => {
+  return data.value?.spells.known_spells.length || 0
+})
+
+// Check if at cantrip limit
+const isAtCantripLimit = computed(() => {
+  return currentCantripsCount.value >= maxCantripsKnown.value
+})
+
+// Check if at spell limit (only for known spell casters)
+const isAtSpellLimit = computed(() => {
+  if (maxSpellsKnown.value === null) return false // No limit
+  return currentSpellsCount.value >= maxSpellsKnown.value
+})
+
 // Fetch spell details for rule text
 const fetchSpellDetails = async (spellName: string) => {
   if (spellDetails.value[spellName] || loadingSpellDetails.value.has(spellName)) {
@@ -2072,6 +2304,201 @@ const deleteCharacter = async () => {
     console.error('Failed to delete character:', e)
   }
 }
+
+// Spell edit mode functions
+const startSpellEdit = () => {
+  if (!data.value) return
+  spellEditData.value = {
+    cantrips: [...data.value.spells.cantrips],
+    known_spells: [...data.value.spells.known_spells]
+  }
+  isSpellEditMode.value = true
+}
+
+const cancelSpellEdit = () => {
+  isSpellEditMode.value = false
+  spellEditData.value = null
+  showSpellPicker.value = false
+}
+
+const removeSpell = async (spellName: string, isCantrip: boolean) => {
+  if (!data.value) return
+
+  try {
+    // Update local data
+    const updatedSpells = {
+      ...data.value.spells,
+      cantrips: isCantrip
+        ? data.value.spells.cantrips.filter(s => s.name !== spellName)
+        : data.value.spells.cantrips,
+      known_spells: !isCantrip
+        ? data.value.spells.known_spells.filter(s => s.name !== spellName)
+        : data.value.spells.known_spells
+    }
+
+    const updatedData = {
+      ...data.value,
+      spells: updatedSpells
+    }
+
+    await invoke('update_character', {
+      characterId: characterId.value,
+      characterData: updatedData,
+      snapshotReason: 'Removed spell'
+    })
+
+    // Reload character data
+    await characterStore.getCharacter(characterId.value)
+  } catch (e) {
+    console.error('Failed to remove spell:', e)
+    alert('Failed to remove spell: ' + e)
+  }
+}
+
+const openSpellPicker = (level: number) => {
+  spellPickerLevel.value = level
+  showSpellPicker.value = true
+}
+
+const addSpell = async (spell: SpellSummary) => {
+  if (!data.value) return
+
+  try {
+    const spellRef = { name: spell.name, source: spell.source }
+    const isCantrip = spell.level === 0
+
+    // Check if spell already exists
+    const existingSpells = isCantrip ? data.value.spells.cantrips : data.value.spells.known_spells
+    if (existingSpells.some(s => s.name === spell.name)) {
+      alert('Spell already known')
+      return
+    }
+
+    // Update local data
+    const updatedSpells = {
+      ...data.value.spells,
+      cantrips: isCantrip
+        ? [...data.value.spells.cantrips, spellRef]
+        : data.value.spells.cantrips,
+      known_spells: !isCantrip
+        ? [...data.value.spells.known_spells, spellRef]
+        : data.value.spells.known_spells
+    }
+
+    const updatedData = {
+      ...data.value,
+      spells: updatedSpells
+    }
+
+    await invoke('update_character', {
+      characterId: characterId.value,
+      characterData: updatedData,
+      snapshotReason: 'Added spell'
+    })
+
+    // Reload character data
+    await characterStore.getCharacter(characterId.value)
+    showSpellPicker.value = false
+  } catch (e) {
+    console.error('Failed to add spell:', e)
+    alert('Failed to add spell: ' + e)
+  }
+}
+
+// Check if a spell is already known by the character
+const isSpellKnown = (spellName: string): boolean => {
+  if (!data.value) return false
+  const allKnown = [
+    ...data.value.spells.cantrips.map(s => s.name),
+    ...data.value.spells.known_spells.map(s => s.name)
+  ]
+  return allKnown.includes(spellName)
+}
+
+// Get sorted spell names for a level (known spells first, then alphabetical)
+const getSortedSpellsForLevel = (level: number): string[] => {
+  if (!isFullListCaster.value) {
+    // For known spell casters, just return their known spells
+    if (level === 0) {
+      return data.value?.spells.cantrips.map(s => s.name) || []
+    }
+    return spellsForSheet.value[level] || []
+  }
+
+  // For full list casters, sort with known first
+  const allSpells = spellsByLevel.value[level]?.map(s => s.name) || []
+  return allSpells.sort((a, b) => {
+    const aKnown = isSpellKnown(a)
+    const bKnown = isSpellKnown(b)
+    if (aKnown && !bKnown) return -1
+    if (!aKnown && bKnown) return 1
+    return a.localeCompare(b)
+  })
+}
+
+// Toggle a spell in/out of the spellbook (for full list casters)
+const toggleSpellInBook = async (spellName: string, isCantrip: boolean) => {
+  if (!data.value) return
+
+  const isKnown = isSpellKnown(spellName)
+
+  // Check limits before adding
+  if (!isKnown) {
+    if (isCantrip && isAtCantripLimit.value) {
+      // At cantrip limit, don't add
+      return
+    }
+    if (!isCantrip && isAtSpellLimit.value) {
+      // At spell limit, don't add
+      return
+    }
+  }
+
+  // Update local data immediately (optimistic update)
+  if (isKnown) {
+    if (isCantrip) {
+      data.value.spells.cantrips = data.value.spells.cantrips.filter(s => s.name !== spellName)
+    } else {
+      data.value.spells.known_spells = data.value.spells.known_spells.filter(s => s.name !== spellName)
+    }
+  } else {
+    const spellData = availableSpells.value.find(s => s.name === spellName)
+    const source = spellData?.source || 'PHB'
+    const spellRef = { name: spellName, source }
+    if (isCantrip) {
+      data.value.spells.cantrips = [...data.value.spells.cantrips, spellRef]
+    } else {
+      data.value.spells.known_spells = [...data.value.spells.known_spells, spellRef]
+    }
+  }
+
+  // Save to backend in background (don't await to prevent scroll jump)
+  invoke('update_character', {
+    characterId: characterId.value,
+    characterData: data.value,
+    snapshotReason: isKnown ? 'Removed spell from spellbook' : 'Added spell to spellbook'
+  }).catch(e => {
+    console.error('Failed to save spell change:', e)
+  })
+}
+
+// Filter available spells by level for picker
+const spellsForPicker = computed(() => {
+  if (!spellcastingClass.value) return []
+
+  const className = spellcastingClass.value.class_name.toLowerCase()
+  return availableSpells.value
+    .filter(spell => {
+      // Filter by level
+      if (spell.level !== spellPickerLevel.value) return false
+      // Filter by class (if available in spell data)
+      if (spell.classes && spell.classes.length > 0) {
+        return spell.classes.some(c => c.toLowerCase() === className)
+      }
+      return true
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
 </script>
 
 <style scoped>
@@ -2979,6 +3406,64 @@ const deleteCharacter = async () => {
   font-weight: bold;
 }
 
+/* Spell edit mode styles */
+.spell-checkbox {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--spacing-sm);
+  background: var(--color-background);
+  font-size: 0.875rem;
+  font-weight: bold;
+  transition: all 0.15s ease;
+}
+
+.spell-checkbox.checked {
+  background: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+  color: white;
+}
+
+.spell-in-book {
+  background: var(--color-primary-50);
+}
+
+.spell-in-book .spell-name {
+  color: var(--color-primary-700);
+  font-weight: 500;
+}
+
+.edit-hint {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.spell-count {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-left: var(--spacing-xs);
+}
+
+.spell-count.at-limit,
+.stat-value.at-limit,
+.slots-total.at-limit {
+  color: var(--color-warning-600);
+  font-weight: 600;
+}
+
+.btn-add-spell:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .spell-details {
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-surface);
@@ -3045,6 +3530,168 @@ const deleteCharacter = async () => {
   text-align: center;
   font-size: 0.8rem;
   color: var(--color-text-secondary);
+}
+
+/* Spell edit mode styles */
+.spells-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-sm);
+}
+
+.btn-add-spell {
+  background: var(--color-primary-500);
+  color: white;
+  border: none;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.btn-add-spell:hover {
+  background: var(--color-primary-600);
+}
+
+.btn-remove-spell {
+  background: var(--color-error);
+  color: white;
+  border: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  margin-right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-remove-spell:hover {
+  background: var(--color-error-dark, #c82333);
+}
+
+/* Spell picker modal */
+.spell-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.spell-picker-modal {
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.spell-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.spell-picker-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  padding: 0;
+  line-height: 1;
+}
+
+.btn-close:hover {
+  color: var(--color-text);
+}
+
+.spell-picker-content {
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.no-spells-available {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-lg);
+}
+
+.spell-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.spell-picker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.spell-picker-item:hover {
+  background: var(--color-surface-hover, var(--color-bg));
+  border-color: var(--color-primary-500);
+}
+
+.picker-spell-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.picker-spell-school {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.picker-spell-known-badge {
+  font-size: 0.75rem;
+  background: var(--color-success, #28a745);
+  color: white;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.spell-picker-item.spell-known {
+  opacity: 0.6;
+  cursor: default;
+  background: var(--color-surface);
+}
+
+.spell-picker-item.spell-known:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface);
 }
 
 /* Item styles */
