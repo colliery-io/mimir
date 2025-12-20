@@ -129,7 +129,8 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
           timestamp: Date.now(),
           toolName: toolResult.tool_name,
           success: toolResult.success,
-          iteration: toolResult.iteration
+          iteration: toolResult.iteration,
+          tool_call_id: toolResult.tool_call_id
         }
         messages.value.push(message)
         console.log(`Added tool result message: ${toolResult.tool_name}`)
@@ -198,7 +199,9 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
       // Prepare messages for API (keep full content including thinking blocks)
       const conversationMessages = messages.value.map(msg => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
+        // Include tool_call_id for tool result messages (required by API)
+        ...(msg.tool_call_id ? { tool_call_id: msg.tool_call_id } : {})
       }))
 
       // Combine system message with conversation (system message always first)
@@ -376,7 +379,9 @@ export function createMessagesStore(): MessagesState & MessagesComputed & Messag
 
       const conversationMessages = messages.value.map(msg => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
+        // Include tool_call_id for tool result messages (required by API)
+        ...(msg.tool_call_id ? { tool_call_id: msg.tool_call_id } : {})
       }))
 
       const apiMessages = [

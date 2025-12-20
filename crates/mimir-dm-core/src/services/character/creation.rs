@@ -139,6 +139,17 @@ impl<'a> CharacterBuilder<'a> {
         Ok(self)
     }
 
+    /// Set race name directly without validation (for NPCs using monster/creature types)
+    /// This allows using any string as a race, useful when the race is a monster
+    /// type that isn't in the standard race catalog (e.g., "Goblin", "Yeti").
+    /// Note: Racial ability bonuses will not be applied for unvalidated races.
+    pub fn set_race_name_only(mut self, race_name: &str, source: &str) -> Self {
+        self.race_name = Some(race_name.to_string());
+        self.race_source = Some(source.to_string());
+        self.subrace_name = None;
+        self
+    }
+
     /// Set class by name and source (looks up from database)
     pub fn set_class(
         mut self,
@@ -279,45 +290,49 @@ impl<'a> CharacterBuilder<'a> {
             .base_abilities
             .ok_or_else(|| DbError::InvalidData("Ability scores are required".to_string()))?;
 
-        // Get race data from database and apply racial bonuses
-        let race_json = RaceService::get_race_details(self.conn, &race_name, &race_source)?
-            .ok_or_else(|| DbError::InvalidData("Race data not found".to_string()))?;
+        // Get race data from database and apply racial bonuses if available
+        // For NPCs using monster races, race data may not exist in the race catalog
+        let race_opt = RaceService::get_race_details(self.conn, &race_name, &race_source)?
+            .and_then(|json| serde_json::from_str::<Race>(&json).ok());
 
-        let race: Race = serde_json::from_str(&race_json)
-            .map_err(|e| DbError::InvalidData(format!("Failed to parse race data: {}", e)))?;
-
-        // Apply racial ability score bonuses
-        if let Some(abilities) = &race.ability {
-            for ability_value in abilities {
-                if let Some(obj) = ability_value.as_object() {
-                    if let Some(str_val) = obj.get("str").and_then(|v| v.as_i64()) {
-                        base_abilities.strength += str_val as i32;
-                    }
-                    if let Some(dex_val) = obj.get("dex").and_then(|v| v.as_i64()) {
-                        base_abilities.dexterity += dex_val as i32;
-                    }
-                    if let Some(con_val) = obj.get("con").and_then(|v| v.as_i64()) {
-                        base_abilities.constitution += con_val as i32;
-                    }
-                    if let Some(int_val) = obj.get("int").and_then(|v| v.as_i64()) {
-                        base_abilities.intelligence += int_val as i32;
-                    }
-                    if let Some(wis_val) = obj.get("wis").and_then(|v| v.as_i64()) {
-                        base_abilities.wisdom += wis_val as i32;
-                    }
-                    if let Some(cha_val) = obj.get("cha").and_then(|v| v.as_i64()) {
-                        base_abilities.charisma += cha_val as i32;
+        // Apply racial ability score bonuses if race data is available
+        if let Some(ref race) = race_opt {
+            if let Some(abilities) = &race.ability {
+                for ability_value in abilities {
+                    if let Some(obj) = ability_value.as_object() {
+                        if let Some(str_val) = obj.get("str").and_then(|v| v.as_i64()) {
+                            base_abilities.strength += str_val as i32;
+                        }
+                        if let Some(dex_val) = obj.get("dex").and_then(|v| v.as_i64()) {
+                            base_abilities.dexterity += dex_val as i32;
+                        }
+                        if let Some(con_val) = obj.get("con").and_then(|v| v.as_i64()) {
+                            base_abilities.constitution += con_val as i32;
+                        }
+                        if let Some(int_val) = obj.get("int").and_then(|v| v.as_i64()) {
+                            base_abilities.intelligence += int_val as i32;
+                        }
+                        if let Some(wis_val) = obj.get("wis").and_then(|v| v.as_i64()) {
+                            base_abilities.wisdom += wis_val as i32;
+                        }
+                        if let Some(cha_val) = obj.get("cha").and_then(|v| v.as_i64()) {
+                            base_abilities.charisma += cha_val as i32;
+                        }
                     }
                 }
             }
         }
 
-        // Extract speed from race
-        let speed = if let Some(speed_value) = &race.speed {
-            if let Some(speed_num) = speed_value.as_i64() {
-                speed_num as i32
-            } else if let Some(obj) = speed_value.as_object() {
-                obj.get("walk").and_then(|v| v.as_i64()).unwrap_or(30) as i32
+        // Extract speed from race if available, otherwise use default
+        let speed = if let Some(ref race) = race_opt {
+            if let Some(speed_value) = &race.speed {
+                if let Some(speed_num) = speed_value.as_i64() {
+                    speed_num as i32
+                } else if let Some(obj) = speed_value.as_object() {
+                    obj.get("walk").and_then(|v| v.as_i64()).unwrap_or(30) as i32
+                } else {
+                    30
+                }
             } else {
                 30
             }
@@ -325,15 +340,17 @@ impl<'a> CharacterBuilder<'a> {
             30
         };
 
-        // Extract languages from race
-        if let Some(lang_profs) = &race.language_proficiencies {
-            for lang_value in lang_profs {
-                if let Some(obj) = lang_value.as_object() {
-                    for (lang, _) in obj.iter() {
-                        if lang != "anyStandard" && lang != "choose" && lang != "any" {
-                            let lang_name = titlecase(lang);
-                            if !self.proficiencies.languages.contains(&lang_name) {
-                                self.proficiencies.languages.push(lang_name);
+        // Extract languages from race if available
+        if let Some(ref race) = race_opt {
+            if let Some(lang_profs) = &race.language_proficiencies {
+                for lang_value in lang_profs {
+                    if let Some(obj) = lang_value.as_object() {
+                        for (lang, _) in obj.iter() {
+                            if lang != "anyStandard" && lang != "choose" && lang != "any" {
+                                let lang_name = titlecase(lang);
+                                if !self.proficiencies.languages.contains(&lang_name) {
+                                    self.proficiencies.languages.push(lang_name);
+                                }
                             }
                         }
                     }

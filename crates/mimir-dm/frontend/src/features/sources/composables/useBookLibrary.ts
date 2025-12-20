@@ -38,39 +38,61 @@ export function useBookLibrary() {
     }
   }
 
-  // Add a new book to the library
+  // Add books to the library (supports multi-select)
   async function addBook(): Promise<boolean> {
     try {
-      // Open file dialog first
+      // Open file dialog with multi-select
       const selected = await open({
-        multiple: false,
+        multiple: true,
         filters: [{
           name: 'Book Archive',
           extensions: ['tar.gz', 'gz']
         }],
-        title: 'Select a book archive to add to your library'
+        title: 'Select book archives to add to your library'
       })
+
       if (selected) {
-        // Handle both string and array returns
-        const filePath = Array.isArray(selected) ? selected[0] : selected
-        
-        // Call backend to upload and extract the archive
-        const response = await invoke<{ success: boolean; data?: BookInfo; message?: string }>('upload_book_archive', {
-          archivePath: filePath
-        })
-        if (response.success && response.data) {
-          // Reload books list
-          await loadLibraryBooks()
-          return true
-        } else {
-          alert(`Failed to add book: ${response.message}`)
-          return false
+        // Normalize to array
+        const filePaths = Array.isArray(selected) ? selected : [selected]
+
+        if (filePaths.length === 0) return false
+
+        let successCount = 0
+        const failures: string[] = []
+
+        for (const filePath of filePaths) {
+          const fileName = filePath.split('/').pop() || filePath
+          try {
+            const response = await invoke<{ success: boolean; data?: BookInfo; message?: string }>('upload_book_archive', {
+              archivePath: filePath
+            })
+            if (response.success && response.data) {
+              successCount++
+            } else {
+              failures.push(`${fileName}: ${response.message}`)
+            }
+          } catch {
+            failures.push(`${fileName}: Import failed`)
+          }
         }
-      } else {
-        return false
+
+        // Reload books list
+        await loadLibraryBooks()
+
+        // Show summary if there were failures
+        if (failures.length > 0) {
+          if (successCount > 0) {
+            alert(`Imported ${successCount} book(s).\n\nFailed:\n${failures.join('\n')}`)
+          } else {
+            alert(`Failed to import:\n${failures.join('\n')}`)
+          }
+        }
+
+        return successCount > 0
       }
-    } catch (error) {
-      alert('Failed to add book. Please try again.')
+      return false
+    } catch {
+      alert('Failed to add books. Please try again.')
       return false
     }
   }

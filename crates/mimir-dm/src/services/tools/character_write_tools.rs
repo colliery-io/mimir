@@ -1144,10 +1144,11 @@ Output:
         };
 
         // Build NPC using builder
+        // Use set_race_name_only for NPCs since they may use monster/creature races
+        // that aren't in the standard race catalog (e.g., "Goblin", "Yeti")
         let mut builder = CharacterBuilder::new(&mut conn)
             .set_identity(name.clone(), None) // No player_id for NPCs
-            .set_race(&race, &race_source, None)
-            .map_err(|e| format!("Failed to set race: {}", e))?
+            .set_race_name_only(&race, &race_source)
             .set_ability_scores(scores)
             .map_err(|e| format!("Failed to set ability scores: {}", e))?;
 

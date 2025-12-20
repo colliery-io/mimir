@@ -17,6 +17,9 @@ use uuid::Uuid;
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    /// Tool call ID - required for messages with role="tool" (tool results)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 /// Chat response with token usage
@@ -91,7 +94,7 @@ pub async fn send_chat_message(
         .map(|msg| mimir_dm_llm::Message {
             role: msg.role,
             content: msg.content,
-            tool_call_id: None,
+            tool_call_id: msg.tool_call_id,
         })
         .collect();
 

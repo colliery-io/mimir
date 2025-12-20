@@ -161,12 +161,24 @@
           </div>
 
           <div class="form-group">
-            <label>Race *</label>
+            <label>{{ formData.is_npc ? 'Race / Creature Type' : 'Race' }} *</label>
             <select v-model="formData.race" class="form-select" required>
-              <option value="">-- Select a Race --</option>
-              <option v-for="race in races" :key="`${race.name}-${race.source}`" :value="race.name">
-                {{ race.name }} ({{ race.source }})
-              </option>
+              <option value="">-- Select a {{ formData.is_npc ? 'Race or Creature' : 'Race' }} --</option>
+              <optgroup v-if="formData.is_npc" label="Standard Races">
+                <option v-for="race in raceOptions.filter(r => !r.isMonster)" :key="`${race.name}-${race.source}`" :value="race.name">
+                  {{ race.name }} ({{ race.source }})
+                </option>
+              </optgroup>
+              <optgroup v-if="formData.is_npc" label="Monsters / Creatures">
+                <option v-for="race in raceOptions.filter(r => r.isMonster)" :key="`monster-${race.name}-${race.source}`" :value="race.name">
+                  {{ race.name }} ({{ race.source }}) - CR {{ race.cr }}
+                </option>
+              </optgroup>
+              <template v-if="!formData.is_npc">
+                <option v-for="race in raceOptions" :key="`${race.name}-${race.source}`" :value="race.name">
+                  {{ race.name }} ({{ race.source }})
+                </option>
+              </template>
             </select>
           </div>
 
@@ -581,6 +593,15 @@ const races = ref<CatalogItem[]>([])
 const classes = ref<CatalogItem[]>([])
 const backgrounds = ref<CatalogItem[]>([])
 
+// Monsters loaded for NPC race options
+interface MonsterSummary {
+  name: string
+  type: string
+  source: string
+  cr: string
+}
+const monsters = ref<MonsterSummary[]>([])
+
 // Selected class/background full details for skill proficiencies
 interface ClassDetails {
   startingProficiencies?: {
@@ -615,6 +636,39 @@ interface BackgroundDetails {
 const selectedClassDetails = ref<ClassDetails | null>(null)
 const selectedBackgroundDetails = ref<BackgroundDetails | null>(null)
 const selectedRaceDetails = ref<Record<string, unknown> | null>(null)
+
+// Race options - includes monsters for NPCs
+interface RaceOption {
+  name: string
+  source: string
+  isMonster?: boolean
+  type?: string
+  cr?: string
+}
+
+const raceOptions = computed((): RaceOption[] => {
+  // Start with standard races
+  const options: RaceOption[] = races.value.map(r => ({
+    name: r.name,
+    source: r.source,
+    isMonster: false
+  }))
+
+  // For NPCs, also include monsters as race options
+  if (formData.value.is_npc) {
+    const monsterOptions: RaceOption[] = monsters.value.map(m => ({
+      name: m.name,
+      source: m.source,
+      isMonster: true,
+      type: m.type,
+      cr: m.cr
+    }))
+    options.push(...monsterOptions)
+  }
+
+  // Sort alphabetically by name
+  return options.sort((a, b) => a.name.localeCompare(b.name))
+})
 
 // Computed racial ability bonuses
 const racialBonuses = computed(() => {
@@ -1029,7 +1083,7 @@ const calculatePointBuyRemaining = (): number => {
 const loadCatalogData = async () => {
   try {
     // Call catalog search commands with correct parameters
-    const [raceResults, classResults, backgroundResults] = await Promise.all([
+    const [raceResults, classResults, backgroundResults, monsterResults] = await Promise.all([
       invoke<CatalogItem[]>('search_races', {
         search: null,
         sources: null,
@@ -1051,6 +1105,21 @@ const loadCatalogData = async () => {
           sources: null,
           has_tools: null
         }
+      }),
+      // Load monsters for NPC race options
+      invoke<MonsterSummary[]>('search_monsters', {
+        filters: {
+          name: null,
+          sources: null,
+          creature_types: null,
+          sizes: null,
+          min_cr: null,
+          max_cr: null,
+          alignments: null,
+          min_hp: null,
+          max_hp: null,
+          environment: null
+        }
       })
     ])
 
@@ -1058,6 +1127,7 @@ const loadCatalogData = async () => {
     // Filter to only show base classes (subclassName is null for base classes)
     classes.value = classResults.filter(cls => !cls.subclassName)
     backgrounds.value = backgroundResults
+    monsters.value = monsterResults
   } catch (e) {
     console.error('Failed to load catalog data:', e)
     error.value = 'Failed to load character options. Please try again.'
