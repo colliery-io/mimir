@@ -23,6 +23,7 @@ gray_matter = { workspace = true }
 sha2 = { workspace = true }
 diesel = { workspace = true }
 diesel_migrations = { workspace = true }
+libsqlite3-sys = { workspace = true }
 regex = { workspace = true }
 
 [dev-dependencies]
