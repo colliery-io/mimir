@@ -1,6 +1,10 @@
 <template>
   <div id="app" :class="[currentTheme]">
-    <router-view :key="routeKey" />
+    <router-view v-slot="{ Component }" :key="routeKey">
+      <transition name="view" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
   </div>
 </template>
 

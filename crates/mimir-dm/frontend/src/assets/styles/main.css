@@ -1,3 +1,6 @@
+/* Google Fonts - Cinzel for display/headers */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap');
+
 /* Import theme files first */
 @import './themes/light.css';
 @import './themes/dark.css';
@@ -39,6 +42,10 @@
 
 /* Base variables - shared across all themes */
 :root {
+  /* Typography */
+  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+
   /* Primary colors */
   --color-primary-50: #f0f9ff;
   --color-primary-100: #e0f2fe;
@@ -145,9 +152,21 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Display typography - Cinzel for headers and titles */
+h1, h2, h3,
+.font-display,
+.hero-title,
+.page-title,
+.section-title,
+.modal-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 /* Utility classes using CSS variables */

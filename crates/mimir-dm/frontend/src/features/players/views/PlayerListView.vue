@@ -16,12 +16,18 @@
         {{ playerStore.error }}
       </div>
 
-      <div v-else-if="playerStore.players.length === 0" class="empty-state">
-        <p>No players found.</p>
-        <button @click="showPlayerManager" class="btn-primary">
-          Add your first player
-        </button>
-      </div>
+      <EmptyState
+        v-else-if="playerStore.players.length === 0"
+        variant="users"
+        title="No players yet"
+        description="Add players to track who's in your campaigns"
+      >
+        <template #action>
+          <button @click="showPlayerManager" class="btn-primary">
+            Add your first player
+          </button>
+        </template>
+      </EmptyState>
 
       <div v-else class="player-grid">
         <div
@@ -53,6 +59,7 @@
 import { ref, onMounted } from 'vue'
 import MainLayout from '../../../shared/components/layout/MainLayout.vue'
 import PlayerManager from '../../../components/PlayerManager.vue'
+import EmptyState from '../../../shared/components/ui/EmptyState.vue'
 import { usePlayerStore } from '../../../stores/players'
 import type { Player } from '../../../types/character'
 

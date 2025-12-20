@@ -5,8 +5,10 @@
       'user-message': message.role === 'user',
       'assistant-message': message.role === 'assistant',
       'system-message': message.role === 'system',
-      'tool-message': message.role === 'tool'
+      'tool-message': message.role === 'tool',
+      'message-animate': isRecentMessage
     }"
+    :style="animationStyle"
   >
     <!-- Tool confirmation UI for system messages -->
     <ToolConfirmation
@@ -87,9 +89,29 @@ import ToolResultMessage from '@/components/ToolResultMessage.vue'
 
 const props = defineProps<{
   message: ChatMessage
+  animationIndex?: number
 }>()
 
 const chatStore = useChatStore()
+
+// Check if message is recent (for animation) - only animate last 5 messages
+const isRecentMessage = computed(() => {
+  const totalMessages = chatStore.messages.length
+  const index = props.animationIndex ?? 0
+  return totalMessages - index <= 5
+})
+
+// Animation delay based on position (staggered effect)
+const animationStyle = computed(() => {
+  if (!isRecentMessage.value) return {}
+  const totalMessages = chatStore.messages.length
+  const index = props.animationIndex ?? 0
+  const relativeIndex = index - (totalMessages - 5)
+  const delay = Math.max(0, relativeIndex) * 0.08
+  return {
+    '--message-delay': `${delay}s`
+  }
+})
 
 // Track which thinking blocks are expanded
 const expandedThinking = ref<Record<number, boolean>>({})
@@ -198,6 +220,23 @@ const handleDelete = async () => {
 <style scoped>
 .chat-message {
   @apply flex mb-4;
+}
+
+/* Staggered fade-in animation for recent messages */
+.message-animate {
+  animation: message-fade-in 0.35s ease-out backwards;
+  animation-delay: var(--message-delay, 0s);
+}
+
+@keyframes message-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .user-message {
