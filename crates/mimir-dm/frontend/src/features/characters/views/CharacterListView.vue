@@ -41,13 +41,18 @@
         {{ characterStore.error }}
       </div>
 
-      <div v-else-if="characters.length === 0" class="empty-state">
-        <p>No characters found.</p>
-        <p class="empty-subtitle">Create your first character to get started</p>
-        <button @click="createCharacter" class="btn-primary">
-          Create Character
-        </button>
-      </div>
+      <EmptyState
+        v-else-if="characters.length === 0"
+        variant="characters"
+        title="No characters yet"
+        description="Create your first character to get started on your adventure"
+      >
+        <template #action>
+          <button @click="createCharacter" class="btn-primary">
+            Create Character
+          </button>
+        </template>
+      </EmptyState>
 
       <div v-else class="character-sections">
         <!-- Unassigned Characters -->
@@ -132,6 +137,7 @@ import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import MainLayout from '../../../shared/components/layout/MainLayout.vue'
 import CharacterCreationWizard from '../components/CharacterCreationWizard.vue'
+import EmptyState from '../../../shared/components/ui/EmptyState.vue'
 import { useCharacterStore } from '../../../stores/characters'
 import { usePlayerStore } from '../../../stores/players'
 import { useCampaignStore } from '../../../stores/campaigns'

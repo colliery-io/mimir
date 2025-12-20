@@ -50,9 +50,10 @@
       </div>
       <div v-else class="messages-content">
         <ChatMessage
-          v-for="message in messages"
+          v-for="(message, index) in messages"
           :key="message.id"
           :message="message"
+          :animation-index="index"
         />
         <div v-if="isLoading" class="loading-indicator">
           <div class="typing-dots">

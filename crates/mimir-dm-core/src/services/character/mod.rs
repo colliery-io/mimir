@@ -946,6 +946,11 @@ impl<'a> CharacterService<'a> {
         yaml_data: &str,
         markdown: &str,
     ) -> Result<()> {
+        // Ensure parent directory exists
+        if let Some(parent) = file_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
         // Write YAML data as a comment at the top of the markdown file
         let full_content = format!(
             "<!--\nCharacter Data (YAML):\n{}\n-->\n\n{}",

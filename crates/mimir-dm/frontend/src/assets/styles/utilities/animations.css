@@ -1,42 +1,84 @@
 /* Shared animation utilities to eliminate duplication */
 
-/* Shimmer animation for loading states */
+/* Shimmer animation - subtle shine effect for special UI elements */
 @keyframes shimmer {
   0% {
-    left: -100%;
-    top: -100%;
+    transform: translateX(-100%);
   }
   100% {
-    left: 100%;
-    top: 100%;
+    transform: translateX(100%);
   }
 }
 
-.shimmer {
-  animation: shimmer 2s infinite;
+/* Apply shimmer effect to any element */
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-effect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
   background: linear-gradient(
     90deg,
-    var(--color-gray-300) 25%,
-    var(--color-gray-200) 50%,
-    var(--color-gray-300) 75%
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
   );
-  background-size: 1000px 100%;
+  animation: shimmer 3s infinite;
+  pointer-events: none;
 }
 
-.shimmer-text {
-  @apply shimmer rounded h-4 w-full;
+/* Faster shimmer for active/loading states */
+.shimmer-effect-fast::after {
+  animation: shimmer 1.5s infinite;
 }
 
-.shimmer-title {
-  @apply shimmer rounded h-6 w-3/4;
+/* Button loading state with spinner */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  color: transparent !important;
 }
 
-.shimmer-card {
-  @apply shimmer rounded-lg h-32;
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  opacity: 0.8;
 }
 
-.shimmer-row {
-  @apply shimmer rounded h-12 mb-2;
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Card hover enhancement */
+.card-interactive {
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  border-color: var(--color-primary-400);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Fade animations */
@@ -117,4 +159,80 @@
 
 .pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Vue Router view transitions */
+.view-enter-active,
+.view-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.view-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.view-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Fade transition for modals and overlays */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Slide up transition for panels */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.25s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* Empty state styling */
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.5;
+  color: var(--color-text-disabled);
+}
+
+.empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  max-width: 300px;
+  margin-bottom: var(--spacing-lg);
+}
+
+.empty-state-action {
+  margin-top: var(--spacing-md);
 }
