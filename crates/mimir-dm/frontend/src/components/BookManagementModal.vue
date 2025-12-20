@@ -34,10 +34,13 @@
       </div>
       
       <div class="modal-footer">
-        <button @click="handleImportBook" class="import-button">
-          Import Book
+        <div v-if="isImporting" class="import-progress">
+          Importing {{ importProgress.current }}/{{ importProgress.total }}: {{ importProgress.currentName }}
+        </div>
+        <button @click="handleImportBook" class="import-button" :disabled="isImporting">
+          {{ isImporting ? 'Importing...' : 'Import Books' }}
         </button>
-        <button @click="closeModal" class="cancel-button">
+        <button @click="closeModal" class="cancel-button" :disabled="isImporting">
           Close
         </button>
       </div>
@@ -89,6 +92,8 @@ const emit = defineEmits<Emits>()
 
 const books = ref<BookInfo[]>([])
 const isLoadingBooks = ref(false)
+const isImporting = ref(false)
+const importProgress = ref({ current: 0, total: 0, currentName: '' })
 const showDeleteModal = ref(false)
 const bookToDelete = ref<BookInfo | null>(null)
 const deleteError = ref<string | null>(null)
@@ -121,34 +126,69 @@ async function loadBooks() {
 async function handleImportBook() {
   try {
     const selected = await open({
-      multiple: false,
+      multiple: true,
       filters: [{
         name: 'Book Archive',
         extensions: ['tar.gz', 'gz']
       }],
-      title: 'Select a book archive to add to your library'
+      title: 'Select book archives to add to your library'
     })
-    
+
     if (selected) {
-      // Handle both string and array returns
-      const filePath = Array.isArray(selected) ? selected[0] : selected
-      
-      // Call backend to upload and extract the archive
-      const response = await invoke<{ success: boolean; data?: BookInfo; message?: string }>('upload_book_archive', {
-        archivePath: filePath
-      })
-      
-      if (response.success) {
-        alert('Book imported successfully!')
-        // Reload the book list
-        await loadBooks()
-      } else {
-        alert(`Failed to import book: ${response.message}`)
+      // Normalize to array
+      const filePaths = Array.isArray(selected) ? selected : [selected]
+
+      if (filePaths.length === 0) return
+
+      isImporting.value = true
+      importProgress.value = { current: 0, total: filePaths.length, currentName: '' }
+
+      const results: { success: boolean; name: string; error?: string }[] = []
+
+      for (let i = 0; i < filePaths.length; i++) {
+        const filePath = filePaths[i]
+        const fileName = filePath.split('/').pop() || filePath
+        importProgress.value = { current: i + 1, total: filePaths.length, currentName: fileName }
+
+        try {
+          const response = await invoke<{ success: boolean; data?: BookInfo; message?: string }>('upload_book_archive', {
+            archivePath: filePath
+          })
+
+          results.push({
+            success: response.success,
+            name: fileName,
+            error: response.message
+          })
+        } catch (err) {
+          results.push({
+            success: false,
+            name: fileName,
+            error: 'Import failed'
+          })
+        }
       }
+
+      isImporting.value = false
+
+      // Show results summary
+      const succeeded = results.filter(r => r.success).length
+      const failed = results.filter(r => !r.success)
+
+      if (failed.length === 0) {
+        alert(`Successfully imported ${succeeded} book${succeeded !== 1 ? 's' : ''}!`)
+      } else if (succeeded === 0) {
+        alert(`Failed to import ${failed.length} book${failed.length !== 1 ? 's' : ''}:\n${failed.map(f => `• ${f.name}: ${f.error}`).join('\n')}`)
+      } else {
+        alert(`Imported ${succeeded} book${succeeded !== 1 ? 's' : ''}.\n\nFailed to import ${failed.length}:\n${failed.map(f => `• ${f.name}: ${f.error}`).join('\n')}`)
+      }
+
+      // Reload the book list
+      await loadBooks()
     }
   } catch (error) {
-    console.error('Failed to import book:', error)
-    // Could show error in a toast or status message instead
+    console.error('Failed to import books:', error)
+    isImporting.value = false
   }
 }
 
@@ -368,8 +408,23 @@ function handleOverlayClick() {
   transition: background-color var(--transition-fast);
 }
 
-.import-button:hover {
+.import-button:hover:not(:disabled) {
   background: var(--color-primary-600);
+}
+
+.import-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.import-progress {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cancel-button {

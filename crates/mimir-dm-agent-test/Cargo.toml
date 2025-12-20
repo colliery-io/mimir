@@ -1,6 +1,6 @@
 [package]
 name = "mimir-dm-agent-test"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Agent test harness for Mimir DM"
 authors = ["Mimir Team"]
@@ -12,9 +12,9 @@ path = "src/main.rs"
 
 [dependencies]
 # Our crates
-mimir-dm = { version = "0.1.0", path = "../mimir-dm" }
-mimir-dm-core = { version = "0.1.0", path = "../mimir-dm-core" }
-mimir-dm-llm = { version = "0.1.0", path = "../mimir-dm-llm" }
+mimir-dm = { version = "0.1.1", path = "../mimir-dm" }
+mimir-dm-core = { version = "0.1.1", path = "../mimir-dm-core" }
+mimir-dm-llm = { version = "0.1.1", path = "../mimir-dm-llm" }
 
 # Core dependencies
 anyhow = { workspace = true }

@@ -14,6 +14,8 @@ export interface ChatMessage {
   toolName?: string
   toolCalls?: string[]
   success?: boolean
+  /** Required for tool result messages - identifies which tool call this responds to */
+  tool_call_id?: string
 }
 
 export interface ChatResponseWithUsage {
@@ -106,6 +108,8 @@ export interface ToolResultMessage {
   success: boolean
   iteration: number
   session_id?: string
+  /** The ID of the tool call this result responds to */
+  tool_call_id: string
 }
 
 // Todo types

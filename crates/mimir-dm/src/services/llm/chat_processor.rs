@@ -482,6 +482,8 @@ pub struct ToolResultMessage {
     pub success: bool,
     pub iteration: usize,
     pub session_id: Option<String>,
+    /// The ID of the tool call this result responds to (required for API round-trip)
+    pub tool_call_id: String,
 }
 
 /// Record of a tool call made during processing
@@ -1266,7 +1268,7 @@ impl<'a> ChatProcessor<'a> {
                 .await;
 
             // Emit tool result
-            self.emit_tool_result(tool_name, &tool_result, iteration, session_id);
+            self.emit_tool_result(tool_name, &tool_result, &tool_call.id, iteration, session_id);
 
             // Add tool response to messages
             let is_error =
@@ -1420,6 +1422,7 @@ impl<'a> ChatProcessor<'a> {
         &self,
         tool_name: &str,
         tool_result: &str,
+        tool_call_id: &str,
         iteration: usize,
         session_id: &str,
     ) {
@@ -1431,6 +1434,7 @@ impl<'a> ChatProcessor<'a> {
                 success,
                 iteration,
                 session_id: Some(session_id.to_string()),
+                tool_call_id: tool_call_id.to_string(),
             };
 
             if let Err(e) = app.emit("tool-result-message", &tool_result_msg) {

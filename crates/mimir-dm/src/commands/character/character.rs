@@ -159,10 +159,16 @@ pub async fn create_character(
     // Set identity
     builder = builder.set_identity(request.character_name, request.player_id);
 
-    // Set race
-    builder = builder
-        .set_race(&request.race, &request.race_source, request.subrace)
-        .map_err(|e| format!("Failed to set race: {}", e))?;
+    // Set race - NPCs can use monster/creature races that aren't in the race catalog
+    if request.is_npc.unwrap_or(false) {
+        // Use set_race_name_only for NPCs since they may use monster types
+        builder = builder.set_race_name_only(&request.race, &request.race_source);
+    } else {
+        // PCs must use validated races from the catalog
+        builder = builder
+            .set_race(&request.race, &request.race_source, request.subrace)
+            .map_err(|e| format!("Failed to set race: {}", e))?;
+    }
 
     // Set class
     builder = builder
