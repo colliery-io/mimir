@@ -61,6 +61,7 @@ export function useSearch(initialCategory: string, initialSources: MaybeRef<stri
     spells: {
       school: '',
       level: '',
+      class: '',
       ritual: false,
       concentration: false
     },

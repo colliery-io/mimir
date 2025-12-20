@@ -466,6 +466,7 @@ fn main() {
             generate_pdf,
             generate_character_sheet,
             generate_spell_pdf,
+            generate_class_spell_list,
             generate_monster_pdf,
             generate_session_pdf,
             save_pdf,

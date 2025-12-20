@@ -19,6 +19,7 @@ export interface SpellFilters {
   sources?: string[]
   levels?: number[]
   schools?: string[]
+  classes?: string[]
   ritual?: boolean
   concentration?: boolean
 }

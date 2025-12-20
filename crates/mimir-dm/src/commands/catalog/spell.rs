@@ -37,6 +37,7 @@ pub async fn search_spells(
     levels: Option<Vec<i32>>,
     schools: Option<Vec<String>>,
     tags: Option<Vec<String>>,
+    classes: Option<Vec<String>>,
     limit: Option<i32>,
     offset: Option<i32>,
     state: State<'_, AppState>,
@@ -52,6 +53,7 @@ pub async fn search_spells(
         schools: schools.unwrap_or_default(),
         sources: sources.unwrap_or_default(),
         tags: tags.unwrap_or_default(),
+        classes: classes.unwrap_or_default(),
         limit,
         offset,
     };

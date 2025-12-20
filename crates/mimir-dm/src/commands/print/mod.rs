@@ -141,10 +141,64 @@ pub async fn generate_pdf(
     }
 }
 
+/// Calculate the maximum spell level a character can cast based on class and level.
+/// Returns 0 for non-casters or if no spells are available.
+fn calculate_max_spell_level(class_name: &str, class_level: i32) -> i32 {
+    // Full casters: Bard, Cleric, Druid, Sorcerer, Wizard, Warlock (has Pact Magic but same spell levels)
+    let full_casters = ["Bard", "Cleric", "Druid", "Sorcerer", "Wizard", "Warlock"];
+
+    // Half casters: Paladin, Ranger, Artificer
+    let half_casters = ["Paladin", "Ranger", "Artificer"];
+
+    // Third casters are subclass-based (Eldritch Knight, Arcane Trickster) - we'll treat them as 1/3
+    // For now, if Fighter or Rogue, assume they might be third casters
+    let third_casters = ["Fighter", "Rogue"];
+
+    if full_casters.iter().any(|&c| c.eq_ignore_ascii_case(class_name)) {
+        // Full caster spell level progression
+        match class_level {
+            1..=2 => 1,
+            3..=4 => 2,
+            5..=6 => 3,
+            7..=8 => 4,
+            9..=10 => 5,
+            11..=12 => 6,
+            13..=14 => 7,
+            15..=16 => 8,
+            17..=20 => 9,
+            _ => 0,
+        }
+    } else if half_casters.iter().any(|&c| c.eq_ignore_ascii_case(class_name)) {
+        // Half caster spell level progression (starts at level 2)
+        match class_level {
+            2..=4 => 1,
+            5..=8 => 2,
+            9..=12 => 3,
+            13..=16 => 4,
+            17..=20 => 5,
+            _ => 0,
+        }
+    } else if third_casters.iter().any(|&c| c.eq_ignore_ascii_case(class_name)) {
+        // Third caster spell level progression (subclass dependent, starts at level 3)
+        match class_level {
+            3..=6 => 1,
+            7..=12 => 2,
+            13..=18 => 3,
+            19..=20 => 4,
+            _ => 0,
+        }
+    } else {
+        // Non-caster or unknown class
+        0
+    }
+}
+
 /// Generate a character sheet PDF.
 ///
 /// Convenience command for character sheet generation with proper data structure.
-/// When include_spell_cards is true (default), spell cards are appended to the PDF.
+/// When include_spell_cards is true (default), the FULL class spell list is included
+/// up to the character's max castable spell level, so players can "cut out" the spells
+/// they want to use during play.
 /// Feature details are always fetched from the catalog.
 #[tauri::command]
 pub async fn generate_character_sheet(
@@ -156,8 +210,8 @@ pub async fn generate_character_sheet(
     use mimir_dm_core::models::catalog::class::{ClassFeature, SubclassFeature};
     use mimir_dm_core::models::catalog::item::Item;
     use mimir_dm_core::models::catalog::Spell;
+    use mimir_dm_core::models::catalog::SpellFilters;
     use mimir_dm_core::services::{CharacterService, ClassService, ItemService, SpellService};
-    use std::collections::HashSet;
 
     info!("Generating character sheet for character {}", character_id);
 
@@ -175,45 +229,65 @@ pub async fn generate_character_sheet(
     // Determine if we should include spell cards (default to true)
     let should_include_spells = include_spell_cards.unwrap_or(true);
 
-    // Collect all unique spell references from the character
+    // Collect ALL spells for the character's class(es) up to their max spell level
     let mut spell_details: Vec<Spell> = Vec::new();
 
-    if should_include_spells {
-        let mut seen_spells: HashSet<(String, String)> = HashSet::new();
-
-        // Helper closure to add spells
-        let mut add_spell_refs = |refs: &[mimir_dm_core::models::character::SpellReference]| {
-            for spell_ref in refs {
-                let key = (spell_ref.name.clone(), spell_ref.source.clone());
-                if !seen_spells.contains(&key) {
-                    seen_spells.insert(key);
-                }
-            }
-        };
-
-        // Collect from all spell lists
-        add_spell_refs(&character_data.spells.cantrips);
-        add_spell_refs(&character_data.spells.known_spells);
-        add_spell_refs(&character_data.spells.prepared_spells);
-
-        // Fetch full spell details from catalog
+    if should_include_spells && !character_data.classes.is_empty() {
         let mut spell_conn = state
             .db
             .get_connection()
             .map_err(|e| format!("Database error: {}", e))?;
 
-        for (name, source) in seen_spells {
-            match SpellService::get_spell_details(&mut spell_conn, &name, &source) {
-                Ok(Some(spell)) => {
-                    debug!("Fetched spell details for: {} from {}", name, source);
-                    spell_details.push(spell);
+        // Process each class the character has
+        for class_level in &character_data.classes {
+            let max_spell_level = calculate_max_spell_level(&class_level.class_name, class_level.level);
+
+            if max_spell_level > 0 {
+                // Build filter for this class - include cantrips (0) through max spell level
+                let levels: Vec<i32> = (0..=max_spell_level).collect();
+
+                let filters = SpellFilters {
+                    query: None,
+                    levels,
+                    schools: Vec::new(),
+                    sources: Vec::new(),
+                    tags: Vec::new(),
+                    classes: vec![class_level.class_name.clone()],
+                    limit: None,
+                    offset: None,
+                };
+
+                // Search for all spells for this class
+                match SpellService::search_spells(&mut spell_conn, filters) {
+                    Ok(summaries) => {
+                        info!(
+                            "Found {} {} spells up to level {}",
+                            summaries.len(),
+                            class_level.class_name,
+                            max_spell_level
+                        );
+
+                        // Fetch full spell details for each spell
+                        for summary in summaries {
+                            match SpellService::get_spell_details(&mut spell_conn, &summary.name, &summary.source) {
+                                Ok(Some(spell)) => {
+                                    spell_details.push(spell);
+                                }
+                                Ok(None) => {
+                                    debug!("Spell not found in catalog: {} from {}", summary.name, summary.source);
+                                }
+                                Err(e) => {
+                                    error!("Failed to fetch spell {}: {}", summary.name, e);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to search spells for class {}: {}", class_level.class_name, e);
+                    }
                 }
-                Ok(None) => {
-                    debug!("Spell not found in catalog: {} from {}", name, source);
-                }
-                Err(e) => {
-                    error!("Failed to fetch spell {}: {}", name, e);
-                }
+            } else {
+                debug!("Class {} at level {} has no spellcasting", class_level.class_name, class_level.level);
             }
         }
 
@@ -222,8 +296,11 @@ pub async fn generate_character_sheet(
             a.level.cmp(&b.level).then_with(|| a.name.cmp(&b.name))
         });
 
+        // Remove duplicates (in case of multiclass overlap)
+        spell_details.dedup_by(|a, b| a.name == b.name && a.source == b.source);
+
         info!(
-            "Fetched {} spell details for character sheet",
+            "Fetched {} total spell details for character sheet",
             spell_details.len()
         );
     }
@@ -424,6 +501,88 @@ pub async fn generate_spell_pdf(
     };
 
     generate_pdf(template_id, data).await
+}
+
+/// Generate a spell list PDF for a specific class.
+///
+/// Fetches all spells available to the specified class and generates
+/// a formatted spell list PDF organized by level.
+///
+/// # Parameters
+/// - `class_name` - Name of the class (e.g., "Wizard", "Cleric")
+/// - `include_description` - Whether to include spell descriptions (default: false)
+/// - `levels` - Optional array of levels to include (e.g., [0, 1, 2] for cantrips through 2nd level)
+///
+/// # Returns
+/// PrintResult with base64-encoded PDF
+#[tauri::command]
+pub async fn generate_class_spell_list(
+    state: State<'_, AppState>,
+    class_name: String,
+    include_description: Option<bool>,
+    levels: Option<Vec<i32>>,
+) -> Result<ApiResponse<PrintResult>, String> {
+    use mimir_dm_core::models::catalog::SpellFilters;
+    use mimir_dm_core::services::SpellService;
+
+    info!("Generating spell list PDF for class: {}", class_name);
+
+    // Fetch spells for the class
+    let mut conn = state
+        .db
+        .get_connection()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let filters = SpellFilters {
+        query: None,
+        levels: levels.unwrap_or_default(),
+        schools: Vec::new(),
+        sources: Vec::new(),
+        tags: Vec::new(),
+        classes: vec![class_name.clone()],
+        limit: None,
+        offset: None,
+    };
+
+    let spells = SpellService::search_spells(&mut conn, filters)
+        .map_err(|e| format!("Failed to search spells: {}", e))?;
+
+    info!("Found {} spells for class {}", spells.len(), class_name);
+
+    if spells.is_empty() {
+        return Ok(ApiResponse::error(format!(
+            "No spells found for class: {}",
+            class_name
+        )));
+    }
+
+    // Convert SpellSummary to JSON for template
+    let spell_data: Vec<serde_json::Value> = spells
+        .into_iter()
+        .map(|s| {
+            serde_json::json!({
+                "name": s.name,
+                "level": s.level,
+                "school": s.school,
+                "casting_time": s.casting_time,
+                "range": s.range,
+                "components": s.components,
+                "concentration": s.concentration,
+                "ritual": s.ritual,
+                "description": s.description,
+                "source": s.source
+            })
+        })
+        .collect();
+
+    // Build template data
+    let data = serde_json::json!({
+        "title": format!("{} Spells", class_name),
+        "spells": spell_data,
+        "show_description": include_description.unwrap_or(false)
+    });
+
+    generate_pdf("spells/list".to_string(), data).await
 }
 
 /// Generate a monster stat block or card PDF.

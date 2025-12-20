@@ -80,6 +80,17 @@ impl SpellService {
             }
         }
 
+        // Apply class filters (search in full_spell_json for class names)
+        if !filters.classes.is_empty() {
+            for class_name in &filters.classes {
+                // Search for class name in the fromClassList array within the JSON
+                // Pattern matches: "name": "Wizard" (case-insensitive would be better but SQLite LIKE is case-insensitive for ASCII)
+                query = query.filter(
+                    catalog_spells::full_spell_json.like(format!("%\"name\":\"{}\"%", class_name))
+                );
+            }
+        }
+
         // Apply pagination
         if let Some(offset) = filters.offset {
             query = query.offset(offset as i64);

@@ -48,6 +48,7 @@ export interface SearchFilters {
   spells: {
     school: string
     level: string
+    class: string
     ritual: boolean
     concentration: boolean
   }
@@ -240,6 +241,7 @@ class SearchServiceClass {
       sources,
       schools: filters?.school ? [filters.school] : undefined,
       levels: filters?.level ? [parseInt(filters.level)] : undefined,
+      classes: filters?.class ? [filters.class] : undefined,
       ritual: filters?.ritual || undefined,
       concentration: filters?.concentration || undefined
     })
