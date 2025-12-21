@@ -68,6 +68,12 @@
           <div v-if="errorMessage" class="error-message">
             {{ errorMessage }}
           </div>
+
+          <!-- Upload Progress Message -->
+          <div v-if="uploading" class="upload-progress">
+            <div class="progress-spinner"></div>
+            <span>Processing image... This may take a moment for large files.</span>
+          </div>
         </div>
 
         <div class="modal-footer">
@@ -455,6 +461,34 @@ watch(() => props.visible, (visible) => {
   border-radius: var(--radius-md);
   color: var(--color-error);
   font-size: 0.875rem;
+}
+
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  color: var(--color-primary-700);
+  font-size: 0.875rem;
+}
+
+.progress-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-primary-200);
+  border-top-color: var(--color-primary-500);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .modal-footer {
