@@ -51,6 +51,7 @@ async-trait.workspace = true
 uuid = { workspace = true }
 paste = { workspace = true }
 regex = { workspace = true }
+image = { workspace = true }
 
 [features]
 default = ["custom-protocol"]

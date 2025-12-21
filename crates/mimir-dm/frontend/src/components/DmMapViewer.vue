@@ -146,6 +146,32 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { usePlayerDisplay } from '@/composables/usePlayerDisplay'
 
+// Throttle helper for smooth updates
+function throttle<T extends (...args: any[]) => void>(fn: T, limit: number): T {
+  let lastCall = 0
+  let pendingCall: number | null = null
+
+  return ((...args: any[]) => {
+    const now = Date.now()
+    const remaining = limit - (now - lastCall)
+
+    if (remaining <= 0) {
+      if (pendingCall) {
+        cancelAnimationFrame(pendingCall)
+        pendingCall = null
+      }
+      lastCall = now
+      fn(...args)
+    } else if (!pendingCall) {
+      pendingCall = requestAnimationFrame(() => {
+        lastCall = Date.now()
+        pendingCall = null
+        fn(...args)
+      })
+    }
+  }) as T
+}
+
 interface Props {
   mapId: number | null
   gridType?: string
@@ -184,19 +210,26 @@ const panY = ref(0)
 const zoom = ref(1)
 const autoSync = ref(true)
 
-// Pan state
+// Pan/zoom interaction state
 const isPanning = ref(false)
+const isZooming = ref(false)
 const lastMouseX = ref(0)
 const lastMouseY = ref(0)
+let zoomTimeout: number | null = null
 
 // Refs
 const viewport = ref<HTMLElement | null>(null)
 const mapImage = ref<HTMLImageElement | null>(null)
 
-// Computed styles
+// Computed styles - use translate3d/scale3d for GPU compositing
+const isInteracting = computed(() => isPanning.value || isZooming.value)
 const mapContainerStyle = computed(() => ({
-  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
-  transformOrigin: 'center center'
+  // Use 3D transforms to force GPU layer compositing
+  transform: `translate3d(${panX.value}px, ${panY.value}px, 0) scale3d(${zoom.value}, ${zoom.value}, 1)`,
+  transformOrigin: 'center center',
+  transition: isInteracting.value ? 'none' : 'transform 0.1s ease-out',
+  willChange: 'transform',
+  backfaceVisibility: 'hidden' as const
 }))
 
 // Hex grid points calculation
@@ -267,6 +300,13 @@ function onWheel(event: WheelEvent) {
   const delta = event.deltaY > 0 ? 0.9 : 1.1
   const newZoom = Math.max(0.1, Math.min(5, zoom.value * delta))
 
+  // Mark as zooming for smooth updates
+  isZooming.value = true
+  if (zoomTimeout) clearTimeout(zoomTimeout)
+  zoomTimeout = window.setTimeout(() => {
+    isZooming.value = false
+  }, 150)
+
   // Zoom toward mouse position
   if (viewport.value) {
     const rect = viewport.value.getBoundingClientRect()
@@ -279,7 +319,7 @@ function onWheel(event: WheelEvent) {
   }
 
   zoom.value = newZoom
-  syncViewportIfNeeded()
+  throttledSync()
 }
 
 function resetView() {
@@ -309,11 +349,16 @@ function onPan(event: MouseEvent) {
   lastMouseX.value = event.clientX
   lastMouseY.value = event.clientY
 
-  syncViewportIfNeeded()
+  // Use throttled sync during panning for smoothness
+  throttledSync()
 }
 
 function endPan() {
-  isPanning.value = false
+  if (isPanning.value) {
+    isPanning.value = false
+    // Final sync to ensure we capture the end position
+    syncViewportIfNeeded()
+  }
 }
 
 // Sync controls
@@ -329,6 +374,11 @@ function syncViewportIfNeeded() {
     pushViewport()
   }
 }
+
+// Throttled sync for smooth panning - only sync every 50ms during drag
+const throttledSync = throttle(() => {
+  syncViewportIfNeeded()
+}, 50)
 
 async function pushViewport() {
   if (!isDisplayOpen.value) return
@@ -497,7 +547,10 @@ onUnmounted(() => {
 
 .map-container {
   position: relative;
-  transition: transform 0.05s ease-out;
+  /* transition and will-change handled dynamically in computed style */
+  /* Force GPU layer for the container */
+  transform-style: preserve-3d;
+  perspective: 1000px;
 }
 
 .map-image {
@@ -505,6 +558,12 @@ onUnmounted(() => {
   max-width: none;
   user-select: none;
   -webkit-user-drag: none;
+  /* GPU optimizations for large images */
+  will-change: transform;
+  backface-visibility: hidden;
+  image-rendering: auto;
+  /* Prevent layout recalculations */
+  contain: layout style paint;
 }
 
 .grid-overlay {
@@ -512,6 +571,9 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   pointer-events: none;
+  /* GPU layer for grid */
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .status-bar {
