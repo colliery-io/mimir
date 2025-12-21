@@ -20,7 +20,8 @@ export default defineConfig({
         sources: fileURLToPath(new URL('./sources.html', import.meta.url)),
         contextDebug: fileURLToPath(new URL('./context-debug.html', import.meta.url)),
         chat: fileURLToPath(new URL('./chat.html', import.meta.url)),
-        logViewer: fileURLToPath(new URL('./log-viewer.html', import.meta.url))
+        logViewer: fileURLToPath(new URL('./log-viewer.html', import.meta.url)),
+        playerDisplay: fileURLToPath(new URL('./player-display.html', import.meta.url))
       }
     }
   },

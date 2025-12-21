@@ -74,6 +74,13 @@
         :campaign-id="campaign.id"
       />
 
+      <!-- Campaign Maps Section -->
+      <CampaignMaps
+        v-if="campaign?.id"
+        class="mt-4"
+        :campaign-id="campaign.id"
+      />
+
       <!-- Show backend content after modules -->
       <div v-if="stageContent" :class="`stage-${stage}`" class="mt-4">
         <div class="activity-section" v-html="stageContent"></div>
@@ -119,6 +126,7 @@ import ModulesTable from './StageLanding/ModulesTable.vue'
 import CreateModuleModal from './StageLanding/CreateModuleModal.vue'
 import StageGuidance from './StageLanding/StageGuidance.vue'
 import CampaignNPCs from './StageLanding/CampaignNPCs.vue'
+import CampaignMaps from './StageLanding/CampaignMaps.vue'
 
 const props = defineProps<{
   stage: string

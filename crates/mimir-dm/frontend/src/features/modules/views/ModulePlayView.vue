@@ -12,6 +12,31 @@
       </div>
 
       <div class="header-right">
+        <!-- Player Display Controls -->
+        <div class="display-controls">
+          <button
+            class="display-button"
+            :class="{ active: isDisplayOpen }"
+            @click="togglePlayerDisplay"
+            title="Open/Close Player Display"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+            </svg>
+            <span>{{ isDisplayOpen ? 'Display Open' : 'Player Display' }}</span>
+          </button>
+          <button
+            v-if="isDisplayOpen"
+            class="blackout-button"
+            :class="{ active: isBlackout }"
+            @click="handleBlackoutToggle"
+            title="Toggle Blackout"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+            </svg>
+          </button>
+        </div>
         <button class="end-session-button" @click="handleEndSession">
           End Session
         </button>
@@ -127,52 +152,120 @@
               </div>
             </div>
           </div>
+
+          <!-- Maps Section -->
+          <div class="sidebar-section">
+            <h3>Maps</h3>
+            <div v-if="mapsLoading" class="loading-text">Loading...</div>
+            <div v-else-if="allMaps.length === 0" class="empty-text">No maps available</div>
+            <div v-else class="map-list">
+              <div
+                v-for="map in allMaps"
+                :key="map.id"
+                class="map-item"
+                :class="{ active: activeMapId === map.id }"
+                @click="sendMapToDisplay(map)"
+              >
+                <div class="map-item-info">
+                  <span class="map-item-name">{{ map.name }}</span>
+                  <span class="map-item-meta">{{ map.module_name || 'Campaign' }}</span>
+                </div>
+                <div v-if="activeMapId === map.id" class="map-active-indicator">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="active-icon">
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </aside>
 
       <!-- Main Content Area with Notes Panel -->
       <div class="main-wrapper">
         <main class="play-main" :class="{ 'notes-expanded': !notesCollapsed }">
-          <!-- Document Tabs -->
-          <div class="document-tabs" v-if="documents.length > 0">
+          <!-- View Mode Tabs -->
+          <div class="view-mode-tabs">
             <button
-              v-for="doc in documents"
-              :key="doc.id"
-              class="doc-tab"
-              :class="{ active: selectedDocument?.id === doc.id }"
-              @click="selectDocument(doc)"
+              class="view-mode-tab"
+              :class="{ active: viewMode === 'documents' }"
+              @click="viewMode = 'documents'"
             >
-              {{ doc.title }}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="tab-icon">
+                <path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clip-rule="evenodd" />
+              </svg>
+              Documents
+            </button>
+            <button
+              class="view-mode-tab"
+              :class="{ active: viewMode === 'map', 'has-active': activeMapId !== null }"
+              @click="viewMode = 'map'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="tab-icon">
+                <path fill-rule="evenodd" d="M8.157 2.175a1.5 1.5 0 00-1.147 0l-4.084 1.69A1.5 1.5 0 002 5.251v10.877a1.5 1.5 0 002.074 1.386l3.51-1.453 4.26 1.763a1.5 1.5 0 001.146 0l4.083-1.69A1.5 1.5 0 0018 14.748V3.873a1.5 1.5 0 00-2.073-1.386l-3.51 1.452-4.26-1.763zM7.58 5a.75.75 0 01.75.75v6.5a.75.75 0 01-1.5 0v-6.5A.75.75 0 017.58 5zm5.59 2.75a.75.75 0 00-1.5 0v6.5a.75.75 0 001.5 0v-6.5z" clip-rule="evenodd" />
+              </svg>
+              Map
+              <span v-if="activeMapId" class="active-indicator"></span>
             </button>
           </div>
 
-          <!-- Document Viewer -->
-          <div class="content-panel document-panel" v-if="selectedDocument">
-            <div class="document-header">
-              <h2>{{ selectedDocument.title }}</h2>
+          <!-- Documents View Mode -->
+          <template v-if="viewMode === 'documents'">
+            <!-- Document Tabs -->
+            <div class="document-tabs" v-if="documents.length > 0">
+              <button
+                v-for="doc in documents"
+                :key="doc.id"
+                class="doc-tab"
+                :class="{ active: selectedDocument?.id === doc.id }"
+                @click="selectDocument(doc)"
+              >
+                {{ doc.title }}
+              </button>
             </div>
-            <div class="document-content">
-              <div v-if="documentLoading" class="loading-state">
-                Loading document...
+
+            <!-- Document Viewer -->
+            <div class="content-panel document-panel" v-if="selectedDocument">
+              <div class="document-header">
+                <h2>{{ selectedDocument.title }}</h2>
               </div>
-              <div v-else-if="editor" class="prose-content">
-                <EditorContent :editor="editor" />
+              <div class="document-content">
+                <div v-if="documentLoading" class="loading-state">
+                  Loading document...
+                </div>
+                <div v-else-if="editor" class="prose-content">
+                  <EditorContent :editor="editor" />
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Fallback when no documents -->
-          <div class="content-panel" v-else-if="!documentsLoading && documents.length === 0">
-            <h2>Module Narrative</h2>
-            <p class="placeholder-text">
-              No module documents found. Create documents in the module prep view.
-            </p>
-          </div>
+            <!-- Fallback when no documents -->
+            <div class="content-panel" v-else-if="!documentsLoading && documents.length === 0">
+              <h2>Module Narrative</h2>
+              <p class="placeholder-text">
+                No module documents found. Create documents in the module prep view.
+              </p>
+            </div>
 
-          <!-- Loading state -->
-          <div class="content-panel" v-else-if="documentsLoading">
-            <p class="placeholder-text">Loading documents...</p>
-          </div>
+            <!-- Loading state -->
+            <div class="content-panel" v-else-if="documentsLoading">
+              <p class="placeholder-text">Loading documents...</p>
+            </div>
+          </template>
+
+          <!-- Map View Mode -->
+          <template v-else-if="viewMode === 'map'">
+            <div class="map-viewer-container">
+              <DmMapViewer
+                :map-id="activeMapId"
+                :grid-type="activeMap?.grid_type"
+                :grid-size-px="activeMap?.grid_size_px"
+                :grid-offset-x="activeMap?.grid_offset_x"
+                :grid-offset-y="activeMap?.grid_offset_y"
+                :show-grid="true"
+              />
+            </div>
+          </template>
         </main>
 
         <!-- Collapsible Notes Panel -->
@@ -203,16 +296,70 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { usePlayerDisplay } from '@/composables/usePlayerDisplay'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
+import DmMapViewer from '@/components/DmMapViewer.vue'
 import type { Module, Document, Campaign } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+
+// Player display state
+const {
+  isDisplayOpen,
+  isBlackout,
+  toggleDisplay,
+  toggleBlackout,
+  checkDisplayOpen
+} = usePlayerDisplay()
+
+// Toggle player display window
+async function togglePlayerDisplay() {
+  try {
+    const wasOpen = isDisplayOpen.value
+    await toggleDisplay()
+
+    // If we just opened the display and have an active map, send it after a short delay
+    // (the display window needs time to mount and set up event listeners)
+    if (!wasOpen && isDisplayOpen.value && activeMapId.value) {
+      const map = activeMap.value
+      console.log('ModulePlayView: Display just opened, will send map after delay:', map)
+      if (map) {
+        setTimeout(async () => {
+          try {
+            console.log('ModulePlayView: Sending map to display:', map.id)
+            await invoke('send_map_to_display', {
+              mapId: map.id,
+              gridType: map.grid_type,
+              gridSizePx: map.grid_size_px,
+              gridOffsetX: map.grid_offset_x,
+              gridOffsetY: map.grid_offset_y
+            })
+            console.log('ModulePlayView: Map sent successfully')
+          } catch (err) {
+            console.error('Failed to send map after display open:', err)
+          }
+        }, 500) // Give the window time to initialize
+      }
+    }
+  } catch (err) {
+    console.error('Failed to toggle player display:', err)
+  }
+}
+
+// Toggle blackout mode
+async function handleBlackoutToggle() {
+  try {
+    await toggleBlackout()
+  } catch (err) {
+    console.error('Failed to toggle blackout:', err)
+  }
+}
 
 const moduleId = computed(() => parseInt(route.params.id as string))
 const module = ref<Module | null>(null)
@@ -237,6 +384,72 @@ interface MonsterWithData {
 interface EncounterGroup {
   encounter_tag: string | null
   monsters: MonsterWithData[]
+}
+
+// Map state
+interface MapSummary {
+  id: number
+  campaign_id: number
+  module_id: number | null
+  name: string
+  grid_type: string
+  grid_size_px: number | null
+  grid_offset_x: number
+  grid_offset_y: number
+  module_name: string | null
+}
+
+const allMaps = ref<MapSummary[]>([])
+const mapsLoading = ref(false)
+const activeMapId = ref<number | null>(null)
+const viewMode = ref<'documents' | 'map'>('documents')
+
+// Get the active map details for the DmMapViewer
+const activeMap = computed(() => {
+  if (!activeMapId.value) return null
+  return allMaps.value.find(m => m.id === activeMapId.value) || null
+})
+
+// Load maps for campaign (includes both campaign and module maps)
+async function loadMaps() {
+  if (!campaign.value?.id) return
+
+  mapsLoading.value = true
+  try {
+    const response = await invoke<{ success: boolean; data?: MapSummary[] }>('list_map_summaries', {
+      campaignId: campaign.value.id
+    })
+
+    if (response.success && response.data) {
+      allMaps.value = response.data
+    }
+  } catch (e) {
+    console.error('Failed to load maps:', e)
+  } finally {
+    mapsLoading.value = false
+  }
+}
+
+// Select a map and optionally send to player display
+async function sendMapToDisplay(map: MapSummary) {
+  // Always set the active map and switch to map view (DM viewer works independently)
+  activeMapId.value = map.id
+  viewMode.value = 'map'
+
+  // If display is open, send the map to it
+  if (isDisplayOpen.value) {
+    try {
+      await invoke('send_map_to_display', {
+        mapId: map.id,
+        gridType: map.grid_type,
+        gridSizePx: map.grid_size_px,
+        gridOffsetX: map.grid_offset_x,
+        gridOffsetY: map.grid_offset_y
+      })
+    } catch (err) {
+      console.error('Failed to send map to display:', err)
+    }
+  }
 }
 
 const encounterGroups = ref<EncounterGroup[]>([])
@@ -548,7 +761,8 @@ onMounted(async () => {
   await loadModule()
   await Promise.all([
     loadDocuments(),
-    loadEncounters()
+    loadEncounters(),
+    loadMaps()
   ])
 })
 </script>
@@ -605,6 +819,73 @@ onMounted(async () => {
   background: var(--color-accent, #e67e22);
   color: white;
   border-radius: 0.25rem;
+}
+
+/* Display Controls */
+.display-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-right: 1rem;
+}
+
+.display-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.display-button:hover {
+  background: var(--color-base-200);
+  border-color: var(--color-primary);
+}
+
+.display-button.active {
+  background: var(--color-success, #10b981);
+  border-color: var(--color-success, #10b981);
+  color: white;
+}
+
+.display-button .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.blackout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.blackout-button:hover {
+  background: var(--color-base-200);
+  color: var(--color-text);
+}
+
+.blackout-button.active {
+  background: var(--color-warning, #f59e0b);
+  border-color: var(--color-warning, #f59e0b);
+  color: white;
+}
+
+.blackout-button .icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .end-session-button {
@@ -1157,5 +1438,128 @@ onMounted(async () => {
 
 .monster-quick-item:hover {
   background: var(--color-base-200);
+}
+
+/* Map List */
+.map-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.map-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.map-item:hover {
+  background: var(--color-base-200);
+}
+
+.map-item.active {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-500);
+}
+
+.map-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.map-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-item-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.map-active-indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary-500);
+}
+
+.active-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* View Mode Tabs */
+.view-mode-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.view-mode-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.view-mode-tab:hover {
+  background: var(--color-base-200);
+  color: var(--color-text);
+}
+
+.view-mode-tab.active {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-500);
+  color: var(--color-primary-700);
+}
+
+.view-mode-tab .tab-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.view-mode-tab .active-indicator {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-success);
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+}
+
+/* Map Viewer Container */
+.map-viewer-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 </style>

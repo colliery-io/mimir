@@ -521,6 +521,25 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    maps (id) {
+        id -> Integer,
+        campaign_id -> Integer,
+        module_id -> Nullable<Integer>,
+        name -> Text,
+        image_path -> Text,
+        width_px -> Integer,
+        height_px -> Integer,
+        grid_type -> Text,
+        grid_size_px -> Nullable<Integer>,
+        grid_offset_x -> Integer,
+        grid_offset_y -> Integer,
+        created_at -> Text,
+        updated_at -> Text,
+    }
+}
+
+diesel::joinable!(maps -> campaigns (campaign_id));
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(module_monsters -> modules (module_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
@@ -541,6 +560,7 @@ diesel::joinable!(character_versions -> characters (character_id));
 diesel::allow_tables_to_appear_in_same_query!(
     campaigns,
     campaign_players,
+    maps,
     modules,
     module_monsters,
     sessions,

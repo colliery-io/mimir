@@ -130,3 +130,96 @@ pub async fn open_log_viewer_window(app: AppHandle, file_name: String) -> Result
     );
     Ok(())
 }
+
+/// Open the player display window.
+///
+/// Creates or focuses the player display window for showing maps on a TV/projector.
+/// This window is designed to be full-screen for player viewing during in-person sessions.
+/// If the window already exists, it will be focused instead of creating a new one.
+///
+/// # Parameters
+/// - `app` - Tauri application handle for window management
+///
+/// # Errors
+/// Returns an error string if window creation or focus fails.
+#[tauri::command]
+pub async fn open_player_display_window(app: AppHandle) -> Result<(), String> {
+    info!("Opening player display window");
+
+    // Check if window already exists
+    if let Some(window) = app.get_webview_window("player-display") {
+        // Focus existing window
+        window
+            .set_focus()
+            .map_err(|e| format!("Failed to focus player display window: {}", e))?;
+        return Ok(());
+    }
+
+    // Create new window - designed for TV/projector display
+    let _window = WebviewWindow::builder(
+        &app,
+        "player-display",
+        WebviewUrl::App("player-display.html".into()),
+    )
+    .title("Player Display - Mimir")
+    .inner_size(1920.0, 1080.0)  // Default to 1080p, user can resize/fullscreen
+    .min_inner_size(800.0, 600.0)
+    .position(100.0, 100.0)
+    .resizable(true)
+    .fullscreen(false)  // User can toggle fullscreen with F11 or menu
+    .build()
+    .map_err(|e| format!("Failed to create player display window: {}", e))?;
+
+    info!("Player display window created successfully");
+    Ok(())
+}
+
+/// Close the player display window.
+///
+/// Closes the player display window if it exists.
+///
+/// # Parameters
+/// - `app` - Tauri application handle for window management
+///
+/// # Errors
+/// Returns an error string if closing fails.
+#[tauri::command]
+pub async fn close_player_display_window(app: AppHandle) -> Result<(), String> {
+    info!("Closing player display window");
+
+    if let Some(window) = app.get_webview_window("player-display") {
+        window
+            .close()
+            .map_err(|e| format!("Failed to close player display window: {}", e))?;
+        info!("Player display window closed");
+    }
+
+    Ok(())
+}
+
+/// Toggle fullscreen mode for the player display window.
+///
+/// # Parameters
+/// - `app` - Tauri application handle for window management
+///
+/// # Errors
+/// Returns an error string if toggle fails or window doesn't exist.
+#[tauri::command]
+pub async fn toggle_player_display_fullscreen(app: AppHandle) -> Result<bool, String> {
+    info!("Toggling player display fullscreen");
+
+    if let Some(window) = app.get_webview_window("player-display") {
+        let is_fullscreen = window
+            .is_fullscreen()
+            .map_err(|e| format!("Failed to check fullscreen state: {}", e))?;
+
+        window
+            .set_fullscreen(!is_fullscreen)
+            .map_err(|e| format!("Failed to toggle fullscreen: {}", e))?;
+
+        info!("Player display fullscreen: {}", !is_fullscreen);
+        Ok(!is_fullscreen)
+    } else {
+        Err("Player display window not found".to_string())
+    }
+}

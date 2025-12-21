@@ -5,6 +5,7 @@
 
 pub mod campaigns;
 pub mod documents;
+pub mod maps;
 pub mod module_monsters;
 pub mod modules;
 pub mod template_documents;
@@ -14,6 +15,7 @@ pub mod workflow_cards;
 // Re-export commonly used types
 pub use campaigns::{Campaign, NewCampaign};
 pub use documents::{Document, NewDocument};
+pub use maps::{GridType, Map, MapSummary, NewMap, UpdateMap};
 pub use module_monsters::{
     EncounterGroup, ModuleMonster, ModuleMonsterWithData, NewModuleMonster, UpdateModuleMonster,
 };

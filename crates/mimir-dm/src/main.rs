@@ -250,6 +250,20 @@ fn main() {
             get_module_encounter_tags,
             clear_module_monsters,
             sync_module_monsters_to_file,
+            // Map commands
+            upload_map,
+            get_map,
+            list_maps,
+            list_map_summaries,
+            update_map,
+            update_map_grid,
+            delete_map,
+            serve_map_image,
+            // Display control commands
+            send_map_to_display,
+            update_display_viewport,
+            toggle_display_blackout,
+            is_player_display_open,
             // Book library commands
             upload_book_archive,
             list_library_books,
@@ -402,6 +416,9 @@ fn main() {
             open_context_debug_window,
             open_chat_window,
             open_log_viewer_window,
+            open_player_display_window,
+            close_player_display_window,
+            toggle_player_display_fullscreen,
             // LLM commands
             llm::commands::check_llm_status,
             llm::commands::get_llm_model_info,
