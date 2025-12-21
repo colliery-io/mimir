@@ -61,36 +61,8 @@
               </button>
             </div>
 
-            <!-- Zoom Controls -->
-            <div class="zoom-controls">
-              <span class="zoom-label">Zoom:</span>
-              <button class="zoom-btn" @click="zoomOut" :disabled="zoom <= 0.5" title="Zoom out">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clip-rule="evenodd" />
-                </svg>
-              </button>
-              <span class="zoom-level">{{ Math.round(zoom * 100) }}%</span>
-              <button class="zoom-btn" @click="zoomIn" :disabled="zoom >= 4" title="Zoom in">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                </svg>
-              </button>
-              <button class="zoom-btn" @click="resetZoom" title="Reset zoom">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clip-rule="evenodd" />
-                  <path d="M10 4a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 0110 4z" />
-                </svg>
-                Fit
-              </button>
-              <span v-if="zoom > 1" class="zoom-hint">Drag to pan, Shift+drag to set origin</span>
-            </div>
-
             <!-- Map Preview with Grid Overlay -->
-            <div
-              class="preview-container"
-              ref="previewContainer"
-              @wheel.prevent="onWheel"
-            >
+            <div class="preview-container" ref="previewContainer">
               <div
                 class="preview-wrapper"
                 :style="previewWrapperStyle"
@@ -184,7 +156,7 @@
             </div>
 
             <p class="help-text">
-              Use scroll wheel or zoom buttons to zoom in for precision. When zoomed in, drag to pan or Shift+drag to set grid origin.
+              Click and drag on the map to set the grid origin point. Use the cell size controls to adjust grid spacing.
             </p>
           </div>
 
@@ -273,28 +245,19 @@ const imageLoaded = ref(false)
 const previewContainer = ref<HTMLElement | null>(null)
 const previewImage = ref<HTMLImageElement | null>(null)
 const isDragging = ref(false)
-const isPanning = ref(false)
 const dragStartX = ref(0)
 const dragStartY = ref(0)
-
-// Zoom and pan state
-const zoom = ref(1)
-const panX = ref(0)
-const panY = ref(0)
 
 // Calculate preview dimensions (fit within container)
 const maxPreviewWidth = 700
 const maxPreviewHeight = 400
 
-const baseScale = computed(() => {
+const scale = computed(() => {
   if (!props.map.width_px || !props.map.height_px) return 1
   const scaleX = maxPreviewWidth / props.map.width_px
   const scaleY = maxPreviewHeight / props.map.height_px
   return Math.min(scaleX, scaleY, 1) // Don't scale up
 })
-
-// Combined scale (base fit-to-container scale * user zoom)
-const scale = computed(() => baseScale.value * zoom.value)
 
 const scaledWidth = computed(() => Math.round(props.map.width_px * scale.value))
 const scaledHeight = computed(() => Math.round(props.map.height_px * scale.value))
@@ -305,8 +268,7 @@ const scaledOffsetY = computed(() => gridOffsetY.value * scale.value)
 const previewWrapperStyle = computed(() => ({
   width: scaledWidth.value + 'px',
   height: scaledHeight.value + 'px',
-  transform: `translate(${panX.value}px, ${panY.value}px)`,
-  cursor: isPanning.value ? 'grabbing' : (zoom.value > 1 ? 'grab' : 'crosshair')
+  cursor: isDragging.value ? 'grabbing' : 'crosshair'
 }))
 
 // Hex grid calculations
@@ -331,10 +293,6 @@ watch(() => props.map, (newMap) => {
   gridOffsetX.value = newMap.grid_offset_x || 0
   gridOffsetY.value = newMap.grid_offset_y || 0
   imageLoaded.value = false
-  // Reset zoom/pan when map changes
-  zoom.value = 1
-  panX.value = 0
-  panY.value = 0
 }, { immediate: true })
 
 // Load map image when modal becomes visible
@@ -373,80 +331,27 @@ function resetOffset() {
   gridOffsetY.value = 0
 }
 
-// Zoom functions
-function zoomIn() {
-  zoom.value = Math.min(zoom.value * 1.5, 4)
-}
-
-function zoomOut() {
-  zoom.value = Math.max(zoom.value / 1.5, 0.5)
-  // Constrain pan when zooming out
-  constrainPan()
-}
-
-function resetZoom() {
-  zoom.value = 1
-  panX.value = 0
-  panY.value = 0
-}
-
-function onWheel(event: WheelEvent) {
-  const delta = event.deltaY > 0 ? 0.9 : 1.1
-  const newZoom = Math.max(0.5, Math.min(4, zoom.value * delta))
-  zoom.value = newZoom
-  constrainPan()
-}
-
-function constrainPan() {
-  // When zoomed out, reset pan to center
-  if (zoom.value <= 1) {
-    panX.value = 0
-    panY.value = 0
-  }
-}
-
-// Drag handling for panning and setting grid origin
+// Drag handling for setting grid origin
 function startDrag(event: MouseEvent) {
   if (!previewContainer.value) return
-
-  dragStartX.value = event.clientX
-  dragStartY.value = event.clientY
-
-  // If zoomed in and not holding shift, pan mode
-  if (zoom.value > 1 && !event.shiftKey) {
-    isPanning.value = true
-  } else {
-    // Set grid origin mode
-    isDragging.value = true
-    updateOffsetFromEvent(event)
-  }
+  isDragging.value = true
+  updateOffsetFromEvent(event)
 }
 
 function onDrag(event: MouseEvent) {
-  if (isPanning.value) {
-    // Pan the view
-    const deltaX = event.clientX - dragStartX.value
-    const deltaY = event.clientY - dragStartY.value
-    panX.value += deltaX
-    panY.value += deltaY
-    dragStartX.value = event.clientX
-    dragStartY.value = event.clientY
-  } else if (isDragging.value) {
-    updateOffsetFromEvent(event)
-  }
+  if (!isDragging.value) return
+  updateOffsetFromEvent(event)
 }
 
 function endDrag() {
   isDragging.value = false
-  isPanning.value = false
 }
 
 function updateOffsetFromEvent(event: MouseEvent) {
   const target = event.currentTarget as HTMLElement
   const rect = target.getBoundingClientRect()
-  // Account for pan offset when calculating position
-  const x = event.clientX - rect.left - panX.value
-  const y = event.clientY - rect.top - panY.value
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
 
   // Convert from scaled coordinates to actual coordinates
   gridOffsetX.value = Math.round(x / scale.value)
@@ -689,68 +594,6 @@ onMounted(() => {
 .reset-btn:hover {
   background: var(--color-base-200);
   color: var(--color-text);
-}
-
-/* Zoom Controls */
-.zoom-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-base-200);
-  border-radius: var(--radius-md);
-}
-
-.zoom-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-}
-
-.zoom-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-background);
-  color: var(--color-text);
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.zoom-btn:hover:not(:disabled) {
-  background: var(--color-surface);
-  border-color: var(--color-primary-500);
-}
-
-.zoom-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.zoom-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-.zoom-level {
-  font-size: 0.75rem;
-  font-family: monospace;
-  min-width: 40px;
-  text-align: center;
-  color: var(--color-text);
-}
-
-.zoom-hint {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  margin-left: auto;
-  font-style: italic;
 }
 
 /* Preview Container */
