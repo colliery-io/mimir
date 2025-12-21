@@ -14,7 +14,7 @@ use crate::models::character::{
 };
 use crate::services::{
     CampaignService, CampaignSummaryService, CharacterService, DocumentService,
-    ModuleMonsterService, ModuleService, PlayerService,
+    MapService, ModuleMonsterService, ModuleService, PlayerService,
 };
 use chrono::Utc;
 use std::collections::HashMap;
@@ -144,17 +144,22 @@ fn clear_dev_seed_data(conn: &mut DbConnection) -> Result<()> {
 /// Seed development data into the database
 ///
 /// Creates a test campaign with modules, sessions, players, and characters.
-/// This function always overwrites existing dev seed data to ensure fresh state.
+/// This function is stateful - it only seeds if no dev data exists yet.
+/// Data persists between restarts to allow testing real user workflows.
 ///
 /// # Arguments
 /// * `conn` - Database connection
 /// * `campaigns_directory` - Base directory for campaign files
+/// * `data_directory` - App data directory (for maps storage)
 ///
 /// # Returns
-/// * `Ok(bool)` - true if seeding was performed
-pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Result<bool> {
-    // Always clear existing dev data first (overwrite mode)
-    clear_dev_seed_data(conn)?;
+/// * `Ok(bool)` - true if seeding was performed, false if data already existed
+pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str, data_directory: &str) -> Result<bool> {
+    // Check if dev data already exists - if so, preserve it
+    if is_already_seeded(conn)? {
+        info!("Dev seed data already exists, skipping (stateful mode)");
+        return Ok(false);
+    }
 
     info!("Seeding development data...");
 
@@ -204,8 +209,54 @@ pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str) -> Resu
     let npc_count = characters.iter().filter(|c| c.is_npc()).count();
     info!("Created {} test characters ({} PCs, {} NPCs)", characters.len(), pc_count, npc_count);
 
+    // Seed maps
+    let maps_count = seed_maps(conn, campaign.id, data_directory)?;
+    info!("Created {} test maps", maps_count);
+
     info!("Dev seed data created successfully");
     Ok(true)
+}
+
+/// Embedded test map image (Goblin Hideout)
+const GOBLIN_HIDEOUT_PNG: &[u8] = include_bytes!("assets/GoblinHideout.png");
+
+/// Original dimensions of the embedded Goblin Hideout map
+const GOBLIN_HIDEOUT_WIDTH: i32 = 2592;
+const GOBLIN_HIDEOUT_HEIGHT: i32 = 1458;
+
+/// Seed test maps for the campaign
+fn seed_maps(conn: &mut DbConnection, campaign_id: i32, data_directory: &str) -> Result<usize> {
+    use crate::models::campaign::NewMap;
+    use std::path::PathBuf;
+
+    // Create maps directory if it doesn't exist
+    let maps_dir = PathBuf::from(data_directory).join("maps");
+    std::fs::create_dir_all(&maps_dir)?;
+
+    // Use fixed filename for dev seed map (overwrites cleanly on reset)
+    let stored_filename = "dev-seed-goblin-hideout.png".to_string();
+    let image_path = maps_dir.join(&stored_filename);
+
+    // Write the embedded image to disk
+    std::fs::write(&image_path, GOBLIN_HIDEOUT_PNG)?;
+    info!("Wrote test map to {:?}", image_path);
+
+    // Create database record
+    // For embedded assets, original and stored dimensions are the same (no processing)
+    let new_map = NewMap::new(
+        campaign_id,
+        "Goblin Hideout".to_string(),
+        stored_filename,
+        GOBLIN_HIDEOUT_WIDTH,
+        GOBLIN_HIDEOUT_HEIGHT,
+        GOBLIN_HIDEOUT_WIDTH,
+        GOBLIN_HIDEOUT_HEIGHT,
+    );
+
+    let mut service = MapService::new(conn);
+    service.create_map(new_map)?;
+
+    Ok(1)
 }
 
 /// Seed the test campaign
@@ -1859,12 +1910,20 @@ mod tests {
         crate::run_migrations(&mut conn).unwrap();
         seed_templates(&mut conn).unwrap();
 
-        // Create temp directory for test campaign files
+        // Create temp directories for test campaign files and app data
         let temp_dir = tempfile::tempdir().unwrap();
-        let campaigns_dir = temp_dir.path().to_str().unwrap();
+        let campaigns_dir = temp_dir.path().join("campaigns");
+        let data_dir = temp_dir.path().join("data");
+        std::fs::create_dir_all(&campaigns_dir).unwrap();
+        std::fs::create_dir_all(&data_dir).unwrap();
 
         // First seed should create data
-        let result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
+        let result = seed_dev_data(
+            &mut conn,
+            campaigns_dir.to_str().unwrap(),
+            data_dir.to_str().unwrap(),
+        )
+        .unwrap();
         assert!(result, "First seed should return true");
 
         // Verify campaign created
@@ -1942,23 +2001,37 @@ mod tests {
     }
 
     #[test]
-    fn test_seed_dev_data_overwrites_existing() {
+    fn test_seed_dev_data_is_stateful() {
         let mut conn = establish_connection(":memory:").unwrap();
         crate::run_migrations(&mut conn).unwrap();
         seed_templates(&mut conn).unwrap();
 
+        // Create temp directories for test campaign files and app data
         let temp_dir = tempfile::tempdir().unwrap();
-        let campaigns_dir = temp_dir.path().to_str().unwrap();
+        let campaigns_dir = temp_dir.path().join("campaigns");
+        let data_dir = temp_dir.path().join("data");
+        std::fs::create_dir_all(&campaigns_dir).unwrap();
+        std::fs::create_dir_all(&data_dir).unwrap();
 
-        // First seed
-        let first_result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
+        // First seed should create data
+        let first_result = seed_dev_data(
+            &mut conn,
+            campaigns_dir.to_str().unwrap(),
+            data_dir.to_str().unwrap(),
+        )
+        .unwrap();
         assert!(first_result, "First seed should return true");
 
-        // Second seed should overwrite (also returns true)
-        let second_result = seed_dev_data(&mut conn, campaigns_dir).unwrap();
-        assert!(second_result, "Second seed should also return true (overwrite)");
+        // Second seed should skip (stateful - data already exists)
+        let second_result = seed_dev_data(
+            &mut conn,
+            campaigns_dir.to_str().unwrap(),
+            data_dir.to_str().unwrap(),
+        )
+        .unwrap();
+        assert!(!second_result, "Second seed should return false (skipped)");
 
-        // Verify still only one campaign (old one was deleted and re-created)
+        // Verify still only one campaign (preserved, not re-created)
         let mut repo = CampaignRepository::new(&mut conn);
         let campaigns = repo.list().unwrap();
         assert_eq!(campaigns.len(), 1, "Should still have only one campaign");

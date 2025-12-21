@@ -190,13 +190,15 @@ pub async fn upload_map(
         height
     );
 
-    // Create database record with actual processed dimensions
+    // Create database record with processed dimensions and original dimensions
     let new_map = NewMap::new(
         request.campaign_id,
         request.name,
         stored_filename,
         width as i32,
         height as i32,
+        request.width_px,  // Original dimensions from frontend
+        request.height_px,
     );
 
     let new_map = if let Some(module_id) = request.module_id {

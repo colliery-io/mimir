@@ -48,12 +48,15 @@ pub struct Map {
     pub image_path: String,
     pub width_px: i32,
     pub height_px: i32,
+    pub original_width_px: Option<i32>,
+    pub original_height_px: Option<i32>,
     pub grid_type: String,
     pub grid_size_px: Option<i32>,
     pub grid_offset_x: i32,
     pub grid_offset_y: i32,
     pub created_at: String,
     pub updated_at: String,
+    pub preview_path: Option<String>,
 }
 
 impl Map {
@@ -78,6 +81,8 @@ pub struct NewMap {
     pub image_path: String,
     pub width_px: i32,
     pub height_px: i32,
+    pub original_width_px: Option<i32>,
+    pub original_height_px: Option<i32>,
     pub grid_type: String,
     pub grid_size_px: Option<i32>,
     pub grid_offset_x: i32,
@@ -91,6 +96,8 @@ impl NewMap {
         image_path: String,
         width_px: i32,
         height_px: i32,
+        original_width_px: i32,
+        original_height_px: i32,
     ) -> Self {
         Self {
             campaign_id,
@@ -99,6 +106,8 @@ impl NewMap {
             image_path,
             width_px,
             height_px,
+            original_width_px: Some(original_width_px),
+            original_height_px: Some(original_height_px),
             grid_type: GridType::None.as_str().to_string(),
             grid_size_px: None,
             grid_offset_x: 0,
@@ -145,4 +154,6 @@ pub struct MapSummary {
     pub grid_offset_y: i32,
     pub width_px: i32,
     pub height_px: i32,
+    pub original_width_px: Option<i32>,
+    pub original_height_px: Option<i32>,
 }

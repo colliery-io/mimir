@@ -105,6 +105,8 @@ interface Map {
   grid_size_px: number | null
   grid_offset_x: number
   grid_offset_y: number
+  original_width_px: number | null
+  original_height_px: number | null
 }
 
 const props = defineProps<{

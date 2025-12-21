@@ -7,7 +7,7 @@ created_at: 2025-12-17T13:34:02.297933+00:00
 updated_at: 2025-12-17T13:34:02.297933+00:00
 parent: MIMIR-V-0001
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#initiative"

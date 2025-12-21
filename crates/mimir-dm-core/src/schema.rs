@@ -530,12 +530,15 @@ diesel::table! {
         image_path -> Text,
         width_px -> Integer,
         height_px -> Integer,
+        original_width_px -> Nullable<Integer>,
+        original_height_px -> Nullable<Integer>,
         grid_type -> Text,
         grid_size_px -> Nullable<Integer>,
         grid_offset_x -> Integer,
         grid_offset_y -> Integer,
         created_at -> Text,
         updated_at -> Text,
+        preview_path -> Nullable<Text>,
     }
 }
 

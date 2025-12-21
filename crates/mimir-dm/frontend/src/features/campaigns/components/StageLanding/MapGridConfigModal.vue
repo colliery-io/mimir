@@ -17,15 +17,15 @@
             <label>Grid Type</label>
             <div class="radio-group">
               <label class="radio-option">
-                <input type="radio" v-model="gridType" value="none" />
+                <input type="radio" v-model="gridType" value="none" @change="onGridTypeChange" />
                 <span>No Grid</span>
               </label>
               <label class="radio-option">
-                <input type="radio" v-model="gridType" value="square" />
+                <input type="radio" v-model="gridType" value="square" @change="onGridTypeChange" />
                 <span>Square</span>
               </label>
               <label class="radio-option">
-                <input type="radio" v-model="gridType" value="hex" />
+                <input type="radio" v-model="gridType" value="hex" @change="onGridTypeChange" />
                 <span>Hexagonal</span>
               </label>
             </div>
@@ -33,43 +33,71 @@
 
           <!-- Visual Grid Editor (when grid enabled) -->
           <div v-if="gridType !== 'none'" class="grid-editor-section">
-            <!-- Controls Row -->
-            <div class="controls-row">
-              <div class="form-group compact">
-                <label for="grid-size">Cell Size (px)</label>
-                <div class="size-input-group">
-                  <button class="size-btn" @click="adjustGridSize(-5)">-</button>
-                  <input
-                    id="grid-size"
-                    v-model.number="gridSizePx"
-                    type="number"
-                    class="form-input size-input"
-                    min="10"
-                    max="500"
-                  />
-                  <button class="size-btn" @click="adjustGridSize(5)">+</button>
-                </div>
+
+            <!-- Step indicator -->
+            <div class="step-indicator">
+              <div class="step" :class="{ active: editorMode === 'position' }">
+                <span class="step-num">1</span>
+                <span class="step-label">Position View</span>
               </div>
-              <div class="form-group compact">
-                <label>Offset</label>
-                <div class="offset-display">
-                  X: {{ gridOffsetX }}, Y: {{ gridOffsetY }}
-                </div>
+              <div class="step-arrow">→</div>
+              <div class="step" :class="{ active: editorMode === 'grid' }">
+                <span class="step-num">2</span>
+                <span class="step-label">Align Grid</span>
               </div>
-              <button class="reset-btn" @click="resetOffset" title="Reset offset to 0,0">
-                Reset Offset
-              </button>
             </div>
 
-            <!-- Map Preview with Grid Overlay -->
-            <div class="preview-container" ref="previewContainer">
+            <!-- Position Mode Controls -->
+            <div v-if="editorMode === 'position'" class="mode-controls">
+              <div class="zoom-controls">
+                <span class="zoom-label">Zoom:</span>
+                <button class="ctrl-btn" @click="zoomOut" :disabled="zoom <= 0.5">−</button>
+                <span class="zoom-level">{{ Math.round(zoom * 100) }}%</span>
+                <button class="ctrl-btn" @click="zoomIn" :disabled="zoom >= 4">+</button>
+                <button class="ctrl-btn" @click="resetView">Fit</button>
+              </div>
+              <p class="mode-hint">Pan and zoom to frame the area where you want to align the grid.</p>
+            </div>
+
+            <!-- Grid Mode Controls -->
+            <div v-if="editorMode === 'grid'" class="mode-controls">
+              <div class="grid-controls">
+                <div class="control-group">
+                  <label>Cell Size (px)</label>
+                  <div class="size-input-group">
+                    <button class="ctrl-btn" @click="adjustGridSize(-5)">−</button>
+                    <input
+                      v-model.number="gridSizePx"
+                      type="number"
+                      class="size-input"
+                      min="10"
+                      max="500"
+                    />
+                    <button class="ctrl-btn" @click="adjustGridSize(5)">+</button>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>Offset</label>
+                  <div class="offset-display">X: {{ gridOffsetX }}, Y: {{ gridOffsetY }}</div>
+                </div>
+                <button class="ctrl-btn reset-btn" @click="resetOffset">Reset Offset</button>
+              </div>
+              <p class="mode-hint">Drag on the map to position the grid origin. Adjust cell size to match your map's grid.</p>
+            </div>
+
+            <!-- Map Preview -->
+            <div
+              class="preview-container"
+              ref="previewContainer"
+              @wheel.prevent="onWheel"
+            >
               <div
-                class="preview-wrapper"
-                :style="previewWrapperStyle"
-                @mousedown="startDrag"
-                @mousemove="onDrag"
-                @mouseup="endDrag"
-                @mouseleave="endDrag"
+                class="preview-viewport"
+                :style="viewportStyle"
+                @mousedown="onMouseDown"
+                @mousemove="onMouseMove"
+                @mouseup="onMouseUp"
+                @mouseleave="onMouseUp"
               >
                 <!-- Map Image -->
                 <img
@@ -77,113 +105,130 @@
                   :src="mapImageUrl"
                   :alt="map.name"
                   class="preview-image"
+                  :style="imageStyle"
                   @load="onImageLoad"
                   ref="previewImage"
+                  draggable="false"
                 />
-                <div v-else class="loading-preview">
-                  Loading map preview...
-                </div>
+                <div v-else class="loading-preview">Loading map preview...</div>
 
-                <!-- Grid Overlay SVG -->
+                <!-- Grid Overlay (only in grid mode) -->
                 <svg
-                  v-if="mapImageUrl && imageLoaded"
+                  v-if="editorMode === 'grid' && mapImageUrl && imageLoaded"
                   class="grid-overlay"
-                  :viewBox="`0 0 ${scaledWidth} ${scaledHeight}`"
-                  :style="{ width: scaledWidth + 'px', height: scaledHeight + 'px' }"
+                  :style="gridOverlayStyle"
                 >
                   <defs>
-                    <!-- Square Grid Pattern -->
                     <pattern
                       v-if="gridType === 'square'"
                       id="gridPattern"
-                      :width="scaledGridSize"
-                      :height="scaledGridSize"
+                      :width="displayGridSize"
+                      :height="displayGridSize"
                       patternUnits="userSpaceOnUse"
-                      :x="scaledOffsetX"
-                      :y="scaledOffsetY"
+                      :x="displayOffsetX"
+                      :y="displayOffsetY"
                     >
                       <rect
-                        :width="scaledGridSize"
-                        :height="scaledGridSize"
+                        :width="displayGridSize"
+                        :height="displayGridSize"
                         fill="none"
-                        stroke="rgba(255, 255, 255, 0.6)"
+                        stroke="rgba(255, 0, 0, 0.7)"
                         stroke-width="1"
                       />
                     </pattern>
-
-                    <!-- Hex Grid Pattern -->
                     <pattern
                       v-if="gridType === 'hex'"
                       id="gridPattern"
-                      :width="scaledGridSize * 1.5"
-                      :height="scaledGridSize * 1.732"
+                      :width="displayGridSize * 1.5"
+                      :height="displayGridSize * 1.732"
                       patternUnits="userSpaceOnUse"
-                      :x="scaledOffsetX"
-                      :y="scaledOffsetY"
+                      :x="displayOffsetX"
+                      :y="displayOffsetY"
                     >
                       <polygon
                         :points="hexPoints"
                         fill="none"
-                        stroke="rgba(255, 255, 255, 0.6)"
-                        stroke-width="1"
-                      />
-                      <polygon
-                        :points="hexPointsOffset"
-                        fill="none"
-                        stroke="rgba(255, 255, 255, 0.6)"
+                        stroke="rgba(255, 0, 0, 0.7)"
                         stroke-width="1"
                       />
                     </pattern>
                   </defs>
                   <rect width="100%" height="100%" fill="url(#gridPattern)" />
-
-                  <!-- Origin Marker -->
+                  <!-- Origin marker -->
                   <circle
-                    :cx="scaledOffsetX"
-                    :cy="scaledOffsetY"
+                    :cx="displayOffsetX"
+                    :cy="displayOffsetY"
                     r="6"
                     fill="var(--color-primary-500)"
                     stroke="white"
                     stroke-width="2"
                   />
                 </svg>
-
-                <!-- Drag indicator -->
-                <div v-if="isDragging" class="drag-indicator">
-                  Drag to set grid origin
-                </div>
               </div>
             </div>
 
-            <p class="help-text">
-              Click and drag on the map to set the grid origin point. Use the cell size controls to adjust grid spacing.
-            </p>
+            <!-- Mode Toggle Button -->
+            <div class="mode-toggle">
+              <button
+                v-if="editorMode === 'position'"
+                class="btn-primary"
+                @click="enterGridMode"
+                :disabled="!imageLoaded"
+              >
+                Overlay Grid →
+              </button>
+              <button
+                v-if="editorMode === 'grid'"
+                class="btn-secondary"
+                @click="enterPositionMode"
+              >
+                ← Adjust View
+              </button>
+            </div>
           </div>
 
-          <!-- Simple offset inputs as fallback -->
+          <!-- Grid Size Calculator -->
+          <div v-if="gridType !== 'none' && compressionRatio !== 1" class="calculator-section">
+            <details open>
+              <summary>Grid Size Calculator</summary>
+              <div class="calculator-content">
+                <p class="calculator-info">
+                  Image was compressed to {{ Math.round(compressionRatio * 100) }}% of original size.
+                </p>
+                <div class="calculator-row">
+                  <div class="form-group">
+                    <label for="original-grid">Original Grid Size (px)</label>
+                    <input
+                      id="original-grid"
+                      v-model.number="originalGridSize"
+                      type="number"
+                      class="form-input"
+                      placeholder="e.g., 256"
+                      min="1"
+                    />
+                  </div>
+                  <div class="calculator-result" v-if="calculatedGridSize">
+                    <span class="result-label">Scaled:</span>
+                    <span class="result-value">{{ calculatedGridSize }}px</span>
+                    <button class="btn-apply" @click="applyCalculatedSize">Apply</button>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <!-- Manual offset inputs -->
           <div v-if="gridType !== 'none'" class="manual-offset-section">
             <details>
               <summary>Manual Offset Input</summary>
               <div class="form-row">
                 <div class="form-group">
                   <label for="offset-x">X Offset</label>
-                  <input
-                    id="offset-x"
-                    v-model.number="gridOffsetX"
-                    type="number"
-                    class="form-input"
-                    placeholder="0"
-                  />
+                  <input id="offset-x" v-model.number="gridOffsetX" type="number" class="form-input" />
                 </div>
                 <div class="form-group">
                   <label for="offset-y">Y Offset</label>
-                  <input
-                    id="offset-y"
-                    v-model.number="gridOffsetY"
-                    type="number"
-                    class="form-input"
-                    placeholder="0"
-                  />
+                  <input id="offset-y" v-model.number="gridOffsetY" type="number" class="form-input" />
                 </div>
               </div>
             </details>
@@ -191,14 +236,8 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn-secondary" @click="handleClose" :disabled="saving">
-            Cancel
-          </button>
-          <button
-            class="btn-primary"
-            @click="handleSave"
-            :disabled="saving"
-          >
+          <button class="btn-secondary" @click="handleClose" :disabled="saving">Cancel</button>
+          <button class="btn-primary" @click="handleSave" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save Grid Settings' }}
           </button>
         </div>
@@ -220,6 +259,8 @@ interface Map {
   grid_size_px: number | null
   grid_offset_x: number
   grid_offset_y: number
+  original_width_px: number | null
+  original_height_px: number | null
 }
 
 const props = defineProps<{
@@ -239,74 +280,127 @@ const gridOffsetX = ref(props.map.grid_offset_x || 0)
 const gridOffsetY = ref(props.map.grid_offset_y || 0)
 const saving = ref(false)
 
-// Preview state
+// Grid calculator state
+const originalGridSize = ref<number | null>(null)
+
+// Compression ratio (current / original)
+const compressionRatio = computed(() => {
+  if (!props.map.original_width_px || props.map.original_width_px === props.map.width_px) {
+    return 1
+  }
+  return props.map.width_px / props.map.original_width_px
+})
+
+// Calculated grid size based on compression ratio
+const calculatedGridSize = computed(() => {
+  if (!originalGridSize.value || originalGridSize.value <= 0) return null
+  return Math.round(originalGridSize.value * compressionRatio.value)
+})
+
+function applyCalculatedSize() {
+  if (calculatedGridSize.value) {
+    gridSizePx.value = calculatedGridSize.value
+  }
+}
+
+// Editor mode: 'position' (pan/zoom image) or 'grid' (adjust grid)
+const editorMode = ref<'position' | 'grid'>('position')
+
+// Image state
 const mapImageUrl = ref<string | null>(null)
 const imageLoaded = ref(false)
 const previewContainer = ref<HTMLElement | null>(null)
 const previewImage = ref<HTMLImageElement | null>(null)
+
+// View state (for position mode)
+const zoom = ref(1)
+const panX = ref(0)
+const panY = ref(0)
+
+// Drag state
 const isDragging = ref(false)
 const dragStartX = ref(0)
 const dragStartY = ref(0)
+const dragStartPanX = ref(0)
+const dragStartPanY = ref(0)
+const dragStartOffsetX = ref(0)
+const dragStartOffsetY = ref(0)
 
-// Calculate preview dimensions (fit within container)
-const maxPreviewWidth = 700
-const maxPreviewHeight = 400
+// Container dimensions
+const containerWidth = 700
+const containerHeight = 400
 
-const scale = computed(() => {
+// Computed display values
+const baseScale = computed(() => {
   if (!props.map.width_px || !props.map.height_px) return 1
-  const scaleX = maxPreviewWidth / props.map.width_px
-  const scaleY = maxPreviewHeight / props.map.height_px
-  return Math.min(scaleX, scaleY, 1) // Don't scale up
+  const scaleX = containerWidth / props.map.width_px
+  const scaleY = containerHeight / props.map.height_px
+  return Math.min(scaleX, scaleY, 1)
 })
 
-const scaledWidth = computed(() => Math.round(props.map.width_px * scale.value))
-const scaledHeight = computed(() => Math.round(props.map.height_px * scale.value))
-const scaledGridSize = computed(() => gridSizePx.value * scale.value)
-const scaledOffsetX = computed(() => gridOffsetX.value * scale.value)
-const scaledOffsetY = computed(() => gridOffsetY.value * scale.value)
+// Base image dimensions (fit to container, before zoom)
+const baseImageWidth = computed(() => props.map.width_px * baseScale.value)
+const baseImageHeight = computed(() => props.map.height_px * baseScale.value)
 
-const previewWrapperStyle = computed(() => ({
-  width: scaledWidth.value + 'px',
-  height: scaledHeight.value + 'px',
-  cursor: isDragging.value ? 'grabbing' : 'crosshair'
+// Grid display calculations (in base-scaled coordinates, zoom applied via CSS transform)
+const displayGridSize = computed(() => gridSizePx.value * baseScale.value)
+const displayOffsetX = computed(() => gridOffsetX.value * baseScale.value)
+const displayOffsetY = computed(() => gridOffsetY.value * baseScale.value)
+
+// Styles
+const viewportStyle = computed(() => ({
+  width: containerWidth + 'px',
+  height: containerHeight + 'px',
+  cursor: editorMode.value === 'position'
+    ? (isDragging.value ? 'grabbing' : 'grab')
+    : (isDragging.value ? 'crosshair' : 'crosshair'),
+  overflow: 'hidden'
 }))
 
-// Hex grid calculations
+const imageStyle = computed(() => ({
+  width: baseImageWidth.value + 'px',
+  height: baseImageHeight.value + 'px',
+  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+  transformOrigin: '0 0',
+  willChange: 'transform'
+}))
+
+const gridOverlayStyle = computed(() => ({
+  width: baseImageWidth.value + 'px',
+  height: baseImageHeight.value + 'px',
+  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+  transformOrigin: '0 0',
+  willChange: 'transform'
+}))
+
+// Hex points for pattern
 const hexPoints = computed(() => {
-  const size = scaledGridSize.value
-  const h = size * 0.866 // sqrt(3)/2
+  const size = displayGridSize.value
+  const h = size * 0.866
   return `${size * 0.5},0 ${size},${h * 0.5} ${size},${h * 1.5} ${size * 0.5},${h * 2} 0,${h * 1.5} 0,${h * 0.5}`
 })
 
-const hexPointsOffset = computed(() => {
-  const size = scaledGridSize.value
-  const h = size * 0.866
-  const offsetX = size * 0.75
-  const offsetY = h
-  return `${offsetX + size * 0.5},${offsetY} ${offsetX + size},${offsetY + h * 0.5} ${offsetX + size},${offsetY + h * 1.5} ${offsetX + size * 0.5},${offsetY + h * 2} ${offsetX},${offsetY + h * 1.5} ${offsetX},${offsetY + h * 0.5}`
-})
-
-// Update form when map changes
+// Watchers
 watch(() => props.map, (newMap) => {
   gridType.value = newMap.grid_type || 'none'
   gridSizePx.value = newMap.grid_size_px || 70
   gridOffsetX.value = newMap.grid_offset_x || 0
   gridOffsetY.value = newMap.grid_offset_y || 0
   imageLoaded.value = false
+  editorMode.value = 'position'
+  resetView()
 }, { immediate: true })
 
-// Load map image when modal becomes visible
 watch(() => props.visible, async (visible) => {
   if (visible && props.map.id) {
     await loadMapImage()
   }
 })
 
+// Functions
 async function loadMapImage() {
   try {
-    const response = await invoke<{ success: boolean; data?: string }>('serve_map_image', {
-      id: props.map.id
-    })
+    const response = await invoke<{ success: boolean; data?: string }>('serve_map_image', { id: props.map.id })
     if (response.success && response.data) {
       mapImageUrl.value = response.data
     }
@@ -317,6 +411,98 @@ async function loadMapImage() {
 
 function onImageLoad() {
   imageLoaded.value = true
+  resetView()
+}
+
+function onGridTypeChange() {
+  editorMode.value = 'position'
+  resetView()
+}
+
+function enterPositionMode() {
+  editorMode.value = 'position'
+}
+
+function enterGridMode() {
+  editorMode.value = 'grid'
+}
+
+// Zoom functions
+function zoomIn() {
+  zoom.value = Math.min(zoom.value * 1.5, 4)
+}
+
+function zoomOut() {
+  zoom.value = Math.max(zoom.value / 1.5, 0.5)
+}
+
+function resetView() {
+  zoom.value = 1
+  panX.value = 0
+  panY.value = 0
+}
+
+function onWheel(event: WheelEvent) {
+  if (editorMode.value !== 'position') return
+
+  const delta = event.deltaY > 0 ? 0.9 : 1.1
+  zoom.value = Math.max(0.5, Math.min(4, zoom.value * delta))
+}
+
+// Mouse handlers
+function onMouseDown(event: MouseEvent) {
+  isDragging.value = true
+  dragStartX.value = event.clientX
+  dragStartY.value = event.clientY
+
+  if (editorMode.value === 'position') {
+    dragStartPanX.value = panX.value
+    dragStartPanY.value = panY.value
+  } else {
+    // Grid mode - set offset immediately on click
+    updateGridOffset(event)
+    dragStartOffsetX.value = gridOffsetX.value
+    dragStartOffsetY.value = gridOffsetY.value
+  }
+}
+
+function onMouseMove(event: MouseEvent) {
+  if (!isDragging.value) return
+
+  if (editorMode.value === 'position') {
+    // Pan the image
+    const deltaX = event.clientX - dragStartX.value
+    const deltaY = event.clientY - dragStartY.value
+    panX.value = dragStartPanX.value + deltaX
+    panY.value = dragStartPanY.value + deltaY
+  } else {
+    // Update grid offset
+    updateGridOffset(event)
+  }
+}
+
+function onMouseUp() {
+  isDragging.value = false
+}
+
+function updateGridOffset(event: MouseEvent) {
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+
+  // Mouse position relative to viewport
+  const mouseX = event.clientX - rect.left
+  const mouseY = event.clientY - rect.top
+
+  // Effective scale = baseScale * zoom (since zoom is applied via CSS transform)
+  const effectiveScale = baseScale.value * zoom.value
+
+  // Convert to image coordinates (accounting for pan and scale)
+  const imageX = (mouseX - panX.value) / effectiveScale
+  const imageY = (mouseY - panY.value) / effectiveScale
+
+  // Set offset (clamped to image bounds)
+  gridOffsetX.value = Math.round(Math.max(0, Math.min(imageX, props.map.width_px)))
+  gridOffsetY.value = Math.round(Math.max(0, Math.min(imageY, props.map.height_px)))
 }
 
 function adjustGridSize(delta: number) {
@@ -331,40 +517,8 @@ function resetOffset() {
   gridOffsetY.value = 0
 }
 
-// Drag handling for setting grid origin
-function startDrag(event: MouseEvent) {
-  if (!previewContainer.value) return
-  isDragging.value = true
-  updateOffsetFromEvent(event)
-}
-
-function onDrag(event: MouseEvent) {
-  if (!isDragging.value) return
-  updateOffsetFromEvent(event)
-}
-
-function endDrag() {
-  isDragging.value = false
-}
-
-function updateOffsetFromEvent(event: MouseEvent) {
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const x = event.clientX - rect.left
-  const y = event.clientY - rect.top
-
-  // Convert from scaled coordinates to actual coordinates
-  gridOffsetX.value = Math.round(x / scale.value)
-  gridOffsetY.value = Math.round(y / scale.value)
-
-  // Clamp to valid range
-  gridOffsetX.value = Math.max(0, Math.min(gridOffsetX.value, props.map.width_px))
-  gridOffsetY.value = Math.max(0, Math.min(gridOffsetY.value, props.map.height_px))
-}
-
 async function handleSave() {
   saving.value = true
-
   try {
     const response = await invoke<{ success: boolean; error?: string }>('update_map_grid', {
       id: props.map.id,
@@ -373,11 +527,10 @@ async function handleSave() {
       offsetX: gridOffsetX.value,
       offsetY: gridOffsetY.value
     })
-
     if (response.success) {
       emit('saved')
     } else {
-      alert(`Failed to save grid settings: ${response.error}`)
+      alert(`Failed to save: ${response.error}`)
     }
   } catch (e) {
     console.error('Failed to save grid settings:', e)
@@ -393,7 +546,6 @@ function handleClose() {
   }
 }
 
-// Load image on mount if already visible
 onMounted(() => {
   if (props.visible && props.map.id) {
     loadMapImage()
@@ -441,7 +593,6 @@ onMounted(() => {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--color-text);
 }
 
 .close-btn {
@@ -455,7 +606,6 @@ onMounted(() => {
   color: var(--color-text-muted);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
 }
 
 .close-btn:hover {
@@ -477,15 +627,10 @@ onMounted(() => {
   margin-bottom: var(--spacing-md);
 }
 
-.form-group.compact {
-  margin-bottom: 0;
-}
-
 .form-group label {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text);
   margin-bottom: var(--spacing-xs);
 }
 
@@ -500,43 +645,115 @@ onMounted(() => {
   gap: var(--spacing-xs);
   cursor: pointer;
   font-size: 0.875rem;
-  color: var(--color-text);
 }
 
-.radio-option input {
-  cursor: pointer;
-}
-
-.form-input {
-  width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  background: var(--color-background);
-  color: var(--color-text);
-  transition: all var(--transition-fast);
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 2px var(--color-primary-100);
-}
-
-/* Grid Editor Section */
-.grid-editor-section {
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-}
-
-.controls-row {
+/* Step Indicator */
+.step-indicator {
   display: flex;
-  align-items: flex-end;
-  gap: var(--spacing-lg);
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--color-base-100);
+  border-radius: var(--radius-md);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+
+.step.active {
+  opacity: 1;
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.step-num {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-base-300);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.step.active .step-num {
+  background: var(--color-primary-500);
+  color: white;
+}
+
+.step-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.step-arrow {
+  color: var(--color-text-muted);
+}
+
+/* Mode Controls */
+.mode-controls {
+  margin-bottom: var(--spacing-md);
+}
+
+.zoom-controls, .grid-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.control-group label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.zoom-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.zoom-level {
+  font-size: 0.875rem;
+  font-family: monospace;
+  min-width: 50px;
+  text-align: center;
+}
+
+.ctrl-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.15s;
+}
+
+.ctrl-btn:hover:not(:disabled) {
+  background: var(--color-base-200);
+  border-color: var(--color-primary-500);
+}
+
+.ctrl-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .size-input-group {
@@ -546,77 +763,52 @@ onMounted(() => {
 }
 
 .size-input {
-  width: 80px;
-  text-align: center;
-}
-
-.size-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 70px;
+  padding: var(--spacing-xs);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-background);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 1.25rem;
-  transition: all var(--transition-fast);
-}
-
-.size-btn:hover {
-  background: var(--color-base-200);
-  border-color: var(--color-primary-500);
+  text-align: center;
+  font-size: 0.875rem;
 }
 
 .offset-display {
-  font-size: 0.875rem;
-  color: var(--color-text);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   background: var(--color-base-200);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-family: monospace;
+  font-size: 0.875rem;
 }
 
 .reset-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-background);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  margin-left: auto;
 }
 
-.reset-btn:hover {
-  background: var(--color-base-200);
-  color: var(--color-text);
+.mode-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: var(--spacing-sm);
+  margin-bottom: 0;
 }
 
 /* Preview Container */
 .preview-container {
-  background: var(--color-base-200);
+  background: #1a1a1a;
   border-radius: var(--radius-md);
-  padding: var(--spacing-md);
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
-.preview-wrapper {
+.preview-viewport {
   position: relative;
-  user-select: none;
+  background: #222;
 }
 
 .preview-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
   display: block;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .loading-preview {
@@ -624,9 +816,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 200px;
+  height: 300px;
   color: var(--color-text-muted);
-  font-size: 0.875rem;
 }
 
 .grid-overlay {
@@ -636,27 +827,91 @@ onMounted(() => {
   pointer-events: none;
 }
 
-.drag-indicator {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  pointer-events: none;
+/* Mode Toggle */
+.mode-toggle {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-md);
 }
 
-.help-text {
+/* Grid Calculator */
+.calculator-section {
+  margin-top: var(--spacing-md);
+}
+
+.calculator-section details {
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-50);
+}
+
+.calculator-section summary {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-primary-700);
+}
+
+.calculator-content {
+  padding: var(--spacing-md);
+  padding-top: 0;
+}
+
+.calculator-info {
   font-size: 0.75rem;
   color: var(--color-text-muted);
-  margin-top: var(--spacing-sm);
-  text-align: center;
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
-/* Manual Offset Section */
+.calculator-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+}
+
+.calculator-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.calculator-result {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+}
+
+.result-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.result-value {
+  font-weight: 600;
+  font-family: monospace;
+  color: var(--color-primary-600);
+}
+
+.btn-apply {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-500);
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-apply:hover {
+  background: var(--color-primary-600);
+}
+
+/* Manual Offset */
 .manual-offset-section {
   margin-top: var(--spacing-md);
 }
@@ -664,7 +919,6 @@ onMounted(() => {
 .manual-offset-section details {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  overflow: hidden;
 }
 
 .manual-offset-section summary {
@@ -673,10 +927,6 @@ onMounted(() => {
   cursor: pointer;
   font-size: 0.875rem;
   color: var(--color-text-muted);
-}
-
-.manual-offset-section summary:hover {
-  background: var(--color-base-300);
 }
 
 .manual-offset-section .form-row {
@@ -690,8 +940,19 @@ onMounted(() => {
 
 .form-row .form-group {
   flex: 1;
+  margin-bottom: 0;
 }
 
+.form-input {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background: var(--color-background);
+}
+
+/* Footer */
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -700,14 +961,13 @@ onMounted(() => {
   border-top: 1px solid var(--color-border);
 }
 
-.btn-secondary,
-.btn-primary {
+.btn-secondary, .btn-primary {
   padding: var(--spacing-sm) var(--spacing-lg);
   font-size: 0.875rem;
   font-weight: 500;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.15s;
 }
 
 .btn-secondary {
@@ -730,8 +990,7 @@ onMounted(() => {
   background: var(--color-primary-600);
 }
 
-.btn-primary:disabled,
-.btn-secondary:disabled {
+.btn-primary:disabled, .btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

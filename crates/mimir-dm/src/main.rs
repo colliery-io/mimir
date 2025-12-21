@@ -121,7 +121,8 @@ fn main() {
                         warn!("Failed to create campaigns directory: {}", e);
                     } else {
                         let campaigns_path = campaigns_dir.to_string_lossy().to_string();
-                        match mimir_dm_core::seed::seed_dev_data(&mut conn, &campaigns_path) {
+                        let data_path = app_paths.data_dir.to_string_lossy().to_string();
+                        match mimir_dm_core::seed::seed_dev_data(&mut conn, &campaigns_path, &data_path) {
                             Ok(true) => info!("Dev seed data created successfully"),
                             Ok(false) => info!("Dev seed data already exists, skipped"),
                             Err(e) => warn!("Failed to seed dev data: {}", e),

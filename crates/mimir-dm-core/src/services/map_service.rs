@@ -150,6 +150,8 @@ impl<'a> MapService<'a> {
                     grid_offset_y: m.grid_offset_y,
                     width_px: m.width_px,
                     height_px: m.height_px,
+                    original_width_px: m.original_width_px,
+                    original_height_px: m.original_height_px,
                 }
             })
             .collect();

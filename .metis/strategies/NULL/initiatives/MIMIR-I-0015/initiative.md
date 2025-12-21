@@ -4,14 +4,14 @@ level: initiative
 title: "Visual Display System"
 short_code: "MIMIR-I-0015"
 created_at: 2025-12-06T16:02:36.548959+00:00
-updated_at: 2025-12-06T16:02:36.548959+00:00
+updated_at: 2025-12-21T01:37:24.443428+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -39,22 +39,82 @@ This initiative introduces a visual display system - a separate window that can 
 - World/region maps for travel and context
 - Interactive features: tokens, fog of war, pan/zoom
 - Integration with campaign data (show encounter monsters, player character tokens)
+- Optimized workflow for Dungeondraft and similar map-making tools
 
 **Non-Goals:**
-- Full VTT feature parity (Roll20, Foundry) - this is a display tool, not a game system
-- Remote/networked play - this is for in-person table use
-- Built-in map creation tools - maps imported from external sources initially
+- Full VTT feature parity (Roll20, Foundry) - this is a display tool for in-person play, not a full game system
+- Remote/networked play - this is for in-person table use only
+- Built-in map creation tools - maps imported from external sources (Dungeondraft, Inkarnate, etc.)
 - Dice rolling or mechanical automation on the display
 - Video/animation support in v1
+
+## UX Design
+
+### Map Organization
+
+Maps exist at two levels in the hierarchy:
+
+```
+Campaign
+├── Maps (campaign-wide)
+│   ├── Regional Map - Sword Coast
+│   └── City Map - Waterdeep
+│
+└── Modules
+    └── The Sunken Temple
+        ├── Documents (session notes, etc.)
+        └── Maps (module-specific)
+            ├── Temple Entrance (with pre-placed guards)
+            └── Boss Chamber (with pre-placed boss + traps)
+```
+
+- **Campaign Maps**: Regional/world maps, city overviews - broader context
+- **Module Maps**: Dungeon rooms, encounter areas - localized to specific adventures
+
+### Setup Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Map Setup Screen                                           │
+├─────────────────────────────────────────────────────────────┤
+│  1. Upload Image                                            │
+│     [Drop PNG/JPG here or click to upload]                  │
+│                                                             │
+│  2. Grid Configuration                                      │
+│     Grid Type: ○ Square  ○ Hex  ○ None                      │
+│     [Drag-to-align grid overlay on image]                   │
+│     (Optimized for maps with baked-in grids like           │
+│      Dungeondraft exports)                                  │
+│                                                             │
+│  3. Optional: Pre-place Tokens                              │
+│     [+ Monster] [+ Trap] [+ Marker]                         │
+│     (Set up encounters ahead of time - guards at doors,     │
+│      vendors in market stalls, boss in final room)          │
+│                                                             │
+│  4. Optional: Associate with Module                         │
+│     Module: [Select module ▾] (or save to campaign)         │
+│                                                             │
+│  5. [Save Map]                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### During Play
+
+From the session/play screen, a single button opens the display:
+
+```
+[▶ Open Display] → Opens separate window (drag to TV)
+```
+
+The DM controls everything from the main window; the display window is view-only for players.
 
 ## New Content Types Required
 
 This initiative introduces new data models not currently in Mimir:
 
 ### Maps
-- **Battle Map**: Grid-based tactical map with terrain, obstacles
-- **Dungeon Map**: Multi-room exploration map with connectable areas
-- **World Map**: Region/continent scale map for travel
+- **Campaign Map**: Region/world scale maps for travel and context
+- **Module Map**: Dungeon rooms, encounter areas tied to specific modules
 
 ### Map Assets
 - **Tokens**: Character and monster representations (images or icons)
@@ -125,29 +185,37 @@ This initiative introduces new data models not currently in Mimir:
 ### Data Models
 
 ```rust
-// Map types
+// Map - can belong to campaign (regional) or module (encounter/dungeon)
 pub struct Map {
     pub id: i32,
     pub campaign_id: i32,
+    pub module_id: Option<i32>,  // None = campaign-level map
     pub name: String,
-    pub map_type: MapType,  // Battle, Dungeon, World
     pub image_path: String,
     pub width_px: u32,
     pub height_px: u32,
-    pub grid_size: Option<u32>,  // pixels per grid square
+    // Grid alignment (drag-to-fit result)
     pub grid_type: GridType,     // Square, Hex, None
+    pub grid_size_px: Option<u32>,   // pixels per grid cell
+    pub grid_offset_x: Option<i32>,  // alignment offset
+    pub grid_offset_y: Option<i32>,
 }
 
+// Token - pre-placed during setup or added during play
 pub struct Token {
     pub id: i32,
     pub map_id: i32,
     pub name: String,
+    pub token_type: TokenType,   // Monster, PC, NPC, Trap, Marker
     pub image_path: Option<String>,
     pub icon: Option<String>,    // Fallback icon if no image
     pub size: TokenSize,         // Tiny, Small, Medium, Large, Huge, Gargantuan
     pub x: f32,                  // Grid position
     pub y: f32,
     pub visible_to_players: bool,
+    // Link to catalog/character data
+    pub monster_id: Option<i32>,
+    pub character_id: Option<i32>,
 }
 
 pub struct FogOfWar {
@@ -166,48 +234,71 @@ The player display window is a separate Tauri window:
 
 ### DM Control Panel
 
-In the main window, a control panel allows:
-- Select active map
-- Place/move tokens (drag & drop)
-- Toggle token visibility
-- Reveal/hide fog areas (paint or polygon)
+In the main window, a control panel allows the DM to manage the player display:
+
+**Essential Controls (v1):**
+- Select active map (from campaign or module maps)
 - Pan/zoom control for display
-- Quick scene transitions
+- Place/move tokens (drag & drop)
+- Toggle token visibility (show/hide individual tokens for ambushes, invisibility)
+- Quick token add (spawn monster mid-combat without leaving play screen)
+- Reveal/hide fog areas (paint or polygon)
+- Switch maps (quick scene transitions)
+- Blackout mode (blank screen between scenes - show logo or solid color)
+
+**Nice to Have (defer if needed):**
+- Ping/highlight location (pulse effect to draw player attention)
+- Token labels on/off toggle
+- Grid visibility toggle (some maps look better without overlay)
 
 ## Implementation Plan
 
 ### Phase 1: Foundation & Multi-Window
-- Database models for maps (no tokens yet)
-- Map import (image + grid configuration)
-- Basic display window (shows static map image)
-- IPC setup between main and display windows
+- Database models for maps (campaign-level and module-level)
+- Map image upload (PNG/JPG) and storage
+- Basic display window (Tauri multi-window, shows static image)
+- IPC setup between main window and display window
+- "Open Display" button in play screen
 
-### Phase 2: Grid & Navigation
+### Phase 2: Grid & Alignment
 - Grid overlay rendering (square, hex)
-- Pan/zoom controls
+- Drag-to-align grid tool (for Dungeondraft-style maps with baked grids)
+- Pan/zoom controls (DM-controlled)
 - Map scaling to fit display
-- Basic DM control panel
+- Blackout mode (blank screen between scenes)
 
 ### Phase 3: Tokens
-- Token data model
-- Token placement and movement
-- Token visibility toggle
-- Character/monster token integration (pull from campaign data)
+- Token data model (with monster/character links)
+- Token placement during setup (pre-place encounters)
+- Token movement during play (drag & drop)
+- Token visibility toggle (ambush reveals)
+- Quick token add (spawn mid-combat)
+- Token size handling (Tiny → Gargantuan)
 
 ### Phase 4: Fog of War
 - Fog overlay rendering
 - Reveal tools (rectangle, polygon, brush)
-- Fog state persistence
-- Hide/reveal animations
+- Fog state persistence per map
+- Hide/reveal transitions
 
 ### Phase 5: Polish & Integration
-- Scene/map quick-switch
-- Encounter integration (auto-place monsters from encounter)
-- Token status indicators (conditions, HP)
+- Map quick-switch in DM control panel
+- Module map list integration
+- Grid visibility toggle
 - Performance optimization for large maps
+
+### Physical Print Export
+
+For users who prefer physical battlemats, the system should support exporting:
+- **Map image** - Full resolution for printing at scale
+- **Token sheet** - Separate printable sheet with tokens for cutting out
+
+This bridges the digital display system with the existing Physical Print initiative - same maps work both ways.
 
 ### Future Considerations (Not in v1)
 - Map creation/editing tools
 - Animated effects (spell templates)
 - Sound/ambiance triggers
 - Dynamic lighting
+- Ping/highlight effects
+- Token labels
