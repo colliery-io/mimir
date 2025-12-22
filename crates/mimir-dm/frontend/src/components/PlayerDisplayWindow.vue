@@ -52,18 +52,16 @@ const displayScale = ref(1)
 const imageNaturalWidth = ref(0)
 const imageNaturalHeight = ref(0)
 
-// Fog of war state
-interface FogRevealedArea {
-  id: number
-  map_id: number
+// Fog of war state (vision-based)
+interface VisionCircle {
+  tokenId: number
   x: number
   y: number
-  width: number
-  height: number
+  radiusPx: number
 }
 
 const fogEnabled = ref(false)
-const revealedAreas = ref<FogRevealedArea[]>([])
+const visionCircles = ref<VisionCircle[]>([])
 
 // Light source state
 const lightSources = ref<LightSourceSummary[]>([])
@@ -235,17 +233,17 @@ onMounted(async () => {
     }
   })
 
-  // Listen for fog of war updates
+  // Listen for fog of war updates (vision-based)
   unlistenFogUpdate = await listen<{
     mapId: number
     fogEnabled: boolean
-    revealedAreas: FogRevealedArea[]
+    visionCircles: VisionCircle[]
   }>('player-display:fog-update', (event) => {
-    console.log('PlayerDisplayWindow: Received fog-update event:', event.payload.fogEnabled, event.payload.revealedAreas.length, 'areas')
+    console.log('PlayerDisplayWindow: Received fog-update event:', event.payload.fogEnabled, event.payload.visionCircles?.length || 0, 'vision circles')
     // Only update fog if it's for the current map
     if (event.payload.mapId === mapState.value.mapId) {
       fogEnabled.value = event.payload.fogEnabled
-      revealedAreas.value = event.payload.revealedAreas
+      visionCircles.value = event.payload.visionCircles || []
     }
   })
 
@@ -480,7 +478,7 @@ function handleResize() {
           :interactive="false"
         />
 
-        <!-- Fog of War Overlay (Player view - fully opaque) -->
+        <!-- Fog of War Overlay (Player view - vision-based) -->
         <svg
           v-if="fogEnabled && imageNaturalWidth > 0"
           class="fog-overlay"
@@ -491,19 +489,24 @@ function handleResize() {
           :viewBox="`0 0 ${imageNaturalWidth} ${imageNaturalHeight}`"
         >
           <defs>
+            <!-- Blur filter for soft vision edges -->
+            <filter id="playerVisionBlur" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
+            </filter>
             <mask id="playerFogMask">
               <!-- White = visible (fog), Black = hidden (revealed) -->
               <rect width="100%" height="100%" fill="white" />
-              <!-- Cut out revealed areas -->
-              <rect
-                v-for="area in revealedAreas"
-                :key="area.id"
-                :x="area.x"
-                :y="area.y"
-                :width="area.width"
-                :height="area.height"
-                fill="black"
-              />
+              <!-- Cut out vision circles from player tokens (with blur for soft edges) -->
+              <g filter="url(#playerVisionBlur)">
+                <circle
+                  v-for="circle in visionCircles"
+                  :key="'vision-' + circle.tokenId"
+                  :cx="circle.x"
+                  :cy="circle.y"
+                  :r="circle.radiusPx"
+                  fill="black"
+                />
+              </g>
             </mask>
           </defs>
           <!-- Fully opaque fog for player view -->

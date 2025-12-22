@@ -36,47 +36,20 @@
         </button>
       </div>
 
-      <!-- Fog of War Controls -->
+      <!-- Fog of War Toggle -->
       <div class="toolbar-group fog-controls">
-        <button
-          class="toolbar-btn fog-toggle-btn"
-          :class="{ active: fogEnabled }"
-          @click="toggleFog"
-          :disabled="!mapImageUrl"
-          title="Toggle fog of war"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M1 8.25a7.25 7.25 0 1014.5 0A7.25 7.25 0 001 8.25zm7.25 5.75a5.75 5.75 0 100-11.5 5.75 5.75 0 000 11.5z" />
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" opacity="0.5" />
-          </svg>
-          <span>{{ fogEnabled ? 'Fog On' : 'Fog Off' }}</span>
-        </button>
-        <button
-          v-if="fogEnabled"
-          class="toolbar-btn fog-reveal-btn"
-          :class="{ active: fogToolActive }"
-          @click="toggleFogTool"
-          :disabled="!mapImageUrl"
-          title="Reveal fog tool - drag to reveal areas"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-            <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-          </svg>
-          <span>Reveal</span>
-        </button>
-        <button
-          v-if="fogEnabled && revealedAreas.length > 0"
-          class="toolbar-btn fog-reset-btn"
-          @click="resetFog"
-          :disabled="!mapImageUrl"
-          title="Reset fog - cover entire map"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clip-rule="evenodd" />
-          </svg>
-          <span>Reset</span>
-        </button>
+        <label class="fog-toggle" :class="{ disabled: !mapImageUrl }">
+          <span class="fog-label">Fog</span>
+          <div class="toggle-switch" :class="{ active: fogEnabled }">
+            <input
+              type="checkbox"
+              :checked="fogEnabled"
+              @change="toggleFog"
+              :disabled="!mapImageUrl"
+            />
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
       </div>
 
       <div class="toolbar-group">
@@ -110,7 +83,6 @@
     <!-- Map Viewport -->
     <div
       class="map-viewport"
-      :class="{ 'fog-tool-active': fogToolActive }"
       ref="viewport"
       @mousedown="startPan"
       @mousemove="onPan"
@@ -187,6 +159,7 @@
         </svg>
 
         <!-- Fog of War Overlay (DM view - semi-transparent) -->
+        <!-- Reveals based on player token vision -->
         <svg
           v-if="fogEnabled && imageLoaded"
           class="fog-overlay dm-fog"
@@ -194,28 +167,24 @@
           :style="{ width: mapWidth + 'px', height: mapHeight + 'px' }"
         >
           <defs>
+            <!-- Blur filter for soft vision edges -->
+            <filter id="visionBlur" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
+            </filter>
             <mask id="dmFogMask">
-              <!-- White = visible, Black = hidden -->
+              <!-- White = fogged, Black = revealed -->
               <rect width="100%" height="100%" fill="white" />
-              <!-- Cut out revealed areas -->
-              <rect
-                v-for="area in revealedAreas"
-                :key="area.id"
-                :x="area.x"
-                :y="area.y"
-                :width="area.width"
-                :height="area.height"
-                fill="black"
-              />
-              <!-- Show current reveal preview -->
-              <rect
-                v-if="fogRevealStart && fogRevealCurrent"
-                :x="Math.min(fogRevealStart.x, fogRevealCurrent.x)"
-                :y="Math.min(fogRevealStart.y, fogRevealCurrent.y)"
-                :width="Math.abs(fogRevealCurrent.x - fogRevealStart.x)"
-                :height="Math.abs(fogRevealCurrent.y - fogRevealStart.y)"
-                fill="black"
-              />
+              <!-- Cut out vision circles for player tokens (with blur for soft edges) -->
+              <g filter="url(#visionBlur)">
+                <circle
+                  v-for="token in playerTokensWithVision"
+                  :key="'vision-' + token.id"
+                  :cx="token.x"
+                  :cy="token.y"
+                  :r="getTokenVisionRadiusPx(token)"
+                  fill="black"
+                />
+              </g>
             </mask>
           </defs>
           <!-- Semi-transparent fog for DM view -->
@@ -224,25 +193,6 @@
             height="100%"
             fill="rgba(0, 0, 0, 0.5)"
             mask="url(#dmFogMask)"
-          />
-        </svg>
-
-        <!-- Fog Reveal Preview Rectangle -->
-        <svg
-          v-if="fogToolActive && fogRevealStart && fogRevealCurrent && imageLoaded"
-          class="fog-reveal-preview"
-          :viewBox="`0 0 ${mapWidth} ${mapHeight}`"
-          :style="{ width: mapWidth + 'px', height: mapHeight + 'px' }"
-        >
-          <rect
-            :x="Math.min(fogRevealStart.x, fogRevealCurrent.x)"
-            :y="Math.min(fogRevealStart.y, fogRevealCurrent.y)"
-            :width="Math.abs(fogRevealCurrent.x - fogRevealStart.x)"
-            :height="Math.abs(fogRevealCurrent.y - fogRevealStart.y)"
-            fill="rgba(255, 255, 0, 0.2)"
-            stroke="rgba(255, 255, 0, 0.8)"
-            stroke-width="2"
-            stroke-dasharray="5,5"
           />
         </svg>
 
@@ -330,7 +280,6 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
 import { usePlayerDisplay } from '@/composables/usePlayerDisplay'
 import { useTokens } from '@/composables/useTokens'
-import { useFog, type FogRevealedArea } from '@/composables/useFog'
 import { useLightSources, type LightSourceSummary } from '@/composables/useLightSources'
 import TokenRenderer from '@/components/tokens/TokenRenderer.vue'
 import QuickAddTokenModal from '@/components/tokens/QuickAddTokenModal.vue'
@@ -410,10 +359,6 @@ const showQuickAddModal = ref(false)
 
 // Fog of war state
 const fogEnabled = ref(false)
-const revealedAreas = ref<FogRevealedArea[]>([])
-const fogToolActive = ref(false)
-const fogRevealStart = ref<{ x: number; y: number } | null>(null)
-const fogRevealCurrent = ref<{ x: number; y: number } | null>(null)
 
 // Light source state
 const lightSources = ref<LightSourceSummary[]>([])
@@ -451,10 +396,9 @@ async function sendTokensToDisplay() {
 // Load fog state
 async function loadFogState(mapId: number) {
   try {
-    const response = await invoke<{ success: boolean; data?: { fog_enabled: boolean; revealed_areas: FogRevealedArea[] } }>('get_fog_state', { mapId })
+    const response = await invoke<{ success: boolean; data?: { fog_enabled: boolean } }>('get_fog_state', { mapId })
     if (response.success && response.data) {
       fogEnabled.value = response.data.fog_enabled
-      revealedAreas.value = response.data.revealed_areas
       // Send fog state to player display
       sendFogToDisplay()
     }
@@ -509,58 +453,26 @@ async function toggleFog() {
   }
 }
 
-// Toggle fog tool mode
-function toggleFogTool() {
-  fogToolActive.value = !fogToolActive.value
-  if (!fogToolActive.value) {
-    fogRevealStart.value = null
-    fogRevealCurrent.value = null
-  }
-}
-
-// Send fog state to player display
+// Send fog state to player display (vision-based)
 async function sendFogToDisplay() {
   if (!isDisplayOpen.value || !props.mapId) return
+
+  // Calculate vision circles for player tokens
+  const visionCircles = playerTokensWithVision.value.map(token => ({
+    tokenId: token.id,
+    x: token.x,
+    y: token.y,
+    radiusPx: getTokenVisionRadiusPx(token)
+  }))
 
   try {
     await emit('player-display:fog-update', {
       mapId: props.mapId,
       fogEnabled: fogEnabled.value,
-      revealedAreas: revealedAreas.value
+      visionCircles
     })
   } catch (e) {
     console.error('Failed to send fog to display:', e)
-  }
-}
-
-// Reveal a rectangular area
-async function revealRect(x: number, y: number, width: number, height: number) {
-  if (!props.mapId) return
-
-  try {
-    const request = { map_id: props.mapId, x, y, width, height }
-    const response = await invoke<{ success: boolean; data?: FogRevealedArea }>('reveal_rect', { request })
-    if (response.success && response.data) {
-      revealedAreas.value.push(response.data)
-      sendFogToDisplay()
-    }
-  } catch (e) {
-    console.error('Failed to reveal rect:', e)
-  }
-}
-
-// Reset fog (clear all revealed areas)
-async function resetFog() {
-  if (!props.mapId) return
-
-  try {
-    const response = await invoke<{ success: boolean }>('reset_fog', { mapId: props.mapId })
-    if (response.success) {
-      revealedAreas.value = []
-      sendFogToDisplay()
-    }
-  } catch (e) {
-    console.error('Failed to reset fog:', e)
   }
 }
 
@@ -761,6 +673,10 @@ async function handleTokenDragEnd(event: MouseEvent) {
         token.y = snappedY
         // Sync to player display
         sendTokensToDisplay()
+        // Update fog vision circles if fog is enabled
+        if (fogEnabled.value) {
+          sendFogToDisplay()
+        }
       } else {
         console.error('Failed to update token position:', response.error)
       }
@@ -821,6 +737,24 @@ const effectiveGridSize = computed(() => props.gridSizePx ?? 70)
 const effectiveGridOffsetX = computed(() => props.gridOffsetX ?? 0)
 const effectiveGridOffsetY = computed(() => props.gridOffsetY ?? 0)
 
+// Player tokens that contribute to vision (PCs and visible NPCs)
+const playerTokensWithVision = computed(() => {
+  return tokens.value.filter(t =>
+    t.visible_to_players && (t.token_type === 'pc' || t.token_type === 'npc')
+  )
+})
+
+// Calculate vision radius in pixels for a token
+// Default 60ft vision (12 squares) if no darkvision, else use vision_range_ft
+function getTokenVisionRadiusPx(token: Token): number {
+  const gridSize = effectiveGridSize.value
+  // Default vision is 60ft (can see in normal/dim light)
+  // Darkvision extends vision in darkness
+  const visionFeet = token.vision_range_ft || 60
+  // 1 grid square = 5 feet
+  return (visionFeet / 5) * gridSize
+}
+
 // Map state
 const loading = ref(false)
 const mapImageUrl = ref<string | null>(null)
@@ -879,7 +813,6 @@ watch(() => props.mapId, async (newId) => {
     imageLoaded.value = false
     tokens.value = []
     fogEnabled.value = false
-    revealedAreas.value = []
     lightSources.value = []
   }
 }, { immediate: true })
@@ -984,17 +917,9 @@ function screenToMapCoords(clientX: number, clientY: number): { x: number; y: nu
   return { x: mapX, y: mapY }
 }
 
-// Pan controls (also handles fog reveal when fog tool is active)
+// Pan controls
 function startPan(event: MouseEvent) {
   if (event.button !== 0) return // Only left click
-
-  // If fog tool is active, start fog reveal instead of pan
-  if (fogToolActive.value && fogEnabled.value) {
-    const coords = screenToMapCoords(event.clientX, event.clientY)
-    fogRevealStart.value = coords
-    fogRevealCurrent.value = coords
-    return
-  }
 
   isPanning.value = true
   lastMouseX.value = event.clientX
@@ -1002,13 +927,6 @@ function startPan(event: MouseEvent) {
 }
 
 function onPan(event: MouseEvent) {
-  // If fog tool is active and we're revealing
-  if (fogToolActive.value && fogRevealStart.value) {
-    const coords = screenToMapCoords(event.clientX, event.clientY)
-    fogRevealCurrent.value = coords
-    return
-  }
-
   if (!isPanning.value) return
 
   const deltaX = event.clientX - lastMouseX.value
@@ -1025,23 +943,6 @@ function onPan(event: MouseEvent) {
 }
 
 function endPan() {
-  // If fog tool was active, complete the reveal
-  if (fogToolActive.value && fogRevealStart.value && fogRevealCurrent.value) {
-    const x = Math.min(fogRevealStart.value.x, fogRevealCurrent.value.x)
-    const y = Math.min(fogRevealStart.value.y, fogRevealCurrent.value.y)
-    const width = Math.abs(fogRevealCurrent.value.x - fogRevealStart.value.x)
-    const height = Math.abs(fogRevealCurrent.value.y - fogRevealStart.value.y)
-
-    // Only reveal if the area is larger than 10px
-    if (width > 10 && height > 10) {
-      revealRect(x, y, width, height)
-    }
-
-    fogRevealStart.value = null
-    fogRevealCurrent.value = null
-    return
-  }
-
   if (isPanning.value) {
     isPanning.value = false
     // Final sync to ensure we capture the end position
@@ -1234,6 +1135,78 @@ onUnmounted(() => {
   color: var(--color-text);
 }
 
+/* Fog Toggle Switch */
+.fog-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.fog-toggle.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fog-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-base-300);
+  border-radius: 22px;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch.active .toggle-slider {
+  background-color: var(--color-primary-500);
+}
+
+.toggle-switch.active .toggle-slider::before {
+  transform: translateX(18px);
+}
+
+.toggle-switch:hover .toggle-slider {
+  background-color: var(--color-base-400);
+}
+
+.toggle-switch.active:hover .toggle-slider {
+  background-color: var(--color-primary-600);
+}
+
 .map-viewport {
   flex: 1;
   overflow: hidden;
@@ -1391,27 +1364,6 @@ onUnmounted(() => {
   margin-left: var(--spacing-sm);
 }
 
-.fog-toggle-btn.active {
-  background: var(--color-warning-100);
-  border-color: var(--color-warning);
-  color: var(--color-warning-700);
-}
-
-.fog-reveal-btn.active {
-  background: var(--color-primary-100);
-  border-color: var(--color-primary-500);
-  color: var(--color-primary-700);
-}
-
-.fog-reset-btn {
-  color: var(--color-error);
-}
-
-.fog-reset-btn:hover:not(:disabled) {
-  background: var(--color-error-100);
-  border-color: var(--color-error);
-}
-
 /* Fog Overlay */
 .fog-overlay {
   position: absolute;
@@ -1425,18 +1377,5 @@ onUnmounted(() => {
 .fog-overlay.dm-fog {
   /* DM view - semi-transparent so DM can see hidden areas */
   opacity: 1;
-}
-
-.fog-reveal-preview {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 10;
-}
-
-/* Cursor change when fog tool is active */
-.map-viewport.fog-tool-active {
-  cursor: crosshair;
 }
 </style>
