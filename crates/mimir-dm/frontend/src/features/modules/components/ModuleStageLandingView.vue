@@ -72,6 +72,14 @@
       />
     </div>
 
+    <!-- Module Maps (for all stages except completed) -->
+    <div v-if="showMonsters" class="mt-8">
+      <ModuleMaps
+        :module-id="module.id"
+        :campaign-id="module.campaign_id"
+      />
+    </div>
+
     <!-- Campaign NPCs (for all stages) -->
     <div v-if="module.campaign_id" class="mt-8">
       <ModuleNPCs
@@ -109,6 +117,7 @@ import type { Module, BoardConfig, Document } from '@/types'
 import StageHeader from './stage/StageHeader.vue'
 import StageTransitionCard from './stage/StageTransitionCard.vue'
 import ModuleMonsters from './ModuleMonsters.vue'
+import ModuleMaps from './ModuleMaps.vue'
 import ModuleNPCs from './ModuleNPCs.vue'
 import { useModuleStage } from '../composables/useModuleStage'
 

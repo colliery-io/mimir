@@ -9,6 +9,7 @@ pub mod maps;
 pub mod module_monsters;
 pub mod modules;
 pub mod stage_transitions;
+pub mod tokens;
 
 pub use campaigns::*;
 pub use display_control::*;
@@ -16,3 +17,4 @@ pub use maps::*;
 pub use module_monsters::*;
 pub use modules::*;
 pub use stage_transitions::*;
+pub use tokens::*;

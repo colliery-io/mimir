@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import TokenRenderer from '@/components/tokens/TokenRenderer.vue'
+import type { Token } from '@/types/api'
 
 // Types for map display
 interface MapState {
@@ -34,6 +36,7 @@ const mapState = ref<MapState>({
 const isLoading = ref(false)
 const errorMessage = ref<string | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
+const tokens = ref<Token[]>([])
 
 // No viewport transforms - map always fits to screen
 // The DM can pan/zoom their view independently
@@ -114,6 +117,7 @@ const hexPattern = computed(() => gridPattern.value?.type === 'hex' ? gridPatter
 let unlistenMapUpdate: UnlistenFn | null = null
 let unlistenViewportUpdate: UnlistenFn | null = null
 let unlistenBlackout: UnlistenFn | null = null
+let unlistenTokensUpdate: UnlistenFn | null = null
 
 onMounted(async () => {
   console.log('PlayerDisplayWindow: Setting up event listeners')
@@ -154,6 +158,18 @@ onMounted(async () => {
     mapState.value.isBlackout = event.payload.isBlackout
   })
 
+  // Listen for token updates
+  unlistenTokensUpdate = await listen<{
+    mapId: number
+    tokens: Token[]
+  }>('player-display:tokens-update', (event) => {
+    console.log('PlayerDisplayWindow: Received tokens-update event:', event.payload.tokens.length, 'tokens')
+    // Only update tokens if they're for the current map
+    if (event.payload.mapId === mapState.value.mapId) {
+      tokens.value = event.payload.tokens
+    }
+  })
+
   // Handle keyboard shortcuts
   window.addEventListener('keydown', handleKeydown)
 })
@@ -162,6 +178,7 @@ onUnmounted(() => {
   unlistenMapUpdate?.()
   unlistenViewportUpdate?.()
   unlistenBlackout?.()
+  unlistenTokensUpdate?.()
   window.removeEventListener('keydown', handleKeydown)
 })
 
@@ -169,6 +186,7 @@ onUnmounted(() => {
 async function loadMapImage(mapId: number) {
   isLoading.value = true
   errorMessage.value = null
+  tokens.value = [] // Clear tokens when loading a new map
 
   try {
     const response = await invoke<{ success: boolean; data?: string; error?: string }>(
@@ -293,6 +311,16 @@ function handleKeydown(event: KeyboardEvent) {
           </defs>
           <rect width="100%" height="100%" fill="url(#grid-pattern)" />
         </svg>
+
+        <!-- Token Layer (only visible tokens) -->
+        <TokenRenderer
+          v-if="tokens.length > 0 && mapState.gridSizePx"
+          :tokens="tokens"
+          :grid-size-px="mapState.gridSizePx"
+          :base-scale="1"
+          :show-hidden="false"
+          :interactive="false"
+        />
       </div>
     </div>
 

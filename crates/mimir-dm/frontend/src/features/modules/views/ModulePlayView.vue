@@ -410,7 +410,7 @@ const activeMap = computed(() => {
   return allMaps.value.find(m => m.id === activeMapId.value) || null
 })
 
-// Load maps for campaign (includes both campaign and module maps)
+// Load maps for this module (campaign-level maps + this module's maps only)
 async function loadMaps() {
   if (!campaign.value?.id) return
 
@@ -421,7 +421,12 @@ async function loadMaps() {
     })
 
     if (response.success && response.data) {
-      allMaps.value = response.data
+      // Filter to show only:
+      // 1. Campaign-level maps (module_id is null)
+      // 2. Maps for the current module
+      allMaps.value = response.data.filter(map =>
+        map.module_id === null || map.module_id === moduleId.value
+      )
     }
   } catch (e) {
     console.error('Failed to load maps:', e)

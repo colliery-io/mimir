@@ -542,9 +542,32 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    tokens (id) {
+        id -> Integer,
+        map_id -> Integer,
+        name -> Text,
+        token_type -> Text,
+        size -> Text,
+        x -> Float,
+        y -> Float,
+        visible_to_players -> Bool,
+        color -> Nullable<Text>,
+        image_path -> Nullable<Text>,
+        monster_id -> Nullable<Integer>,
+        character_id -> Nullable<Integer>,
+        notes -> Nullable<Text>,
+        created_at -> Text,
+        updated_at -> Text,
+    }
+}
+
 diesel::joinable!(maps -> campaigns (campaign_id));
 diesel::joinable!(modules -> campaigns (campaign_id));
 diesel::joinable!(module_monsters -> modules (module_id));
+diesel::joinable!(tokens -> maps (map_id));
+diesel::joinable!(tokens -> catalog_monsters (monster_id));
+diesel::joinable!(tokens -> characters (character_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
 diesel::joinable!(workflow_cards -> campaigns (campaign_id));
@@ -567,6 +590,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     modules,
     module_monsters,
     sessions,
+    tokens,
     workflow_cards,
     workflow_card_tags,
     template_documents,

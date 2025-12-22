@@ -24,6 +24,20 @@
 
       <div class="toolbar-group">
         <button
+          class="toolbar-btn add-token-btn"
+          @click="showQuickAddModal = true"
+          :disabled="!mapImageUrl"
+          title="Quick add token (monster)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+          <span>Add Token</span>
+        </button>
+      </div>
+
+      <div class="toolbar-group">
+        <button
           class="toolbar-btn sync-btn"
           :class="{ active: autoSync }"
           @click="toggleAutoSync"
@@ -127,6 +141,23 @@
           </defs>
           <rect width="100%" height="100%" fill="url(#dmGridPattern)" />
         </svg>
+
+        <!-- Token Layer -->
+        <TokenRenderer
+          v-if="imageLoaded && tokens.length > 0"
+          ref="tokenRendererRef"
+          :tokens="tokens"
+          :grid-size-px="effectiveGridSize"
+          :base-scale="1"
+          :show-hidden="true"
+          :selected-token-id="selectedTokenId"
+          :dragging-token-id="draggingTokenId"
+          :drag-offset="dragOffset"
+          :interactive="true"
+          @token-click="handleTokenClick"
+          @token-context="handleTokenContext"
+          @token-drag-start="handleTokenDragStart"
+        />
       </div>
     </div>
 
@@ -138,13 +169,52 @@
       <span v-if="isDisplayOpen" class="status-indicator connected">Display Connected</span>
       <span v-else class="status-indicator disconnected">Display Disconnected</span>
     </div>
+
+    <!-- Token Context Menu -->
+    <div
+      v-if="contextMenu.visible"
+      class="context-menu"
+      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      @click.stop
+    >
+      <button @click="toggleSelectedTokenVisibility">
+        {{ contextMenu.token?.visible_to_players ? 'Hide from Players' : 'Show to Players' }}
+        <span class="shortcut">H</span>
+      </button>
+      <button class="danger" @click="deleteSelectedToken">
+        Delete Token
+        <span class="shortcut">Del</span>
+      </button>
+    </div>
+
+    <!-- Click outside to close context menu -->
+    <div
+      v-if="contextMenu.visible"
+      class="context-menu-backdrop"
+      @click="closeContextMenu"
+    ></div>
+
+    <!-- Quick Add Token Modal -->
+    <QuickAddTokenModal
+      v-if="mapId"
+      :visible="showQuickAddModal"
+      :map-id="mapId"
+      :grid-size-px="effectiveGridSize"
+      @close="showQuickAddModal = false"
+      @add-token="handleQuickAddToken"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { emit } from '@tauri-apps/api/event'
 import { usePlayerDisplay } from '@/composables/usePlayerDisplay'
+import { useTokens } from '@/composables/useTokens'
+import TokenRenderer from '@/components/tokens/TokenRenderer.vue'
+import QuickAddTokenModal from '@/components/tokens/QuickAddTokenModal.vue'
+import type { Token, CreateTokenRequest } from '@/types/api'
 
 // Throttle helper for smooth updates
 function throttle<T extends (...args: any[]) => void>(fn: T, limit: number): T {
@@ -190,6 +260,314 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { isDisplayOpen, updateViewport } = usePlayerDisplay()
+
+// Token state - will be initialized when mapId is available
+const tokens = ref<Token[]>([])
+const selectedTokenId = ref<number | null>(null)
+
+// Token drag state
+const draggingTokenId = ref<number | null>(null)
+const dragOffset = ref<{ x: number; y: number } | null>(null)
+const dragStartPos = ref<{ x: number; y: number; tokenX: number; tokenY: number } | null>(null)
+const tokenRendererRef = ref<InstanceType<typeof TokenRenderer> | null>(null)
+
+// Token context menu state
+const contextMenu = ref<{
+  visible: boolean
+  x: number
+  y: number
+  token: Token | null
+}>({
+  visible: false,
+  x: 0,
+  y: 0,
+  token: null
+})
+
+// Quick add modal state
+const showQuickAddModal = ref(false)
+
+// Load tokens when map changes
+async function loadTokens(mapId: number) {
+  try {
+    const response = await invoke<{ success: boolean; data?: Token[] }>('list_tokens', { mapId })
+    if (response.success && response.data) {
+      tokens.value = response.data
+      // Send visible tokens to player display
+      sendTokensToDisplay()
+    }
+  } catch (e) {
+    console.error('Failed to load tokens:', e)
+    tokens.value = []
+  }
+}
+
+// Send visible tokens to player display via IPC
+async function sendTokensToDisplay() {
+  if (!isDisplayOpen.value || !props.mapId) return
+
+  const visibleTokens = tokens.value.filter(t => t.visible_to_players)
+  try {
+    await emit('player-display:tokens-update', {
+      mapId: props.mapId,
+      tokens: visibleTokens
+    })
+  } catch (e) {
+    console.error('Failed to send tokens to display:', e)
+  }
+}
+
+// Handle token click
+function handleTokenClick(token: Token) {
+  selectedTokenId.value = token.id === selectedTokenId.value ? null : token.id
+}
+
+// Handle token context menu
+function handleTokenContext(event: MouseEvent, token: Token) {
+  selectedTokenId.value = token.id
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    token
+  }
+}
+
+// Close context menu
+function closeContextMenu() {
+  contextMenu.value.visible = false
+}
+
+// Toggle visibility of selected token
+async function toggleSelectedTokenVisibility() {
+  const token = contextMenu.value.token || tokens.value.find(t => t.id === selectedTokenId.value)
+  if (!token) return
+
+  try {
+    const response = await invoke<{ success: boolean; data?: Token; error?: string }>('toggle_token_visibility', {
+      id: token.id
+    })
+
+    if (response.success && response.data) {
+      // Update local token
+      const index = tokens.value.findIndex(t => t.id === token.id)
+      if (index !== -1) {
+        tokens.value[index] = response.data
+      }
+      // Sync to player display
+      sendTokensToDisplay()
+    }
+  } catch (e) {
+    console.error('Failed to toggle token visibility:', e)
+  }
+
+  closeContextMenu()
+}
+
+// Delete selected token
+async function deleteSelectedToken() {
+  const token = contextMenu.value.token || tokens.value.find(t => t.id === selectedTokenId.value)
+  if (!token) return
+
+  try {
+    const response = await invoke<{ success: boolean; error?: string }>('delete_token', {
+      id: token.id
+    })
+
+    if (response.success) {
+      // Remove from local state
+      tokens.value = tokens.value.filter(t => t.id !== token.id)
+      if (selectedTokenId.value === token.id) {
+        selectedTokenId.value = null
+      }
+      // Sync to player display
+      sendTokensToDisplay()
+    }
+  } catch (e) {
+    console.error('Failed to delete token:', e)
+  }
+
+  closeContextMenu()
+}
+
+// Handle quick-add token
+async function handleQuickAddToken(request: CreateTokenRequest) {
+  if (!props.mapId) return
+
+  // Calculate center position in map coordinates
+  // The viewport center is at (0, 0) in pan coordinates
+  // We need to convert that to map pixel coordinates
+  const viewportRect = viewport.value?.getBoundingClientRect()
+  if (!viewportRect) return
+
+  const viewportCenterX = viewportRect.width / 2
+  const viewportCenterY = viewportRect.height / 2
+
+  // Convert viewport center to map coordinates
+  // Account for current pan and zoom
+  const mapX = (viewportCenterX - panX.value) / zoom.value
+  const mapY = (viewportCenterY - panY.value) / zoom.value
+
+  // Snap to grid center
+  const { x: snappedX, y: snappedY } = snapToGrid(mapX, mapY)
+
+  // Create the token with the calculated position
+  try {
+    const response = await invoke<{ success: boolean; data?: Token; error?: string }>('create_token', {
+      request: {
+        ...request,
+        map_id: props.mapId,
+        x: snappedX,
+        y: snappedY
+      }
+    })
+
+    if (response.success && response.data) {
+      // Add to local tokens
+      tokens.value.push(response.data)
+      // Select the new token
+      selectedTokenId.value = response.data.id
+      // Sync to player display
+      sendTokensToDisplay()
+    } else {
+      console.error('Failed to create token:', response.error)
+    }
+  } catch (e) {
+    console.error('Failed to create token:', e)
+  }
+}
+
+// Handle token drag start
+function handleTokenDragStart(event: MouseEvent, token: Token) {
+  draggingTokenId.value = token.id
+  selectedTokenId.value = token.id
+  dragOffset.value = { x: 0, y: 0 }
+  dragStartPos.value = {
+    x: event.clientX,
+    y: event.clientY,
+    tokenX: token.x,
+    tokenY: token.y
+  }
+
+  // Add document-level listeners for drag
+  document.addEventListener('mousemove', handleTokenDrag)
+  document.addEventListener('mouseup', handleTokenDragEnd)
+}
+
+// Handle token drag movement
+function handleTokenDrag(event: MouseEvent) {
+  if (!draggingTokenId.value || !dragStartPos.value) return
+
+  const deltaX = (event.clientX - dragStartPos.value.x) / zoom.value
+  const deltaY = (event.clientY - dragStartPos.value.y) / zoom.value
+
+  // Mark as moved if we've dragged more than 5px
+  if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+    tokenRendererRef.value?.setHasMoved(true)
+  }
+
+  dragOffset.value = { x: deltaX, y: deltaY }
+
+  // Send live position update to player display for visible tokens
+  const token = tokens.value.find(t => t.id === draggingTokenId.value)
+  if (token?.visible_to_players) {
+    sendTokensToDisplayWithDragOffset()
+  }
+}
+
+// Handle token drag end
+async function handleTokenDragEnd(event: MouseEvent) {
+  document.removeEventListener('mousemove', handleTokenDrag)
+  document.removeEventListener('mouseup', handleTokenDragEnd)
+
+  if (!draggingTokenId.value || !dragStartPos.value || !dragOffset.value) {
+    draggingTokenId.value = null
+    dragOffset.value = null
+    dragStartPos.value = null
+    return
+  }
+
+  const token = tokens.value.find(t => t.id === draggingTokenId.value)
+  if (!token) {
+    draggingTokenId.value = null
+    dragOffset.value = null
+    dragStartPos.value = null
+    return
+  }
+
+  // Calculate new position with grid snapping
+  const rawX = dragStartPos.value.tokenX + dragOffset.value.x
+  const rawY = dragStartPos.value.tokenY + dragOffset.value.y
+  const { x: snappedX, y: snappedY } = snapToGrid(rawX, rawY)
+
+  // Only update if position changed
+  if (snappedX !== token.x || snappedY !== token.y) {
+    try {
+      const response = await invoke<{ success: boolean; error?: string }>('update_token', {
+        id: token.id,
+        request: { x: snappedX, y: snappedY }
+      })
+
+      if (response.success) {
+        // Update local token position
+        token.x = snappedX
+        token.y = snappedY
+        // Sync to player display
+        sendTokensToDisplay()
+      } else {
+        console.error('Failed to update token position:', response.error)
+      }
+    } catch (e) {
+      console.error('Failed to update token position:', e)
+    }
+  }
+
+  // Clear drag state
+  draggingTokenId.value = null
+  dragOffset.value = null
+  dragStartPos.value = null
+}
+
+// Send tokens with live drag offset for smooth player display updates
+async function sendTokensToDisplayWithDragOffset() {
+  if (!isDisplayOpen.value || !props.mapId) return
+
+  const visibleTokens = tokens.value
+    .filter(t => t.visible_to_players)
+    .map(t => {
+      if (t.id === draggingTokenId.value && dragStartPos.value && dragOffset.value) {
+        // Apply drag offset to the dragging token
+        return {
+          ...t,
+          x: dragStartPos.value.tokenX + dragOffset.value.x,
+          y: dragStartPos.value.tokenY + dragOffset.value.y
+        }
+      }
+      return t
+    })
+
+  try {
+    await emit('player-display:tokens-update', {
+      mapId: props.mapId,
+      tokens: visibleTokens
+    })
+  } catch (e) {
+    console.error('Failed to send tokens to display:', e)
+  }
+}
+
+// Snap position to grid center
+function snapToGrid(x: number, y: number): { x: number; y: number } {
+  const gridSize = effectiveGridSize.value
+  const offsetX = effectiveGridOffsetX.value
+  const offsetY = effectiveGridOffsetY.value
+
+  // Snap to nearest grid cell center
+  const gridX = Math.round((x - offsetX) / gridSize) * gridSize + offsetX + gridSize / 2
+  const gridY = Math.round((y - offsetY) / gridSize) * gridSize + offsetY + gridSize / 2
+
+  return { x: gridX, y: gridY }
+}
 
 // Computed grid values (with defaults for null)
 const effectiveGridSize = computed(() => props.gridSizePx ?? 70)
@@ -239,18 +617,27 @@ const hexPoints = computed(() => {
   return `${size * 0.5},0 ${size},${h * 0.5} ${size},${h * 1.5} ${size * 0.5},${h * 2} 0,${h * 1.5} 0,${h * 0.5}`
 })
 
-// Load map image when mapId changes
+// Load map image and tokens when mapId changes
 watch(() => props.mapId, async (newId) => {
   if (newId) {
     await loadMapImage(newId)
+    await loadTokens(newId)
   } else {
     mapImageUrl.value = null
     mapName.value = ''
     mapWidth.value = 0
     mapHeight.value = 0
     imageLoaded.value = false
+    tokens.value = []
   }
 }, { immediate: true })
+
+// Send tokens to display when display opens
+watch(isDisplayOpen, (open) => {
+  if (open && props.mapId) {
+    sendTokensToDisplay()
+  }
+})
 
 async function loadMapImage(id: number) {
   console.log('DmMapViewer: Loading map with id:', id)
@@ -415,6 +802,25 @@ function handleKeydown(event: KeyboardEvent) {
         pushViewport()
       }
       break
+    case 'h':
+    case 'H':
+      // Toggle visibility of selected token
+      if (selectedTokenId.value) {
+        toggleSelectedTokenVisibility()
+      }
+      break
+    case 'Delete':
+    case 'Backspace':
+      // Delete selected token
+      if (selectedTokenId.value) {
+        deleteSelectedToken()
+      }
+      break
+    case 'Escape':
+      // Close context menu and deselect
+      closeContextMenu()
+      selectedTokenId.value = null
+      break
   }
 }
 
@@ -424,6 +830,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  // Clean up any lingering drag listeners
+  document.removeEventListener('mousemove', handleTokenDrag)
+  document.removeEventListener('mouseup', handleTokenDragEnd)
 })
 </script>
 
@@ -487,6 +896,16 @@ onUnmounted(() => {
 .toolbar-btn svg {
   width: 16px;
   height: 16px;
+}
+
+.add-token-btn {
+  background: var(--color-success-100);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.add-token-btn:hover:not(:disabled) {
+  background: var(--color-success-200);
 }
 
 .sync-btn.active {
@@ -609,5 +1028,58 @@ onUnmounted(() => {
 .status-indicator.disconnected {
   background: var(--color-base-200);
   color: var(--color-text-muted);
+}
+
+/* Context Menu */
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.context-menu {
+  position: fixed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 180px;
+  padding: var(--spacing-xs) 0;
+}
+
+.context-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  background: none;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.context-menu button:hover {
+  background: var(--color-base-200);
+}
+
+.context-menu button.danger {
+  color: var(--color-error);
+}
+
+.context-menu button.danger:hover {
+  background: var(--color-error-100);
+}
+
+.context-menu .shortcut {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-family: monospace;
+  background: var(--color-base-200);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
 }
 </style>

@@ -209,23 +209,31 @@ pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str, data_di
     let npc_count = characters.iter().filter(|c| c.is_npc()).count();
     info!("Created {} test characters ({} PCs, {} NPCs)", characters.len(), pc_count, npc_count);
 
-    // Seed maps
-    let maps_count = seed_maps(conn, campaign.id, data_directory)?;
+    // Seed maps (associated with modules)
+    let maps_count = seed_maps(conn, campaign.id, &modules, data_directory)?;
     info!("Created {} test maps", maps_count);
 
     info!("Dev seed data created successfully");
     Ok(true)
 }
 
-/// Embedded test map image (Goblin Hideout)
+/// Embedded test map image (Goblin Hideout - module level)
 const GOBLIN_HIDEOUT_PNG: &[u8] = include_bytes!("assets/GoblinHideout.png");
-
-/// Original dimensions of the embedded Goblin Hideout map
 const GOBLIN_HIDEOUT_WIDTH: i32 = 2592;
 const GOBLIN_HIDEOUT_HEIGHT: i32 = 1458;
 
-/// Seed test maps for the campaign
-fn seed_maps(conn: &mut DbConnection, campaign_id: i32, data_directory: &str) -> Result<usize> {
+/// Embedded test map image (Goblin Region - campaign level)
+const GOBLIN_REGION_PNG: &[u8] = include_bytes!("assets/GoblinRegion.png");
+const GOBLIN_REGION_WIDTH: i32 = 1792;
+const GOBLIN_REGION_HEIGHT: i32 = 1024;
+
+/// Seed test maps for modules
+fn seed_maps(
+    conn: &mut DbConnection,
+    campaign_id: i32,
+    modules: &[crate::models::campaign::modules::Module],
+    data_directory: &str,
+) -> Result<usize> {
     use crate::models::campaign::NewMap;
     use std::path::PathBuf;
 
@@ -241,6 +249,12 @@ fn seed_maps(conn: &mut DbConnection, campaign_id: i32, data_directory: &str) ->
     std::fs::write(&image_path, GOBLIN_HIDEOUT_PNG)?;
     info!("Wrote test map to {:?}", image_path);
 
+    // Find the "Cragmaw Hideout" module to associate the map with
+    let module_id = modules
+        .iter()
+        .find(|m| m.name == "Cragmaw Hideout")
+        .map(|m| m.id);
+
     // Create database record
     // For embedded assets, original and stored dimensions are the same (no processing)
     let new_map = NewMap::new(
@@ -253,10 +267,35 @@ fn seed_maps(conn: &mut DbConnection, campaign_id: i32, data_directory: &str) ->
         GOBLIN_HIDEOUT_HEIGHT,
     );
 
+    // Associate with module if found
+    let new_map = if let Some(mid) = module_id {
+        new_map.with_module(mid)
+    } else {
+        new_map
+    };
+
     let mut service = MapService::new(conn);
     service.create_map(new_map)?;
 
-    Ok(1)
+    // Create campaign-level map (Goblin Region - not associated with any module)
+    let region_filename = "dev-seed-goblin-region.png".to_string();
+    let region_path = maps_dir.join(&region_filename);
+    std::fs::write(&region_path, GOBLIN_REGION_PNG)?;
+    info!("Wrote campaign map to {:?}", region_path);
+
+    let region_map = NewMap::new(
+        campaign_id,
+        "Goblin Region".to_string(),
+        region_filename,
+        GOBLIN_REGION_WIDTH,
+        GOBLIN_REGION_HEIGHT,
+        GOBLIN_REGION_WIDTH,
+        GOBLIN_REGION_HEIGHT,
+    );
+    // No .with_module() - this is a campaign-level map
+    service.create_map(region_map)?;
+
+    Ok(2)
 }
 
 /// Seed the test campaign

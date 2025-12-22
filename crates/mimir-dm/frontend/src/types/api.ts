@@ -91,3 +91,74 @@ export interface RenderTemplateRequest {
 
 // Character types moved to ./character.ts
 // (Placeholder removed - now using full character management system)
+
+// Token types for Visual Display System
+export type TokenType = 'monster' | 'pc' | 'npc' | 'trap' | 'marker'
+export type TokenSize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'gargantuan'
+
+export interface Token {
+  id: number
+  map_id: number
+  name: string
+  token_type: TokenType
+  size: TokenSize
+  x: number
+  y: number
+  visible_to_players: boolean
+  color: string | null
+  image_path: string | null
+  monster_id: number | null
+  character_id: number | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TokenSummary extends Token {
+  monster_name: string | null
+  character_name: string | null
+}
+
+export interface CreateTokenRequest {
+  map_id: number
+  name: string
+  token_type: string
+  size: string
+  x: number
+  y: number
+  visible_to_players?: boolean
+  color?: string
+  monster_id?: number
+  character_id?: number
+  notes?: string
+}
+
+export interface UpdateTokenRequest {
+  name?: string
+  token_type?: string
+  size?: string
+  x?: number
+  y?: number
+  visible_to_players?: boolean
+  color?: string | null
+  notes?: string | null
+}
+
+// Token size to grid squares mapping (D&D 5e)
+export const TOKEN_SIZE_GRID_SQUARES: Record<TokenSize, number> = {
+  tiny: 0.5,
+  small: 1,
+  medium: 1,
+  large: 2,
+  huge: 3,
+  gargantuan: 4
+}
+
+// Token type colors (fallback when no image)
+export const TOKEN_TYPE_COLORS: Record<TokenType, string> = {
+  monster: '#dc2626', // red
+  pc: '#16a34a',      // green
+  npc: '#2563eb',     // blue
+  trap: '#ea580c',    // orange
+  marker: '#9333ea'   // purple
+}
