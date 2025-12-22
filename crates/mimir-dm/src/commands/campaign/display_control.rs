@@ -16,6 +16,9 @@ pub struct MapUpdatePayload {
     pub grid_size_px: Option<i32>,
     pub grid_offset_x: i32,
     pub grid_offset_y: i32,
+    pub ambient_light: Option<String>,
+    pub map_width: Option<i32>,
+    pub map_height: Option<i32>,
 }
 
 /// Payload for viewport update events
@@ -44,6 +47,9 @@ pub struct BlackoutPayload {
 /// - `grid_size_px` - Grid cell size in pixels (None for no grid)
 /// - `grid_offset_x` - Grid X offset for alignment
 /// - `grid_offset_y` - Grid Y offset for alignment
+/// - `ambient_light` - Ambient light level ("bright", "dim", or "darkness")
+/// - `map_width` - Map width in pixels
+/// - `map_height` - Map height in pixels
 ///
 /// # Errors
 /// Returns an error string if the player display window doesn't exist.
@@ -55,10 +61,13 @@ pub async fn send_map_to_display(
     grid_size_px: Option<i32>,
     grid_offset_x: i32,
     grid_offset_y: i32,
+    ambient_light: Option<String>,
+    map_width: Option<i32>,
+    map_height: Option<i32>,
 ) -> Result<(), String> {
     info!(
-        "Sending map {} to player display (grid: {}, size: {:?})",
-        map_id, grid_type, grid_size_px
+        "Sending map {} to player display (grid: {}, size: {:?}, ambient: {:?})",
+        map_id, grid_type, grid_size_px, ambient_light
     );
 
     // Check if player display window exists
@@ -72,6 +81,9 @@ pub async fn send_map_to_display(
         grid_size_px,
         grid_offset_x,
         grid_offset_y,
+        ambient_light,
+        map_width,
+        map_height,
     };
 
     app.emit_to("player-display", "player-display:map-update", payload)

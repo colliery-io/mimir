@@ -99,71 +99,87 @@
                 @mouseup="onMouseUp"
                 @mouseleave="onMouseUp"
               >
-                <!-- Map Image -->
-                <img
-                  v-if="mapImageUrl"
-                  :src="mapImageUrl"
-                  :alt="map.name"
-                  class="preview-image"
-                  :style="imageStyle"
-                  @load="onImageLoad"
-                  ref="previewImage"
-                  draggable="false"
-                />
-                <div v-else class="loading-preview">Loading map preview...</div>
-
-                <!-- Grid Overlay (only in grid mode) -->
-                <svg
-                  v-if="editorMode === 'grid' && mapImageUrl && imageLoaded"
-                  class="grid-overlay"
-                  :style="gridOverlayStyle"
-                >
-                  <defs>
-                    <pattern
-                      v-if="gridType === 'square'"
-                      id="gridPattern"
-                      :width="displayGridSize"
-                      :height="displayGridSize"
-                      patternUnits="userSpaceOnUse"
-                      :x="displayOffsetX"
-                      :y="displayOffsetY"
-                    >
-                      <rect
-                        :width="displayGridSize"
-                        :height="displayGridSize"
-                        fill="none"
-                        stroke="rgba(255, 0, 0, 0.7)"
-                        stroke-width="1"
-                      />
-                    </pattern>
-                    <pattern
-                      v-if="gridType === 'hex'"
-                      id="gridPattern"
-                      :width="displayGridSize * 1.5"
-                      :height="displayGridSize * 1.732"
-                      patternUnits="userSpaceOnUse"
-                      :x="displayOffsetX"
-                      :y="displayOffsetY"
-                    >
-                      <polygon
-                        :points="hexPoints"
-                        fill="none"
-                        stroke="rgba(255, 0, 0, 0.7)"
-                        stroke-width="1"
-                      />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#gridPattern)" />
-                  <!-- Origin marker -->
-                  <circle
-                    :cx="displayOffsetX"
-                    :cy="displayOffsetY"
-                    r="6"
-                    fill="var(--color-primary-500)"
-                    stroke="white"
-                    stroke-width="2"
+                <!-- Wrapper scales both image and SVG together -->
+                <div class="map-wrapper" :style="mapWrapperStyle">
+                  <!-- Map Image -->
+                  <img
+                    v-if="mapImageUrl"
+                    :src="mapImageUrl"
+                    :alt="map.name"
+                    class="preview-image"
+                    :style="imageStyle"
+                    @load="onImageLoad"
+                    ref="previewImage"
+                    draggable="false"
                   />
-                </svg>
+
+                  <!-- Grid Overlay (only in grid mode) -->
+                  <!-- Uses explicit lines at natural coords, wrapper transform handles scaling -->
+                  <svg
+                    v-if="editorMode === 'grid' && mapImageUrl && imageLoaded"
+                    class="grid-overlay"
+                    :style="gridOverlayStyle"
+                  >
+                  <!-- Square grid: explicit lines -->
+                  <g v-if="gridType === 'square'">
+                    <!-- Vertical lines -->
+                    <line
+                      v-for="x in verticalGridLines"
+                      :key="'v' + x"
+                      :x1="x"
+                      :y1="0"
+                      :x2="x"
+                      :y2="props.map.height_px"
+                      stroke="rgba(255, 0, 0, 0.7)"
+                      vector-effect="non-scaling-stroke"
+                      stroke-width="1"
+                    />
+                    <!-- Horizontal lines -->
+                    <line
+                      v-for="y in horizontalGridLines"
+                      :key="'h' + y"
+                      :x1="0"
+                      :y1="y"
+                      :x2="props.map.width_px"
+                      :y2="y"
+                      stroke="rgba(255, 0, 0, 0.7)"
+                      vector-effect="non-scaling-stroke"
+                      stroke-width="1"
+                    />
+                  </g>
+                  <!-- Hex grid: keep using pattern for now -->
+                  <g v-if="gridType === 'hex'">
+                    <defs>
+                      <pattern
+                        id="gridPattern"
+                        :width="displayGridSize * 1.5"
+                        :height="displayGridSize * 1.732"
+                        patternUnits="userSpaceOnUse"
+                        :x="displayOffsetX"
+                        :y="displayOffsetY"
+                      >
+                        <polygon
+                          :points="hexPoints"
+                          fill="none"
+                          stroke="rgba(255, 0, 0, 0.7)"
+                          stroke-width="1"
+                        />
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#gridPattern)" />
+                  </g>
+                    <!-- Origin marker -->
+                    <circle
+                      :cx="displayOffsetX"
+                      :cy="displayOffsetY"
+                      r="6"
+                      fill="var(--color-primary-500)"
+                      stroke="white"
+                      stroke-width="2"
+                    />
+                  </svg>
+                </div>
+                <div v-if="!mapImageUrl" class="loading-preview">Loading map preview...</div>
               </div>
             </div>
 
@@ -342,10 +358,10 @@ const baseScale = computed(() => {
 const baseImageWidth = computed(() => props.map.width_px * baseScale.value)
 const baseImageHeight = computed(() => props.map.height_px * baseScale.value)
 
-// Grid display calculations (in base-scaled coordinates, zoom applied via CSS transform)
-const displayGridSize = computed(() => gridSizePx.value * baseScale.value)
-const displayOffsetX = computed(() => gridOffsetX.value * baseScale.value)
-const displayOffsetY = computed(() => gridOffsetY.value * baseScale.value)
+// Grid display calculations - use UNSCALED values, SVG viewBox handles scaling
+const displayGridSize = computed(() => gridSizePx.value)
+const displayOffsetX = computed(() => gridOffsetX.value)
+const displayOffsetY = computed(() => gridOffsetY.value)
 
 // Styles
 const viewportStyle = computed(() => ({
@@ -357,20 +373,28 @@ const viewportStyle = computed(() => ({
   overflow: 'hidden'
 }))
 
-const imageStyle = computed(() => ({
-  width: baseImageWidth.value + 'px',
-  height: baseImageHeight.value + 'px',
-  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+// Combined scale factor for uniform transform
+const combinedScale = computed(() => baseScale.value * zoom.value)
+
+// Wrapper transform - scales and positions both image and SVG together
+const mapWrapperStyle = computed(() => ({
+  width: props.map.width_px + 'px',
+  height: props.map.height_px + 'px',
+  transform: `translate(${panX.value}px, ${panY.value}px) scale(${combinedScale.value})`,
   transformOrigin: '0 0',
   willChange: 'transform'
 }))
 
+// Image uses natural dimensions, wrapper handles transform
+const imageStyle = computed(() => ({
+  width: props.map.width_px + 'px',
+  height: props.map.height_px + 'px'
+}))
+
+// SVG overlay matches image dimensions exactly, wrapper handles transform
 const gridOverlayStyle = computed(() => ({
-  width: baseImageWidth.value + 'px',
-  height: baseImageHeight.value + 'px',
-  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
-  transformOrigin: '0 0',
-  willChange: 'transform'
+  width: props.map.width_px + 'px',
+  height: props.map.height_px + 'px'
 }))
 
 // Hex points for pattern
@@ -378,6 +402,39 @@ const hexPoints = computed(() => {
   const size = displayGridSize.value
   const h = size * 0.866
   return `${size * 0.5},0 ${size},${h * 0.5} ${size},${h * 1.5} ${size * 0.5},${h * 2} 0,${h * 1.5} 0,${h * 0.5}`
+})
+
+// Generate explicit grid lines to avoid pattern tiling rounding errors
+const verticalGridLines = computed(() => {
+  const lines: number[] = []
+  const gridSize = gridSizePx.value
+  const offset = gridOffsetX.value
+  const width = props.map.width_px
+
+  // Start from offset and go in both directions
+  for (let x = offset; x <= width; x += gridSize) {
+    lines.push(x)
+  }
+  for (let x = offset - gridSize; x >= 0; x -= gridSize) {
+    lines.push(x)
+  }
+  return lines.sort((a, b) => a - b)
+})
+
+const horizontalGridLines = computed(() => {
+  const lines: number[] = []
+  const gridSize = gridSizePx.value
+  const offset = gridOffsetY.value
+  const height = props.map.height_px
+
+  // Start from offset and go in both directions
+  for (let y = offset; y <= height; y += gridSize) {
+    lines.push(y)
+  }
+  for (let y = offset - gridSize; y >= 0; y -= gridSize) {
+    lines.push(y)
+  }
+  return lines.sort((a, b) => a - b)
 })
 
 // Watchers
@@ -493,12 +550,9 @@ function updateGridOffset(event: MouseEvent) {
   const mouseX = event.clientX - rect.left
   const mouseY = event.clientY - rect.top
 
-  // Effective scale = baseScale * zoom (since zoom is applied via CSS transform)
-  const effectiveScale = baseScale.value * zoom.value
-
-  // Convert to image coordinates (accounting for pan and scale)
-  const imageX = (mouseX - panX.value) / effectiveScale
-  const imageY = (mouseY - panY.value) / effectiveScale
+  // Convert to image coordinates (accounting for pan and combined scale)
+  const imageX = (mouseX - panX.value) / combinedScale.value
+  const imageY = (mouseY - panY.value) / combinedScale.value
 
   // Set offset (clamped to image bounds)
   gridOffsetX.value = Math.round(Math.max(0, Math.min(imageX, props.map.width_px)))
@@ -805,6 +859,10 @@ onMounted(() => {
   background: #222;
 }
 
+.map-wrapper {
+  position: relative;
+}
+
 .preview-image {
   display: block;
   user-select: none;
@@ -825,6 +883,7 @@ onMounted(() => {
   top: 0;
   left: 0;
   pointer-events: none;
+  overflow: visible;
 }
 
 /* Mode Toggle */

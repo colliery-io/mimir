@@ -92,7 +92,10 @@ async function sendMapToDisplay(
   gridType: string = 'none',
   gridSizePx: number | null = null,
   gridOffsetX: number = 0,
-  gridOffsetY: number = 0
+  gridOffsetY: number = 0,
+  ambientLight: string | null = null,
+  mapWidth: number | null = null,
+  mapHeight: number | null = null
 ): Promise<void> {
   try {
     await invoke('send_map_to_display', {
@@ -100,7 +103,10 @@ async function sendMapToDisplay(
       gridType,
       gridSizePx,
       gridOffsetX,
-      gridOffsetY
+      gridOffsetY,
+      ambientLight,
+      mapWidth,
+      mapHeight
     })
     currentMapId.value = mapId
   } catch (err) {

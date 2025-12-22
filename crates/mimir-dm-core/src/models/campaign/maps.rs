@@ -13,6 +13,39 @@ pub enum GridType {
     None,
 }
 
+/// Ambient light level for a map
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AmbientLight {
+    Bright,
+    Dim,
+    Darkness,
+}
+
+impl AmbientLight {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AmbientLight::Bright => "bright",
+            AmbientLight::Dim => "dim",
+            AmbientLight::Darkness => "darkness",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "dim" => AmbientLight::Dim,
+            "darkness" | "dark" => AmbientLight::Darkness,
+            _ => AmbientLight::Bright,
+        }
+    }
+}
+
+impl Default for AmbientLight {
+    fn default() -> Self {
+        AmbientLight::Bright
+    }
+}
+
 impl GridType {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -57,12 +90,19 @@ pub struct Map {
     pub created_at: String,
     pub updated_at: String,
     pub preview_path: Option<String>,
+    pub fog_enabled: bool,
+    pub ambient_light: String,
 }
 
 impl Map {
     /// Get the grid type enum
     pub fn grid_type_enum(&self) -> GridType {
         GridType::from_str(&self.grid_type)
+    }
+
+    /// Get the ambient light level enum
+    pub fn ambient_light_enum(&self) -> AmbientLight {
+        AmbientLight::from_str(&self.ambient_light)
     }
 
     /// Check if this is a campaign-level map (not tied to a module)
@@ -87,6 +127,7 @@ pub struct NewMap {
     pub grid_size_px: Option<i32>,
     pub grid_offset_x: i32,
     pub grid_offset_y: i32,
+    pub ambient_light: String,
 }
 
 impl NewMap {
@@ -112,7 +153,13 @@ impl NewMap {
             grid_size_px: None,
             grid_offset_x: 0,
             grid_offset_y: 0,
+            ambient_light: AmbientLight::default().as_str().to_string(),
         }
+    }
+
+    pub fn with_ambient_light(mut self, ambient_light: AmbientLight) -> Self {
+        self.ambient_light = ambient_light.as_str().to_string();
+        self
     }
 
     pub fn with_module(mut self, module_id: i32) -> Self {
@@ -139,6 +186,8 @@ pub struct UpdateMap {
     pub grid_offset_x: Option<i32>,
     pub grid_offset_y: Option<i32>,
     pub updated_at: Option<String>,
+    pub fog_enabled: Option<bool>,
+    pub ambient_light: Option<String>,
 }
 
 /// Summary for listing maps (lighter weight than full Map)
@@ -156,4 +205,6 @@ pub struct MapSummary {
     pub height_px: i32,
     pub original_width_px: Option<i32>,
     pub original_height_px: Option<i32>,
+    pub fog_enabled: bool,
+    pub ambient_light: String,
 }

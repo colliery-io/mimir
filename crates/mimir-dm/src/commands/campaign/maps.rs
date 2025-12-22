@@ -368,6 +368,8 @@ pub async fn update_map(
         grid_offset_x: request.grid_offset_x,
         grid_offset_y: request.grid_offset_y,
         updated_at: None, // Service handles this
+        fog_enabled: None,
+        ambient_light: None,
     };
 
     match service.update_map(id, update) {

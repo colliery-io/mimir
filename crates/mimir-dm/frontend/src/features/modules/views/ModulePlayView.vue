@@ -397,6 +397,9 @@ interface MapSummary {
   grid_offset_x: number
   grid_offset_y: number
   module_name: string | null
+  width_px: number
+  height_px: number
+  ambient_light: string
 }
 
 const allMaps = ref<MapSummary[]>([])
@@ -449,7 +452,10 @@ async function sendMapToDisplay(map: MapSummary) {
         gridType: map.grid_type,
         gridSizePx: map.grid_size_px,
         gridOffsetX: map.grid_offset_x,
-        gridOffsetY: map.grid_offset_y
+        gridOffsetY: map.grid_offset_y,
+        ambientLight: map.ambient_light,
+        mapWidth: map.width_px,
+        mapHeight: map.height_px
       })
     } catch (err) {
       console.error('Failed to send map to display:', err)

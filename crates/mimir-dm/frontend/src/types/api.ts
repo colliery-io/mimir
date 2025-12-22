@@ -95,6 +95,7 @@ export interface RenderTemplateRequest {
 // Token types for Visual Display System
 export type TokenType = 'monster' | 'pc' | 'npc' | 'trap' | 'marker'
 export type TokenSize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'gargantuan'
+export type VisionType = 'normal' | 'darkvision' | 'blindsight' | 'tremorsense' | 'truesight' | 'devils_sight'
 
 export interface Token {
   id: number
@@ -110,6 +111,8 @@ export interface Token {
   monster_id: number | null
   character_id: number | null
   notes: string | null
+  vision_type: string
+  vision_range_ft: number | null
   created_at: string
   updated_at: string
 }
@@ -131,6 +134,8 @@ export interface CreateTokenRequest {
   monster_id?: number
   character_id?: number
   notes?: string
+  vision_type?: VisionType
+  vision_range_ft?: number | null
 }
 
 export interface UpdateTokenRequest {
@@ -142,6 +147,8 @@ export interface UpdateTokenRequest {
   visible_to_players?: boolean
   color?: string | null
   notes?: string | null
+  vision_type?: VisionType
+  vision_range_ft?: number | null
 }
 
 // Token size to grid squares mapping (D&D 5e)
@@ -162,3 +169,25 @@ export const TOKEN_TYPE_COLORS: Record<TokenType, string> = {
   trap: '#ea580c',    // orange
   marker: '#9333ea'   // purple
 }
+
+// Vision type labels for UI display
+export const VISION_TYPE_LABELS: Record<VisionType, string> = {
+  normal: 'Normal Vision',
+  darkvision: 'Darkvision',
+  blindsight: 'Blindsight',
+  tremorsense: 'Tremorsense',
+  truesight: 'Truesight',
+  devils_sight: "Devil's Sight"
+}
+
+// Common vision presets for quick selection
+export const VISION_PRESETS: { label: string; type: VisionType; range: number | null }[] = [
+  { label: 'Normal Vision', type: 'normal', range: null },
+  { label: 'Darkvision 60 ft.', type: 'darkvision', range: 60 },
+  { label: 'Darkvision 120 ft.', type: 'darkvision', range: 120 },
+  { label: 'Blindsight 30 ft.', type: 'blindsight', range: 30 },
+  { label: 'Blindsight 60 ft.', type: 'blindsight', range: 60 },
+  { label: 'Tremorsense 60 ft.', type: 'tremorsense', range: 60 },
+  { label: 'Truesight 120 ft.', type: 'truesight', range: 120 },
+  { label: "Devil's Sight 120 ft.", type: 'devils_sight', range: 120 }
+]

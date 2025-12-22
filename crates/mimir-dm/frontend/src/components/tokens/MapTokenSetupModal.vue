@@ -428,9 +428,9 @@ async function handleCanvasClick(event: MouseEvent) {
     const offsetX = props.map.grid_offset_x
     const offsetY = props.map.grid_offset_y
 
-    // Snap to grid center
-    finalX = Math.round((imageX - offsetX) / gridSize) * gridSize + offsetX
-    finalY = Math.round((imageY - offsetY) / gridSize) * gridSize + offsetY
+    // Snap to grid cell center
+    finalX = Math.round((imageX - offsetX) / gridSize) * gridSize + offsetX + gridSize / 2
+    finalY = Math.round((imageY - offsetY) / gridSize) * gridSize + offsetY + gridSize / 2
   }
 
   // Create the token

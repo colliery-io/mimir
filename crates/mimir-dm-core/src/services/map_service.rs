@@ -152,6 +152,8 @@ impl<'a> MapService<'a> {
                     height_px: m.height_px,
                     original_width_px: m.original_width_px,
                     original_height_px: m.original_height_px,
+                    fog_enabled: m.fog_enabled,
+                    ambient_light: m.ambient_light,
                 }
             })
             .collect();

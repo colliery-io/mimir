@@ -539,6 +539,8 @@ diesel::table! {
         created_at -> Text,
         updated_at -> Text,
         preview_path -> Nullable<Text>,
+        fog_enabled -> Bool,
+        ambient_light -> Text,
     }
 }
 
@@ -559,6 +561,38 @@ diesel::table! {
         notes -> Nullable<Text>,
         created_at -> Text,
         updated_at -> Text,
+        vision_type -> Text,
+        vision_range_ft -> Nullable<Float>,
+    }
+}
+
+diesel::table! {
+    fog_revealed_areas (id) {
+        id -> Integer,
+        map_id -> Integer,
+        x -> Float,
+        y -> Float,
+        width -> Float,
+        height -> Float,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
+    light_sources (id) {
+        id -> Integer,
+        map_id -> Integer,
+        token_id -> Nullable<Integer>,
+        name -> Text,
+        light_type -> Text,
+        x -> Float,
+        y -> Float,
+        bright_radius_ft -> Float,
+        dim_radius_ft -> Float,
+        color -> Nullable<Text>,
+        is_active -> Bool,
+        created_at -> Text,
+        updated_at -> Text,
     }
 }
 
@@ -568,6 +602,9 @@ diesel::joinable!(module_monsters -> modules (module_id));
 diesel::joinable!(tokens -> maps (map_id));
 diesel::joinable!(tokens -> catalog_monsters (monster_id));
 diesel::joinable!(tokens -> characters (character_id));
+diesel::joinable!(fog_revealed_areas -> maps (map_id));
+diesel::joinable!(light_sources -> maps (map_id));
+diesel::joinable!(light_sources -> tokens (token_id));
 diesel::joinable!(sessions -> campaigns (campaign_id));
 diesel::joinable!(sessions -> modules (module_id));
 diesel::joinable!(workflow_cards -> campaigns (campaign_id));
@@ -591,6 +628,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     module_monsters,
     sessions,
     tokens,
+    fog_revealed_areas,
+    light_sources,
     workflow_cards,
     workflow_card_tags,
     template_documents,

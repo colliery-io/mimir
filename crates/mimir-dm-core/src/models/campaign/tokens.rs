@@ -101,6 +101,80 @@ impl Default for TokenSize {
     }
 }
 
+/// Vision type - how a token perceives its environment
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VisionType {
+    Normal,
+    Darkvision,
+    Blindsight,
+    Tremorsense,
+    Truesight,
+    DevilsSight,
+}
+
+impl VisionType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            VisionType::Normal => "normal",
+            VisionType::Darkvision => "darkvision",
+            VisionType::Blindsight => "blindsight",
+            VisionType::Tremorsense => "tremorsense",
+            VisionType::Truesight => "truesight",
+            VisionType::DevilsSight => "devils_sight",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "darkvision" => VisionType::Darkvision,
+            "blindsight" => VisionType::Blindsight,
+            "tremorsense" => VisionType::Tremorsense,
+            "truesight" => VisionType::Truesight,
+            "devils_sight" | "devilssight" => VisionType::DevilsSight,
+            _ => VisionType::Normal,
+        }
+    }
+
+    /// Get a human-readable display name
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            VisionType::Normal => "Normal",
+            VisionType::Darkvision => "Darkvision",
+            VisionType::Blindsight => "Blindsight",
+            VisionType::Tremorsense => "Tremorsense",
+            VisionType::Truesight => "Truesight",
+            VisionType::DevilsSight => "Devil's Sight",
+        }
+    }
+
+    /// Whether this vision type can see in darkness (within range)
+    pub fn sees_in_darkness(&self) -> bool {
+        matches!(
+            self,
+            VisionType::Darkvision
+                | VisionType::Blindsight
+                | VisionType::Tremorsense
+                | VisionType::Truesight
+                | VisionType::DevilsSight
+        )
+    }
+
+    /// Whether this vision type ignores all light conditions
+    pub fn ignores_light(&self) -> bool {
+        matches!(
+            self,
+            VisionType::Blindsight | VisionType::Tremorsense | VisionType::Truesight
+        )
+    }
+}
+
+impl Default for VisionType {
+    fn default() -> Self {
+        VisionType::Normal
+    }
+}
+
 /// Database model for tokens
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize, Identifiable)]
 #[diesel(table_name = tokens)]
@@ -120,6 +194,8 @@ pub struct Token {
     pub notes: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub vision_type: String,
+    pub vision_range_ft: Option<f32>,
 }
 
 impl Token {
@@ -133,6 +209,11 @@ impl Token {
         TokenSize::from_str(&self.size)
     }
 
+    /// Get the vision type enum
+    pub fn vision_type_enum(&self) -> VisionType {
+        VisionType::from_str(&self.vision_type)
+    }
+
     /// Check if this token is linked to a catalog monster
     pub fn is_monster_linked(&self) -> bool {
         self.monster_id.is_some()
@@ -141,6 +222,11 @@ impl Token {
     /// Check if this token is linked to a character
     pub fn is_character_linked(&self) -> bool {
         self.character_id.is_some()
+    }
+
+    /// Check if this token has special vision (not normal)
+    pub fn has_special_vision(&self) -> bool {
+        self.vision_type_enum() != VisionType::Normal
     }
 }
 
@@ -160,6 +246,8 @@ pub struct NewToken {
     pub monster_id: Option<i32>,
     pub character_id: Option<i32>,
     pub notes: Option<String>,
+    pub vision_type: String,
+    pub vision_range_ft: Option<f32>,
 }
 
 impl NewToken {
@@ -178,6 +266,8 @@ impl NewToken {
             monster_id: None,
             character_id: None,
             notes: None,
+            vision_type: VisionType::default().as_str().to_string(),
+            vision_range_ft: None,
         }
     }
 
@@ -196,6 +286,8 @@ impl NewToken {
             monster_id: Some(monster_id),
             character_id: None,
             notes: None,
+            vision_type: VisionType::default().as_str().to_string(),
+            vision_range_ft: None,
         }
     }
 
@@ -214,6 +306,8 @@ impl NewToken {
             monster_id: None,
             character_id: Some(character_id),
             notes: None,
+            vision_type: VisionType::default().as_str().to_string(),
+            vision_range_ft: None,
         }
     }
 
@@ -232,6 +326,8 @@ impl NewToken {
             monster_id: None,
             character_id: None,
             notes: None,
+            vision_type: VisionType::default().as_str().to_string(),
+            vision_range_ft: None,
         }
     }
 
@@ -250,6 +346,8 @@ impl NewToken {
             monster_id: None,
             character_id: None,
             notes: None,
+            vision_type: VisionType::default().as_str().to_string(),
+            vision_range_ft: None,
         }
     }
 
@@ -282,6 +380,12 @@ impl NewToken {
         self.notes = Some(notes);
         self
     }
+
+    pub fn with_vision(mut self, vision_type: VisionType, range_ft: Option<f32>) -> Self {
+        self.vision_type = vision_type.as_str().to_string();
+        self.vision_range_ft = range_ft;
+        self
+    }
 }
 
 /// Token update structure
@@ -298,6 +402,8 @@ pub struct UpdateToken {
     pub image_path: Option<Option<String>>,
     pub notes: Option<Option<String>>,
     pub updated_at: Option<String>,
+    pub vision_type: Option<String>,
+    pub vision_range_ft: Option<Option<f32>>,
 }
 
 impl UpdateToken {
@@ -338,4 +444,6 @@ pub struct TokenSummary {
     pub monster_name: Option<String>,
     pub character_id: Option<i32>,
     pub character_name: Option<String>,
+    pub vision_type: String,
+    pub vision_range_ft: Option<f32>,
 }

@@ -6,7 +6,7 @@
 use crate::state::AppState;
 use crate::types::{ApiError, ApiResponse};
 use tracing::{error, info};
-use mimir_dm_core::models::campaign::{NewToken, Token, TokenSummary, TokenSize, TokenType, UpdateToken};
+use mimir_dm_core::models::campaign::{NewToken, Token, TokenSummary, TokenSize, TokenType, UpdateToken, VisionType};
 use mimir_dm_core::services::TokenService;
 use serde::Deserialize;
 use tauri::State;
@@ -25,6 +25,8 @@ pub struct CreateTokenRequest {
     pub monster_id: Option<i32>,
     pub character_id: Option<i32>,
     pub notes: Option<String>,
+    pub vision_type: Option<String>,
+    pub vision_range_ft: Option<f32>,
 }
 
 /// Request to update a token
@@ -38,6 +40,8 @@ pub struct UpdateTokenRequest {
     pub visible_to_players: Option<bool>,
     pub color: Option<Option<String>>,
     pub notes: Option<Option<String>>,
+    pub vision_type: Option<String>,
+    pub vision_range_ft: Option<f32>,
 }
 
 /// Request to update multiple token positions
@@ -84,6 +88,10 @@ pub async fn create_token(
     }
     if let Some(character_id) = request.character_id {
         new_token.character_id = Some(character_id);
+    }
+    if let Some(vision_type_str) = request.vision_type {
+        let vision_type = VisionType::from_str(&vision_type_str);
+        new_token = new_token.with_vision(vision_type, request.vision_range_ft);
     }
 
     match service.create_token(new_token) {
@@ -246,6 +254,8 @@ pub async fn update_token(
         image_path: None,
         notes: request.notes,
         updated_at: None, // Service handles this
+        vision_type: request.vision_type,
+        vision_range_ft: request.vision_range_ft.map(Some),
     };
 
     match service.update_token(id, update) {

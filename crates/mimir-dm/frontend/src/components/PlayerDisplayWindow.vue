@@ -3,7 +3,10 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import TokenRenderer from '@/components/tokens/TokenRenderer.vue'
+import LightSourceRenderer from '@/components/lighting/LightSourceRenderer.vue'
 import type { Token } from '@/types/api'
+import type { LightSourceSummary } from '@/composables/useLightSources'
+import { useVisionCalculation, type AmbientLight } from '@/composables/useVisionCalculation'
 
 // Types for map display
 interface MapState {
@@ -17,6 +20,9 @@ interface MapState {
   viewportY: number
   zoom: number
   isBlackout: boolean
+  ambientLight: AmbientLight
+  mapWidth: number
+  mapHeight: number
 }
 
 // Reactive state
@@ -30,13 +36,56 @@ const mapState = ref<MapState>({
   viewportX: 0,
   viewportY: 0,
   zoom: 1,
-  isBlackout: false
+  isBlackout: false,
+  ambientLight: 'bright',
+  mapWidth: 0,
+  mapHeight: 0
 })
 
 const isLoading = ref(false)
 const errorMessage = ref<string | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
 const tokens = ref<Token[]>([])
+
+// Track actual display scale and image dimensions
+const displayScale = ref(1)
+const imageNaturalWidth = ref(0)
+const imageNaturalHeight = ref(0)
+
+// Fog of war state
+interface FogRevealedArea {
+  id: number
+  map_id: number
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+const fogEnabled = ref(false)
+const revealedAreas = ref<FogRevealedArea[]>([])
+
+// Light source state
+const lightSources = ref<LightSourceSummary[]>([])
+
+// Vision calculation
+const ambientLightRef = computed(() => mapState.value.ambientLight)
+const gridSizePxRef = computed(() => mapState.value.gridSizePx || 70)
+const mapWidthRef = computed(() => mapState.value.mapWidth || imageRef.value?.naturalWidth || 0)
+const mapHeightRef = computed(() => mapState.value.mapHeight || imageRef.value?.naturalHeight || 0)
+
+const {
+  visibilityCircles,
+  needsVisionOverlay,
+  lightZones
+} = useVisionCalculation({
+  tokens,
+  lightSources,
+  ambientLight: ambientLightRef,
+  gridSizePx: gridSizePxRef,
+  mapWidth: mapWidthRef,
+  mapHeight: mapHeightRef
+})
 
 // No viewport transforms - map always fits to screen
 // The DM can pan/zoom their view independently
@@ -118,6 +167,8 @@ let unlistenMapUpdate: UnlistenFn | null = null
 let unlistenViewportUpdate: UnlistenFn | null = null
 let unlistenBlackout: UnlistenFn | null = null
 let unlistenTokensUpdate: UnlistenFn | null = null
+let unlistenFogUpdate: UnlistenFn | null = null
+let unlistenLightSourcesUpdate: UnlistenFn | null = null
 
 onMounted(async () => {
   console.log('PlayerDisplayWindow: Setting up event listeners')
@@ -129,6 +180,9 @@ onMounted(async () => {
     gridSizePx: number | null
     gridOffsetX: number
     gridOffsetY: number
+    ambientLight?: string
+    mapWidth?: number
+    mapHeight?: number
   }>('player-display:map-update', async (event) => {
     console.log('PlayerDisplayWindow: Received map-update event:', event.payload)
     const data = event.payload
@@ -137,6 +191,17 @@ onMounted(async () => {
     mapState.value.gridSizePx = data.gridSizePx
     mapState.value.gridOffsetX = data.gridOffsetX
     mapState.value.gridOffsetY = data.gridOffsetY
+    // Handle ambient light if provided
+    if (data.ambientLight) {
+      mapState.value.ambientLight = data.ambientLight as AmbientLight
+    }
+    // Handle map dimensions if provided
+    if (data.mapWidth) {
+      mapState.value.mapWidth = data.mapWidth
+    }
+    if (data.mapHeight) {
+      mapState.value.mapHeight = data.mapHeight
+    }
 
     // Load the map image
     await loadMapImage(data.mapId)
@@ -170,8 +235,37 @@ onMounted(async () => {
     }
   })
 
+  // Listen for fog of war updates
+  unlistenFogUpdate = await listen<{
+    mapId: number
+    fogEnabled: boolean
+    revealedAreas: FogRevealedArea[]
+  }>('player-display:fog-update', (event) => {
+    console.log('PlayerDisplayWindow: Received fog-update event:', event.payload.fogEnabled, event.payload.revealedAreas.length, 'areas')
+    // Only update fog if it's for the current map
+    if (event.payload.mapId === mapState.value.mapId) {
+      fogEnabled.value = event.payload.fogEnabled
+      revealedAreas.value = event.payload.revealedAreas
+    }
+  })
+
+  // Listen for light source updates
+  unlistenLightSourcesUpdate = await listen<{
+    mapId: number
+    lightSources: LightSourceSummary[]
+  }>('player-display:light-sources-update', (event) => {
+    console.log('PlayerDisplayWindow: Received light-sources-update event:', event.payload.lightSources.length, 'lights')
+    // Only update lights if they're for the current map
+    if (event.payload.mapId === mapState.value.mapId) {
+      lightSources.value = event.payload.lightSources
+    }
+  })
+
   // Handle keyboard shortcuts
   window.addEventListener('keydown', handleKeydown)
+
+  // Handle window resize to recalculate scale
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
@@ -179,7 +273,10 @@ onUnmounted(() => {
   unlistenViewportUpdate?.()
   unlistenBlackout?.()
   unlistenTokensUpdate?.()
+  unlistenFogUpdate?.()
+  unlistenLightSourcesUpdate?.()
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', handleResize)
 })
 
 // Load map image from backend
@@ -187,6 +284,7 @@ async function loadMapImage(mapId: number) {
   isLoading.value = true
   errorMessage.value = null
   tokens.value = [] // Clear tokens when loading a new map
+  lightSources.value = [] // Clear light sources when loading a new map
 
   try {
     const response = await invoke<{ success: boolean; data?: string; error?: string }>(
@@ -206,6 +304,33 @@ async function loadMapImage(mapId: number) {
   }
 }
 
+// Calculate the scale needed to fit the image in the viewport
+function updateDisplayScale() {
+  if (!imageRef.value) return
+
+  const naturalWidth = imageRef.value.naturalWidth
+  const naturalHeight = imageRef.value.naturalHeight
+
+  if (naturalWidth === 0 || naturalHeight === 0) return
+
+  // Store for other components
+  imageNaturalWidth.value = naturalWidth
+  imageNaturalHeight.value = naturalHeight
+
+  // Get viewport dimensions
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  // Calculate scale to fit (same as object-fit: contain logic)
+  const scaleX = viewportWidth / naturalWidth
+  const scaleY = viewportHeight / naturalHeight
+
+  // Use the smaller scale to fit within viewport
+  displayScale.value = Math.min(scaleX, scaleY)
+  console.log('PlayerDisplayWindow: Updated display scale to', displayScale.value,
+    `(natural: ${naturalWidth}x${naturalHeight}, viewport: ${viewportWidth}x${viewportHeight})`)
+}
+
 // Keyboard shortcuts
 function handleKeydown(event: KeyboardEvent) {
   // F11 to toggle fullscreen
@@ -219,6 +344,17 @@ function handleKeydown(event: KeyboardEvent) {
       // Just visual feedback, main window controls blackout
     }
   }
+}
+
+// Handle image load to calculate scale
+function handleImageLoad() {
+  console.log('PlayerDisplayWindow: Image loaded')
+  updateDisplayScale()
+}
+
+// Handle window resize to recalculate scale
+function handleResize() {
+  updateDisplayScale()
 }
 </script>
 
@@ -254,14 +390,22 @@ function handleKeydown(event: KeyboardEvent) {
         <div class="empty-hint">Select a map from the DM window to display</div>
       </div>
 
-      <!-- Map with grid overlay - always fits to screen -->
-      <div v-else class="map-container">
+      <!-- Map with grid overlay - scaled to fit screen -->
+      <div
+        v-else
+        class="map-container"
+        :style="{
+          transform: `scale(${displayScale})`,
+          transformOrigin: 'center center'
+        }"
+      >
         <img
           ref="imageRef"
           :src="mapState.imageUrl"
           alt="Battle Map"
           class="map-image"
           draggable="false"
+          @load="handleImageLoad"
         />
 
         <!-- Grid overlay -->
@@ -269,8 +413,8 @@ function handleKeydown(event: KeyboardEvent) {
           v-if="gridPattern"
           class="grid-overlay"
           :style="{
-            width: imageRef?.naturalWidth + 'px',
-            height: imageRef?.naturalHeight + 'px'
+            width: imageNaturalWidth + 'px',
+            height: imageNaturalHeight + 'px'
           }"
         >
           <defs>
@@ -312,6 +456,20 @@ function handleKeydown(event: KeyboardEvent) {
           <rect width="100%" height="100%" fill="url(#grid-pattern)" />
         </svg>
 
+        <!-- Light Source Layer (only active lights) -->
+        <LightSourceRenderer
+          v-if="lightSources.length > 0 && mapState.gridSizePx && imageNaturalWidth > 0"
+          :lights="lightSources"
+          :tokens="tokens"
+          :grid-size-px="mapState.gridSizePx"
+          :map-width="imageNaturalWidth"
+          :map-height="imageNaturalHeight"
+          :show-inactive="false"
+          :show-bright-border="false"
+          :show-center-dot="false"
+          :show-labels="false"
+        />
+
         <!-- Token Layer (only visible tokens) -->
         <TokenRenderer
           v-if="tokens.length > 0 && mapState.gridSizePx"
@@ -321,6 +479,112 @@ function handleKeydown(event: KeyboardEvent) {
           :show-hidden="false"
           :interactive="false"
         />
+
+        <!-- Fog of War Overlay (Player view - fully opaque) -->
+        <svg
+          v-if="fogEnabled && imageNaturalWidth > 0"
+          class="fog-overlay"
+          :style="{
+            width: imageNaturalWidth + 'px',
+            height: imageNaturalHeight + 'px'
+          }"
+          :viewBox="`0 0 ${imageNaturalWidth} ${imageNaturalHeight}`"
+        >
+          <defs>
+            <mask id="playerFogMask">
+              <!-- White = visible (fog), Black = hidden (revealed) -->
+              <rect width="100%" height="100%" fill="white" />
+              <!-- Cut out revealed areas -->
+              <rect
+                v-for="area in revealedAreas"
+                :key="area.id"
+                :x="area.x"
+                :y="area.y"
+                :width="area.width"
+                :height="area.height"
+                fill="black"
+              />
+            </mask>
+          </defs>
+          <!-- Fully opaque fog for player view -->
+          <rect
+            width="100%"
+            height="100%"
+            fill="#000000"
+            mask="url(#playerFogMask)"
+          />
+        </svg>
+
+        <!-- Vision/Lighting Overlay (darkness with vision cutouts) -->
+        <svg
+          v-if="needsVisionOverlay && imageNaturalWidth > 0"
+          class="vision-overlay"
+          :style="{
+            width: imageNaturalWidth + 'px',
+            height: imageNaturalHeight + 'px'
+          }"
+          :viewBox="`0 0 ${imageNaturalWidth} ${imageNaturalHeight}`"
+        >
+          <defs>
+            <!-- Mask for darkness (white = show darkness, black = hide darkness) -->
+            <mask id="darknessMask">
+              <!-- White background = darkness everywhere by default -->
+              <rect width="100%" height="100%" fill="white" />
+              <!-- Cut out (hide darkness) in dim vision areas with gray -->
+              <circle
+                v-for="zone in lightZones"
+                :key="`dark-light-dim-${zone.lightSourceId}`"
+                :cx="zone.x"
+                :cy="zone.y"
+                :r="zone.dimRadiusPx"
+                fill="#666"
+              />
+              <circle
+                v-for="circle in visibilityCircles"
+                :key="`dark-vision-dim-${circle.tokenId}`"
+                :cx="circle.x"
+                :cy="circle.y"
+                :r="circle.dimRadiusPx"
+                fill="#666"
+              />
+              <!-- Fully cut out (no darkness) in bright vision areas -->
+              <circle
+                v-for="zone in lightZones"
+                :key="`dark-light-bright-${zone.lightSourceId}`"
+                :cx="zone.x"
+                :cy="zone.y"
+                :r="zone.brightRadiusPx"
+                fill="black"
+              />
+              <circle
+                v-for="circle in visibilityCircles"
+                :key="`dark-vision-bright-${circle.tokenId}`"
+                :cx="circle.x"
+                :cy="circle.y"
+                :r="circle.brightRadiusPx"
+                fill="black"
+              />
+            </mask>
+
+            <!-- Radial gradients for soft vision edges -->
+            <radialGradient
+              v-for="circle in visibilityCircles"
+              :key="`gradient-${circle.tokenId}`"
+              :id="`visionGradient-${circle.tokenId}`"
+            >
+              <stop offset="70%" stop-color="black" />
+              <stop offset="100%" stop-color="white" />
+            </radialGradient>
+          </defs>
+
+          <!-- Main darkness overlay -->
+          <rect
+            width="100%"
+            height="100%"
+            :fill="mapState.ambientLight === 'darkness' ? 'rgba(0, 0, 0, 0.92)' : 'rgba(0, 0, 0, 0.75)'"
+            mask="url(#darknessMask)"
+          />
+        </svg>
       </div>
     </div>
 
@@ -377,16 +641,15 @@ function handleKeydown(event: KeyboardEvent) {
 
 .map-container {
   position: relative;
-  transition: transform 0.1s ease-out;
+  /* Container is sized to natural image dimensions and scaled via transform */
 }
 
 .map-image {
-  max-width: 100vw;
-  max-height: 100vh;
-  object-fit: contain;
   display: block;
+  max-width: none;
   user-select: none;
   -webkit-user-drag: none;
+  /* Image renders at natural size, container handles scaling via transform */
 }
 
 .grid-overlay {
@@ -394,6 +657,22 @@ function handleKeydown(event: KeyboardEvent) {
   top: 0;
   left: 0;
   pointer-events: none;
+}
+
+.fog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.vision-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9; /* Below fog overlay */
 }
 
 /* Loading state */

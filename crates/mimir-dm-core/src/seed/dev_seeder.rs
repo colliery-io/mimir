@@ -14,7 +14,7 @@ use crate::models::character::{
 };
 use crate::services::{
     CampaignService, CampaignSummaryService, CharacterService, DocumentService,
-    MapService, ModuleMonsterService, ModuleService, PlayerService,
+    MapService, ModuleMonsterService, ModuleService, PlayerService, TokenService,
 };
 use chrono::Utc;
 use std::collections::HashMap;
@@ -174,12 +174,21 @@ pub fn seed_dev_data(conn: &mut DbConnection, campaigns_directory: &str, data_di
     let modules = seed_modules(conn, campaign.id)?;
     info!("Created {} modules", modules.len());
 
-    // Transition first module to "ready" stage
-    if let Some(first_module) = modules.first() {
-        transition_module_to_ready(conn, first_module.id)?;
+    // Transition Goblin Ambush module to "active" stage
+    if let Some(ambush_module) = modules.iter().find(|m| m.name == "Goblin Ambush") {
+        transition_module_to_stage(conn, ambush_module.id, &campaign.directory_path, "active")?;
+        info!(
+            "Transitioned module '{}' to active stage",
+            ambush_module.name
+        );
+    }
+
+    // Transition Cragmaw Hideout module to "ready" stage (it has the battle map)
+    if let Some(cragmaw_module) = modules.iter().find(|m| m.name == "Cragmaw Hideout") {
+        transition_module_to_stage(conn, cragmaw_module.id, &campaign.directory_path, "ready")?;
         info!(
             "Transitioned module '{}' to ready stage",
-            first_module.name
+            cragmaw_module.name
         );
     }
 
@@ -234,7 +243,7 @@ fn seed_maps(
     modules: &[crate::models::campaign::modules::Module],
     data_directory: &str,
 ) -> Result<usize> {
-    use crate::models::campaign::NewMap;
+    use crate::models::campaign::{NewMap, GridType, NewToken, TokenType, TokenSize, VisionType};
     use std::path::PathBuf;
 
     // Create maps directory if it doesn't exist
@@ -255,8 +264,8 @@ fn seed_maps(
         .find(|m| m.name == "Cragmaw Hideout")
         .map(|m| m.id);
 
-    // Create database record
-    // For embedded assets, original and stored dimensions are the same (no processing)
+    // Create database record with grid configuration
+    // Grid size 53px measured from the Goblin Hideout map
     let new_map = NewMap::new(
         campaign_id,
         "Goblin Hideout".to_string(),
@@ -265,7 +274,8 @@ fn seed_maps(
         GOBLIN_HIDEOUT_HEIGHT,
         GOBLIN_HIDEOUT_WIDTH,
         GOBLIN_HIDEOUT_HEIGHT,
-    );
+    )
+    .with_grid(GridType::Square, 53, 0, 0);
 
     // Associate with module if found
     let new_map = if let Some(mid) = module_id {
@@ -275,7 +285,65 @@ fn seed_maps(
     };
 
     let mut service = MapService::new(conn);
-    service.create_map(new_map)?;
+    let map = service.create_map(new_map)?;
+
+    // Add monster tokens matching the Cragmaw Hideout encounters
+    // Positions at cell centers (grid intersection + 26.5 for 53px grid)
+    let monster_tokens: Vec<(&str, f32, f32)> = vec![
+        // Boss Chamber - Bugbear and 2 Goblins
+        ("Bugbear", 821.5, 768.5),
+        ("Goblin", 927.5, 768.5),
+        ("Goblin", 821.5, 662.5),
+        // Main Chamber - 6 Goblins
+        ("Goblin", 1669.5, 503.5),
+        ("Goblin", 1775.5, 503.5),
+        ("Goblin", 1881.5, 503.5),
+        ("Goblin", 1669.5, 556.5),
+        ("Goblin", 1828.5, 609.5),
+        ("Goblin", 1881.5, 556.5),
+        // Guard area
+        ("Goblin", 1828.5, 980.5),
+        ("Goblin", 1722.5, 980.5),
+        // Guard Post - 4 Goblins
+        ("Goblin", 1139.5, 556.5),
+        ("Goblin", 1139.5, 662.5),
+        ("Goblin", 1245.5, 662.5),
+        ("Goblin", 1298.5, 609.5),
+        ("Goblin", 1616.5, 980.5),
+        // Kennel - 2 Wolves
+        ("Wolf", 1775.5, 927.5),
+        ("Wolf", 1616.5, 927.5),
+    ];
+
+    let mut token_service = TokenService::new(conn);
+    for (name, x, y) in &monster_tokens {
+        let token = NewToken::new(map.id, name.to_string(), *x, *y)
+            .with_type(TokenType::Monster)
+            .with_size(TokenSize::Medium)
+            .with_visibility(true);
+        token_service.create_token(token)?;
+    }
+    info!("Created {} monster tokens on battle map", monster_tokens.len());
+
+    // Add PC tokens (positioned near cave entrance for start of encounter)
+    // Positions at cell centers (grid intersection + 26.5 for 53px grid)
+    // 2x2 formation at cells (41,22), (42,22), (41,23), (42,23)
+    let pc_tokens = [
+        ("Thorin Ironforge", 2199.5, 1192.5, TokenSize::Medium, VisionType::Darkvision, Some(60.0)),
+        ("Elara Moonwhisper", 2252.5, 1192.5, TokenSize::Medium, VisionType::Darkvision, Some(60.0)),
+        ("Finn Lightfoot", 2199.5, 1245.5, TokenSize::Small, VisionType::Normal, None),
+        ("Sister Helena", 2252.5, 1245.5, TokenSize::Medium, VisionType::Normal, None),
+    ];
+
+    for (name, x, y, size, vision_type, vision_range) in pc_tokens {
+        let token = NewToken::new(map.id, name.to_string(), x, y)
+            .with_type(TokenType::PC)
+            .with_size(size)
+            .with_visibility(true)
+            .with_vision(vision_type, vision_range);
+        token_service.create_token(token)?;
+    }
+    info!("Created {} PC tokens on battle map", pc_tokens.len());
 
     // Create campaign-level map (Goblin Region - not associated with any module)
     let region_filename = "dev-seed-goblin-region.png".to_string();
@@ -293,6 +361,7 @@ fn seed_maps(
         GOBLIN_REGION_HEIGHT,
     );
     // No .with_module() - this is a campaign-level map
+    let mut service = MapService::new(conn);
     service.create_map(region_map)?;
 
     Ok(2)
@@ -355,14 +424,31 @@ fn seed_modules(
     Ok(modules)
 }
 
-/// Transition a module through stages to "ready"
-fn transition_module_to_ready(conn: &mut DbConnection, module_id: i32) -> Result<()> {
-    // Module stages: planning -> development -> ready
-    let stages = ["development", "ready"];
+/// Transition a module through stages to a target stage and initialize stage documents
+fn transition_module_to_stage(
+    conn: &mut DbConnection,
+    module_id: i32,
+    campaign_directory: &str,
+    target_stage: &str,
+) -> Result<()> {
+    // Module stages: planning -> development -> ready -> active -> completed
+    let all_stages = ["development", "ready", "active", "completed"];
 
-    for stage in stages {
+    for stage in all_stages {
         let mut service = ModuleService::new(conn);
         service.transition_module_stage(module_id, stage)?;
+
+        // Initialize documents for the new stage
+        let mut service = ModuleService::new(conn);
+        let docs = service.initialize_module_documents(module_id, campaign_directory)?;
+        if !docs.is_empty() {
+            info!("Initialized {} documents for stage '{}'", docs.len(), stage);
+        }
+
+        // Stop when we reach the target stage
+        if stage == target_stage {
+            break;
+        }
     }
 
     Ok(())

@@ -161,6 +161,8 @@ impl<'a> TokenService<'a> {
                     monster_name,
                     character_id: t.character_id,
                     character_name,
+                    vision_type: t.vision_type,
+                    vision_range_ft: t.vision_range_ft,
                 }
             })
             .collect();

@@ -75,6 +75,7 @@ const documents = ref<Document[]>([])
 const boardConfig = ref<BoardConfig | null>(null)
 const campaign = ref<Campaign | null>(null)
 const documentSidebar = ref<any>(null)
+const initializingDocuments = ref(false)
 
 // Use composables
 const { loading: boardLoading, error: boardError, execute: loadBoardApi } = useApiCall<BoardConfig>()
@@ -191,7 +192,11 @@ const loadCampaign = async () => {
 // Initialize documents for the current stage
 const initializeStageDocuments = async () => {
   if (!module.value || !campaign.value) return
-  
+
+  // Guard against concurrent calls (prevents SQLite locking)
+  if (initializingDocuments.value) return
+  initializingDocuments.value = true
+
   try {
     const response = await invoke<{ data: string[] }>('initialize_module_documents', {
       request: {
@@ -199,17 +204,19 @@ const initializeStageDocuments = async () => {
         campaign_directory: campaign.value.directory_path
       }
     })
-    
+
     if (response.data && response.data.length > 0) {
       // Reload documents after initialization
       await loadDocuments()
-      
+
       // Force sidebar to reload documents too
       if (documentSidebar.value?.loadDocuments) {
         await documentSidebar.value.loadDocuments()
       }
     }
   } catch (e) {
+  } finally {
+    initializingDocuments.value = false
   }
 }
 
