@@ -84,134 +84,20 @@
             </div>
           </div>
 
-          <!-- Selected Monster Card -->
-          <div class="sidebar-section" v-if="selectedMonster">
-            <h3>Monster Details</h3>
-            <div class="monster-card">
-              <div class="monster-card-header">
-                <strong>{{ selectedMonster.monster_name }}</strong>
-                <span class="monster-source">{{ selectedMonster.monster_source }}</span>
-              </div>
-              <div v-if="selectedMonster.monster_data" class="monster-stats">
-                <div class="stat-row">
-                  <span class="stat-label">AC</span>
-                  <span class="stat-value" v-html="formatAC(selectedMonster.monster_data)"></span>
-                </div>
-                <div class="stat-row">
-                  <span class="stat-label">HP</span>
-                  <span class="stat-value">{{ formatHP(selectedMonster.monster_data) }}</span>
-                </div>
-                <div class="stat-row">
-                  <span class="stat-label">CR</span>
-                  <span class="stat-value">{{ selectedMonster.monster_data.cr || '?' }}</span>
-                </div>
-                <div class="ability-scores" v-if="selectedMonster.monster_data">
-                  <div class="ability">
-                    <span class="ability-name">STR</span>
-                    <span class="ability-value">{{ selectedMonster.monster_data.str || 10 }}</span>
-                  </div>
-                  <div class="ability">
-                    <span class="ability-name">DEX</span>
-                    <span class="ability-value">{{ selectedMonster.monster_data.dex || 10 }}</span>
-                  </div>
-                  <div class="ability">
-                    <span class="ability-name">CON</span>
-                    <span class="ability-value">{{ selectedMonster.monster_data.con || 10 }}</span>
-                  </div>
-                  <div class="ability">
-                    <span class="ability-name">INT</span>
-                    <span class="ability-value">{{ selectedMonster.monster_data.int || 10 }}</span>
-                  </div>
-                  <div class="ability">
-                    <span class="ability-name">WIS</span>
-                    <span class="ability-value">{{ selectedMonster.monster_data.wis || 10 }}</span>
-                  </div>
-                  <div class="ability">
-                    <span class="ability-name">CHA</span>
-                    <span class="ability-value">{{ selectedMonster.monster_data.cha || 10 }}</span>
-                  </div>
-                </div>
-
-                <!-- Traits -->
-                <div v-if="selectedMonster.monster_data.trait?.length" class="monster-traits">
-                  <h4>Traits</h4>
-                  <div
-                    v-for="(trait, idx) in selectedMonster.monster_data.trait"
-                    :key="'trait-' + idx"
-                    class="monster-action"
-                  >
-                    <strong>{{ trait.name }}.</strong>
-                    <span v-html="formatActionEntries(trait.entries)"></span>
-                  </div>
-                </div>
-
-                <!-- Actions (Attacks!) -->
-                <div v-if="selectedMonster.monster_data.action?.length" class="monster-actions">
-                  <h4>Actions</h4>
-                  <div
-                    v-for="(action, idx) in selectedMonster.monster_data.action"
-                    :key="'action-' + idx"
-                    class="monster-action"
-                  >
-                    <strong>{{ action.name }}.</strong>
-                    <span v-html="formatActionEntries(action.entries)"></span>
-                  </div>
-                </div>
-
-                <!-- Reactions -->
-                <div v-if="selectedMonster.monster_data.reaction?.length" class="monster-reactions">
-                  <h4>Reactions</h4>
-                  <div
-                    v-for="(reaction, idx) in selectedMonster.monster_data.reaction"
-                    :key="'reaction-' + idx"
-                    class="monster-action"
-                  >
-                    <strong>{{ reaction.name }}.</strong>
-                    <span v-html="formatActionEntries(reaction.entries)"></span>
-                  </div>
-                </div>
-
-                <!-- Legendary Actions -->
-                <div v-if="selectedMonster.monster_data.legendary?.length" class="monster-legendary">
-                  <h4>Legendary Actions</h4>
-                  <p class="legendary-intro">
-                    The creature can take 3 legendary actions, choosing from the options below.
-                    Only one legendary action can be used at a time and only at the end of another
-                    creature's turn. Spent legendary actions are regained at the start of each turn.
-                  </p>
-                  <div
-                    v-for="(legendary, idx) in selectedMonster.monster_data.legendary"
-                    :key="'legendary-' + idx"
-                    class="monster-action"
-                  >
-                    <strong>{{ legendary.name }}.</strong>
-                    <span v-html="formatActionEntries(legendary.entries)"></span>
-                  </div>
-                </div>
-
-                <!-- Spellcasting (if present as trait or separate) -->
-                <div v-if="getSpellcasting(selectedMonster.monster_data)" class="monster-spellcasting">
-                  <h4>Spellcasting</h4>
-                  <div v-html="getSpellcasting(selectedMonster.monster_data)"></div>
-                </div>
-              </div>
-              <div v-else class="no-data-text">
-                Full stats not available
-              </div>
-            </div>
-          </div>
-
-          <!-- All Monsters Quick List -->
-          <div class="sidebar-section" v-if="!selectedMonster && allMonsters.length > 0">
-            <h3>All Monsters ({{ allMonsters.length }})</h3>
+          <!-- All Monsters List (sidebar stays simple) -->
+          <div class="sidebar-section" v-if="allMonsters.length > 0">
+            <h3>Monsters ({{ allMonsters.length }})</h3>
             <div class="monster-quick-list">
               <div
                 v-for="monster in allMonsters"
                 :key="monster.id"
                 class="monster-quick-item"
-                @click="selectMonster(monster)"
+                :class="{ active: selectedMonster?.id === monster.id }"
+                @click="selectMonsterAndShowTab(monster)"
               >
-                {{ monster.monster_name }}
+                <span class="monster-qty">{{ monster.quantity }}×</span>
+                <span class="monster-name-text">{{ monster.monster_name }}</span>
+                <span v-if="monster.encounter_tag" class="monster-tag">{{ monster.encounter_tag }}</span>
               </div>
             </div>
           </div>
@@ -267,7 +153,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="tab-icon">
                 <path fill-rule="evenodd" d="M8.157 2.175a1.5 1.5 0 00-1.147 0l-4.084 1.69A1.5 1.5 0 002 5.251v10.877a1.5 1.5 0 002.074 1.386l3.51-1.453 4.26 1.763a1.5 1.5 0 001.146 0l4.083-1.69A1.5 1.5 0 0018 14.748V3.873a1.5 1.5 0 00-2.073-1.386l-3.51 1.452-4.26-1.763zM7.58 5a.75.75 0 01.75.75v6.5a.75.75 0 01-1.5 0v-6.5A.75.75 0 017.58 5zm5.59 2.75a.75.75 0 00-1.5 0v6.5a.75.75 0 001.5 0v-6.5z" clip-rule="evenodd" />
               </svg>
-              Map
+              Combat
               <span v-if="activeMapId" class="active-indicator"></span>
             </button>
           </div>
@@ -316,17 +202,161 @@
             </div>
           </template>
 
-          <!-- Map View Mode -->
+          <!-- Combat View Mode - Map + Monster Panel Side by Side -->
           <template v-else-if="viewMode === 'map'">
-            <div class="map-viewer-container">
-              <DmMapViewer
-                :map-id="activeMapId"
-                :grid-type="activeMap?.grid_type"
-                :grid-size-px="activeMap?.grid_size_px"
-                :grid-offset-x="activeMap?.grid_offset_x"
-                :grid-offset-y="activeMap?.grid_offset_y"
-                :show-grid="true"
-              />
+            <div class="combat-layout" :class="{ 'monster-panel-open': selectedMonster && monsterPanelOpen }">
+              <!-- Map Area -->
+              <div class="map-area">
+                <DmMapViewer
+                  :map-id="activeMapId"
+                  :grid-type="activeMap?.grid_type"
+                  :grid-size-px="activeMap?.grid_size_px"
+                  :grid-offset-x="activeMap?.grid_offset_x"
+                  :grid-offset-y="activeMap?.grid_offset_y"
+                  :show-grid="true"
+                />
+              </div>
+
+              <!-- Monster Panel (slides in from right when monster selected) -->
+              <aside class="monster-panel" v-if="selectedMonster" :class="{ collapsed: !monsterPanelOpen }">
+                <button class="monster-panel-toggle" @click="monsterPanelOpen = !monsterPanelOpen">
+                  <span>{{ monsterPanelOpen ? '›' : '‹' }}</span>
+                </button>
+
+                <div class="monster-panel-content" v-show="monsterPanelOpen">
+                  <!-- Monster Header -->
+                  <header class="monster-header">
+                    <div class="monster-title">
+                      <h2>{{ selectedMonster.monster_name }}</h2>
+                      <p class="monster-type">{{ formatCreatureType(selectedMonster.monster_data) }}</p>
+                    </div>
+                    <button class="close-monster" @click="selectedMonster = null" title="Close">×</button>
+                  </header>
+
+                  <div class="monster-body" v-if="selectedMonster.monster_data">
+                    <!-- Quick Stats Bar -->
+                    <div class="quick-stats">
+                      <div class="quick-stat">
+                        <span class="stat-label">AC</span>
+                        <span class="stat-value" v-html="formatAC(selectedMonster.monster_data)"></span>
+                      </div>
+                      <div class="quick-stat">
+                        <span class="stat-label">HP</span>
+                        <span class="stat-value">{{ formatHP(selectedMonster.monster_data) }}</span>
+                      </div>
+                      <div class="quick-stat">
+                        <span class="stat-label">Speed</span>
+                        <span class="stat-value">{{ formatSpeed(selectedMonster.monster_data) }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Ability Scores -->
+                    <div class="ability-row">
+                      <div class="ability-item" v-for="ability in ['str', 'dex', 'con', 'int', 'wis', 'cha']" :key="ability">
+                        <span class="ability-name">{{ ability.toUpperCase() }}</span>
+                        <span class="ability-value">{{ selectedMonster.monster_data[ability] || 10 }}</span>
+                        <span class="ability-mod">{{ formatModifier(selectedMonster.monster_data[ability] || 10) }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Secondary Properties (collapsible) -->
+                    <details class="stat-section" open>
+                      <summary>Properties</summary>
+                      <div class="properties-list">
+                        <div v-if="formatSaves(selectedMonster.monster_data)" class="prop-line">
+                          <span class="prop-name">Saves</span>
+                          <span>{{ formatSaves(selectedMonster.monster_data) }}</span>
+                        </div>
+                        <div v-if="formatSkills(selectedMonster.monster_data)" class="prop-line">
+                          <span class="prop-name">Skills</span>
+                          <span>{{ formatSkills(selectedMonster.monster_data) }}</span>
+                        </div>
+                        <div v-if="formatDamageResistances(selectedMonster.monster_data)" class="prop-line">
+                          <span class="prop-name">Resist</span>
+                          <span>{{ formatDamageResistances(selectedMonster.monster_data) }}</span>
+                        </div>
+                        <div v-if="formatDamageImmunities(selectedMonster.monster_data)" class="prop-line">
+                          <span class="prop-name">Immune</span>
+                          <span>{{ formatDamageImmunities(selectedMonster.monster_data) }}</span>
+                        </div>
+                        <div v-if="formatConditionImmunities(selectedMonster.monster_data)" class="prop-line">
+                          <span class="prop-name">Cond. Immune</span>
+                          <span>{{ formatConditionImmunities(selectedMonster.monster_data) }}</span>
+                        </div>
+                        <div v-if="formatSenses(selectedMonster.monster_data)" class="prop-line">
+                          <span class="prop-name">Senses</span>
+                          <span>{{ formatSenses(selectedMonster.monster_data) }}</span>
+                        </div>
+                        <div class="prop-line">
+                          <span class="prop-name">CR</span>
+                          <span>{{ formatCR(selectedMonster.monster_data) }}</span>
+                        </div>
+                      </div>
+                    </details>
+
+                    <!-- Traits -->
+                    <details v-if="selectedMonster.monster_data.trait?.length" class="stat-section">
+                      <summary>Traits</summary>
+                      <div class="action-list">
+                        <div v-for="(trait, idx) in selectedMonster.monster_data.trait" :key="'trait-' + idx" class="action-item">
+                          <strong>{{ trait.name }}.</strong>
+                          <span v-html="formatActionEntries(trait.entries)"></span>
+                        </div>
+                      </div>
+                    </details>
+
+                    <!-- Actions -->
+                    <details v-if="selectedMonster.monster_data.action?.length" class="stat-section actions" open>
+                      <summary>Actions</summary>
+                      <div class="action-list">
+                        <div v-for="(action, idx) in selectedMonster.monster_data.action" :key="'action-' + idx" class="action-item">
+                          <strong>{{ action.name }}.</strong>
+                          <span v-html="formatActionEntries(action.entries)"></span>
+                        </div>
+                      </div>
+                    </details>
+
+                    <!-- Bonus Actions -->
+                    <details v-if="selectedMonster.monster_data.bonus?.length" class="stat-section">
+                      <summary>Bonus Actions</summary>
+                      <div class="action-list">
+                        <div v-for="(bonus, idx) in selectedMonster.monster_data.bonus" :key="'bonus-' + idx" class="action-item">
+                          <strong>{{ bonus.name }}.</strong>
+                          <span v-html="formatActionEntries(bonus.entries)"></span>
+                        </div>
+                      </div>
+                    </details>
+
+                    <!-- Reactions -->
+                    <details v-if="selectedMonster.monster_data.reaction?.length" class="stat-section">
+                      <summary>Reactions</summary>
+                      <div class="action-list">
+                        <div v-for="(reaction, idx) in selectedMonster.monster_data.reaction" :key="'reaction-' + idx" class="action-item">
+                          <strong>{{ reaction.name }}.</strong>
+                          <span v-html="formatActionEntries(reaction.entries)"></span>
+                        </div>
+                      </div>
+                    </details>
+
+                    <!-- Legendary Actions -->
+                    <details v-if="selectedMonster.monster_data.legendary?.length" class="stat-section legendary">
+                      <summary>Legendary Actions</summary>
+                      <p class="legendary-intro">3 actions per round, at end of other creature's turn.</p>
+                      <div class="action-list">
+                        <div v-for="(legendary, idx) in selectedMonster.monster_data.legendary" :key="'legendary-' + idx" class="action-item">
+                          <strong>{{ legendary.name }}.</strong>
+                          <span v-html="formatActionEntries(legendary.entries)"></span>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+
+                  <!-- Source -->
+                  <footer class="monster-footer">
+                    <span class="source-tag">{{ selectedMonster.monster_source }}</span>
+                  </footer>
+                </div>
+              </aside>
             </div>
           </template>
         </main>
@@ -502,6 +532,7 @@ const allMaps = ref<MapSummary[]>([])
 const mapsLoading = ref(false)
 const activeMapId = ref<number | null>(null)
 const viewMode = ref<'documents' | 'map'>('documents')
+const monsterPanelOpen = ref(true)
 
 // Get the active map details for the DmMapViewer
 const activeMap = computed(() => {
@@ -626,6 +657,219 @@ function selectEncounter(group: EncounterGroup) {
 // Select a monster to show details
 function selectMonster(monster: MonsterWithData) {
   selectedMonster.value = monster
+}
+
+// Select a monster and switch to combat view with panel open
+function selectMonsterAndShowTab(monster: MonsterWithData) {
+  selectedMonster.value = monster
+  viewMode.value = 'map'
+  monsterPanelOpen.value = true
+}
+
+// Format creature type line (e.g., "Medium humanoid (any race), any alignment")
+function formatCreatureType(monsterData: any): string {
+  if (!monsterData) return ''
+
+  const parts: string[] = []
+
+  // Size
+  const size = Array.isArray(monsterData.size) ? monsterData.size[0] : monsterData.size
+  const sizeMap: Record<string, string> = {
+    'T': 'Tiny', 'S': 'Small', 'M': 'Medium', 'L': 'Large', 'H': 'Huge', 'G': 'Gargantuan'
+  }
+  parts.push(sizeMap[size] || size || 'Medium')
+
+  // Type
+  if (monsterData.type) {
+    if (typeof monsterData.type === 'string') {
+      parts.push(monsterData.type)
+    } else if (typeof monsterData.type === 'object') {
+      let typeStr = monsterData.type.type || ''
+      if (monsterData.type.tags?.length) {
+        typeStr += ` (${monsterData.type.tags.join(', ')})`
+      }
+      parts.push(typeStr)
+    }
+  }
+
+  // Alignment
+  if (monsterData.alignment) {
+    const alignmentMap: Record<string, string> = {
+      'L': 'lawful', 'N': 'neutral', 'C': 'chaotic', 'G': 'good', 'E': 'evil', 'U': 'unaligned', 'A': 'any alignment'
+    }
+    const alignment = Array.isArray(monsterData.alignment)
+      ? monsterData.alignment.map((a: string) => alignmentMap[a] || a).join(' ')
+      : alignmentMap[monsterData.alignment] || monsterData.alignment
+    parts.push(`, ${alignment}`)
+  }
+
+  return parts.join(' ')
+}
+
+// Format speed (e.g., "30 ft., fly 60 ft., swim 30 ft.")
+function formatSpeed(monsterData: any): string {
+  if (!monsterData?.speed) return '30 ft.'
+
+  const speed = monsterData.speed
+  const parts: string[] = []
+
+  if (typeof speed === 'number') {
+    return `${speed} ft.`
+  }
+
+  if (speed.walk) parts.push(`${speed.walk} ft.`)
+  if (speed.burrow) parts.push(`burrow ${speed.burrow} ft.`)
+  if (speed.climb) parts.push(`climb ${speed.climb} ft.`)
+  if (speed.fly) {
+    let flyStr = `fly ${speed.fly} ft.`
+    if (speed.canHover) flyStr += ' (hover)'
+    parts.push(flyStr)
+  }
+  if (speed.swim) parts.push(`swim ${speed.swim} ft.`)
+
+  return parts.length > 0 ? parts.join(', ') : '30 ft.'
+}
+
+// Format ability modifier (e.g., "+3" or "-1")
+function formatModifier(score: number): string {
+  const mod = Math.floor((score - 10) / 2)
+  return mod >= 0 ? `+${mod}` : `${mod}`
+}
+
+// Format saving throws
+function formatSaves(monsterData: any): string {
+  if (!monsterData?.save) return ''
+
+  const saves: string[] = []
+  const abilityNames: Record<string, string> = {
+    str: 'Str', dex: 'Dex', con: 'Con', int: 'Int', wis: 'Wis', cha: 'Cha'
+  }
+
+  for (const [ability, bonus] of Object.entries(monsterData.save)) {
+    if (bonus) {
+      saves.push(`${abilityNames[ability] || ability} ${bonus}`)
+    }
+  }
+
+  return saves.join(', ')
+}
+
+// Format skills
+function formatSkills(monsterData: any): string {
+  if (!monsterData?.skill) return ''
+
+  const skills: string[] = []
+  const skillNames: Record<string, string> = {
+    acrobatics: 'Acrobatics', athletics: 'Athletics', arcana: 'Arcana',
+    deception: 'Deception', history: 'History', insight: 'Insight',
+    intimidation: 'Intimidation', investigation: 'Investigation', medicine: 'Medicine',
+    nature: 'Nature', perception: 'Perception', performance: 'Performance',
+    persuasion: 'Persuasion', religion: 'Religion', sleight_of_hand: 'Sleight of Hand',
+    stealth: 'Stealth', survival: 'Survival'
+  }
+
+  for (const [skill, bonus] of Object.entries(monsterData.skill)) {
+    if (bonus) {
+      skills.push(`${skillNames[skill] || skill} ${bonus}`)
+    }
+  }
+
+  return skills.join(', ')
+}
+
+// Format senses
+function formatSenses(monsterData: any): string {
+  if (!monsterData) return ''
+
+  const parts: string[] = []
+
+  if (monsterData.senses) {
+    if (Array.isArray(monsterData.senses)) {
+      parts.push(...monsterData.senses)
+    } else {
+      parts.push(monsterData.senses)
+    }
+  }
+
+  if (monsterData.passive) {
+    parts.push(`passive Perception ${monsterData.passive}`)
+  }
+
+  return parts.join(', ')
+}
+
+// Format languages
+function formatLanguages(monsterData: any): string {
+  if (!monsterData?.languages) return '—'
+
+  if (Array.isArray(monsterData.languages)) {
+    return monsterData.languages.join(', ') || '—'
+  }
+
+  return monsterData.languages || '—'
+}
+
+// Format damage vulnerabilities
+function formatDamageVulnerabilities(monsterData: any): string {
+  if (!monsterData?.vulnerable) return ''
+  if (Array.isArray(monsterData.vulnerable)) {
+    return monsterData.vulnerable.join(', ')
+  }
+  return monsterData.vulnerable
+}
+
+// Format damage resistances
+function formatDamageResistances(monsterData: any): string {
+  if (!monsterData?.resist) return ''
+  if (Array.isArray(monsterData.resist)) {
+    return monsterData.resist.map((r: any) => {
+      if (typeof r === 'string') return r
+      if (r.resist) return r.resist.join(', ') + (r.note ? ` ${r.note}` : '')
+      return ''
+    }).filter(Boolean).join('; ')
+  }
+  return monsterData.resist
+}
+
+// Format damage immunities
+function formatDamageImmunities(monsterData: any): string {
+  if (!monsterData?.immune) return ''
+  if (Array.isArray(monsterData.immune)) {
+    return monsterData.immune.map((i: any) => {
+      if (typeof i === 'string') return i
+      if (i.immune) return i.immune.join(', ') + (i.note ? ` ${i.note}` : '')
+      return ''
+    }).filter(Boolean).join('; ')
+  }
+  return monsterData.immune
+}
+
+// Format condition immunities
+function formatConditionImmunities(monsterData: any): string {
+  if (!monsterData?.conditionImmune) return ''
+  if (Array.isArray(monsterData.conditionImmune)) {
+    return monsterData.conditionImmune.join(', ')
+  }
+  return monsterData.conditionImmune
+}
+
+// Format CR with XP
+function formatCR(monsterData: any): string {
+  if (!monsterData?.cr) return '?'
+
+  const cr = monsterData.cr
+  const xpByCR: Record<string, string> = {
+    '0': '0 or 10', '1/8': '25', '1/4': '50', '1/2': '100',
+    '1': '200', '2': '450', '3': '700', '4': '1,100', '5': '1,800',
+    '6': '2,300', '7': '2,900', '8': '3,900', '9': '5,000', '10': '5,900',
+    '11': '7,200', '12': '8,400', '13': '10,000', '14': '11,500', '15': '13,000',
+    '16': '15,000', '17': '18,000', '18': '20,000', '19': '22,000', '20': '25,000',
+    '21': '33,000', '22': '41,000', '23': '50,000', '24': '62,000', '25': '75,000',
+    '26': '90,000', '27': '105,000', '28': '120,000', '29': '135,000', '30': '155,000'
+  }
+
+  const xp = xpByCR[String(cr)] || '?'
+  return `${cr} (${xp} XP)`
 }
 
 // Format AC from 5etools data format
@@ -1712,7 +1956,7 @@ onMounted(async () => {
   margin-top: 0.5rem;
 }
 
-/* Monster Quick List */
+/* Monster Quick List - Sidebar */
 .monster-quick-list {
   display: flex;
   flex-direction: column;
@@ -1720,15 +1964,48 @@ onMounted(async () => {
 }
 
 .monster-quick-item {
-  padding: 0.375rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
-  border-radius: 0.25rem;
+  border-radius: 0.375rem;
   cursor: pointer;
   color: var(--color-text);
+  background: var(--color-base-200);
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
 }
 
 .monster-quick-item:hover {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
+  border-left-color: var(--color-accent, #e67e22);
+}
+
+.monster-quick-item.active {
+  background: var(--color-base-300);
+  border-left-color: var(--color-primary, #4a9eff);
+}
+
+.monster-quick-item .monster-qty {
+  font-weight: 700;
+  color: var(--color-accent, #e67e22);
+  min-width: 1.5rem;
+}
+
+.monster-quick-item .monster-name-text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.monster-quick-item .monster-tag {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--color-surface);
+  border-radius: 0.25rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* Map List */
@@ -1924,5 +2201,316 @@ onMounted(async () => {
   padding: 1.25rem;
   overflow-y: auto;
   flex: 1;
+}
+
+/* ============================================
+   COMBAT LAYOUT - Map + Monster Panel
+   ============================================ */
+
+.combat-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.map-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  transition: margin-right 0.3s ease;
+}
+
+.combat-layout.monster-panel-open .map-area {
+  margin-right: 0;
+}
+
+/* Monster Panel - Slides in from right */
+.monster-panel {
+  width: 380px;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: width 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.monster-panel.collapsed {
+  width: 32px;
+}
+
+.monster-panel-toggle {
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  z-index: 10;
+}
+
+.monster-panel-toggle:hover {
+  background: var(--color-base-200);
+  color: var(--color-text);
+}
+
+.monster-panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Monster Header */
+.monster-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--color-base-200);
+  border-bottom: 2px solid var(--color-dnd-creature, #ff9f43);
+}
+
+.monster-title h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.monster-type {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.close-monster {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-monster:hover {
+  color: var(--color-text);
+}
+
+/* Monster Body */
+.monster-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+}
+
+/* Quick Stats */
+.quick-stats {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.quick-stat {
+  flex: 1;
+  text-align: center;
+  padding: 0.5rem;
+  background: var(--color-base-200);
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+}
+
+.quick-stat .stat-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.quick-stat .stat-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Ability Row */
+.ability-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: var(--color-base-200);
+  border-radius: 0.375rem;
+}
+
+.ability-item {
+  flex: 1;
+  text-align: center;
+}
+
+.ability-item .ability-name {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.ability-item .ability-value {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.ability-item .ability-mod {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--color-dnd-creature, #ff9f43);
+  font-weight: 600;
+}
+
+/* Stat Sections (using native details/summary) */
+.stat-section {
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.stat-section summary {
+  padding: 0.5rem 0.75rem;
+  background: var(--color-base-200);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.stat-section summary:hover {
+  background: var(--color-base-300);
+}
+
+.stat-section.actions summary {
+  color: var(--color-dnd-damage, #ff6b6b);
+}
+
+.stat-section.legendary summary {
+  color: #9333ea;
+}
+
+/* Properties List */
+.properties-list {
+  padding: 0.5rem 0.75rem;
+}
+
+.prop-line {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-bottom: 0.25rem;
+}
+
+.prop-line:last-child {
+  margin-bottom: 0;
+}
+
+.prop-name {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  min-width: 5rem;
+  flex-shrink: 0;
+}
+
+/* Action List */
+.action-list {
+  padding: 0.5rem 0.75rem;
+}
+
+.action-item {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.action-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.action-item strong {
+  color: var(--color-text);
+}
+
+.legendary-intro {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  margin: 0 0.75rem 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* Cross-ref styling within monster panel */
+.monster-panel :deep(.cross-ref-link),
+.monster-panel :deep(.spell-ref),
+.monster-panel :deep(.item-ref),
+.monster-panel :deep(.condition-ref) {
+  color: var(--color-primary, #4a9eff);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+}
+
+.monster-panel :deep(.dice-roll),
+.monster-panel :deep(.damage-roll) {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--color-dnd-damage, #ff6b6b);
+}
+
+.monster-panel :deep(.hit-bonus) {
+  font-weight: 700;
+  color: var(--color-success, #34d399);
+}
+
+/* Monster Footer */
+.monster-footer {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-base-200);
+}
+
+.source-tag {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 </style>

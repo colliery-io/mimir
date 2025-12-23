@@ -15,7 +15,7 @@
       @click.stop="handleClick($event, token)"
       @contextmenu.prevent="$emit('token-context', $event, token)"
     >
-      <span class="token-initial">{{ getTokenInitial(token) }}</span>
+      <span class="token-label">{{ getTokenLabel(token) }}</span>
       <span
         v-if="!token.visible_to_players && showHidden"
         class="visibility-badge"
@@ -131,13 +131,13 @@ function getTokenStyle(token: Token) {
     height: tokenSizePx + 'px',
     backgroundColor: color,
     borderColor: color,
-    fontSize: Math.max(tokenSizePx * 0.4, 10) + 'px'
+    fontSize: Math.max(tokenSizePx * 0.24, 16) + 'px'
   }
 }
 
-// Get token initial letter
-function getTokenInitial(token: Token): string {
-  return token.name.charAt(0).toUpperCase()
+// Get token label - full name
+function getTokenLabel(token: Token): string {
+  return token.name
 }
 </script>
 
@@ -182,11 +182,21 @@ function getTokenInitial(token: Token): string {
   transition: none;
 }
 
-.token-initial {
-  font-weight: 700;
+.token-label {
+  font-weight: 600;
+  font-size: 0.65em;
   color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
   user-select: none;
+  text-align: center;
+  line-height: 1.1;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 }
 
 .visibility-badge {
