@@ -34,12 +34,20 @@ function close() {
 function handleContentClick(event: MouseEvent) {
   const target = event.target as HTMLElement
   
-  // Check both patterns: specific ref classes and generic clickable class
-  // Also check if it's a link with data-ref-type
-  if (target.classList.contains('reference-link') ||
-      target.classList.contains('creature-ref') || 
-      target.classList.contains('item-ref') || 
+  // Check for cross-reference links by class or data attribute
+  // textFormatting.ts creates links with class="cross-ref-link {type}-ref" and data-ref-type
+  if (target.classList.contains('cross-ref-link') ||
+      target.classList.contains('reference-link') ||
+      target.classList.contains('creature-ref') ||
+      target.classList.contains('item-ref') ||
       target.classList.contains('spell-ref') ||
+      target.classList.contains('condition-ref') ||
+      target.classList.contains('race-ref') ||
+      target.classList.contains('class-ref') ||
+      target.classList.contains('feat-ref') ||
+      target.classList.contains('background-ref') ||
+      target.classList.contains('action-ref') ||
+      target.classList.contains('feature-ref') ||
       target.classList.contains('clickable') ||
       (target.tagName === 'A' && target.hasAttribute('data-ref-type'))) {
     

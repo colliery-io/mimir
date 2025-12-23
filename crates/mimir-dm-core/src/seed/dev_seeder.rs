@@ -289,37 +289,38 @@ fn seed_maps(
 
     // Add monster tokens matching the Cragmaw Hideout encounters
     // Positions at cell centers (grid cell * 54 + 27 for 54px grid)
-    let monster_tokens: Vec<(&str, f32, f32)> = vec![
-        // Boss Chamber - Bugbear and 2 Goblins
-        ("Bugbear", 837.0, 783.0),
-        ("Goblin", 945.0, 783.0),
-        ("Goblin", 837.0, 675.0),
-        // Main Chamber - 6 Goblins
-        ("Goblin", 1701.0, 513.0),
-        ("Goblin", 1809.0, 513.0),
-        ("Goblin", 1917.0, 513.0),
-        ("Goblin", 1701.0, 567.0),
-        ("Goblin", 1863.0, 621.0),
-        ("Goblin", 1917.0, 567.0),
+    // Format: (name, x, y, size)
+    let monster_tokens: Vec<(&str, f32, f32, TokenSize)> = vec![
+        // Boss Chamber - Adult Black Dragon and 2 Goblins (TPK incoming!)
+        ("Adult Black Dragon", 837.0, 783.0, TokenSize::Huge),
+        ("Goblin", 945.0, 783.0, TokenSize::Small),
+        ("Goblin", 837.0, 675.0, TokenSize::Small),
+        // Main Chamber - 5 Goblins + Mage
+        ("Goblin", 1701.0, 513.0, TokenSize::Small),
+        ("Goblin", 1809.0, 513.0, TokenSize::Small),
+        ("Goblin", 1917.0, 513.0, TokenSize::Small),
+        ("Mage", 1701.0, 567.0, TokenSize::Medium), // Spellcaster!
+        ("Goblin", 1863.0, 621.0, TokenSize::Small),
+        ("Goblin", 1917.0, 567.0, TokenSize::Small),
         // Guard area
-        ("Goblin", 1863.0, 999.0),
-        ("Goblin", 1755.0, 999.0),
+        ("Goblin", 1863.0, 999.0, TokenSize::Small),
+        ("Goblin", 1755.0, 999.0, TokenSize::Small),
         // Guard Post - 4 Goblins
-        ("Goblin", 1161.0, 567.0),
-        ("Goblin", 1161.0, 675.0),
-        ("Goblin", 1269.0, 675.0),
-        ("Goblin", 1323.0, 621.0),
-        ("Goblin", 1647.0, 999.0),
+        ("Goblin", 1161.0, 567.0, TokenSize::Small),
+        ("Goblin", 1161.0, 675.0, TokenSize::Small),
+        ("Goblin", 1269.0, 675.0, TokenSize::Small),
+        ("Goblin", 1323.0, 621.0, TokenSize::Small),
+        ("Goblin", 1647.0, 999.0, TokenSize::Small),
         // Kennel - 2 Wolves
-        ("Wolf", 1809.0, 945.0),
-        ("Wolf", 1647.0, 945.0),
+        ("Wolf", 1809.0, 945.0, TokenSize::Medium),
+        ("Wolf", 1647.0, 945.0, TokenSize::Medium),
     ];
 
     let mut token_service = TokenService::new(conn);
-    for (name, x, y) in &monster_tokens {
+    for (name, x, y, size) in &monster_tokens {
         let token = NewToken::new(map.id, name.to_string(), *x, *y)
             .with_type(TokenType::Monster)
-            .with_size(TokenSize::Medium)
+            .with_size(*size)
             .with_visibility(true);
         token_service.create_token(token)?;
     }
@@ -475,9 +476,10 @@ fn seed_module_monsters(
             vec![
                 ("Goblin", "MM", 6, Some("Cave Entrance")),
                 ("Goblin", "MM", 3, Some("Guard Post")),
-                ("Goblin", "MM", 4, Some("Main Chamber")),
+                ("Goblin", "MM", 5, Some("Main Chamber")),
+                ("Mage", "MM", 1, Some("Main Chamber")), // Spellcaster!
                 ("Wolf", "MM", 2, Some("Kennel")),
-                ("Bugbear", "MM", 1, Some("Boss Chamber")),
+                ("Adult Black Dragon", "MM", 1, Some("Boss Chamber")), // Good luck!
                 ("Goblin", "MM", 2, Some("Boss Chamber")),
             ],
         ),
@@ -595,8 +597,8 @@ The hideout consists of several connected cave chambers:
 2. **Kennel** - Wolves chained as guard animals
 3. **Guard Post** - Elevated platform with archer goblins
 4. **Twin Pools** - Water reservoir with flood trap potential
-5. **Main Chamber** - Goblin common area
-6. **Boss Chamber** - Klarg's lair with Sildar prisoner
+5. **Main Chamber** - Goblin common area with resident Mage
+6. **Boss Chamber** - Voaraghamanthar's lair (Adult Black Dragon!)
 
 ## Encounters
 
@@ -616,20 +618,24 @@ The hideout consists of several connected cave chambers:
 - **Tactics**: Fire at intruders, call for reinforcements
 
 ### Main Chamber
-- **Enemies**: 6 Goblins led by Yeemik (goblin boss)
+- **Enemies**: 5 Goblins + 1 Mage (the goblin's magical advisor)
+- **Spellcaster**: The Mage knows fireball, counterspell, and shield
 - **Complication**: Yeemik threatens to kill Sildar
-- **Opportunity**: Negotiate - Yeemik wants Klarg dead
+- **Opportunity**: Negotiate - Yeemik wants Voaraghamanthar dead
 
 ### Boss Chamber
-- **Enemies**: Klarg (Bugbear), 2 Goblins, Wolf (pet)
-- **Treasure**: Stolen goods, Klarg's treasure chest
-- **Difficulty**: Deadly for level 1, hard for level 2
+- **Enemies**: Voaraghamanthar (Adult Black Dragon), 2 Goblins
+- **Legendary Actions**: Detect, Tail Attack, Wing Attack (2 actions)
+- **Breath Weapon**: 60 ft. line, 54 (12d8) acid damage, DC 18 Dex save
+- **Treasure**: Dragon hoard, stolen goods
+- **Difficulty**: DEADLY - This is a CR 14 creature. TPK likely for low-level parties.
 
 ## Important NPCs
 
 - **Sildar Hallwinter** - Captive, member of Lords' Alliance, knows about Wave Echo Cave
-- **Klarg** - Bugbear boss, vain and cruel, serves the Black Spider
-- **Yeemik** - Ambitious goblin, wants to overthrow Klarg
+- **Voaraghamanthar** - Adult Black Dragon, has dominated this goblin tribe
+- **The Mage** - Human spellcaster allied with the dragon
+- **Yeemik** - Ambitious goblin, wants to overthrow the dragon (good luck)
 
 ## Treasure
 

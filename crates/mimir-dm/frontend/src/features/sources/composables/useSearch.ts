@@ -685,9 +685,24 @@ export function useSearch(initialCategory: string, initialSources: MaybeRef<stri
         }
         break
       }
+      case 'feature': {
+        // Class features need class name + feature name to look up
+        // For now, just show the feature name with a helpful message
+        modalStack.value.push({
+          visible: true,
+          title: event.name,
+          content: `<p>Class feature: <strong>${event.name}</strong></p><p class="text-muted">See the class entry for full details.</p>`
+        })
+        break
+      }
+      default: {
+        // Log unknown reference types for debugging
+        console.warn('Unhandled reference type:', event.type, event)
+        break
+      }
     }
   }
-  
+
   async function initialize() {
     await SearchService.initialize(selectedCategory.value)
     await performSearch()

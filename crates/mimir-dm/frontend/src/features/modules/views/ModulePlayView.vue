@@ -95,7 +95,7 @@
               <div v-if="selectedMonster.monster_data" class="monster-stats">
                 <div class="stat-row">
                   <span class="stat-label">AC</span>
-                  <span class="stat-value">{{ formatAC(selectedMonster.monster_data) }}</span>
+                  <span class="stat-value" v-html="formatAC(selectedMonster.monster_data)"></span>
                 </div>
                 <div class="stat-row">
                   <span class="stat-label">HP</span>
@@ -130,6 +130,69 @@
                     <span class="ability-name">CHA</span>
                     <span class="ability-value">{{ selectedMonster.monster_data.cha || 10 }}</span>
                   </div>
+                </div>
+
+                <!-- Traits -->
+                <div v-if="selectedMonster.monster_data.trait?.length" class="monster-traits">
+                  <h4>Traits</h4>
+                  <div
+                    v-for="(trait, idx) in selectedMonster.monster_data.trait"
+                    :key="'trait-' + idx"
+                    class="monster-action"
+                  >
+                    <strong>{{ trait.name }}.</strong>
+                    <span v-html="formatActionEntries(trait.entries)"></span>
+                  </div>
+                </div>
+
+                <!-- Actions (Attacks!) -->
+                <div v-if="selectedMonster.monster_data.action?.length" class="monster-actions">
+                  <h4>Actions</h4>
+                  <div
+                    v-for="(action, idx) in selectedMonster.monster_data.action"
+                    :key="'action-' + idx"
+                    class="monster-action"
+                  >
+                    <strong>{{ action.name }}.</strong>
+                    <span v-html="formatActionEntries(action.entries)"></span>
+                  </div>
+                </div>
+
+                <!-- Reactions -->
+                <div v-if="selectedMonster.monster_data.reaction?.length" class="monster-reactions">
+                  <h4>Reactions</h4>
+                  <div
+                    v-for="(reaction, idx) in selectedMonster.monster_data.reaction"
+                    :key="'reaction-' + idx"
+                    class="monster-action"
+                  >
+                    <strong>{{ reaction.name }}.</strong>
+                    <span v-html="formatActionEntries(reaction.entries)"></span>
+                  </div>
+                </div>
+
+                <!-- Legendary Actions -->
+                <div v-if="selectedMonster.monster_data.legendary?.length" class="monster-legendary">
+                  <h4>Legendary Actions</h4>
+                  <p class="legendary-intro">
+                    The creature can take 3 legendary actions, choosing from the options below.
+                    Only one legendary action can be used at a time and only at the end of another
+                    creature's turn. Spent legendary actions are regained at the start of each turn.
+                  </p>
+                  <div
+                    v-for="(legendary, idx) in selectedMonster.monster_data.legendary"
+                    :key="'legendary-' + idx"
+                    class="monster-action"
+                  >
+                    <strong>{{ legendary.name }}.</strong>
+                    <span v-html="formatActionEntries(legendary.entries)"></span>
+                  </div>
+                </div>
+
+                <!-- Spellcasting (if present as trait or separate) -->
+                <div v-if="getSpellcasting(selectedMonster.monster_data)" class="monster-spellcasting">
+                  <h4>Spellcasting</h4>
+                  <div v-html="getSpellcasting(selectedMonster.monster_data)"></div>
                 </div>
               </div>
               <div v-else class="no-data-text">
@@ -288,6 +351,25 @@
         </aside>
       </div>
     </div>
+
+    <!-- Cross-reference tooltip -->
+    <div
+      v-if="tooltipVisible"
+      class="cross-ref-tooltip"
+      :style="{ left: `${tooltipPosition.x + 10}px`, top: `${tooltipPosition.y + 10}px` }"
+      v-html="tooltipContent"
+    />
+
+    <!-- Cross-reference modal -->
+    <div v-if="modalContent.visible" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>{{ modalContent.title }}</h2>
+          <button class="modal-close" @click="closeModal">×</button>
+        </div>
+        <div class="modal-body dnd-content" v-html="modalContent.content"></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -305,6 +387,8 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import DmMapViewer from '@/components/DmMapViewer.vue'
 import type { Module, Document, Campaign } from '@/types'
+import { processFormattingTags } from '@/features/sources/utils/textFormatting'
+import { useCrossReferences } from '@/features/sources/composables/useCrossReferences'
 
 const route = useRoute()
 const router = useRouter()
@@ -317,6 +401,18 @@ const {
   toggleBlackout,
   checkDisplayOpen
 } = usePlayerDisplay()
+
+// Cross-reference handling for clickable links in monster stats
+const {
+  tooltipContent,
+  tooltipVisible,
+  tooltipPosition,
+  modalContent,
+  handleCrossRefHover,
+  handleCrossRefClick,
+  hideTooltip,
+  closeModal
+} = useCrossReferences()
 
 // Toggle player display window
 async function togglePlayerDisplay() {
@@ -537,18 +633,22 @@ function formatAC(monsterData: any): string {
   if (!monsterData?.ac) return '?'
 
   const ac = monsterData.ac
+  let result = ''
   if (Array.isArray(ac)) {
     // 5etools format: ac is an array of AC objects or numbers
     const first = ac[0]
     if (typeof first === 'number') {
-      return String(first)
+      result = String(first)
     } else if (typeof first === 'object') {
       const base = first.ac || first
       const from = first.from ? ` (${first.from.join(', ')})` : ''
-      return `${base}${from}`
+      result = `${base}${from}`
     }
+  } else {
+    result = String(ac)
   }
-  return String(ac)
+  // Process any 5etools formatting tags like {@item}
+  return processFormattingTags(result)
 }
 
 // Format HP from 5etools data format
@@ -562,6 +662,78 @@ function formatHP(monsterData: any): string {
     return `${avg}${formula}`
   }
   return String(hp)
+}
+
+// Format action/trait entries (array of strings/objects) into HTML
+function formatActionEntries(entries: any[]): string {
+  if (!entries || !Array.isArray(entries)) return ''
+
+  return entries.map(entry => {
+    if (typeof entry === 'string') {
+      return processFormattingTags(entry)
+    } else if (entry && typeof entry === 'object') {
+      // Handle nested entries objects
+      if (entry.entries) {
+        return formatActionEntries(entry.entries)
+      }
+      return ''
+    }
+    return ''
+  }).join(' ')
+}
+
+// Extract spellcasting info from monster data (can be in different formats)
+function getSpellcasting(monsterData: any): string | null {
+  if (!monsterData) return null
+
+  // Check for spellcasting array (5etools format)
+  if (monsterData.spellcasting && Array.isArray(monsterData.spellcasting)) {
+    return monsterData.spellcasting.map((sc: any) => {
+      let html = ''
+      if (sc.headerEntries) {
+        html += sc.headerEntries.map((e: string) => `<p>${processFormattingTags(e)}</p>`).join('')
+      }
+      if (sc.spells) {
+        html += '<div class="spell-slots">'
+        for (const [level, spellData] of Object.entries(sc.spells as Record<string, any>)) {
+          const levelName = level === '0' ? 'Cantrips (at will)' : `${getOrdinal(parseInt(level))} level (${spellData.slots || '?'} slots)`
+          const spellList = (spellData.spells || []).map((s: string) => processFormattingTags(s)).join(', ')
+          html += `<p><strong>${levelName}:</strong> ${spellList}</p>`
+        }
+        html += '</div>'
+      }
+      if (sc.daily) {
+        html += '<div class="innate-spells">'
+        for (const [uses, spells] of Object.entries(sc.daily as Record<string, string[]>)) {
+          const usesText = uses === '1' ? '1/day' : `${uses}/day each`
+          const spellList = spells.map((s: string) => processFormattingTags(s)).join(', ')
+          html += `<p><strong>${usesText}:</strong> ${spellList}</p>`
+        }
+        html += '</div>'
+      }
+      return html
+    }).join('')
+  }
+
+  // Check for spellcasting in traits
+  if (monsterData.trait && Array.isArray(monsterData.trait)) {
+    const spellTrait = monsterData.trait.find((t: any) =>
+      t.name?.toLowerCase().includes('spellcasting') ||
+      t.name?.toLowerCase().includes('innate spellcasting')
+    )
+    if (spellTrait) {
+      return formatActionEntries(spellTrait.entries)
+    }
+  }
+
+  return null
+}
+
+// Helper for ordinal numbers (1st, 2nd, 3rd, etc.)
+function getOrdinal(n: number): string {
+  const suffixes = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0])
 }
 
 // Notes state
@@ -766,6 +938,10 @@ onBeforeUnmount(() => {
     clearTimeout(saveTimeout)
     saveNotes()
   }
+  // Clean up cross-reference handlers
+  document.removeEventListener('click', handleCrossRefClick as any)
+  document.removeEventListener('mouseover', handleCrossRefHover as any)
+  document.removeEventListener('mouseout', hideTooltip)
 })
 
 onMounted(async () => {
@@ -775,6 +951,16 @@ onMounted(async () => {
     loadEncounters(),
     loadMaps()
   ])
+
+  // Set up cross-reference click handlers for monster stats
+  document.addEventListener('click', handleCrossRefClick as any)
+  document.addEventListener('mouseover', handleCrossRefHover as any)
+  document.addEventListener('mouseout', (e) => {
+    const target = e.target as HTMLElement
+    if (target.classList?.contains('cross-ref-link')) {
+      hideTooltip()
+    }
+  })
 })
 </script>
 
@@ -1432,6 +1618,100 @@ onMounted(async () => {
   padding: 0.5rem;
 }
 
+/* Monster Traits, Actions, Reactions */
+.monster-traits,
+.monster-actions,
+.monster-reactions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.monster-traits h4,
+.monster-actions h4,
+.monster-reactions h4 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-accent, #e67e22);
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.monster-action {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.monster-action strong {
+  color: var(--color-text);
+}
+
+.monster-action :deep(.hit-bonus),
+.monster-action :deep(.damage-roll),
+.monster-action :deep(.dice-roll) {
+  color: var(--color-primary, #4a9eff);
+  font-weight: 600;
+}
+
+.monster-action :deep(.cross-ref-link) {
+  color: var(--color-primary, #4a9eff);
+  cursor: pointer;
+}
+
+/* Legendary Actions */
+.monster-legendary {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.monster-legendary h4 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #9333ea; /* Purple for legendary */
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.legendary-intro {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+}
+
+/* Spellcasting */
+.monster-spellcasting {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.monster-spellcasting h4 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2563eb; /* Blue for spellcasting */
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.monster-spellcasting p {
+  font-size: 0.8rem;
+  margin: 0.25rem 0;
+  line-height: 1.4;
+}
+
+.monster-spellcasting .spell-slots,
+.monster-spellcasting .innate-spells {
+  margin-top: 0.5rem;
+}
+
 /* Monster Quick List */
 .monster-quick-list {
   display: flex;
@@ -1572,5 +1852,77 @@ onMounted(async () => {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+}
+
+/* Cross-reference tooltip */
+.cross-ref-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: var(--color-surface, #1a1a1a);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+/* Cross-reference modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.modal-content {
+  background: var(--color-surface, #1a1a1a);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 8px;
+  max-width: 600px;
+  max-height: 80vh;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border, #333);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--color-text);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--color-text);
+}
+
+.modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
 }
 </style>
