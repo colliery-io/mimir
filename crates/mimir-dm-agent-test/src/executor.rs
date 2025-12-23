@@ -208,7 +208,7 @@ impl AgentTestExecutor {
         // Seed dev data (creates campaign, players, characters)
         {
             let mut conn = db_service.get_connection()?;
-            seed_dev_data(&mut conn, campaigns_dir.to_str().unwrap())?;
+            seed_dev_data(&mut conn, campaigns_dir.to_str().unwrap(), data_dir.to_str().unwrap())?;
         }
 
         // Load PHB catalog data for character creation tests
