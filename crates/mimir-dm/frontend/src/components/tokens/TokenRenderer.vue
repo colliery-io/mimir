@@ -105,10 +105,13 @@ const layerStyle = computed(() => ({
   pointerEvents: props.interactive ? 'auto' as const : 'none' as const
 }))
 
+// Scale tokens to 85% of grid size so they fit within grid cells
+const TOKEN_SCALE = 0.85
+
 // Get token display style
 function getTokenStyle(token: Token) {
   const gridSquares = TOKEN_SIZE_GRID_SQUARES[token.size as TokenSize] || 1
-  const tokenSizePx = gridSquares * props.gridSizePx * props.baseScale
+  const tokenSizePx = gridSquares * props.gridSizePx * props.baseScale * TOKEN_SCALE
   const color = token.color || TOKEN_TYPE_COLORS[token.token_type as TokenType] || '#666666'
 
   // Position at token center, offset by half the token size

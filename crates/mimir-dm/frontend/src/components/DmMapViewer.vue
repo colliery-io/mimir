@@ -277,7 +277,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { emit } from '@tauri-apps/api/event'
+import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { usePlayerDisplay } from '@/composables/usePlayerDisplay'
 import { useTokens } from '@/composables/useTokens'
 import { useLightSources, type LightSourceSummary } from '@/composables/useLightSources'
@@ -654,6 +654,15 @@ async function handleTokenDragEnd(event: MouseEvent) {
     return
   }
 
+  // Only process if we actually moved (more than 5px in any direction)
+  const didMove = Math.abs(dragOffset.value.x) > 5 || Math.abs(dragOffset.value.y) > 5
+  if (!didMove) {
+    draggingTokenId.value = null
+    dragOffset.value = null
+    dragStartPos.value = null
+    return
+  }
+
   // Calculate new position with grid snapping
   const rawX = dragStartPos.value.tokenX + dragOffset.value.x
   const rawY = dragStartPos.value.tokenY + dragOffset.value.y
@@ -817,9 +826,26 @@ watch(() => props.mapId, async (newId) => {
   }
 }, { immediate: true })
 
-// Send tokens, fog, and lights to display when display opens
-watch(isDisplayOpen, (open) => {
+// Listen for state request from player display (sent after map-update is received)
+let unlistenStateRequest: UnlistenFn | null = null
+
+async function setupStateRequestListener() {
+  unlistenStateRequest = await listen<{ mapId: number }>('player-display:request-state', (event) => {
+    console.log('DmMapViewer: Received state request for map', event.payload.mapId)
+    // Only respond if this is our current map
+    if (event.payload.mapId === props.mapId) {
+      sendTokensToDisplay()
+      sendFogToDisplay()
+      sendLightSourcesToDisplay()
+    }
+  })
+}
+
+// Also send state when display first opens (backup for timing issues)
+watch(isDisplayOpen, async (open) => {
   if (open && props.mapId) {
+    // Small delay then send - the request-state event should also trigger this
+    await new Promise(resolve => setTimeout(resolve, 100))
     sendTokensToDisplay()
     sendFogToDisplay()
     sendLightSourcesToDisplay()
@@ -1026,8 +1052,9 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
+  await setupStateRequestListener()
 })
 
 onUnmounted(() => {
@@ -1035,6 +1062,8 @@ onUnmounted(() => {
   // Clean up any lingering drag listeners
   document.removeEventListener('mousemove', handleTokenDrag)
   document.removeEventListener('mouseup', handleTokenDragEnd)
+  // Clean up event listener
+  unlistenStateRequest?.()
 })
 </script>
 

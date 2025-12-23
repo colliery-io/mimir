@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event'
 import TokenRenderer from '@/components/tokens/TokenRenderer.vue'
 import LightSourceRenderer from '@/components/lighting/LightSourceRenderer.vue'
 import type { Token } from '@/types/api'
@@ -203,6 +203,10 @@ onMounted(async () => {
 
     // Load the map image
     await loadMapImage(data.mapId)
+
+    // Request current state from DM window now that we're ready
+    console.log('PlayerDisplayWindow: Requesting state for map', data.mapId)
+    await emit('player-display:request-state', { mapId: data.mapId })
   })
 
   // Listen for viewport updates (pan/zoom)
@@ -227,8 +231,8 @@ onMounted(async () => {
     tokens: Token[]
   }>('player-display:tokens-update', (event) => {
     console.log('PlayerDisplayWindow: Received tokens-update event:', event.payload.tokens.length, 'tokens')
-    // Only update tokens if they're for the current map
-    if (event.payload.mapId === mapState.value.mapId) {
+    // Accept tokens if they're for the current map OR if we don't have a map yet (initial load)
+    if (mapState.value.mapId === null || event.payload.mapId === mapState.value.mapId) {
       tokens.value = event.payload.tokens
     }
   })
@@ -240,8 +244,8 @@ onMounted(async () => {
     visionCircles: VisionCircle[]
   }>('player-display:fog-update', (event) => {
     console.log('PlayerDisplayWindow: Received fog-update event:', event.payload.fogEnabled, event.payload.visionCircles?.length || 0, 'vision circles')
-    // Only update fog if it's for the current map
-    if (event.payload.mapId === mapState.value.mapId) {
+    // Accept fog if it's for the current map OR if we don't have a map yet (initial load)
+    if (mapState.value.mapId === null || event.payload.mapId === mapState.value.mapId) {
       fogEnabled.value = event.payload.fogEnabled
       visionCircles.value = event.payload.visionCircles || []
     }
@@ -253,8 +257,8 @@ onMounted(async () => {
     lightSources: LightSourceSummary[]
   }>('player-display:light-sources-update', (event) => {
     console.log('PlayerDisplayWindow: Received light-sources-update event:', event.payload.lightSources.length, 'lights')
-    // Only update lights if they're for the current map
-    if (event.payload.mapId === mapState.value.mapId) {
+    // Accept lights if they're for the current map OR if we don't have a map yet (initial load)
+    if (mapState.value.mapId === null || event.payload.mapId === mapState.value.mapId) {
       lightSources.value = event.payload.lightSources
     }
   })
@@ -468,9 +472,10 @@ function handleResize() {
           :show-labels="false"
         />
 
-        <!-- Token Layer (only visible tokens) -->
+        <!-- Token Layer (only visible tokens, below fog overlay) -->
         <TokenRenderer
           v-if="tokens.length > 0 && mapState.gridSizePx"
+          :key="`tokens-${mapState.mapId}-${mapState.gridSizePx}`"
           :tokens="tokens"
           :grid-size-px="mapState.gridSizePx"
           :base-scale="1"
@@ -588,6 +593,7 @@ function handleResize() {
             mask="url(#darknessMask)"
           />
         </svg>
+
       </div>
     </div>
 

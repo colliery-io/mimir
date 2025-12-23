@@ -275,7 +275,7 @@ fn seed_maps(
         GOBLIN_HIDEOUT_WIDTH,
         GOBLIN_HIDEOUT_HEIGHT,
     )
-    .with_grid(GridType::Square, 53, 0, 0);
+    .with_grid(GridType::Square, 54, 0, 0);
 
     // Associate with module if found
     let new_map = if let Some(mid) = module_id {
@@ -288,31 +288,31 @@ fn seed_maps(
     let map = service.create_map(new_map)?;
 
     // Add monster tokens matching the Cragmaw Hideout encounters
-    // Positions at cell centers (grid intersection + 26.5 for 53px grid)
+    // Positions at cell centers (grid cell * 54 + 27 for 54px grid)
     let monster_tokens: Vec<(&str, f32, f32)> = vec![
         // Boss Chamber - Bugbear and 2 Goblins
-        ("Bugbear", 821.5, 768.5),
-        ("Goblin", 927.5, 768.5),
-        ("Goblin", 821.5, 662.5),
+        ("Bugbear", 837.0, 783.0),
+        ("Goblin", 945.0, 783.0),
+        ("Goblin", 837.0, 675.0),
         // Main Chamber - 6 Goblins
-        ("Goblin", 1669.5, 503.5),
-        ("Goblin", 1775.5, 503.5),
-        ("Goblin", 1881.5, 503.5),
-        ("Goblin", 1669.5, 556.5),
-        ("Goblin", 1828.5, 609.5),
-        ("Goblin", 1881.5, 556.5),
+        ("Goblin", 1701.0, 513.0),
+        ("Goblin", 1809.0, 513.0),
+        ("Goblin", 1917.0, 513.0),
+        ("Goblin", 1701.0, 567.0),
+        ("Goblin", 1863.0, 621.0),
+        ("Goblin", 1917.0, 567.0),
         // Guard area
-        ("Goblin", 1828.5, 980.5),
-        ("Goblin", 1722.5, 980.5),
+        ("Goblin", 1863.0, 999.0),
+        ("Goblin", 1755.0, 999.0),
         // Guard Post - 4 Goblins
-        ("Goblin", 1139.5, 556.5),
-        ("Goblin", 1139.5, 662.5),
-        ("Goblin", 1245.5, 662.5),
-        ("Goblin", 1298.5, 609.5),
-        ("Goblin", 1616.5, 980.5),
+        ("Goblin", 1161.0, 567.0),
+        ("Goblin", 1161.0, 675.0),
+        ("Goblin", 1269.0, 675.0),
+        ("Goblin", 1323.0, 621.0),
+        ("Goblin", 1647.0, 999.0),
         // Kennel - 2 Wolves
-        ("Wolf", 1775.5, 927.5),
-        ("Wolf", 1616.5, 927.5),
+        ("Wolf", 1809.0, 945.0),
+        ("Wolf", 1647.0, 945.0),
     ];
 
     let mut token_service = TokenService::new(conn);
@@ -326,13 +326,13 @@ fn seed_maps(
     info!("Created {} monster tokens on battle map", monster_tokens.len());
 
     // Add PC tokens (positioned near cave entrance for start of encounter)
-    // Positions at cell centers (grid intersection + 26.5 for 53px grid)
+    // Positions at cell centers (grid cell * 54 + 27 for 54px grid)
     // 2x2 formation at cells (41,22), (42,22), (41,23), (42,23)
     let pc_tokens = [
-        ("Thorin Ironforge", 2199.5, 1192.5, TokenSize::Medium, VisionType::Darkvision, Some(60.0)),
-        ("Elara Moonwhisper", 2252.5, 1192.5, TokenSize::Medium, VisionType::Darkvision, Some(60.0)),
-        ("Finn Lightfoot", 2199.5, 1245.5, TokenSize::Small, VisionType::Normal, None),
-        ("Sister Helena", 2252.5, 1245.5, TokenSize::Medium, VisionType::Normal, None),
+        ("Thorin Ironforge", 2241.0, 1215.0, TokenSize::Medium, VisionType::Darkvision, Some(60.0)),
+        ("Elara Moonwhisper", 2295.0, 1215.0, TokenSize::Medium, VisionType::Darkvision, Some(60.0)),
+        ("Finn Lightfoot", 2241.0, 1269.0, TokenSize::Small, VisionType::Normal, None),
+        ("Sister Helena", 2295.0, 1269.0, TokenSize::Medium, VisionType::Normal, None),
     ];
 
     for (name, x, y, size, vision_type, vision_range) in pc_tokens {
